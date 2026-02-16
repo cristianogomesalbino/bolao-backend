@@ -1,0 +1,43 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Campeonato {
+  id         String      @id @default(uuid())
+  nome       String
+  temporadas Temporada[]
+}
+
+model Temporada {
+  id           String     @id @default(uuid())
+  ano          Int
+  campeonatoId String
+  campeonato   Campeonato @relation(fields: [campeonatoId], references: [id])
+
+  grupos Grupo[]
+
+  dataCriacao DateTime @default(now())
+}
+
+model Grupo {
+  id          String @id @default(uuid())
+  nome        String @unique
+  temporadaId String
+  adminId     String
+
+  privado       Boolean @default(false)
+  codigoConvite String? @unique
+
+  permitirPalpiteAutomatico Boolean @default(false)
+  maxParticipantes          Int     @default(50)
+
+  ativo       Boolean  @default(true)
+  dataCriacao DateTime @default(now())
+
+  temporada Temporada @relation(fields: [temporadaId], references: [id])
+}

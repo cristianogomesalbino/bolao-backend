@@ -1,0 +1,43 @@
+import { NestFactory } from '@nestjs/core';
+import { AppModule } from './app.module';
+import { ValidationPipe } from '@nestjs/common';
+import { BadRequestException } from '@nestjs/common';
+
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule);
+
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+      exceptionFactory: (errors) => {
+        const formattedErrors = errors.map(error => {
+          const constraints = error.constraints || {};
+      
+          const mensagens = Object.values(constraints).map(msg => {
+            if (msg.includes('should not exist')) {
+              return 'Campo não permitido.';
+            }
+            return msg;
+          });
+      
+          return {
+            campo: error.property,
+            mensagens,
+          };
+        });
+      
+        return new BadRequestException({
+          mensagem: 'Erro de validação',
+          erros: formattedErrors,
+        });
+      },
+    }),
+  );
+  
+
+  await app.listen(3000);
+}
+
+bootstrap();
