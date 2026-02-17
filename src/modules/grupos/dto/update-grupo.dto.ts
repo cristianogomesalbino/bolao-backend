@@ -1,22 +1,19 @@
 import { PartialType } from '@nestjs/mapped-types';
 import { CreateGrupoDto } from './create-grupo.dto';
-import { IsInt, IsOptional, IsString, IsBoolean, Max } from 'class-validator';
+import { IsOptional, IsString, IsBoolean, Length } from 'class-validator';
 
 export class UpdateGrupoDto {
+
   @IsOptional()
-  @IsString({ message: 'O nome deve ser um texto.' })
+  @IsString({ message: 'Deve ser um texto.' })
+  @Length(3, 100, { message: 'Deve ter entre 3 e 100 caracteres.' })
   nome?: string;
 
   @IsOptional()
-  @IsBoolean()
+  @IsBoolean({ message: 'Deve ser verdadeiro ou falso.' })
   privado?: boolean;
 
   @IsOptional()
-  @IsBoolean()
+  @IsBoolean({ message: 'Deve ser verdadeiro ou falso.' })
   permitirPalpiteAutomatico?: boolean;
-
-  @IsOptional()
-  @IsInt()
-  @Max(50, { message: 'O grupo pode ter no máximo 50 participantes.' })
-  maxParticipantes?: number;
 }

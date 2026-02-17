@@ -1,7 +1,8 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Put } from '@nestjs/common';
 import { GruposService } from './grupos.service';
 import { CreateGrupoDto } from './dto/create-grupo.dto';
 import { UpdateGrupoDto } from './dto/update-grupo.dto';
+import { UpdateStatusGrupoDto } from './dto/update-status-grupo.dto';
 
 @Controller('grupos')
 export class GruposController {
@@ -19,16 +20,24 @@ export class GruposController {
 
   @Get(':id')
   findOne(@Param('id') id: string) {
-    return this.gruposService.findOne(+id);
+    return this.gruposService.findOne(id);
   }
 
-  @Patch(':id')
+  @Put(':id')
   update(@Param('id') id: string, @Body() updateGrupoDto: UpdateGrupoDto) {
-    return this.gruposService.update(+id, updateGrupoDto);
+    return this.gruposService.update(id, updateGrupoDto);
+  }
+
+  @Patch(':id/status')
+  updateStatus(
+    @Param('id') id: string,
+    @Body() dto: UpdateStatusGrupoDto,
+  ) {
+    return this.gruposService.updateStatus(id, dto);
   }
 
   @Delete(':id')
   remove(@Param('id') id: string) {
-    return this.gruposService.remove(+id);
+    return this.gruposService.remove(id);
   }
 }

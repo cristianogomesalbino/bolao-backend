@@ -18,6 +18,7 @@ async function bootstrap() {
       whitelist: true,
       forbidNonWhitelisted: true,
       transform: true,
+      stopAtFirstError: true,
       exceptionFactory: (errors) => {
         const formattedErrors = errors.map(error => {
           const constraints = error.constraints || {};
@@ -36,7 +37,6 @@ async function bootstrap() {
         });
       
         return new BadRequestException({
-          mensagem: 'Erro de validação',
           erros: formattedErrors,
         });
       },

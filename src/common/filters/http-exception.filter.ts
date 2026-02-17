@@ -15,6 +15,10 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const status = exception.getStatus();
     const exceptionResponse: any = exception.getResponse();
 
+    if (exceptionResponse?.erros) {
+      return response.status(status).json(exceptionResponse);
+    }
+
     const mensagens = this.extrairMensagens(exceptionResponse);
 
     return response.status(status).json({
@@ -28,16 +32,14 @@ export class HttpExceptionFilter implements ExceptionFilter {
   }
 
   private extrairMensagens(exceptionResponse: any): string[] {
-    if (typeof exceptionResponse === 'string') {
-      return [exceptionResponse];
-    }
+    const message =
+      typeof exceptionResponse === 'string'
+        ? exceptionResponse
+        : exceptionResponse?.message;
 
-    const message = exceptionResponse?.message;
-
-    if (!message) {
-      return ['Erro inesperado.'];
-    }
+    if (!message) return ['Erro inesperado.'];
 
     return Array.isArray(message) ? message : [message];
   }
 }
+

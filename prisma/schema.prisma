@@ -25,19 +25,31 @@ model Temporada {
 }
 
 model Grupo {
-  id          String @id @default(uuid())
-  nome        String @unique
-  temporadaId String
-  adminId     String
+  id                        String    @id @default(uuid())
+  nome                      String    @unique @db.VarChar(100)
+  temporadaId               String
+  adminId                   String
 
-  privado       Boolean @default(false)
-  codigoConvite String? @unique
+  privado                   Boolean
+  codigoConvite             String?   @unique @db.VarChar(8)
 
-  permitirPalpiteAutomatico Boolean @default(false)
-  maxParticipantes          Int     @default(50)
+  permitirPalpiteAutomatico Boolean   @default(false)
+  maxParticipantes          Int       @default(50)
 
-  ativo       Boolean  @default(true)
-  dataCriacao DateTime @default(now())
+  ativo                     Boolean   @default(true)
+  dataCriacao               DateTime  @default(now())
 
-  temporada Temporada @relation(fields: [temporadaId], references: [id])
+  temporada                 Temporada @relation(fields: [temporadaId], references: [id])
+  admin                     Usuario   @relation(fields: [adminId], references: [id])
+}
+
+model Usuario {
+  id            String   @id @default(uuid())
+  nome          String   @db.VarChar(100)
+  email         String   @unique @db.VarChar(150)
+  senha         String   @db.VarChar(255)
+  timeDoCoracao String?  @db.VarChar(100)
+  dataCriacao   DateTime @default(now())
+
+  gruposAdmin Grupo[]
 }
