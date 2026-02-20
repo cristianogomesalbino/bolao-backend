@@ -172,12 +172,11 @@ export class GruposService {
   }
   
   async remove(id: string) {
-
     const grupo = await this.prisma.grupo.findUnique({
       where: { id },
     });
   
-    if (!grupo || !grupo.ativo) {
+    if (!grupo) {
       throw new NotFoundException({
         erros: [
           {
@@ -188,11 +187,23 @@ export class GruposService {
       });
     }
   
-    return await this.prisma.grupo.update({
+    if (grupo.ativo) {
+      throw new BadRequestException({
+        erros: [
+          {
+            campo: 'ativo',
+            mensagens: ['Desative o grupo antes de excluí-lo.'],
+          },
+        ],
+      });
+    }
+  
+    await this.prisma.grupo.delete({
       where: { id },
-      data: {
-        ativo: false,
-      },
     });
+  
+    return {
+      mensagem: 'Grupo excluído com sucesso.',
+    };
   }  
 }

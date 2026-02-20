@@ -3,6 +3,7 @@ import { GruposService } from './grupos.service';
 import { CreateGrupoDto } from './dto/create-grupo.dto';
 import { UpdateGrupoDto } from './dto/update-grupo.dto';
 import { UpdateStatusGrupoDto } from './dto/update-status-grupo.dto';
+import { ParseUUIDCustomPipe } from '../../common/pipes/parse-uuid-custom.pipe';
 
 @Controller('grupos')
 export class GruposController {
@@ -23,21 +24,26 @@ export class GruposController {
     return this.gruposService.findOne(id);
   }
 
-  @Put(':id')
+  @Patch(':id')
   update(@Param('id') id: string, @Body() updateGrupoDto: UpdateGrupoDto) {
     return this.gruposService.update(id, updateGrupoDto);
   }
 
   @Patch(':id/status')
   updateStatus(
-    @Param('id') id: string,
+    @Param('id', new ParseUUIDCustomPipe('id'))
+  id: string,
     @Body() dto: UpdateStatusGrupoDto,
   ) {
     return this.gruposService.updateStatus(id, dto);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
+  remove(
+    @Param('id', new ParseUUIDCustomPipe('id'))
+    id: string,
+  ) {
     return this.gruposService.remove(id);
   }
-}
+
+  }
