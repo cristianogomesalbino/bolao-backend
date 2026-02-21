@@ -6,7 +6,7 @@ import { CreateCampeonatoDto } from './dto/create-campeonato.dto';
 export class CampeonatosService {
   constructor(private prisma: PrismaService) {}
 
-  create(createCampeonatoDto: CreateCampeonatoDto) {
+  criar(createCampeonatoDto: CreateCampeonatoDto) {
     return this.prisma.campeonato.create({
       data: {
         nome: createCampeonatoDto.nome,
@@ -14,7 +14,7 @@ export class CampeonatosService {
     });
   }
 
-  findAll() {
+  buscarTodos() {
     return this.prisma.campeonato.findMany();
   }
 }

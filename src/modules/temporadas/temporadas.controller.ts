@@ -15,13 +15,13 @@ export class TemporadasController {
   @ApiResponse({ status: 400, description: 'Dados inválidos (ano ou campeonatoId)' })
   @Post()
   create(@Body() createTemporadaDto: CreateTemporadaDto) {
-    return this.temporadasService.create(createTemporadaDto);
+    return this.temporadasService.criar(createTemporadaDto);
   }
 
   @ApiOperation({ summary: 'Lista todas as temporadas' })
   @ApiResponse({ status: 200, description: 'Lista de temporadas' })
   @Get()
   findAll() {
-    return this.temporadasService.findAll();
+    return this.temporadasService.buscarTodos();
   }
 }
