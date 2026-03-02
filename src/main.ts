@@ -60,6 +60,10 @@ async function bootstrap() {
   .build();
 
   const document = SwaggerModule.createDocument(app, config);
+  
+  // Remove a seção de schemas
+  delete document.components?.schemas;
+  
   SwaggerModule.setup('docs', app, document);
 
   await app.listen(3001);

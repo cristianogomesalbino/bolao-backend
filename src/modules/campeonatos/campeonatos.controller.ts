@@ -15,13 +15,13 @@ export class CampeonatosController {
   @ApiResponse({ status: 400, description: 'Dados inválidos' })
   @Post()
   create(@Body() createCampeonatoDto: CreateCampeonatoDto) {
-    return this.campeonatosService.create(createCampeonatoDto);
+    return this.campeonatosService.criar(createCampeonatoDto);
   }
 
   @ApiOperation({ summary: 'Lista todos os campeonatos' })
   @ApiResponse({ status: 200, description: 'Lista de campeonatos' })
   @Get()
   findAll() {
-    return this.campeonatosService.findAll();
+    return this.campeonatosService.buscarTodos();
   }
 }

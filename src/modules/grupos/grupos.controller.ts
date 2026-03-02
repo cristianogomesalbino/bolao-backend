@@ -1,6 +1,6 @@
 import { Controller, Get, Post, Body, Patch, Param, Delete, Put } from '@nestjs/common';
 import { GruposService } from './grupos.service';
-import { CreateGrupoDto } from './dto/create-grupo.dto';
+import { CriarGrupoDto } from './dto/create-grupo.dto';
 import { UpdateGrupoDto } from './dto/update-grupo.dto';
 import { UpdateStatusGrupoDto } from './dto/update-status-grupo.dto';
 import { ParseUUIDCustomPipe } from '../../common/pipes/parse-uuid-custom.pipe';
@@ -16,15 +16,15 @@ export class GruposController {
   @ApiBadRequestResponse({ description: 'Erro de validação.' })
   @ApiNotFoundResponse({ description: 'Temporada ou administrador não encontrado.' })
   @Post()
-  create(@Body() createGrupoDto: CreateGrupoDto) {
-    return this.gruposService.create(createGrupoDto);
+  create(@Body() criarGrupoDto: CriarGrupoDto) {
+    return this.gruposService.criar(criarGrupoDto);
   }
 
   @ApiOperation({ summary: 'Listar todos os grupos ativos' })
   @ApiResponse({ status: 200, description: 'Lista de grupos retornada com sucesso.' })
   @Get()
   findAll() {
-    return this.gruposService.findAll();
+    return this.gruposService.buscarTodos();
   }
 
   @ApiOperation({ summary: 'Listar todos os grupos ativos' })
@@ -32,7 +32,7 @@ export class GruposController {
   @ApiNotFoundResponse({ description: 'Grupo não encontrado.' })
   @Get(':id')
   findOne(@Param('id') id: string) {
-    return this.gruposService.findOne(id);
+    return this.gruposService.buscarPorId(id);
   }
 
   @ApiOperation({ summary: 'Buscar grupo por ID' })
@@ -40,7 +40,7 @@ export class GruposController {
   @ApiNotFoundResponse({ description: 'Grupo não encontrado.' })
   @Patch(':id')
   update(@Param('id') id: string, @Body() updateGrupoDto: UpdateGrupoDto) {
-    return this.gruposService.update(id, updateGrupoDto);
+    return this.gruposService.atualizar(id, updateGrupoDto);
   }
 
   @ApiOperation({ summary: 'Alterar status (ativo/inativo) do grupo' })
@@ -65,7 +65,7 @@ export class GruposController {
     @Param('id', new ParseUUIDCustomPipe('id'))
     id: string,
   ) {
-    return this.gruposService.remove(id);
+    return this.gruposService.remover(id);
   }
 
   }

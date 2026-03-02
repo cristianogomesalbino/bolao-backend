@@ -7,7 +7,7 @@ import { UpdateTemporadaDto } from './dto/update-temporada.dto';
 export class TemporadasService {
   constructor(private prisma: PrismaService) {}
 
-  create(createTemporadaDto: CreateTemporadaDto) {
+  criar(createTemporadaDto: CreateTemporadaDto) {
     return this.prisma.temporada.create({
       data: {
         ano: createTemporadaDto.ano,
@@ -16,7 +16,7 @@ export class TemporadasService {
     });
   }
   
-  findAll() {
+  buscarTodos() {
     return this.prisma.temporada.findMany({
       include: {
         campeonato: true,
@@ -24,15 +24,15 @@ export class TemporadasService {
     });
   }
   
-  findOne(id: number) {
+  buscarPorId(id: number) {
     return `This action returns a #${id} temporada`;
   }
 
-  update(id: number, updateTemporadaDto: UpdateTemporadaDto) {
+  atualizar(id: number, updateTemporadaDto: UpdateTemporadaDto) {
     return `This action updates a #${id} temporada`;
   }
 
-  remove(id: number) {
+  remover(id: number) {
     return `This action removes a #${id} temporada`;
   }
 }

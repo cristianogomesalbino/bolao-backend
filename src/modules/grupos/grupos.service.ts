@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { CreateGrupoDto } from './dto/create-grupo.dto';
+import { CriarGrupoDto } from './dto/create-grupo.dto';
 import { UpdateGrupoDto } from './dto/update-grupo.dto';
 import { PrismaService } from '../../prisma/prisma.service';
 import { NotFoundException, BadRequestException } from '@nestjs/common';
@@ -11,60 +11,45 @@ export class GruposService {
 
   constructor(private prisma: PrismaService) {}
 
-  async create(createGrupoDto: CreateGrupoDto) {
-    const {
-      nome,
-      temporadaId,
-      adminId,
-      privado,
-      permitirPalpiteAutomatico,
-      maxParticipantes,
-    } = createGrupoDto;
-  
-    // 🔹 Validar temporada
-    const temporada = await this.prisma.temporada.findUnique({
-      where: { id: temporadaId },
+  async criar(dto: CriarGrupoDto) {
+  const {
+    nome,
+    temporadaId,
+    privado,
+    permitirPalpiteAutomatico,
+    maxParticipantes,
+  } = dto;
+
+  const temporada = await this.prisma.temporada.findUnique({
+    where: { id: temporadaId },
+  });
+
+  if (!temporada) {
+    throw new NotFoundException({
+      erros: [
+        {
+          campo: 'temporadaId',
+          mensagens: ['Temporada não encontrada.'],
+        },
+      ],
     });
-  
-    if (!temporada) {
-      throw new NotFoundException({
-        erros: [
-          {
-            campo: 'temporadaId',
-            mensagens: ['Temporada não encontrada.'],
-          },
-        ],
-      });
-    }
-  
-    // 🔹 Validar admin
-    const admin = await this.prisma.usuario.findUnique({
-      where: { id: adminId },
-    });
-  
-    if (!admin) {
-      throw new NotFoundException({
-        erros: [
-          {
-            campo: 'adminId',
-            mensagens: ['Administrador não encontrado.'],
-          },
-        ],
-      });
-    }
-  
-    // 🔹 Gerar código
-    const codigoConvite = privado ? nanoid(8).toUpperCase() : null;
-  
-    return await this.prisma.grupo.create({
+  }
+
+  const codigoConvite = privado ? nanoid(8).toUpperCase() : null;
+
+  // TODO: Quando implementar auth, pegar usuarioId do token JWT
+  const usuarioIdTemporario = '00000000-0000-0000-0000-000000000000';
+
+  return await this.prisma.$transaction(async (tx) => {
+    const grupo = await tx.grupo.create({
       data: {
         nome,
         temporadaId,
-        adminId,
         privado,
         codigoConvite,
         permitirPalpiteAutomatico: permitirPalpiteAutomatico ?? false,
         maxParticipantes: maxParticipantes ?? 50,
+        createdById: usuarioIdTemporario,
       },
       include: {
         temporada: {
@@ -74,10 +59,20 @@ export class GruposService {
         },
       },
     });
-  }
+
+    await tx.grupoUsuario.create({
+      data: {
+        usuarioId: usuarioIdTemporario,
+        grupoId: grupo.id,
+        role: 'ADMIN',
+      },
+    });
+
+    return grupo;
+  });
+}
   
-  
-  async findAll() {
+  async buscarTodos() {
     return await this.prisma.grupo.findMany({
       where: { ativo: true },
       include: {
@@ -90,7 +85,7 @@ export class GruposService {
     });
   } 
 
-  async findOne(id: string) {
+  async buscarPorId(id: string) {
     const grupo = await this.prisma.grupo.findFirst({
       where: {
         id,
@@ -119,7 +114,7 @@ export class GruposService {
     return grupo;
   }  
 
-  async update(id: string, updateGrupoDto: UpdateGrupoDto) {
+  async atualizar(id: string, updateGrupoDto: UpdateGrupoDto) {
 
     const grupo = await this.prisma.grupo.findUnique({
       where: { id },
@@ -171,7 +166,7 @@ export class GruposService {
     });
   }
   
-  async remove(id: string) {
+  async remover(id: string) {
     const grupo = await this.prisma.grupo.findUnique({
       where: { id },
     });

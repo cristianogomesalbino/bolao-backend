@@ -1,5 +1,5 @@
 import { PartialType } from '@nestjs/mapped-types';
-import { CreateGrupoDto } from './create-grupo.dto';
+import { CriarGrupoDto } from './create-grupo.dto';
 import { IsOptional, IsString, IsBoolean, Length } from 'class-validator';
 
 export class UpdateGrupoDto {

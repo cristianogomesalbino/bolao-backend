@@ -1,6 +1,6 @@
 import { IsString, IsNotEmpty, IsDefined, IsBoolean, IsUUID, IsOptional, IsInt, Length, Max } from 'class-validator';
 import { Type } from 'class-transformer';
-export class CreateGrupoDto {
+export class CriarGrupoDto {
 
   @IsDefined({ message: 'O campo é obrigatório.' })
   @IsString({ message: 'O nome deve ser um texto.' })
