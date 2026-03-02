@@ -25,16 +25,17 @@ model Temporada {
 }
 
 model Usuario {
-  id     String @id @default(uuid())
-  nome   String
-  email  String @unique
-  senha  String
-  perfil Perfil @default(USER)
+  id        String   @id @default(uuid())
+  nome      String
+  email     String   @unique
+  senha     String
+  perfil    Perfil   @default(USER)
+  ativo     Boolean  @default(true)
 
   gruposCriados Grupo[]        @relation("GrupoCriador")
   grupos        GrupoUsuario[]
 
-  dataCriacao  DateTime @default(now())
+  dataCriacao DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 }
 

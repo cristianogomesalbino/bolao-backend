@@ -1,26 +1,27 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsNotEmpty, MinLength } from 'class-validator';
+import { ApiPropertyOptional } from '@nestjs/swagger';
+import { IsEmail, IsOptional, MinLength } from 'class-validator';
 
-export class CriarUsuarioDto {
-  @ApiProperty({ 
+export class AtualizarUsuarioDto {
+  @ApiPropertyOptional({ 
     example: 'João Silva',
     description: 'Nome completo do usuário'
   })
-  @IsNotEmpty({ message: 'Nome é obrigatório' })
-  nome: string;
+  @IsOptional()
+  nome?: string;
 
-  @ApiProperty({ 
+  @ApiPropertyOptional({ 
     example: 'joao@example.com',
     description: 'Email do usuário'
   })
+  @IsOptional()
   @IsEmail({}, { message: 'Email inválido' })
-  email: string;
+  email?: string;
 
-  @ApiProperty({ 
+  @ApiPropertyOptional({ 
     example: 'senha123',
     description: 'Senha do usuário (mínimo 6 caracteres)'
   })
+  @IsOptional()
   @MinLength(6, { message: 'Senha deve ter no mínimo 6 caracteres' })
-  senha: string;
-
+  senha?: string;
 }

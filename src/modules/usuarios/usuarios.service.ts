@@ -4,17 +4,12 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { UsuarioResponseDto } from './dto/usuario-response.dto';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class UsuariosService {
   constructor(private prisma: PrismaService) {}
-
-  private removerSenha(usuario: any) {
-    if (!usuario) return null;
-    const { senha, ...resto } = usuario;
-    return resto;
-  }
 
   async criar(data: { nome: string; email: string; senha: string }) {
     const existe = await this.prisma.usuario.findUnique({
@@ -32,15 +27,19 @@ export class UsuariosService {
         nome: data.nome,
         email: data.email,
         senha: senhaHash,
+        ativo: true,
       },
     });
 
-    return this.removerSenha(usuario);
+    return UsuarioResponseDto.fromEntity(usuario);
   }
 
   async listar() {
-    const usuarios = await this.prisma.usuario.findMany();
-    return usuarios.map((u) => this.removerSenha(u));
+    const usuarios = await this.prisma.usuario.findMany({
+      where: { ativo: true },
+    });
+
+    return usuarios.map(UsuarioResponseDto.fromEntity);
   }
 
   async buscarPorId(id: string) {
@@ -48,11 +47,11 @@ export class UsuariosService {
       where: { id },
     });
 
-    if (!usuario) {
+    if (!usuario || !usuario.ativo) {
       throw new NotFoundException('Usuário não encontrado');
     }
 
-    return this.removerSenha(usuario);
+    return UsuarioResponseDto.fromEntity(usuario);
   }
 
   async atualizar(
@@ -63,7 +62,7 @@ export class UsuariosService {
       where: { id },
     });
 
-    if (!usuarioExistente) {
+    if (!usuarioExistente || !usuarioExistente.ativo) {
       throw new NotFoundException('Usuário não encontrado');
     }
 
@@ -82,7 +81,7 @@ export class UsuariosService {
       },
     });
 
-    return this.removerSenha(usuario);
+    return UsuarioResponseDto.fromEntity(usuario);
   }
 
   async remover(id: string) {
@@ -94,11 +93,16 @@ export class UsuariosService {
       throw new NotFoundException('Usuário não encontrado');
     }
 
-    await this.prisma.usuario.delete({
+    if (!usuario.ativo) {
+      return { mensagem: 'Usuário já está inativo' };
+    }
+
+    await this.prisma.usuario.update({
       where: { id },
+      data: { ativo: false },
     });
 
-    return { mensagem: 'Usuário removido com sucesso' };
+    return { mensagem: 'Usuário desativado com sucesso' };
   }
 
   async buscarPorEmail(email: string) {
