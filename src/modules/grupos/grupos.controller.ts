@@ -5,6 +5,10 @@ import { UpdateGrupoDto } from './dto/update-grupo.dto';
 import { UpdateStatusGrupoDto } from './dto/update-status-grupo.dto';
 import { ParseUUIDCustomPipe } from '../../common/pipes/parse-uuid-custom.pipe';
 import { ApiTags, ApiOperation, ApiResponse, ApiBadRequestResponse, ApiNotFoundResponse,} from '@nestjs/swagger';
+import { UseGuards } from '@nestjs/common';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { GroupRoleGuard } from '../auth/group-role.guard';
+import { GroupRoles } from '../auth/group-roles.decorator';
 
 @ApiTags('Grupos')
 @Controller('grupos')
@@ -15,8 +19,9 @@ export class GruposController {
   @ApiResponse({ status: 201, description: 'Grupo criado com sucesso.' })
   @ApiBadRequestResponse({ description: 'Erro de validação.' })
   @ApiNotFoundResponse({ description: 'Temporada ou administrador não encontrado.' })
+  @UseGuards(JwtAuthGuard)
   @Post()
-  create(@Body() criarGrupoDto: CriarGrupoDto) {
+  criarGrupo(@Body() criarGrupoDto: CriarGrupoDto) {
     return this.gruposService.criar(criarGrupoDto);
   }
 
@@ -60,6 +65,8 @@ export class GruposController {
   @ApiResponse({ status: 200, description: 'Grupo excluído com sucesso.' })
   @ApiBadRequestResponse({ description: 'Erro de validação.' })
   @ApiNotFoundResponse({ description: 'Grupo não encontrado.' })
+  @UseGuards(JwtAuthGuard, GroupRoleGuard)
+  @GroupRoles('ADMIN')
   @Delete(':id')
   remove(
     @Param('id', new ParseUUIDCustomPipe('id'))
