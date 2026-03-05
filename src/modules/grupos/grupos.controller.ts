@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Put } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
 import { GruposService } from './grupos.service';
 import { CriarGrupoDto } from './dto/create-grupo.dto';
 import { UpdateGrupoDto } from './dto/update-grupo.dto';
@@ -9,8 +9,10 @@ import { UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { GroupRoleGuard } from '../auth/group-role.guard';
 import { GroupRoles } from '../auth/group-roles.decorator';
+import { CurrentUser } from '../auth/current-user.decorator';
 
 @ApiTags('Grupos')
+@UseGuards(JwtAuthGuard)
 @Controller('grupos')
 export class GruposController {
   constructor(private readonly gruposService: GruposService) {}
@@ -19,60 +21,69 @@ export class GruposController {
   @ApiResponse({ status: 201, description: 'Grupo criado com sucesso.' })
   @ApiBadRequestResponse({ description: 'Erro de validação.' })
   @ApiNotFoundResponse({ description: 'Temporada ou administrador não encontrado.' })
-  @UseGuards(JwtAuthGuard)
   @Post()
-  criarGrupo(@Body() criarGrupoDto: CriarGrupoDto) {
-    return this.gruposService.criar(criarGrupoDto);
+  criarGrupo(
+    @Body() criarGrupoDto: CriarGrupoDto,
+    @CurrentUser() user,
+  ) {
+    return this.gruposService.criarGrupo(criarGrupoDto, user.id);
   }
 
   @ApiOperation({ summary: 'Listar todos os grupos ativos' })
   @ApiResponse({ status: 200, description: 'Lista de grupos retornada com sucesso.' })
   @Get()
-  findAll() {
-    return this.gruposService.buscarTodos();
-  }
-
-  @ApiOperation({ summary: 'Listar todos os grupos ativos' })
-  @ApiResponse({ status: 200, description: 'Lista de grupos retornada com sucesso.' })
-  @ApiNotFoundResponse({ description: 'Grupo não encontrado.' })
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.gruposService.buscarPorId(id);
+  buscarGrupos() {
+    return this.gruposService.buscarGrupos();
   }
 
   @ApiOperation({ summary: 'Buscar grupo por ID' })
+  @ApiResponse({ status: 200, description: 'Lista de grupos retornada com sucesso.' })
+  @ApiNotFoundResponse({ description: 'Grupo não encontrado.' })
+  @Get(':grupoId')
+  buscarGrupoPorId(
+    @Param('grupoId', new ParseUUIDCustomPipe('grupoId')) grupoId: string
+  ) {
+    return this.gruposService.buscarPorId(grupoId);
+  }
+
+  @ApiOperation({ summary: 'Atualizar grupo por ID' })
   @ApiResponse({ status: 200, description: 'Grupo encontrado.' })
   @ApiNotFoundResponse({ description: 'Grupo não encontrado.' })
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateGrupoDto: UpdateGrupoDto) {
-    return this.gruposService.atualizar(id, updateGrupoDto);
+  @UseGuards( GroupRoleGuard)
+  @GroupRoles('ADMIN')
+  @Patch(':grupoId')
+  atualizarGrupo(
+    @Param('grupoId') grupoId: string, 
+    @Body() updateGrupoDto: UpdateGrupoDto
+  ) {
+    return this.gruposService.atualizarGrupo(grupoId, updateGrupoDto);
   }
 
   @ApiOperation({ summary: 'Alterar status (ativo/inativo) do grupo' })
   @ApiResponse({ status: 200, description: 'Status atualizado com sucesso.' })
   @ApiBadRequestResponse({ description: 'Erro de validação.' })
   @ApiNotFoundResponse({ description: 'Grupo não encontrado.' })
-  @Patch(':id/status')
-  updateStatus(
-    @Param('id', new ParseUUIDCustomPipe('id'))
-  id: string,
-    @Body() dto: UpdateStatusGrupoDto,
+  @UseGuards( GroupRoleGuard)
+  @Patch(':grupoId/status')
+  @GroupRoles('ADMIN')
+  atualizarStatusGrupo(
+    @Param('grupoId', new ParseUUIDCustomPipe('grupoId')) grupoId: string,
+    @Body() updateStatusGrupoDto: UpdateStatusGrupoDto,
   ) {
-    return this.gruposService.updateStatus(id, dto);
+    return this.gruposService.updateStatus(grupoId, updateStatusGrupoDto);
   }
 
   @ApiOperation({ summary: 'Exclui um grupo inativo' })
   @ApiResponse({ status: 200, description: 'Grupo excluído com sucesso.' })
   @ApiBadRequestResponse({ description: 'Erro de validação.' })
   @ApiNotFoundResponse({ description: 'Grupo não encontrado.' })
-  @UseGuards(JwtAuthGuard, GroupRoleGuard)
+  @UseGuards( GroupRoleGuard)
   @GroupRoles('ADMIN')
-  @Delete(':id')
-  remove(
-    @Param('id', new ParseUUIDCustomPipe('id'))
-    id: string,
+  @Delete(':grupoId')
+  removerGrupo(
+    @Param('grupoId', new ParseUUIDCustomPipe('grupoId')) grupoId: string,
   ) {
-    return this.gruposService.remover(id);
+    return this.gruposService.removerGrupo(grupoId);
   }
 
   }
