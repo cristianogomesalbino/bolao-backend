@@ -5,6 +5,7 @@ import { AuthService } from './auth.service';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { JwtStrategy } from './jwt.strategy';
 import { GroupRoleGuard } from './group-role.guard';
+import { SelfOrAdminGuard } from './self-or-admin.guard';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { GroupRoleGuard } from './group-role.guard';
     PrismaService,
     JwtStrategy,
     GroupRoleGuard,
+    SelfOrAdminGuard
   ],
 })
 export class AuthModule {}

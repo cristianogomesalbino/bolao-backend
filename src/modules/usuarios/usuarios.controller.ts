@@ -1,112 +1,73 @@
-import { Controller, Post, Body, Get, Param, Patch, Delete} from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiParam } from '@nestjs/swagger';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, ForbiddenException } from '@nestjs/common';
+
+import { ApiTags, ApiOperation, ApiResponse, ApiBadRequestResponse, ApiNotFoundResponse } from '@nestjs/swagger';
+
 import { UsuariosService } from './usuarios.service';
 import { CriarUsuarioDto } from './dto/criar-usuario.dto';
 import { AtualizarUsuarioDto } from './dto/atualizar-usuario.dto';
-import { UsuarioResponseDto } from './dto/usuario-response.dto';
 
-@ApiTags('Usuários')
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { CurrentUser } from '../auth/current-user.decorator';
+import { ParseUUIDCustomPipe } from '../../common/pipes/parse-uuid-custom.pipe';
+import {SelfOrAdminGuard} from '../auth/self-or-admin.guard';
+
+@ApiTags('Usuarios')
 @Controller('usuarios')
 export class UsuariosController {
-  constructor(private usuariosService: UsuariosService) {}
+  constructor(private readonly usuariosService: UsuariosService) {}
 
   @ApiOperation({ summary: 'Criar um novo usuário' })
-  @ApiBody({ type: CriarUsuarioDto })
-  @ApiResponse({ 
-    status: 201, 
-    description: 'Usuário criado com sucesso',
-    type: UsuarioResponseDto
-  })
-  @ApiResponse({ 
-    status: 400, 
-    description: 'Bad Request',
-    
-  })
+  @ApiResponse({ status: 201, description: 'Usuário criado com sucesso.' })
+  @ApiBadRequestResponse({ description: 'Erro de validação.' })
   @Post()
-  async criar(@Body() body: CriarUsuarioDto) {
-    return this.usuariosService.criar(body);
+  criarUsuario(@Body() criarUsuarioDto: CriarUsuarioDto) {
+    return this.usuariosService.criar(criarUsuarioDto);
   }
 
-  @ApiOperation({ summary: 'Listar todos os usuários' })
-  @ApiResponse({ 
-    status: 200, 
-    description: 'Lista de usuários retornada com sucesso',
-    type: [UsuarioResponseDto]
-  })
-  @Get()
-  async listar() {
-    return this.usuariosService.listar();  
+  @ApiOperation({ summary: 'Buscar perfil do usuário autenticado' })
+  @ApiResponse({ status: 200, description: 'Perfil retornado com sucesso.' })
+  @UseGuards(JwtAuthGuard)
+  @Get('me')
+  buscarPerfil(@CurrentUser() user) {
+    return this.usuariosService.buscarPorId(user.id);
   }
 
   @ApiOperation({ summary: 'Buscar usuário por ID' })
-  @ApiParam({ 
-    name: 'id', 
-    description: 'ID do usuário',
-    example: 'usr_abc123xyz'
-  })
-  @ApiResponse({ 
-    status: 200, 
-    description: 'Usuário encontrado',
-    type: UsuarioResponseDto
-  })
-  @ApiResponse({ 
-    status: 404, 
-    description: 'Usuário não encontrado',
-    
-  })
+  @ApiResponse({ status: 200, description: 'Usuário encontrado.' })
+  @ApiNotFoundResponse({ description: 'Usuário não encontrado.' })
+  @UseGuards(JwtAuthGuard, SelfOrAdminGuard)
   @Get(':id')
-  async buscar(@Param('id') id: string) {
+  buscarPorId(
+    @Param('id', new ParseUUIDCustomPipe('id')) id: string,
+  ) {
     return this.usuariosService.buscarPorId(id);
   }
 
-  @ApiOperation({ summary: 'Atualizar informações do usuário' })
-  @ApiParam({ 
-    name: 'id', 
-    description: 'ID do usuário',
-    example: 'usr_abc123xyz'
-  })
-  @ApiBody({ type: AtualizarUsuarioDto })
-  @ApiResponse({ 
-    status: 200, 
-    description: 'Usuário atualizado com sucesso',
-    type: UsuarioResponseDto
-  })
-  @ApiResponse({ 
-    status: 400, 
-    description: 'Bad Request',
-    
-  })
-  @ApiResponse({ 
-    status: 404, 
-    description: 'Usuário não encontrado',
-    
-  })
-  @Patch(':id')
-  async atualizar(
-    @Param('id') id: string,
-    @Body() body: AtualizarUsuarioDto,
-  ) {
-    return this.usuariosService.atualizar(id, body);
-  }
-  
-  @ApiOperation({ summary: 'Remover um usuário' })
-  @ApiParam({ 
-    name: 'id', 
-    description: 'ID do usuário',
-    example: 'usr_abc123xyz'
-  })
-  @ApiResponse({ 
-    status: 200, 
-    description: 'Usuário removido com sucesso'
-  })
-  @ApiResponse({ 
-    status: 404, 
-    description: 'Usuário não encontrado',
-    
-  })
+  @ApiOperation({ summary: 'Atualizar dados do usuário' })
+  @ApiResponse({ status: 200, description: 'Usuário atualizado com sucesso.' })
+  @ApiNotFoundResponse({ description: 'Usuário não encontrado.' })
+  @UseGuards(JwtAuthGuard, SelfOrAdminGuard)
+    @Patch(':id')
+    atualizarUsuario(
+      @Param('id', new ParseUUIDCustomPipe('id')) id: string,
+      @Body() atualizarUsuarioDto: AtualizarUsuarioDto,
+    ) {
+      return this.usuariosService.atualizar(id, atualizarUsuarioDto);
+    }
+
+  @ApiOperation({ summary: 'Remover usuário' })
+  @ApiResponse({ status: 200, description: 'Usuário removido com sucesso.' })
+  @ApiNotFoundResponse({ description: 'Usuário não encontrado.' })
+  @UseGuards(JwtAuthGuard)
   @Delete(':id')
-  async remover(@Param('id') id: string) {
+  removerUsuario(
+    @Param('id', new ParseUUIDCustomPipe('id')) id: string,
+    @CurrentUser() user,
+  ) {
+    if (user.perfil !== 'ADMIN') {
+      throw new ForbiddenException('Apenas administradores podem remover usuários');
+    }
+
     return this.usuariosService.remover(id);
   }
-
 }
