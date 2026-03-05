@@ -26,14 +26,14 @@ export class GruposController {
     @Body() criarGrupoDto: CriarGrupoDto,
     @CurrentUser() user,
   ) {
-    return this.gruposService.criarGrupo(criarGrupoDto, user.id);
+    return this.gruposService.criar(criarGrupoDto, user.id);
   }
 
   @ApiOperation({ summary: 'Listar todos os grupos ativos' })
   @ApiResponse({ status: 200, description: 'Lista de grupos retornada com sucesso.' })
   @Get()
   buscarGrupos() {
-    return this.gruposService.buscarGrupos();
+    return this.gruposService.buscarTodos();
   }
 
   @ApiOperation({ summary: 'Buscar grupo por ID' })
@@ -56,7 +56,7 @@ export class GruposController {
     @Param('grupoId') grupoId: string, 
     @Body() updateGrupoDto: UpdateGrupoDto
   ) {
-    return this.gruposService.atualizarGrupo(grupoId, updateGrupoDto);
+    return this.gruposService.atualizar(grupoId, updateGrupoDto);
   }
 
   @ApiOperation({ summary: 'Alterar status (ativo/inativo) do grupo' })
@@ -70,7 +70,7 @@ export class GruposController {
     @Param('grupoId', new ParseUUIDCustomPipe('grupoId')) grupoId: string,
     @Body() updateStatusGrupoDto: UpdateStatusGrupoDto,
   ) {
-    return this.gruposService.updateStatus(grupoId, updateStatusGrupoDto);
+    return this.gruposService.atualizarStatus(grupoId, updateStatusGrupoDto);
   }
 
   @ApiOperation({ summary: 'Exclui um grupo inativo' })
@@ -83,7 +83,7 @@ export class GruposController {
   removerGrupo(
     @Param('grupoId', new ParseUUIDCustomPipe('grupoId')) grupoId: string,
   ) {
-    return this.gruposService.removerGrupo(grupoId);
+    return this.gruposService.remover(grupoId);
   }
 
   }
