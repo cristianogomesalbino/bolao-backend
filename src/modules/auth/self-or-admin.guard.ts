@@ -17,7 +17,7 @@ export class SelfOrAdminGuard implements CanActivate {
       throw new ForbiddenException('Usuário não autenticado');
     }
 
-    if (user.perfil === 'ADMIN') {
+    if (user.perfil === 'SUPER_ADMIN') {
       return true;
     }
 

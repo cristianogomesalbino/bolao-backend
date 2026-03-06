@@ -1,10 +1,8 @@
-import {
-  Injectable,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
+import { ErrorFactory } from 'src/common/errors/error.factory';
 
 @Injectable()
 export class AuthService {
@@ -87,7 +85,7 @@ export class AuthService {
     });
 
     if (!usuario) {
-      throw new UnauthorizedException('Usuário não encontrado');
+      throw ErrorFactory.notFound('Usuário não encontrado');
     }
 
     const newAccessToken = this.jwtService.sign(
@@ -100,7 +98,7 @@ export class AuthService {
 
     return { accessToken: newAccessToken };
   }
-  
+
   async logout(refreshToken: string) {
     if (!refreshToken) {
       throw new UnauthorizedException('Refresh token não enviado');

@@ -16,7 +16,7 @@ export class AuthController {
   async login(@Body() loginDto: LoginDto) {
     return this.authService.login(loginDto.email, loginDto.senha);
   }
-  
+
   @ApiOperation({ summary: 'Renovar token de acesso' })
   @ApiResponse({ status: 200, description: 'Token renovado com sucesso.' })
   @ApiBadRequestResponse({ description: 'Refresh token inválido.' })

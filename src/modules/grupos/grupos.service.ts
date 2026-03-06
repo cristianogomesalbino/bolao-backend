@@ -4,6 +4,7 @@ import { CriarGrupoDto } from './dto/create-grupo.dto';
 import { UpdateGrupoDto } from './dto/update-grupo.dto';
 import { UpdateStatusGrupoDto } from './dto/update-status-grupo.dto';
 import { nanoid } from 'nanoid';
+import { ErrorFactory } from 'src/common/errors/error.factory';
 
 const includeGrupo = {
   temporada: {
@@ -76,14 +77,7 @@ export class GruposService {
     });
 
     if (!grupo || !grupo.ativo) {
-      throw new NotFoundException({
-        erros: [
-          {
-            campo: 'id',
-            mensagens: ['Grupo não encontrado.'],
-          },
-        ],
-      });
+      throw ErrorFactory.notFound('Grupo não encontrado');
     }
 
     return grupo;
@@ -95,14 +89,7 @@ export class GruposService {
     });
 
     if (!grupo || !grupo.ativo) {
-      throw new NotFoundException({
-        erros: [
-          {
-            campo: 'id',
-            mensagens: ['Grupo não encontrado.'],
-          },
-        ],
-      });
+      throw ErrorFactory.notFound('Grupo não encontrado');
     }
 
     return this.prisma.grupo.update({
@@ -122,14 +109,7 @@ export class GruposService {
     });
 
     if (!grupo) {
-      throw new NotFoundException({
-        erros: [
-          {
-            campo: 'id',
-            mensagens: ['Grupo não encontrado.'],
-          },
-        ],
-      });
+      throw ErrorFactory.notFound('Grupo não encontrado');
     }
 
     return this.prisma.grupo.update({
@@ -146,14 +126,7 @@ export class GruposService {
     });
 
     if (!grupo) {
-      throw new NotFoundException({
-        erros: [
-          {
-            campo: 'id',
-            mensagens: ['Grupo não encontrado.'],
-          },
-        ],
-      });
+      throw ErrorFactory.notFound('Grupo não encontrado');
     }
 
     if (grupo.ativo) {

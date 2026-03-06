@@ -20,7 +20,7 @@ import { SelfOrAdminGuard } from './self-or-admin.guard';
     PrismaService,
     JwtStrategy,
     GroupRoleGuard,
-    SelfOrAdminGuard
+    SelfOrAdminGuard,
   ],
 })
 export class AuthModule {}

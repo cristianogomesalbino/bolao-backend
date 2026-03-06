@@ -41,7 +41,7 @@ export class GruposController {
   @ApiNotFoundResponse({ description: 'Grupo não encontrado.' })
   @Get(':grupoId')
   buscarGrupoPorId(
-    @Param('grupoId', new ParseUUIDCustomPipe('grupoId')) grupoId: string
+    @Param('grupoId', new ParseUUIDCustomPipe('grupoId')) grupoId: string,
   ) {
     return this.gruposService.buscarPorId(grupoId);
   }
@@ -49,12 +49,12 @@ export class GruposController {
   @ApiOperation({ summary: 'Atualizar grupo por ID' })
   @ApiResponse({ status: 200, description: 'Grupo encontrado.' })
   @ApiNotFoundResponse({ description: 'Grupo não encontrado.' })
-  @UseGuards( GroupRoleGuard)
+  @UseGuards(GroupRoleGuard)
   @GroupRoles('ADMIN')
   @Patch(':grupoId')
   atualizarGrupo(
-    @Param('grupoId') grupoId: string, 
-    @Body() updateGrupoDto: UpdateGrupoDto
+    @Param('grupoId') grupoId: string,
+    @Body() updateGrupoDto: UpdateGrupoDto,
   ) {
     return this.gruposService.atualizar(grupoId, updateGrupoDto);
   }
@@ -85,5 +85,4 @@ export class GruposController {
   ) {
     return this.gruposService.remover(grupoId);
   }
-
-  }
+}

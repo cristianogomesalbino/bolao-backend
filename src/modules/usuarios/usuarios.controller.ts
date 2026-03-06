@@ -47,27 +47,22 @@ export class UsuariosController {
   @ApiResponse({ status: 200, description: 'Usuário atualizado com sucesso.' })
   @ApiNotFoundResponse({ description: 'Usuário não encontrado.' })
   @UseGuards(JwtAuthGuard, SelfOrAdminGuard)
-    @Patch(':id')
-    atualizarUsuario(
-      @Param('id', new ParseUUIDCustomPipe('id')) id: string,
-      @Body() atualizarUsuarioDto: AtualizarUsuarioDto,
-    ) {
-      return this.usuariosService.atualizar(id, atualizarUsuarioDto);
-    }
+  @Patch(':id')
+  atualizarUsuario(
+    @Param('id', new ParseUUIDCustomPipe('id')) id: string,
+    @Body() atualizarUsuarioDto: AtualizarUsuarioDto,
+  ) {
+    return this.usuariosService.atualizar(id, atualizarUsuarioDto);
+  }
 
   @ApiOperation({ summary: 'Remover usuário' })
   @ApiResponse({ status: 200, description: 'Usuário removido com sucesso.' })
   @ApiNotFoundResponse({ description: 'Usuário não encontrado.' })
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, SelfOrAdminGuard)
   @Delete(':id')
   removerUsuario(
     @Param('id', new ParseUUIDCustomPipe('id')) id: string,
-    @CurrentUser() user,
   ) {
-    if (user.perfil !== 'ADMIN') {
-      throw new ForbiddenException('Apenas administradores podem remover usuários');
-    }
-
     return this.usuariosService.remover(id);
   }
 }
