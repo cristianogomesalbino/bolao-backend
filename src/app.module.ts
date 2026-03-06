@@ -8,7 +8,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { UsuariosModule } from './modules/usuarios/usuarios.module';
 
 @Module({
-  imports: [TemporadasModule, PrismaModule, CampeonatosModule, GruposModule, AuthModule, UsuariosModule ],
+  imports: [TemporadasModule, PrismaModule, CampeonatosModule, GruposModule, AuthModule, UsuariosModule, AuthModule ],
   controllers: [AppController],
 })
 export class AppModule {}

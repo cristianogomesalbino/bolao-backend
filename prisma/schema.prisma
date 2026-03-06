@@ -25,17 +25,19 @@ model Temporada {
 }
 
 model Usuario {
-  id        String   @id @default(uuid())
-  nome      String
-  email     String   @unique
-  senha     String
-  perfil    Perfil   @default(USER)
-  ativo     Boolean  @default(true)
+  id     String  @id @default(uuid())
+  nome   String
+  email  String  @unique
+  senha  String
+  perfil Perfil  @default(USER)
+  ativo  Boolean @default(true)
 
   gruposCriados Grupo[]        @relation("GrupoCriador")
   grupos        GrupoUsuario[]
 
-  dataCriacao DateTime @default(now())
+  refreshTokens RefreshToken[]
+
+  dataCriacao  DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 }
 
@@ -82,4 +84,13 @@ enum Perfil {
 enum GrupoRole {
   ADMIN
   MEMBER
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  usuarioId String
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
 }
