@@ -6,9 +6,18 @@ import { CampeonatosModule } from './modules/campeonatos/campeonatos.module';
 import { GruposModule } from './modules/grupos/grupos.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsuariosModule } from './modules/usuarios/usuarios.module';
+import { GrupoUsuarioModule } from './modules/grupo-usuario/grupo-usuario.module';
 
 @Module({
-  imports: [TemporadasModule, PrismaModule, CampeonatosModule, GruposModule, AuthModule, UsuariosModule, AuthModule ],
+  imports: [
+    TemporadasModule,
+    PrismaModule,
+    CampeonatosModule,
+    GruposModule,
+    AuthModule,
+    UsuariosModule,
+    GrupoUsuarioModule,
+  ],
   controllers: [AppController],
 })
 export class AppModule {}
