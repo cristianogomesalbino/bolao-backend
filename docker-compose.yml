@@ -11,3 +11,22 @@ services:
     environment:
       NODE_ENV: production
       DATABASE_URL: ${DATABASE_URL}
+    profiles:
+      - prod
+
+  app-dev:
+    image: node:22-alpine
+    container_name: bolao-backend-dev
+    working_dir: /app
+    volumes:
+      - .:/app
+      - /app/node_modules
+    network_mode: host
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: ${DATABASE_URL}
+    command: sh -c "npm install && npx prisma generate && npm run start:dev"
+    profiles:
+      - dev

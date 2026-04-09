@@ -4,120 +4,136 @@ API REST para gerenciamento de bolões de campeonatos de futebol.
 
 ## Tecnologias
 
-- NestJS
-- Prisma ORM
+- NestJS 11
+- Prisma ORM 6
 - PostgreSQL (Supabase)
-- Docker
+- Docker Compose (profiles dev/prod)
 - TypeScript
+- JWT (autenticação)
+- Swagger (documentação)
 
 ## Estrutura do Projeto
 
 ```
 src/
 ├── modules/
-│   ├── campeonatos/    # Gerenciamento de campeonatos
-│   ├── temporadas/     # Temporadas dos campeonatos
-│   ├── grupos/         # Grupos de bolão
-│   └── usuarios/       # Usuários do sistema
+│   ├── auth/               # Autenticação (login, refresh, logout)
+│   ├── usuarios/           # Cadastro e gerenciamento de usuários
+│   ├── campeonatos/        # Gerenciamento de campeonatos
+│   ├── temporadas/         # Temporadas dos campeonatos
+│   ├── grupos/             # Grupos de bolão
+│   └── grupo-usuario/      # Membros dos grupos (adicionar, remover, convite)
 ├── common/
-│   ├── filters/        # Exception filters
-│   └── pipes/          # Custom pipes
-└── prisma/             # Prisma service e configurações
+│   ├── errors/             # ErrorFactory (respostas padronizadas)
+│   ├── filters/            # Exception filters (HTTP, Prisma)
+│   └── pipes/              # Custom pipes (UUID validation)
+└── prisma/                 # Prisma service e configurações
 ```
 
 ## Pré-requisitos
 
 - Node.js 22+
 - Docker e Docker Compose
-- Conta no Supabase (ou PostgreSQL)
+- Conta no Supabase (ou PostgreSQL local)
 
 ## Configuração
 
 1. Clone o repositório
 
-2. Crie o arquivo `.env` na raiz do projeto:
+2. Crie o arquivo `.env` na raiz:
 
 ```env
 DATABASE_URL=postgresql://usuario:senha@host:5432/database
-```
-
-3. Instale as dependências:
-
-```bash
-npm install
-```
-
-4. Execute as migrations do Prisma:
-
-```bash
-npx prisma migrate dev
+JWT_SECRET=sua_chave_secreta
 ```
 
 ## Desenvolvimento
 
-```bash
-# modo watch
-npm run start:dev
-
-# A API estará disponível em http://localhost:3001
-```
-
-## Docker
-
-### Build e execução
+Usar o script `dev` para gerenciar os containers:
 
 ```bash
-# Build e iniciar
-docker-compose up --build
-
-# Rodar em background
-docker-compose up -d
-
-# Parar
-docker-compose down
+sh dev start-dev       # Inicia em modo dev (hot reload)
+sh dev stop            # Para os containers
+sh dev logs            # Acompanha os logs
+sh dev status          # Status dos containers
+sh dev npm <comando>   # Executa npm dentro do container
+sh dev npx <comando>   # Executa npx dentro do container
+sh dev build           # Rebuilda as imagens
 ```
 
-### Observações importantes
+A API estará disponível em `http://localhost:3002`.
 
-- O projeto usa `network_mode: host` para resolver problemas de conectividade IPv6 com Supabase
-- As migrations são executadas automaticamente ao iniciar o container
-- A aplicação roda na porta 3001
+Documentação Swagger em `http://localhost:3002/docs`.
+
+## Produção
+
+```bash
+sh dev start-prod      # Build e inicia em modo produção
+```
+
+> O projeto usa `network_mode: host`. As migrations são executadas automaticamente ao iniciar em produção.
+
+## Endpoints
+
+### Autenticação (`/auth`)
+
+| Método | Rota             | Descrição              | Auth |
+|--------|------------------|------------------------|------|
+| POST   | `/auth/login`    | Login                  | Não  |
+| POST   | `/auth/refresh`  | Renovar token          | Não  |
+| POST   | `/auth/logout`   | Logout                 | Não  |
+
+### Usuários (`/usuarios`)
+
+| Método | Rota             | Descrição              | Auth |
+|--------|------------------|------------------------|------|
+| POST   | `/usuarios`      | Criar usuário          | Não  |
+| GET    | `/usuarios/me`   | Perfil autenticado     | JWT  |
+| GET    | `/usuarios/:id`  | Buscar por ID          | JWT  |
+| PATCH  | `/usuarios/:id`  | Atualizar usuário      | JWT  |
+| DELETE | `/usuarios/:id`  | Desativar usuário      | JWT  |
+
+### Campeonatos (`/campeonatos`)
+
+| Método | Rota              | Descrição              | Auth |
+|--------|-------------------|------------------------|------|
+| POST   | `/campeonatos`    | Criar campeonato       | Não  |
+| GET    | `/campeonatos`    | Listar campeonatos     | Não  |
+
+### Temporadas (`/temporadas`)
+
+| Método | Rota              | Descrição              | Auth |
+|--------|-------------------|------------------------|------|
+| POST   | `/temporadas`     | Criar temporada        | Não  |
+| GET    | `/temporadas`     | Listar temporadas      | Não  |
+
+### Grupos (`/grupos`)
+
+| Método | Rota                      | Descrição              | Auth       |
+|--------|---------------------------|------------------------|------------|
+| POST   | `/grupos`                 | Criar grupo            | JWT        |
+| GET    | `/grupos`                 | Listar grupos ativos   | JWT        |
+| GET    | `/grupos/:grupoId`        | Buscar por ID          | JWT        |
+| PATCH  | `/grupos/:grupoId`        | Atualizar grupo        | JWT + Admin|
+| PATCH  | `/grupos/:grupoId/status` | Ativar/desativar       | JWT + Admin|
+| DELETE | `/grupos/:grupoId`        | Excluir grupo inativo  | JWT + Admin|
+
+
+### Membros do Grupo (`/grupos`)
+
+| Método | Rota                                    | Descrição                    | Auth          |
+|--------|-----------------------------------------|------------------------------|---------------|
+| POST   | `/grupos/entrar`                        | Entrar por código de convite | JWT           |
+| POST   | `/grupos/:grupoId/adicionar`            | Adicionar membro por email   | JWT + Admin   |
+| GET    | `/grupos/:grupoId/membros`              | Listar membros do grupo      | JWT + Membro  |
+| DELETE | `/grupos/:grupoId/sair`                 | Sair do grupo                | JWT + Membro  |
+| DELETE | `/grupos/:grupoId/usuarios/:usuarioId`  | Remover membro               | JWT + Admin   |
 
 ## Testes
 
 ```bash
-# testes unitários
-npm run test
-
-# cobertura de testes
-npm run test:cov
-```
-
-## Deploy
-
-Para deploy em produção:
-
-1. Configure as variáveis de ambiente no servidor
-2. Certifique-se que o banco de dados está acessível
-3. Execute:
-
-```bash
-docker-compose up -d
-```
-
-## Endpoints Principais
-
-- `GET /campeonatos` - Lista campeonatos
-- `POST /campeonatos` - Cria campeonato
-- `GET /temporadas` - Lista temporadas
-- `POST /temporadas` - Cria temporada
-- `GET /grupos` - Lista grupos
-- `POST /grupos` - Cria grupo
-
-## Project setup
-
-```bash
-npm install
+npm run test          # testes unitários
+npm run test:cov      # cobertura
 ```
 
 ## Licença

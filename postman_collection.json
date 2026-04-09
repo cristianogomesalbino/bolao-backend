@@ -1,14 +1,64 @@
 {
   "info": {
     "name": "Bolão Backend API",
-    "description": "Coleção de endpoints da API de Bolão",
+    "description": "Coleção completa de endpoints da API de Bolão.\n\nFluxo de teste sugerido:\n1. Criar Usuário\n2. Login (tokens salvos automaticamente)\n3. Testar endpoints autenticados\n4. Refresh Token quando expirar",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "version": "0.0.1"
+    "version": "1.0.0"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
   },
   "variable": [
     {
       "key": "baseUrl",
-      "value": "http://localhost:3001",
+      "value": "http://localhost:3002",
+      "type": "string"
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "refreshToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "usuarioId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "campeonatoId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "temporadaId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "grupoId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "codigoConvite",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "membroId",
+      "value": "",
       "type": "string"
     }
   ],
@@ -19,6 +69,7 @@
         {
           "name": "Health",
           "request": {
+            "auth": { "type": "noauth" },
             "method": "GET",
             "header": [],
             "url": {
@@ -36,109 +87,110 @@
       "name": "Auth",
       "item": [
         {
-          "name": "Refresh Token",
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "  const json = pm.response.json();",
+                  "  if (json.accessToken) pm.collectionVariables.set('accessToken', json.accessToken);",
+                  "  if (json.refreshToken) pm.collectionVariables.set('refreshToken', json.refreshToken);",
+                  "  if (json.usuario && json.usuario.id) pm.collectionVariables.set('usuarioId', json.usuario.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
           "request": {
+            "auth": { "type": "noauth" },
             "method": "POST",
             "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
+              { "key": "Content-Type", "value": "application/json" }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"refreshToken\": \"seu-refresh-token-aqui\"\n}"
+              "raw": "{\n  \"email\": \"joao@example.com\",\n  \"senha\": \"senha123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "Fazer login. Salva accessToken e refreshToken automaticamente nas variáveis."
+          },
+          "response": []
+        },
+        {
+          "name": "Refresh Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "  const json = pm.response.json();",
+                  "  if (json.accessToken) pm.collectionVariables.set('accessToken', json.accessToken);",
+                  "  if (json.refreshToken) pm.collectionVariables.set('refreshToken', json.refreshToken);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/auth/refresh",
               "host": ["{{baseUrl}}"],
               "path": ["auth", "refresh"]
             },
-            "description": "Atualiza o token de acesso usando o refresh token"
-          },
-          "response": []
-        }
-      ]
-    },
-    {
-      "name": "Campeonatos",
-      "item": [
-        {
-          "name": "Criar Campeonato",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"nome\": \"Copa do Mundo 2026\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/campeonatos",
-              "host": ["{{baseUrl}}"],
-              "path": ["campeonatos"]
-            },
-            "description": "Cria um novo campeonato"
+            "description": "Renovar token de acesso. Atualiza accessToken e refreshToken automaticamente."
           },
           "response": []
         },
         {
-          "name": "Listar Campeonatos",
+          "name": "Logout",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "  pm.collectionVariables.set('accessToken', '');",
+                  "  pm.collectionVariables.set('refreshToken', '');",
+                  "}"
+                ]
+              }
+            }
+          ],
           "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/campeonatos",
-              "host": ["{{baseUrl}}"],
-              "path": ["campeonatos"]
-            },
-            "description": "Lista todos os campeonatos"
-          },
-          "response": []
-        }
-      ]
-    },
-    {
-      "name": "Temporadas",
-      "item": [
-        {
-          "name": "Criar Temporada",
-          "request": {
+            "auth": { "type": "noauth" },
             "method": "POST",
             "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
+              { "key": "Content-Type", "value": "application/json" }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"ano\": 2026,\n  \"campeonatoId\": \"00000000-0000-0000-0000-000000000000\"\n}"
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/temporadas",
+              "raw": "{{baseUrl}}/auth/logout",
               "host": ["{{baseUrl}}"],
-              "path": ["temporadas"]
+              "path": ["auth", "logout"]
             },
-            "description": "Cria uma nova temporada"
-          },
-          "response": []
-        },
-        {
-          "name": "Listar Temporadas",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/temporadas",
-              "host": ["{{baseUrl}}"],
-              "path": ["temporadas"]
-            },
-            "description": "Lista todas as temporadas"
+            "description": "Fazer logout. Limpa os tokens das variáveis automaticamente."
           },
           "response": []
         }
@@ -149,13 +201,25 @@
       "item": [
         {
           "name": "Criar Usuário",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const json = pm.response.json();",
+                  "  if (json.id) pm.collectionVariables.set('usuarioId', json.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
           "request": {
+            "auth": { "type": "noauth" },
             "method": "POST",
             "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
+              { "key": "Content-Type", "value": "application/json" }
             ],
             "body": {
               "mode": "raw",
@@ -166,21 +230,21 @@
               "host": ["{{baseUrl}}"],
               "path": ["usuarios"]
             },
-            "description": "Criar um novo usuário"
+            "description": "Criar um novo usuário. Salva o ID automaticamente."
           },
           "response": []
         },
         {
-          "name": "Listar Usuários",
+          "name": "Meu Perfil",
           "request": {
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/usuarios",
+              "raw": "{{baseUrl}}/usuarios/me",
               "host": ["{{baseUrl}}"],
-              "path": ["usuarios"]
+              "path": ["usuarios", "me"]
             },
-            "description": "Listar todos os usuários"
+            "description": "Buscar perfil do usuário autenticado (requer JWT)."
           },
           "response": []
         },
@@ -190,18 +254,11 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/usuarios/:id",
+              "raw": "{{baseUrl}}/usuarios/{{usuarioId}}",
               "host": ["{{baseUrl}}"],
-              "path": ["usuarios", ":id"],
-              "variable": [
-                {
-                  "key": "id",
-                  "value": "user-id-123",
-                  "description": "ID do usuário"
-                }
-              ]
+              "path": ["usuarios", "{{usuarioId}}"]
             },
-            "description": "Buscar usuário por ID"
+            "description": "Buscar usuário por ID (requer JWT + ser o próprio ou SUPER_ADMIN)."
           },
           "response": []
         },
@@ -210,28 +267,18 @@
           "request": {
             "method": "PATCH",
             "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
+              { "key": "Content-Type", "value": "application/json" }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nome\": \"João Silva Atualizado\",\n  \"email\": \"joao.novo@example.com\",\n  \"senha\": \"novaSenha123\"\n}"
+              "raw": "{\n  \"nome\": \"João Silva Atualizado\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/usuarios/:id",
+              "raw": "{{baseUrl}}/usuarios/{{usuarioId}}",
               "host": ["{{baseUrl}}"],
-              "path": ["usuarios", ":id"],
-              "variable": [
-                {
-                  "key": "id",
-                  "value": "user-id-123",
-                  "description": "ID do usuário"
-                }
-              ]
+              "path": ["usuarios", "{{usuarioId}}"]
             },
-            "description": "Atualizar informações do usuário (todos os campos são opcionais)"
+            "description": "Atualizar dados do usuário. Campos opcionais: nome, email, senha."
           },
           "response": []
         },
@@ -241,18 +288,121 @@
             "method": "DELETE",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/usuarios/:id",
+              "raw": "{{baseUrl}}/usuarios/{{usuarioId}}",
               "host": ["{{baseUrl}}"],
-              "path": ["usuarios", ":id"],
-              "variable": [
-                {
-                  "key": "id",
-                  "value": "user-id-123",
-                  "description": "ID do usuário"
-                }
-              ]
+              "path": ["usuarios", "{{usuarioId}}"]
             },
-            "description": "Remover um usuário"
+            "description": "Soft delete do usuário (requer JWT + ser o próprio ou SUPER_ADMIN)."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Campeonatos",
+      "item": [
+        {
+          "name": "Criar Campeonato",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const json = pm.response.json();",
+                  "  if (json.id) pm.collectionVariables.set('campeonatoId', json.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Copa do Mundo 2026\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/campeonatos",
+              "host": ["{{baseUrl}}"],
+              "path": ["campeonatos"]
+            },
+            "description": "Cria um novo campeonato. Salva o ID automaticamente."
+          },
+          "response": []
+        },
+        {
+          "name": "Listar Campeonatos",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/campeonatos",
+              "host": ["{{baseUrl}}"],
+              "path": ["campeonatos"]
+            },
+            "description": "Lista todos os campeonatos."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Temporadas",
+      "item": [
+        {
+          "name": "Criar Temporada",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const json = pm.response.json();",
+                  "  if (json.id) pm.collectionVariables.set('temporadaId', json.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ano\": 2026,\n  \"campeonatoId\": \"{{campeonatoId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/temporadas",
+              "host": ["{{baseUrl}}"],
+              "path": ["temporadas"]
+            },
+            "description": "Cria uma nova temporada vinculada a um campeonato. Salva o ID automaticamente."
+          },
+          "response": []
+        },
+        {
+          "name": "Listar Temporadas",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/temporadas",
+              "host": ["{{baseUrl}}"],
+              "path": ["temporadas"]
+            },
+            "description": "Lista todas as temporadas."
           },
           "response": []
         }
@@ -263,24 +413,36 @@
       "item": [
         {
           "name": "Criar Grupo",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const json = pm.response.json();",
+                  "  if (json.id) pm.collectionVariables.set('grupoId', json.id);",
+                  "  if (json.codigoConvite) pm.collectionVariables.set('codigoConvite', json.codigoConvite);",
+                  "}"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
+              { "key": "Content-Type", "value": "application/json" }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nome\": \"Grupo dos Amigos\",\n  \"temporadaId\": \"00000000-0000-0000-0000-000000000000\",\n  \"adminId\": \"admin-id-123\",\n  \"privado\": false,\n  \"permitirPalpiteAutomatico\": true,\n  \"maxParticipantes\": 20\n}"
+              "raw": "{\n  \"nome\": \"Grupo dos Amigos\",\n  \"temporadaId\": \"{{temporadaId}}\",\n  \"adminId\": \"{{usuarioId}}\",\n  \"privado\": true,\n  \"permitirPalpiteAutomatico\": true,\n  \"maxParticipantes\": 20\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/grupos",
               "host": ["{{baseUrl}}"],
               "path": ["grupos"]
             },
-            "description": "Criar um novo grupo"
+            "description": "Criar um novo grupo. Salva grupoId e codigoConvite automaticamente."
           },
           "response": []
         },
@@ -294,7 +456,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["grupos"]
             },
-            "description": "Listar todos os grupos ativos"
+            "description": "Listar todos os grupos ativos."
           },
           "response": []
         },
@@ -304,18 +466,11 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/grupos/:id",
+              "raw": "{{baseUrl}}/grupos/{{grupoId}}",
               "host": ["{{baseUrl}}"],
-              "path": ["grupos", ":id"],
-              "variable": [
-                {
-                  "key": "id",
-                  "value": "00000000-0000-0000-0000-000000000000",
-                  "description": "ID do grupo (UUID)"
-                }
-              ]
+              "path": ["grupos", "{{grupoId}}"]
             },
-            "description": "Buscar grupo por ID"
+            "description": "Buscar grupo por ID."
           },
           "response": []
         },
@@ -324,28 +479,18 @@
           "request": {
             "method": "PATCH",
             "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
+              { "key": "Content-Type", "value": "application/json" }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nome\": \"Grupo Atualizado\",\n  \"privado\": true,\n  \"permitirPalpiteAutomatico\": false\n}"
+              "raw": "{\n  \"nome\": \"Grupo Atualizado\",\n  \"privado\": false,\n  \"permitirPalpiteAutomatico\": false\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/grupos/:id",
+              "raw": "{{baseUrl}}/grupos/{{grupoId}}",
               "host": ["{{baseUrl}}"],
-              "path": ["grupos", ":id"],
-              "variable": [
-                {
-                  "key": "id",
-                  "value": "00000000-0000-0000-0000-000000000000",
-                  "description": "ID do grupo (UUID)"
-                }
-              ]
+              "path": ["grupos", "{{grupoId}}"]
             },
-            "description": "Atualizar informações do grupo"
+            "description": "Atualizar informações do grupo (requer ser ADMIN do grupo)."
           },
           "response": []
         },
@@ -354,28 +499,18 @@
           "request": {
             "method": "PATCH",
             "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
+              { "key": "Content-Type", "value": "application/json" }
             ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"ativo\": false\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/grupos/:id/status",
+              "raw": "{{baseUrl}}/grupos/{{grupoId}}/status",
               "host": ["{{baseUrl}}"],
-              "path": ["grupos", ":id", "status"],
-              "variable": [
-                {
-                  "key": "id",
-                  "value": "00000000-0000-0000-0000-000000000000",
-                  "description": "ID do grupo (UUID)"
-                }
-              ]
+              "path": ["grupos", "{{grupoId}}", "status"]
             },
-            "description": "Alterar status (ativo/inativo) do grupo"
+            "description": "Ativar/desativar grupo (requer ser ADMIN do grupo)."
           },
           "response": []
         },
@@ -385,18 +520,112 @@
             "method": "DELETE",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/grupos/:id",
+              "raw": "{{baseUrl}}/grupos/{{grupoId}}",
               "host": ["{{baseUrl}}"],
-              "path": ["grupos", ":id"],
-              "variable": [
-                {
-                  "key": "id",
-                  "value": "00000000-0000-0000-0000-000000000000",
-                  "description": "ID do grupo (UUID)"
-                }
-              ]
+              "path": ["grupos", "{{grupoId}}"]
             },
-            "description": "Exclui um grupo inativo"
+            "description": "Excluir grupo inativo (requer ser ADMIN do grupo)."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Grupo - Membros",
+      "item": [
+        {
+          "name": "Entrar no Grupo por Convite",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"codigoConvite\": \"{{codigoConvite}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/grupos/entrar",
+              "host": ["{{baseUrl}}"],
+              "path": ["grupos", "entrar"]
+            },
+            "description": "Entrar em um grupo usando código de convite (8 caracteres)."
+          },
+          "response": []
+        },
+        {
+          "name": "Adicionar Membro por Email",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const json = pm.response.json();",
+                  "  if (json.usuario && json.usuario.id) pm.collectionVariables.set('membroId', json.usuario.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"maria@example.com\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/grupos/{{grupoId}}/adicionar",
+              "host": ["{{baseUrl}}"],
+              "path": ["grupos", "{{grupoId}}", "adicionar"]
+            },
+            "description": "Adicionar membro ao grupo por email (requer ser ADMIN do grupo). Salva membroId automaticamente."
+          },
+          "response": []
+        },
+        {
+          "name": "Listar Membros do Grupo",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/grupos/{{grupoId}}/membros",
+              "host": ["{{baseUrl}}"],
+              "path": ["grupos", "{{grupoId}}", "membros"]
+            },
+            "description": "Listar todos os membros de um grupo."
+          },
+          "response": []
+        },
+        {
+          "name": "Sair do Grupo",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/grupos/{{grupoId}}/sair",
+              "host": ["{{baseUrl}}"],
+              "path": ["grupos", "{{grupoId}}", "sair"]
+            },
+            "description": "Sair de um grupo (único admin não pode sair)."
+          },
+          "response": []
+        },
+        {
+          "name": "Remover Membro do Grupo",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/grupos/{{grupoId}}/usuarios/{{membroId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["grupos", "{{grupoId}}", "usuarios", "{{membroId}}"]
+            },
+            "description": "Remover um usuário do grupo (requer ser ADMIN do grupo)."
           },
           "response": []
         }
