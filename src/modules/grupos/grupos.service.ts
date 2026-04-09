@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CriarGrupoDto } from './dto/create-grupo.dto';
 import { UpdateGrupoDto } from './dto/update-grupo.dto';
@@ -16,7 +20,6 @@ const includeGrupo = {
 
 @Injectable()
 export class GruposService {
-
   constructor(private prisma: PrismaService) {}
 
   async criar(dto: CriarGrupoDto, userId: string) {

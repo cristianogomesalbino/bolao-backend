@@ -1,0 +1,229 @@
+import { Test, TestingModule } from '@nestjs/testing';
+import {
+  NotFoundException,
+  BadRequestException,
+  ConflictException,
+} from '@nestjs/common';
+import { GrupoUsuarioService } from './grupo-usuario.service';
+import { PrismaService } from '../../prisma/prisma.service';
+
+const mockGrupo = {
+  id: 'grupo-1',
+  nome: 'Bolão da Galera',
+  ativo: true,
+  maxParticipantes: 50,
+  codigoConvite: 'ABC12345',
+  privado: true,
+  temporadaId: 'temp-1',
+  createdById: 'user-1',
+  permitirPalpiteAutomatico: false,
+  dataCriacao: new Date(),
+};
+
+const mockRegistro = {
+  id: 'gu-1',
+  usuarioId: 'user-1',
+  grupoId: 'grupo-1',
+  role: 'MEMBER' as const,
+};
+
+const mockPrisma = {
+  grupo: {
+    findUnique: jest.fn(),
+  },
+  grupoUsuario: {
+    findUnique: jest.fn(),
+    findMany: jest.fn(),
+    create: jest.fn(),
+    count: jest.fn(),
+    delete: jest.fn(),
+  },
+};
+
+describe('GrupoUsuarioService', () => {
+  let service: GrupoUsuarioService;
+
+  beforeEach(async () => {
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        GrupoUsuarioService,
+        { provide: PrismaService, useValue: mockPrisma },
+      ],
+    }).compile();
+
+    service = module.get<GrupoUsuarioService>(GrupoUsuarioService);
+    jest.clearAllMocks();
+  });
+
+  it('should be defined', () => {
+    expect(service).toBeDefined();
+  });
+
+  // ==================== entrarPorConvite ====================
+
+  describe('entrarPorConvite', () => {
+    it('deve adicionar usuário ao grupo com código válido', async () => {
+      mockPrisma.grupo.findUnique.mockResolvedValue(mockGrupo);
+      mockPrisma.grupoUsuario.findUnique.mockResolvedValue(null);
+      mockPrisma.grupoUsuario.count.mockResolvedValue(5);
+      mockPrisma.grupoUsuario.create.mockResolvedValue({
+        ...mockRegistro,
+        grupo: { id: 'grupo-1', nome: 'Bolão da Galera' },
+      });
+
+      const result = await service.entrarPorConvite('ABC12345', 'user-1');
+
+      expect(result.grupo.nome).toBe('Bolão da Galera');
+      expect(mockPrisma.grupoUsuario.create).toHaveBeenCalledWith({
+        data: {
+          usuarioId: 'user-1',
+          grupoId: 'grupo-1',
+          role: 'MEMBER',
+        },
+        include: {
+          grupo: { select: { id: true, nome: true } },
+        },
+      });
+    });
+
+    it('deve lançar NotFoundException se código não existe', async () => {
+      mockPrisma.grupo.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.entrarPorConvite('INVALIDO', 'user-1'),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('deve lançar BadRequestException se grupo está inativo', async () => {
+      mockPrisma.grupo.findUnique.mockResolvedValue({
+        ...mockGrupo,
+        ativo: false,
+      });
+
+      await expect(
+        service.entrarPorConvite('ABC12345', 'user-1'),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('deve lançar ConflictException se usuário já está no grupo', async () => {
+      mockPrisma.grupo.findUnique.mockResolvedValue(mockGrupo);
+      mockPrisma.grupoUsuario.findUnique.mockResolvedValue(mockRegistro);
+
+      await expect(
+        service.entrarPorConvite('ABC12345', 'user-1'),
+      ).rejects.toThrow(ConflictException);
+    });
+
+    it('deve lançar BadRequestException se grupo atingiu limite', async () => {
+      mockPrisma.grupo.findUnique.mockResolvedValue({
+        ...mockGrupo,
+        maxParticipantes: 2,
+      });
+      mockPrisma.grupoUsuario.findUnique.mockResolvedValue(null);
+      mockPrisma.grupoUsuario.count.mockResolvedValue(2);
+
+      await expect(
+        service.entrarPorConvite('ABC12345', 'user-1'),
+      ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  // ==================== listarMembros ====================
+
+  describe('listarMembros', () => {
+    it('deve retornar lista de membros do grupo', async () => {
+      mockPrisma.grupo.findUnique.mockResolvedValue(mockGrupo);
+      mockPrisma.grupoUsuario.findMany.mockResolvedValue([
+        { role: 'ADMIN', usuario: { id: 'user-1', nome: 'João' } },
+        { role: 'MEMBER', usuario: { id: 'user-2', nome: 'Maria' } },
+      ]);
+
+      const result = await service.listarMembros('grupo-1');
+
+      expect(result).toHaveLength(2);
+      expect(result[0].usuario.nome).toBe('João');
+      expect(result[0].role).toBe('ADMIN');
+    });
+
+    it('deve lançar NotFoundException se grupo não existe', async () => {
+      mockPrisma.grupo.findUnique.mockResolvedValue(null);
+
+      await expect(service.listarMembros('inexistente')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+  });
+
+  // ==================== sair ====================
+
+  describe('sair', () => {
+    it('deve permitir MEMBER sair do grupo', async () => {
+      mockPrisma.grupoUsuario.findUnique.mockResolvedValue(mockRegistro);
+      mockPrisma.grupoUsuario.delete.mockResolvedValue(mockRegistro);
+
+      const result = await service.sair('grupo-1', 'user-1');
+
+      expect(result.mensagem).toBe('Você saiu do grupo');
+      expect(mockPrisma.grupoUsuario.delete).toHaveBeenCalled();
+    });
+
+    it('deve permitir ADMIN sair se houver outro admin', async () => {
+      mockPrisma.grupoUsuario.findUnique.mockResolvedValue({
+        ...mockRegistro,
+        role: 'ADMIN',
+      });
+      mockPrisma.grupoUsuario.count.mockResolvedValue(2);
+      mockPrisma.grupoUsuario.delete.mockResolvedValue(mockRegistro);
+
+      const result = await service.sair('grupo-1', 'user-1');
+
+      expect(result.mensagem).toBe('Você saiu do grupo');
+    });
+
+    it('deve bloquear saída do único ADMIN', async () => {
+      mockPrisma.grupoUsuario.findUnique.mockResolvedValue({
+        ...mockRegistro,
+        role: 'ADMIN',
+      });
+      mockPrisma.grupoUsuario.count.mockResolvedValue(1);
+
+      await expect(service.sair('grupo-1', 'user-1')).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('deve lançar NotFoundException se não está no grupo', async () => {
+      mockPrisma.grupoUsuario.findUnique.mockResolvedValue(null);
+
+      await expect(service.sair('grupo-1', 'user-1')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+  });
+
+  // ==================== removerMembro ====================
+
+  describe('removerMembro', () => {
+    it('deve remover membro do grupo', async () => {
+      mockPrisma.grupoUsuario.findUnique.mockResolvedValue(mockRegistro);
+      mockPrisma.grupoUsuario.delete.mockResolvedValue(mockRegistro);
+
+      const result = await service.removerMembro('grupo-1', 'user-1');
+
+      expect(result.mensagem).toBe('Usuário removido do grupo');
+      expect(mockPrisma.grupoUsuario.delete).toHaveBeenCalledWith({
+        where: {
+          usuarioId_grupoId: { usuarioId: 'user-1', grupoId: 'grupo-1' },
+        },
+      });
+    });
+
+    it('deve lançar NotFoundException se usuário não está no grupo', async () => {
+      mockPrisma.grupoUsuario.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.removerMembro('grupo-1', 'user-999'),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+});

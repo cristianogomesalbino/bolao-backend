@@ -4,18 +4,36 @@ import { CriarGrupoDto } from './dto/create-grupo.dto';
 import { UpdateGrupoDto } from './dto/update-grupo.dto';
 import { UpdateStatusGrupoDto } from './dto/update-status-grupo.dto';
 import { ParseUUIDCustomPipe } from '../../common/pipes/parse-uuid-custom.pipe';
-import { ApiTags, ApiOperation, ApiResponse, ApiBadRequestResponse, ApiNotFoundResponse,} from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBadRequestResponse, ApiNotFoundResponse, ApiConflictResponse,} from '@nestjs/swagger';
 import { UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { GroupRoleGuard } from '../auth/group-role.guard';
 import { GroupRoles } from '../auth/group-roles.decorator';
 import { CurrentUser } from '../auth/current-user.decorator';
+import { GrupoUsuarioService } from '../grupo-usuario/grupo-usuario.service';
+import { EntrarGrupoDto } from '../grupo-usuario/dto/entrar-grupo.dto';
 
 @ApiTags('Grupos')
 @UseGuards(JwtAuthGuard)
 @Controller('grupos')
 export class GruposController {
-  constructor(private readonly gruposService: GruposService) {}
+  constructor(
+    private readonly gruposService: GruposService,
+    private readonly grupoUsuarioService: GrupoUsuarioService,
+  ) {}
+
+  @ApiOperation({ summary: 'Entrar em grupo por código de convite' })
+  @ApiResponse({ status: 201, description: 'Entrou no grupo com sucesso.' })
+  @ApiNotFoundResponse({ description: 'Código de convite inválido.' })
+  @ApiConflictResponse({ description: 'Já está no grupo.' })
+  @ApiBadRequestResponse({ description: 'Grupo inativo ou limite atingido.' })
+  @Post('entrar')
+  entrar(
+    @Body() dto: EntrarGrupoDto,
+    @CurrentUser() user: { id: string },
+  ) {
+    return this.grupoUsuarioService.entrarPorConvite(dto.codigoConvite, user.id);
+  }
 
   @ApiOperation({ summary: 'Criar um novo grupo' })
   @ApiResponse({ status: 201, description: 'Grupo criado com sucesso.' })

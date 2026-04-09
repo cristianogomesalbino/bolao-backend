@@ -13,10 +13,10 @@ import { GrupoUsuarioModule } from './modules/grupo-usuario/grupo-usuario.module
     TemporadasModule,
     PrismaModule,
     CampeonatosModule,
+    GrupoUsuarioModule,
     GruposModule,
     AuthModule,
     UsuariosModule,
-    GrupoUsuarioModule,
   ],
   controllers: [AppController],
 })

@@ -1,0 +1,138 @@
+#!/usr/bin/env bash
+
+USERID="$(id -u)"
+export USERID
+
+NPM_DEV="docker compose exec app-dev npm"
+NPX_DEV="docker compose exec app-dev npx"
+API_ENV_FILE=".env"
+API_ENV_FILE_EXAMPLE=".env.example"
+ICON="⚽"
+
+project_dir=$(pwd)
+
+show_commands () {
+  echo
+  echo "$ICON Comandos disponíveis:"
+  echo
+  echo "sh dev.sh build             - (Re)Builda as imagens dos containers"
+  echo "sh dev.sh start-dev         - Inicia os containers em modo Dev"
+  echo "sh dev.sh start-prod        - Inicia os containers em modo Prod"
+  echo "sh dev.sh status            - Exibe o status dos containers"
+  echo "sh dev.sh stop              - Desliga os containers"
+  echo "sh dev.sh logs              - Exibe e acompanha os logs do container"
+  echo "sh dev.sh npm COMANDO       - Executa os comandos do NPM"
+  echo "sh dev.sh npx COMANDO       - Executa os comandos do NPX"
+  echo
+}
+
+check_env_exists () {
+  if [ ! -f "$API_ENV_FILE" ]; then
+    echo "$ICON Criando arquivo de configuração $API_ENV_FILE..."
+    cp $API_ENV_FILE_EXAMPLE $API_ENV_FILE
+    echo
+  fi
+}
+
+compose_build () {
+  echo
+  echo "$ICON Buildando as imagens..."
+  echo
+  check_env_exists
+  docker compose --profile prod build
+}
+
+compose_up_dev () {
+  echo
+  echo "$ICON Iniciando os containers em modo Dev..."
+  echo
+  check_env_exists
+  docker compose --profile dev up
+}
+
+compose_up_prod () {
+  echo
+  echo "$ICON Iniciando os containers em modo Prod..."
+  echo
+  check_env_exists
+  docker compose --profile prod up -d --build
+}
+
+compose_status () {
+  echo
+  echo "$ICON Exibindo o status dos containers..."
+  echo
+  docker compose --profile dev --profile prod ps
+}
+
+compose_down () {
+  echo
+  echo "$ICON Parando os containers..."
+  echo
+  docker compose --profile dev --profile prod down
+}
+
+compose_logs () {
+  echo
+  echo "$ICON Exibindo logs dos containers..."
+  echo
+  docker compose --profile dev --profile prod logs -f
+}
+
+check_app_is_up () {
+  if ! docker compose ps | grep -q -E "bolao-backend"; then
+    echo
+    echo "$ICON Você precisa iniciar os containers da aplicação!"
+    echo "$ICON Comando: sh dev.sh start-dev"
+    echo
+    exit 1
+  fi
+}
+
+execute_npm () {
+  check_app_is_up
+  echo
+  echo "$ICON Executando NPM..."
+  echo
+  shift 1
+  $NPM_DEV "$@"
+}
+
+execute_npx () {
+  check_app_is_up
+  echo
+  echo "$ICON Executando NPX..."
+  echo
+  shift 1
+  $NPX "$@"
+}
+
+start_dev () {
+  compose_down
+  compose_up_dev
+}
+
+start_prod () {
+  compose_down
+  compose_up_prod
+  echo
+  echo "$ICON Aplicação iniciada em modo Prod"
+  echo
+  docker compose --profile prod logs -f
+}
+
+if [ $# -gt 0 ]; then
+  case "$1" in
+    "build") compose_build ;;
+    "start-dev") start_dev ;;
+    "start-prod") start_prod ;;
+    "status") compose_status ;;
+    "stop") compose_down ;;
+    "logs") compose_logs ;;
+    "npm") execute_npm "$@" ;;
+    "npx") execute_npx "$@" ;;
+    *) show_commands ;;
+  esac
+else
+  show_commands
+fi
