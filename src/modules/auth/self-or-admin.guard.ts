@@ -2,19 +2,18 @@ import {
   Injectable,
   CanActivate,
   ExecutionContext,
-  ForbiddenException,
 } from '@nestjs/common';
+import { ErrorFactory } from '../../common/errors/error.factory';
 
 @Injectable()
 export class SelfOrAdminGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
     const request = context.switchToHttp().getRequest();
-
     const user = request.user;
     const id = request.params.id;
 
     if (!user) {
-      throw new ForbiddenException('Usuário não autenticado');
+      throw ErrorFactory.forbidden('Usuário não autenticado');
     }
 
     if (user.perfil === 'SUPER_ADMIN') {
@@ -25,6 +24,6 @@ export class SelfOrAdminGuard implements CanActivate {
       return true;
     }
 
-    throw new ForbiddenException('Sem permissão para acessar este recurso');
+    throw ErrorFactory.forbidden('Sem permissão para acessar este recurso');
   }
 }

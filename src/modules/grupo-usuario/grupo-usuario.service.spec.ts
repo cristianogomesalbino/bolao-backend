@@ -27,8 +27,17 @@ const mockRegistro = {
   role: 'MEMBER' as const,
 };
 
+const mockUsuario = {
+  id: 'user-2',
+  nome: 'Maria',
+  email: 'maria@example.com',
+};
+
 const mockPrisma = {
   grupo: {
+    findUnique: jest.fn(),
+  },
+  usuario: {
     findUnique: jest.fn(),
   },
   grupoUsuario: {
@@ -125,6 +134,66 @@ describe('GrupoUsuarioService', () => {
       await expect(
         service.entrarPorConvite('ABC12345', 'user-1'),
       ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  // ==================== adicionarPorEmail ====================
+
+  describe('adicionarPorEmail', () => {
+    it('deve adicionar membro por email', async () => {
+      mockPrisma.grupo.findUnique.mockResolvedValue(mockGrupo);
+      mockPrisma.usuario.findUnique.mockResolvedValue(mockUsuario);
+      mockPrisma.grupoUsuario.findUnique.mockResolvedValue(null);
+      mockPrisma.grupoUsuario.count.mockResolvedValue(5);
+      mockPrisma.grupoUsuario.create.mockResolvedValue({
+        ...mockRegistro,
+        usuarioId: 'user-2',
+        usuario: { id: 'user-2', nome: 'Maria', email: 'maria@example.com' },
+        grupo: { id: 'grupo-1', nome: 'Bolão da Galera' },
+      });
+
+      const result = await service.adicionarPorEmail('grupo-1', 'maria@example.com');
+
+      expect(result.usuario.nome).toBe('Maria');
+      expect(result.grupo.nome).toBe('Bolão da Galera');
+    });
+
+    it('deve lançar NotFoundException se grupo não existe', async () => {
+      mockPrisma.grupo.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.adicionarPorEmail('inexistente', 'maria@example.com'),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('deve lançar BadRequestException se grupo está inativo', async () => {
+      mockPrisma.grupo.findUnique.mockResolvedValue({
+        ...mockGrupo,
+        ativo: false,
+      });
+
+      await expect(
+        service.adicionarPorEmail('grupo-1', 'maria@example.com'),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('deve lançar NotFoundException se usuário não existe', async () => {
+      mockPrisma.grupo.findUnique.mockResolvedValue(mockGrupo);
+      mockPrisma.usuario.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.adicionarPorEmail('grupo-1', 'naoexiste@example.com'),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('deve lançar ConflictException se usuário já está no grupo', async () => {
+      mockPrisma.grupo.findUnique.mockResolvedValue(mockGrupo);
+      mockPrisma.usuario.findUnique.mockResolvedValue(mockUsuario);
+      mockPrisma.grupoUsuario.findUnique.mockResolvedValue(mockRegistro);
+
+      await expect(
+        service.adicionarPorEmail('grupo-1', 'maria@example.com'),
+      ).rejects.toThrow(ConflictException);
     });
   });
 

@@ -318,7 +318,6 @@
             }
           ],
           "request": {
-            "auth": { "type": "noauth" },
             "method": "POST",
             "header": [
               { "key": "Content-Type", "value": "application/json" }
@@ -332,14 +331,13 @@
               "host": ["{{baseUrl}}"],
               "path": ["campeonatos"]
             },
-            "description": "Cria um novo campeonato. Salva o ID automaticamente."
+            "description": "Cria um novo campeonato (requer JWT). Salva o ID automaticamente."
           },
           "response": []
         },
         {
           "name": "Listar Campeonatos",
           "request": {
-            "auth": { "type": "noauth" },
             "method": "GET",
             "header": [],
             "url": {
@@ -347,7 +345,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["campeonatos"]
             },
-            "description": "Lista todos os campeonatos."
+            "description": "Lista todos os campeonatos (requer JWT)."
           },
           "response": []
         }
@@ -373,7 +371,6 @@
             }
           ],
           "request": {
-            "auth": { "type": "noauth" },
             "method": "POST",
             "header": [
               { "key": "Content-Type", "value": "application/json" }
@@ -387,14 +384,13 @@
               "host": ["{{baseUrl}}"],
               "path": ["temporadas"]
             },
-            "description": "Cria uma nova temporada vinculada a um campeonato. Salva o ID automaticamente."
+            "description": "Cria uma nova temporada vinculada a um campeonato (requer JWT). Salva o ID automaticamente."
           },
           "response": []
         },
         {
           "name": "Listar Temporadas",
           "request": {
-            "auth": { "type": "noauth" },
             "method": "GET",
             "header": [],
             "url": {
@@ -402,7 +398,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["temporadas"]
             },
-            "description": "Lista todas as temporadas."
+            "description": "Lista todas as temporadas (requer JWT)."
           },
           "response": []
         }
@@ -435,7 +431,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nome\": \"Grupo dos Amigos\",\n  \"temporadaId\": \"{{temporadaId}}\",\n  \"adminId\": \"{{usuarioId}}\",\n  \"privado\": true,\n  \"permitirPalpiteAutomatico\": true,\n  \"maxParticipantes\": 20\n}"
+              "raw": "{\n  \"nome\": \"Grupo dos Amigos\",\n  \"temporadaId\": \"{{temporadaId}}\",\n  \"privado\": true,\n  \"permitirPalpiteAutomatico\": true,\n  \"maxParticipantes\": 20\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/grupos",

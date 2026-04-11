@@ -4,7 +4,7 @@ import { CreateCampeonatoDto } from './dto/create-campeonato.dto';
 
 @Injectable()
 export class CampeonatosService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   criar(createCampeonatoDto: CreateCampeonatoDto) {
     return this.prisma.campeonato.create({

@@ -45,6 +45,7 @@ src/
 ```env
 DATABASE_URL=postgresql://usuario:senha@host:5432/database
 JWT_SECRET=sua_chave_secreta
+JWT_REFRESH_SECRET=sua_chave_refresh_secreta
 ```
 
 ## Desenvolvimento
@@ -97,15 +98,15 @@ sh dev start-prod      # Build e inicia em modo produção
 
 | Método | Rota              | Descrição              | Auth |
 |--------|-------------------|------------------------|------|
-| POST   | `/campeonatos`    | Criar campeonato       | Não  |
-| GET    | `/campeonatos`    | Listar campeonatos     | Não  |
+| POST   | `/campeonatos`    | Criar campeonato       | JWT  |
+| GET    | `/campeonatos`    | Listar campeonatos     | JWT  |
 
 ### Temporadas (`/temporadas`)
 
 | Método | Rota              | Descrição              | Auth |
 |--------|-------------------|------------------------|------|
-| POST   | `/temporadas`     | Criar temporada        | Não  |
-| GET    | `/temporadas`     | Listar temporadas      | Não  |
+| POST   | `/temporadas`     | Criar temporada        | JWT  |
+| GET    | `/temporadas`     | Listar temporadas      | JWT  |
 
 ### Grupos (`/grupos`)
 

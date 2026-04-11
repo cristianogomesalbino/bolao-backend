@@ -1,44 +1,31 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
 import { GruposService } from './grupos.service';
 import { CriarGrupoDto } from './dto/create-grupo.dto';
 import { UpdateGrupoDto } from './dto/update-grupo.dto';
 import { UpdateStatusGrupoDto } from './dto/update-status-grupo.dto';
 import { ParseUUIDCustomPipe } from '../../common/pipes/parse-uuid-custom.pipe';
-import { ApiTags, ApiOperation, ApiResponse, ApiBadRequestResponse, ApiNotFoundResponse, ApiConflictResponse,} from '@nestjs/swagger';
-import { UseGuards } from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBadRequestResponse,
+  ApiNotFoundResponse,
+} from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { GroupRoleGuard } from '../auth/group-role.guard';
 import { GroupRoles } from '../auth/group-roles.decorator';
 import { CurrentUser } from '../auth/current-user.decorator';
-import { GrupoUsuarioService } from '../grupo-usuario/grupo-usuario.service';
-import { EntrarGrupoDto } from '../grupo-usuario/dto/entrar-grupo.dto';
 
 @ApiTags('Grupos')
 @UseGuards(JwtAuthGuard)
 @Controller('grupos')
 export class GruposController {
-  constructor(
-    private readonly gruposService: GruposService,
-    private readonly grupoUsuarioService: GrupoUsuarioService,
-  ) {}
-
-  @ApiOperation({ summary: 'Entrar em grupo por código de convite' })
-  @ApiResponse({ status: 201, description: 'Entrou no grupo com sucesso.' })
-  @ApiNotFoundResponse({ description: 'Código de convite inválido.' })
-  @ApiConflictResponse({ description: 'Já está no grupo.' })
-  @ApiBadRequestResponse({ description: 'Grupo inativo ou limite atingido.' })
-  @Post('entrar')
-  entrar(
-    @Body() dto: EntrarGrupoDto,
-    @CurrentUser() user: { id: string },
-  ) {
-    return this.grupoUsuarioService.entrarPorConvite(dto.codigoConvite, user.id);
-  }
+  constructor(private readonly gruposService: GruposService) {}
 
   @ApiOperation({ summary: 'Criar um novo grupo' })
   @ApiResponse({ status: 201, description: 'Grupo criado com sucesso.' })
   @ApiBadRequestResponse({ description: 'Erro de validação.' })
-  @ApiNotFoundResponse({ description: 'Temporada ou administrador não encontrado.' })
+  @ApiNotFoundResponse({ description: 'Temporada não encontrada.' })
   @Post()
   criarGrupo(
     @Body() criarGrupoDto: CriarGrupoDto,
@@ -55,7 +42,7 @@ export class GruposController {
   }
 
   @ApiOperation({ summary: 'Buscar grupo por ID' })
-  @ApiResponse({ status: 200, description: 'Lista de grupos retornada com sucesso.' })
+  @ApiResponse({ status: 200, description: 'Grupo encontrado.' })
   @ApiNotFoundResponse({ description: 'Grupo não encontrado.' })
   @Get(':grupoId')
   buscarGrupoPorId(
@@ -65,13 +52,13 @@ export class GruposController {
   }
 
   @ApiOperation({ summary: 'Atualizar grupo por ID' })
-  @ApiResponse({ status: 200, description: 'Grupo encontrado.' })
+  @ApiResponse({ status: 200, description: 'Grupo atualizado com sucesso.' })
   @ApiNotFoundResponse({ description: 'Grupo não encontrado.' })
   @UseGuards(GroupRoleGuard)
   @GroupRoles('ADMIN')
   @Patch(':grupoId')
   atualizarGrupo(
-    @Param('grupoId') grupoId: string,
+    @Param('grupoId', new ParseUUIDCustomPipe('grupoId')) grupoId: string,
     @Body() updateGrupoDto: UpdateGrupoDto,
   ) {
     return this.gruposService.atualizar(grupoId, updateGrupoDto);
@@ -81,9 +68,9 @@ export class GruposController {
   @ApiResponse({ status: 200, description: 'Status atualizado com sucesso.' })
   @ApiBadRequestResponse({ description: 'Erro de validação.' })
   @ApiNotFoundResponse({ description: 'Grupo não encontrado.' })
-  @UseGuards( GroupRoleGuard)
-  @Patch(':grupoId/status')
+  @UseGuards(GroupRoleGuard)
   @GroupRoles('ADMIN')
+  @Patch(':grupoId/status')
   atualizarStatusGrupo(
     @Param('grupoId', new ParseUUIDCustomPipe('grupoId')) grupoId: string,
     @Body() updateStatusGrupoDto: UpdateStatusGrupoDto,
@@ -95,7 +82,7 @@ export class GruposController {
   @ApiResponse({ status: 200, description: 'Grupo excluído com sucesso.' })
   @ApiBadRequestResponse({ description: 'Erro de validação.' })
   @ApiNotFoundResponse({ description: 'Grupo não encontrado.' })
-  @UseGuards( GroupRoleGuard)
+  @UseGuards(GroupRoleGuard)
   @GroupRoles('ADMIN')
   @Delete(':grupoId')
   removerGrupo(

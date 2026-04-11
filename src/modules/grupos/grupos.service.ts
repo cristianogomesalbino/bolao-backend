@@ -1,14 +1,10 @@
-import {
-  Injectable,
-  NotFoundException,
-  BadRequestException,
-} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CriarGrupoDto } from './dto/create-grupo.dto';
 import { UpdateGrupoDto } from './dto/update-grupo.dto';
 import { UpdateStatusGrupoDto } from './dto/update-status-grupo.dto';
 import { nanoid } from 'nanoid';
-import { ErrorFactory } from 'src/common/errors/error.factory';
+import { ErrorFactory } from '../../common/errors/error.factory';
 
 const includeGrupo = {
   temporada: {
@@ -20,7 +16,7 @@ const includeGrupo = {
 
 @Injectable()
 export class GruposService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   async criar(dto: CriarGrupoDto, userId: string) {
     const temporada = await this.prisma.temporada.findUnique({
@@ -28,14 +24,7 @@ export class GruposService {
     });
 
     if (!temporada) {
-      throw new NotFoundException({
-        erros: [
-          {
-            campo: 'temporadaId',
-            mensagens: ['Temporada não encontrada.'],
-          },
-        ],
-      });
+      throw ErrorFactory.notFound('Temporada não encontrada');
     }
 
     const codigoConvite = dto.privado ? nanoid(8).toUpperCase() : null;
@@ -133,14 +122,7 @@ export class GruposService {
     }
 
     if (grupo.ativo) {
-      throw new BadRequestException({
-        erros: [
-          {
-            campo: 'ativo',
-            mensagens: ['Desative o grupo antes de excluí-lo.'],
-          },
-        ],
-      });
+      throw ErrorFactory.badRequest('Desative o grupo antes de excluí-lo');
     }
 
     await this.prisma.grupo.delete({

@@ -16,6 +16,7 @@ import {
   ApiConflictResponse,
 } from '@nestjs/swagger';
 import { GrupoUsuarioService } from './grupo-usuario.service';
+import { EntrarGrupoDto } from './dto/entrar-grupo.dto';
 import { AdicionarMembroDto } from './dto/adicionar-membro.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { GroupRoleGuard } from '../auth/group-role.guard';
@@ -28,6 +29,19 @@ import { ParseUUIDCustomPipe } from '../../common/pipes/parse-uuid-custom.pipe';
 @Controller('grupos')
 export class GrupoUsuarioController {
   constructor(private readonly service: GrupoUsuarioService) {}
+
+  @ApiOperation({ summary: 'Entrar em grupo por código de convite' })
+  @ApiResponse({ status: 201, description: 'Entrou no grupo com sucesso.' })
+  @ApiNotFoundResponse({ description: 'Código de convite inválido.' })
+  @ApiConflictResponse({ description: 'Já está no grupo.' })
+  @ApiBadRequestResponse({ description: 'Grupo inativo ou limite atingido.' })
+  @Post('entrar')
+  entrar(
+    @Body() dto: EntrarGrupoDto,
+    @CurrentUser() user: { id: string },
+  ) {
+    return this.service.entrarPorConvite(dto.codigoConvite, user.id);
+  }
 
   @ApiOperation({ summary: 'Adicionar membro ao grupo por email (admin)' })
   @ApiResponse({ status: 201, description: 'Membro adicionado com sucesso.' })

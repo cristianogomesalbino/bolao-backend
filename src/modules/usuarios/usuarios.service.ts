@@ -1,15 +1,12 @@
-import {
-  Injectable,
-  ConflictException,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { UsuarioResponseDto } from './dto/usuario-response.dto';
-import * as bcrypt from 'bcrypt';
+import { ErrorFactory } from '../../common/errors/error.factory';
+import * as bcrypt from 'bcryptjs';
 
 @Injectable()
 export class UsuariosService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   async criar(data: { nome: string; email: string; senha: string }) {
     const existe = await this.prisma.usuario.findUnique({
@@ -17,7 +14,7 @@ export class UsuariosService {
     });
 
     if (existe) {
-      throw new ConflictException('Email já cadastrado');
+      throw ErrorFactory.conflict('Email já cadastrado');
     }
 
     const senhaHash = await bcrypt.hash(data.senha, 10);
@@ -48,7 +45,7 @@ export class UsuariosService {
     });
 
     if (!usuario || !usuario.ativo) {
-      throw new NotFoundException('Usuário não encontrado');
+      throw ErrorFactory.notFound('Usuário não encontrado');
     }
 
     return UsuarioResponseDto.fromEntity(usuario);
@@ -63,7 +60,7 @@ export class UsuariosService {
     });
 
     if (!usuarioExistente || !usuarioExistente.ativo) {
-      throw new NotFoundException('Usuário não encontrado');
+      throw ErrorFactory.notFound('Usuário não encontrado');
     }
 
     let senhaHash: string | undefined;
@@ -90,7 +87,7 @@ export class UsuariosService {
     });
 
     if (!usuario) {
-      throw new NotFoundException('Usuário não encontrado');
+      throw ErrorFactory.notFound('Usuário não encontrado');
     }
 
     if (!usuario.ativo) {
