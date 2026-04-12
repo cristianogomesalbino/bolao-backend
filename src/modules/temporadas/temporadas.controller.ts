@@ -3,8 +3,9 @@ import { TemporadasService } from './temporadas.service';
 import { CreateTemporadaDto } from './dto/create-temporada.dto';
 import { ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { TEMPORADAS } from './temporadas.constants';
 
-@ApiTags('Temporadas')
+@ApiTags(TEMPORADAS.TAG)
 @UseGuards(JwtAuthGuard)
 @Controller('temporadas')
 export class TemporadasController {

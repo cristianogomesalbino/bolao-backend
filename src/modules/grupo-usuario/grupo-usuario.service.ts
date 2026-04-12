@@ -1,9 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ErrorFactory } from '../../common/errors/error.factory';
-
-const ROLE_ADMIN = 'ADMIN';
-const ROLE_MEMBER = 'MEMBER';
+import { GRUPO_USUARIO } from './grupo-usuario.constants';
+import { GRUPO_ROLE } from '../../common/constants/roles.constants';
 
 function compositeKey(usuarioId: string, grupoId: string) {
   return { usuarioId_grupoId: { usuarioId, grupoId } };
@@ -19,11 +18,13 @@ export class GrupoUsuarioService {
     });
 
     if (!grupo) {
-      throw ErrorFactory.notFound('Código de convite inválido');
+      throw ErrorFactory.notFound(
+        GRUPO_USUARIO.MENSAGENS.CODIGO_CONVITE_INVALIDO,
+      );
     }
 
     if (!grupo.ativo) {
-      throw ErrorFactory.badRequest('Grupo está inativo');
+      throw ErrorFactory.badRequest(GRUPO_USUARIO.MENSAGENS.GRUPO_INATIVO);
     }
 
     await this.validarEntrada(usuarioId, grupo.id, grupo.maxParticipantes);
@@ -32,7 +33,7 @@ export class GrupoUsuarioService {
       data: {
         usuarioId,
         grupoId: grupo.id,
-        role: ROLE_MEMBER,
+        role: GRUPO_ROLE.MEMBER,
       },
       include: {
         grupo: { select: { id: true, nome: true } },
@@ -46,7 +47,7 @@ export class GrupoUsuarioService {
     });
 
     if (!grupo) {
-      throw ErrorFactory.notFound('Grupo não encontrado');
+      throw ErrorFactory.notFound(GRUPO_USUARIO.MENSAGENS.GRUPO_NAO_ENCONTRADO);
     }
 
     return this.prisma.grupoUsuario.findMany({
@@ -67,10 +68,10 @@ export class GrupoUsuarioService {
     const registro = await this.buscarRegistroOuFalhar(
       usuarioId,
       grupoId,
-      'Você não está neste grupo',
+      GRUPO_USUARIO.MENSAGENS.NAO_ESTA_NO_GRUPO,
     );
 
-    if (registro.role === ROLE_ADMIN) {
+    if (registro.role === GRUPO_ROLE.ADMIN) {
       await this.validarUnicoAdmin(grupoId);
     }
 
@@ -78,21 +79,21 @@ export class GrupoUsuarioService {
       where: compositeKey(usuarioId, grupoId),
     });
 
-    return { mensagem: 'Você saiu do grupo' };
+    return { mensagem: GRUPO_USUARIO.MENSAGENS.SAIU_DO_GRUPO };
   }
 
   async removerMembro(grupoId: string, usuarioId: string) {
     await this.buscarRegistroOuFalhar(
       usuarioId,
       grupoId,
-      'Usuário não está neste grupo',
+      GRUPO_USUARIO.MENSAGENS.USUARIO_NAO_ESTA_NO_GRUPO,
     );
 
     await this.prisma.grupoUsuario.delete({
       where: compositeKey(usuarioId, grupoId),
     });
 
-    return { mensagem: 'Usuário removido do grupo' };
+    return { mensagem: GRUPO_USUARIO.MENSAGENS.USUARIO_REMOVIDO };
   }
 
   async adicionarPorEmail(grupoId: string, email: string) {
@@ -101,11 +102,11 @@ export class GrupoUsuarioService {
     });
 
     if (!grupo) {
-      throw ErrorFactory.notFound('Grupo não encontrado');
+      throw ErrorFactory.notFound(GRUPO_USUARIO.MENSAGENS.GRUPO_NAO_ENCONTRADO);
     }
 
     if (!grupo.ativo) {
-      throw ErrorFactory.badRequest('Grupo está inativo');
+      throw ErrorFactory.badRequest(GRUPO_USUARIO.MENSAGENS.GRUPO_INATIVO);
     }
 
     const usuario = await this.prisma.usuario.findUnique({
@@ -113,7 +114,9 @@ export class GrupoUsuarioService {
     });
 
     if (!usuario) {
-      throw ErrorFactory.notFound('Usuário não encontrado');
+      throw ErrorFactory.notFound(
+        GRUPO_USUARIO.MENSAGENS.USUARIO_NAO_ENCONTRADO,
+      );
     }
 
     await this.validarEntrada(usuario.id, grupoId, grupo.maxParticipantes);
@@ -122,7 +125,7 @@ export class GrupoUsuarioService {
       data: {
         usuarioId: usuario.id,
         grupoId,
-        role: ROLE_MEMBER,
+        role: GRUPO_ROLE.MEMBER,
       },
       include: {
         usuario: { select: { id: true, nome: true, email: true } },
@@ -130,7 +133,6 @@ export class GrupoUsuarioService {
       },
     });
   }
-
 
   private async validarEntrada(
     usuarioId: string,
@@ -142,7 +144,7 @@ export class GrupoUsuarioService {
     });
 
     if (jaExiste) {
-      throw ErrorFactory.conflict('Você já está neste grupo');
+      throw ErrorFactory.conflict(GRUPO_USUARIO.MENSAGENS.JA_ESTA_NO_GRUPO);
     }
 
     const totalMembros = await this.prisma.grupoUsuario.count({
@@ -150,7 +152,9 @@ export class GrupoUsuarioService {
     });
 
     if (totalMembros >= maxParticipantes) {
-      throw ErrorFactory.badRequest('Grupo atingiu o limite de participantes');
+      throw ErrorFactory.badRequest(
+        GRUPO_USUARIO.MENSAGENS.LIMITE_PARTICIPANTES,
+      );
     }
   }
 
@@ -172,13 +176,11 @@ export class GrupoUsuarioService {
 
   private async validarUnicoAdmin(grupoId: string) {
     const admins = await this.prisma.grupoUsuario.count({
-      where: { grupoId, role: ROLE_ADMIN },
+      where: { grupoId, role: GRUPO_ROLE.ADMIN },
     });
 
     if (admins <= 1) {
-      throw ErrorFactory.badRequest(
-        'Não é possível sair sendo o único administrador do grupo',
-      );
+      throw ErrorFactory.badRequest(GRUPO_USUARIO.MENSAGENS.UNICO_ADMIN);
     }
   }
 }

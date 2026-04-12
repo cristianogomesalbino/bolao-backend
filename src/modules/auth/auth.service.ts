@@ -3,6 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ErrorFactory } from '../../common/errors/error.factory';
+import { AUTH } from './auth.constants';
 
 @Injectable()
 export class AuthService {
@@ -17,12 +18,12 @@ export class AuthService {
     });
 
     if (!usuario || !usuario.ativo) {
-      throw ErrorFactory.unauthorized('Credenciais inválidas');
+      throw ErrorFactory.unauthorized(AUTH.MENSAGENS.CREDENCIAIS_INVALIDAS);
     }
 
     const senhaValida = await bcrypt.compare(senha, usuario.senha);
     if (!senhaValida) {
-      throw ErrorFactory.unauthorized('Credenciais inválidas');
+      throw ErrorFactory.unauthorized(AUTH.MENSAGENS.CREDENCIAIS_INVALIDAS);
     }
 
     await this.prisma.refreshToken.deleteMany({
@@ -45,7 +46,7 @@ export class AuthService {
 
   async refresh(refreshToken: string) {
     if (!refreshToken) {
-      throw ErrorFactory.unauthorized('Refresh token não fornecido');
+      throw ErrorFactory.unauthorized(AUTH.MENSAGENS.REFRESH_NAO_FORNECIDO);
     }
 
     const tokenRegistro = await this.prisma.refreshToken.findUnique({
@@ -53,13 +54,13 @@ export class AuthService {
     });
 
     if (!tokenRegistro) {
-      throw ErrorFactory.unauthorized('Refresh token inválido');
+      throw ErrorFactory.unauthorized(AUTH.MENSAGENS.REFRESH_INVALIDO);
     }
 
     try {
       this.jwtService.verify(tokenRegistro.token);
     } catch {
-      throw ErrorFactory.unauthorized('Refresh token expirado');
+      throw ErrorFactory.unauthorized(AUTH.MENSAGENS.REFRESH_EXPIRADO);
     }
 
     const usuario = await this.prisma.usuario.findUnique({
@@ -67,7 +68,7 @@ export class AuthService {
     });
 
     if (!usuario) {
-      throw ErrorFactory.notFound('Usuário não encontrado');
+      throw ErrorFactory.notFound(AUTH.MENSAGENS.USUARIO_NAO_ENCONTRADO);
     }
 
     const payload = { sub: usuario.id, email: usuario.email, perfil: usuario.perfil };
@@ -78,13 +79,13 @@ export class AuthService {
 
   async logout(refreshToken: string) {
     if (!refreshToken) {
-      throw ErrorFactory.unauthorized('Refresh token não fornecido');
+      throw ErrorFactory.unauthorized(AUTH.MENSAGENS.REFRESH_NAO_FORNECIDO);
     }
 
     await this.prisma.refreshToken.deleteMany({
       where: { token: refreshToken },
     });
 
-    return { mensagem: 'Logout realizado com sucesso' };
+    return { mensagem: AUTH.MENSAGENS.LOGOUT_SUCESSO };
   }
 }

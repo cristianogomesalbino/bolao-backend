@@ -7,6 +7,7 @@ import { Reflector } from '@nestjs/core';
 import { PrismaService } from '../../prisma/prisma.service';
 import { GROUP_ROLES_KEY } from './group-roles.decorator';
 import { ErrorFactory } from '../../common/errors/error.factory';
+import { AUTH } from './auth.constants';
 
 @Injectable()
 export class GroupRoleGuard implements CanActivate {
@@ -30,7 +31,7 @@ export class GroupRoleGuard implements CanActivate {
     const grupoId = request.params.grupoId;
 
     if (!grupoId) {
-      throw ErrorFactory.forbidden('Grupo não informado');
+      throw ErrorFactory.forbidden(AUTH.MENSAGENS.GRUPO_NAO_INFORMADO);
     }
 
     const grupoUsuario = await this.prisma.grupoUsuario.findUnique({
@@ -43,11 +44,11 @@ export class GroupRoleGuard implements CanActivate {
     });
 
     if (!grupoUsuario) {
-      throw ErrorFactory.forbidden('Usuário não pertence a este grupo');
+      throw ErrorFactory.forbidden(AUTH.MENSAGENS.USUARIO_NAO_PERTENCE_GRUPO);
     }
 
     if (!requiredRoles.includes(grupoUsuario.role)) {
-      throw ErrorFactory.forbidden('Sem permissão neste grupo');
+      throw ErrorFactory.forbidden(AUTH.MENSAGENS.SEM_PERMISSAO_GRUPO);
     }
 
     return true;

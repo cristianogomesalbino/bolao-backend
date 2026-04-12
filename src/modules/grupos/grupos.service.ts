@@ -5,6 +5,8 @@ import { UpdateGrupoDto } from './dto/update-grupo.dto';
 import { UpdateStatusGrupoDto } from './dto/update-status-grupo.dto';
 import { nanoid } from 'nanoid';
 import { ErrorFactory } from '../../common/errors/error.factory';
+import { GRUPOS } from './grupos.constants';
+import { GRUPO_ROLE } from '../../common/constants/roles.constants';
 
 const includeGrupo = {
   temporada: {
@@ -24,7 +26,7 @@ export class GruposService {
     });
 
     if (!temporada) {
-      throw ErrorFactory.notFound('Temporada não encontrada');
+      throw ErrorFactory.notFound(GRUPOS.MENSAGENS.TEMPORADA_NAO_ENCONTRADA);
     }
 
     const codigoConvite = dto.privado ? nanoid(8).toUpperCase() : null;
@@ -47,7 +49,7 @@ export class GruposService {
         data: {
           usuarioId: userId,
           grupoId: grupo.id,
-          role: 'ADMIN',
+          role: GRUPO_ROLE.ADMIN,
         },
       });
 
@@ -69,7 +71,7 @@ export class GruposService {
     });
 
     if (!grupo || !grupo.ativo) {
-      throw ErrorFactory.notFound('Grupo não encontrado');
+      throw ErrorFactory.notFound(GRUPOS.MENSAGENS.GRUPO_NAO_ENCONTRADO);
     }
 
     return grupo;
@@ -81,7 +83,7 @@ export class GruposService {
     });
 
     if (!grupo || !grupo.ativo) {
-      throw ErrorFactory.notFound('Grupo não encontrado');
+      throw ErrorFactory.notFound(GRUPOS.MENSAGENS.GRUPO_NAO_ENCONTRADO);
     }
 
     return this.prisma.grupo.update({
@@ -101,7 +103,7 @@ export class GruposService {
     });
 
     if (!grupo) {
-      throw ErrorFactory.notFound('Grupo não encontrado');
+      throw ErrorFactory.notFound(GRUPOS.MENSAGENS.GRUPO_NAO_ENCONTRADO);
     }
 
     return this.prisma.grupo.update({
@@ -118,11 +120,11 @@ export class GruposService {
     });
 
     if (!grupo) {
-      throw ErrorFactory.notFound('Grupo não encontrado');
+      throw ErrorFactory.notFound(GRUPOS.MENSAGENS.GRUPO_NAO_ENCONTRADO);
     }
 
     if (grupo.ativo) {
-      throw ErrorFactory.badRequest('Desative o grupo antes de excluí-lo');
+      throw ErrorFactory.badRequest(GRUPOS.MENSAGENS.DESATIVE_ANTES_EXCLUIR);
     }
 
     await this.prisma.grupo.delete({
@@ -130,7 +132,7 @@ export class GruposService {
     });
 
     return {
-      mensagem: 'Grupo excluído com sucesso.',
+      mensagem: GRUPOS.MENSAGENS.GRUPO_EXCLUIDO,
     };
   }
 }

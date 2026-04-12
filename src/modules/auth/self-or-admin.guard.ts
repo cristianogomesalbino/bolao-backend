@@ -4,6 +4,8 @@ import {
   ExecutionContext,
 } from '@nestjs/common';
 import { ErrorFactory } from '../../common/errors/error.factory';
+import { AUTH } from './auth.constants';
+import { PERFIL } from '../../common/constants/roles.constants';
 
 @Injectable()
 export class SelfOrAdminGuard implements CanActivate {
@@ -13,10 +15,10 @@ export class SelfOrAdminGuard implements CanActivate {
     const id = request.params.id;
 
     if (!user) {
-      throw ErrorFactory.forbidden('Usuário não autenticado');
+      throw ErrorFactory.forbidden(AUTH.MENSAGENS.USUARIO_NAO_AUTENTICADO);
     }
 
-    if (user.perfil === 'SUPER_ADMIN') {
+    if (user.perfil === PERFIL.SUPER_ADMIN) {
       return true;
     }
 
@@ -24,6 +26,6 @@ export class SelfOrAdminGuard implements CanActivate {
       return true;
     }
 
-    throw ErrorFactory.forbidden('Sem permissão para acessar este recurso');
+    throw ErrorFactory.forbidden(AUTH.MENSAGENS.SEM_PERMISSAO_RECURSO);
   }
 }

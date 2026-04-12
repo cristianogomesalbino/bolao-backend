@@ -3,8 +3,9 @@ import { CampeonatosService } from './campeonatos.service';
 import { CreateCampeonatoDto } from './dto/create-campeonato.dto';
 import { ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { CAMPEONATOS } from './campeonatos.constants';
 
-@ApiTags('Campeonatos')
+@ApiTags(CAMPEONATOS.TAG)
 @UseGuards(JwtAuthGuard)
 @Controller('campeonatos')
 export class CampeonatosController {

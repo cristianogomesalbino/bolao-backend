@@ -3,6 +3,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { UsuarioResponseDto } from './dto/usuario-response.dto';
 import { ErrorFactory } from '../../common/errors/error.factory';
 import * as bcrypt from 'bcryptjs';
+import { USUARIOS } from './usuarios.constants';
 
 @Injectable()
 export class UsuariosService {
@@ -14,7 +15,7 @@ export class UsuariosService {
     });
 
     if (existe) {
-      throw ErrorFactory.conflict('Email já cadastrado');
+      throw ErrorFactory.conflict(USUARIOS.MENSAGENS.EMAIL_JA_CADASTRADO);
     }
 
     const senhaHash = await bcrypt.hash(data.senha, 10);
@@ -45,7 +46,7 @@ export class UsuariosService {
     });
 
     if (!usuario || !usuario.ativo) {
-      throw ErrorFactory.notFound('Usuário não encontrado');
+      throw ErrorFactory.notFound(USUARIOS.MENSAGENS.USUARIO_NAO_ENCONTRADO);
     }
 
     return UsuarioResponseDto.fromEntity(usuario);
@@ -60,7 +61,7 @@ export class UsuariosService {
     });
 
     if (!usuarioExistente || !usuarioExistente.ativo) {
-      throw ErrorFactory.notFound('Usuário não encontrado');
+      throw ErrorFactory.notFound(USUARIOS.MENSAGENS.USUARIO_NAO_ENCONTRADO);
     }
 
     let senhaHash: string | undefined;
@@ -87,11 +88,11 @@ export class UsuariosService {
     });
 
     if (!usuario) {
-      throw ErrorFactory.notFound('Usuário não encontrado');
+      throw ErrorFactory.notFound(USUARIOS.MENSAGENS.USUARIO_NAO_ENCONTRADO);
     }
 
     if (!usuario.ativo) {
-      return { mensagem: 'Usuário já está inativo' };
+      return { mensagem: USUARIOS.MENSAGENS.USUARIO_JA_INATIVO };
     }
 
     await this.prisma.usuario.update({
@@ -99,7 +100,7 @@ export class UsuariosService {
       data: { ativo: false },
     });
 
-    return { mensagem: 'Usuário desativado com sucesso' };
+    return { mensagem: USUARIOS.MENSAGENS.USUARIO_DESATIVADO };
   }
 
   async buscarPorEmail(email: string) {

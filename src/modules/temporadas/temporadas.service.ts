@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateTemporadaDto } from './dto/create-temporada.dto';
 import { ErrorFactory } from '../../common/errors/error.factory';
+import { TEMPORADAS } from './temporadas.constants';
 
 @Injectable()
 export class TemporadasService {
@@ -13,7 +14,7 @@ export class TemporadasService {
     });
 
     if (!campeonato) {
-      throw ErrorFactory.notFound('Campeonato não encontrado');
+      throw ErrorFactory.notFound(TEMPORADAS.MENSAGENS.CAMPEONATO_NAO_ENCONTRADO);
     }
 
     return this.prisma.temporada.create({

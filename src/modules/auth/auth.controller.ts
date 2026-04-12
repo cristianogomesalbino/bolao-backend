@@ -3,8 +3,9 @@ import { ApiTags, ApiOperation, ApiResponse, ApiBadRequestResponse } from '@nest
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RefreshDto } from './dto/refresh.dto';
+import { AUTH } from './auth.constants';
 
-@ApiTags('Autenticação')
+@ApiTags(AUTH.TAG)
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}

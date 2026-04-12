@@ -7,8 +7,9 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { ParseUUIDCustomPipe } from '../../common/pipes/parse-uuid-custom.pipe';
 import { SelfOrAdminGuard } from '../auth/self-or-admin.guard';
+import { USUARIOS } from './usuarios.constants';
 
-@ApiTags('Usuarios')
+@ApiTags(USUARIOS.TAG)
 @Controller('usuarios')
 export class UsuariosController {
   constructor(private readonly usuariosService: UsuariosService) {}

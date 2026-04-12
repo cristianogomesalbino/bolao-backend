@@ -23,8 +23,10 @@ import { GroupRoleGuard } from '../auth/group-role.guard';
 import { GroupRoles } from '../auth/group-roles.decorator';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { ParseUUIDCustomPipe } from '../../common/pipes/parse-uuid-custom.pipe';
+import { GRUPO_USUARIO } from './grupo-usuario.constants';
+import { GRUPO_ROLE } from '../../common/constants/roles.constants';
 
-@ApiTags('Grupo - Membros')
+@ApiTags(GRUPO_USUARIO.TAG)
 @UseGuards(JwtAuthGuard)
 @Controller('grupos')
 export class GrupoUsuarioController {
@@ -36,10 +38,7 @@ export class GrupoUsuarioController {
   @ApiConflictResponse({ description: 'Já está no grupo.' })
   @ApiBadRequestResponse({ description: 'Grupo inativo ou limite atingido.' })
   @Post('entrar')
-  entrar(
-    @Body() dto: EntrarGrupoDto,
-    @CurrentUser() user: { id: string },
-  ) {
+  entrar(@Body() dto: EntrarGrupoDto, @CurrentUser() user: { id: string }) {
     return this.service.entrarPorConvite(dto.codigoConvite, user.id);
   }
 
@@ -49,7 +48,7 @@ export class GrupoUsuarioController {
   @ApiConflictResponse({ description: 'Usuário já está no grupo.' })
   @ApiBadRequestResponse({ description: 'Grupo inativo ou limite atingido.' })
   @UseGuards(GroupRoleGuard)
-  @GroupRoles('ADMIN')
+  @GroupRoles(GRUPO_ROLE.ADMIN)
   @Post(':grupoId/adicionar')
   adicionarMembro(
     @Param('grupoId', new ParseUUIDCustomPipe('grupoId')) grupoId: string,
@@ -62,7 +61,7 @@ export class GrupoUsuarioController {
   @ApiResponse({ status: 200, description: 'Lista de membros retornada.' })
   @ApiNotFoundResponse({ description: 'Grupo não encontrado.' })
   @UseGuards(GroupRoleGuard)
-  @GroupRoles('ADMIN', 'MEMBER')
+  @GroupRoles(GRUPO_ROLE.ADMIN, GRUPO_ROLE.MEMBER)
   @Get(':grupoId/membros')
   listarMembros(
     @Param('grupoId', new ParseUUIDCustomPipe('grupoId')) grupoId: string,
@@ -86,7 +85,7 @@ export class GrupoUsuarioController {
   @ApiResponse({ status: 200, description: 'Usuário removido do grupo.' })
   @ApiNotFoundResponse({ description: 'Usuário não está no grupo.' })
   @UseGuards(GroupRoleGuard)
-  @GroupRoles('ADMIN')
+  @GroupRoles(GRUPO_ROLE.ADMIN)
   @Delete(':grupoId/usuarios/:usuarioId')
   removerMembro(
     @Param('grupoId', new ParseUUIDCustomPipe('grupoId')) grupoId: string,

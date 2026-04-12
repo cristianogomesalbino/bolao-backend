@@ -15,8 +15,10 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { GroupRoleGuard } from '../auth/group-role.guard';
 import { GroupRoles } from '../auth/group-roles.decorator';
 import { CurrentUser } from '../auth/current-user.decorator';
+import { GRUPOS } from './grupos.constants';
+import { GRUPO_ROLE } from '../../common/constants/roles.constants';
 
-@ApiTags('Grupos')
+@ApiTags(GRUPOS.TAG)
 @UseGuards(JwtAuthGuard)
 @Controller('grupos')
 export class GruposController {
@@ -55,7 +57,7 @@ export class GruposController {
   @ApiResponse({ status: 200, description: 'Grupo atualizado com sucesso.' })
   @ApiNotFoundResponse({ description: 'Grupo não encontrado.' })
   @UseGuards(GroupRoleGuard)
-  @GroupRoles('ADMIN')
+  @GroupRoles(GRUPO_ROLE.ADMIN)
   @Patch(':grupoId')
   atualizarGrupo(
     @Param('grupoId', new ParseUUIDCustomPipe('grupoId')) grupoId: string,
@@ -69,7 +71,7 @@ export class GruposController {
   @ApiBadRequestResponse({ description: 'Erro de validação.' })
   @ApiNotFoundResponse({ description: 'Grupo não encontrado.' })
   @UseGuards(GroupRoleGuard)
-  @GroupRoles('ADMIN')
+  @GroupRoles(GRUPO_ROLE.ADMIN)
   @Patch(':grupoId/status')
   atualizarStatusGrupo(
     @Param('grupoId', new ParseUUIDCustomPipe('grupoId')) grupoId: string,
@@ -83,7 +85,7 @@ export class GruposController {
   @ApiBadRequestResponse({ description: 'Erro de validação.' })
   @ApiNotFoundResponse({ description: 'Grupo não encontrado.' })
   @UseGuards(GroupRoleGuard)
-  @GroupRoles('ADMIN')
+  @GroupRoles(GRUPO_ROLE.ADMIN)
   @Delete(':grupoId')
   removerGrupo(
     @Param('grupoId', new ParseUUIDCustomPipe('grupoId')) grupoId: string,
