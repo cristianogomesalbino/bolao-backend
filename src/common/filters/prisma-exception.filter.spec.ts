@@ -1,9 +1,10 @@
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { PrismaExceptionFilter } from './prisma-exception.filter';
 import { Prisma } from '@prisma/client';
 
 const createMockHost = () => {
-  const json = jest.fn();
-  const status = jest.fn().mockReturnValue({ json });
+  const json = vi.fn();
+  const status = vi.fn().mockReturnValue({ json });
   return {
     switchToHttp: () => ({
       getResponse: () => ({ status, json }),
@@ -18,10 +19,6 @@ describe('PrismaExceptionFilter', () => {
 
   beforeEach(() => {
     filter = new PrismaExceptionFilter();
-  });
-
-  it('should be defined', () => {
-    expect(filter).toBeDefined();
   });
 
   it('deve retornar 409 com campo dinâmico para P2002', () => {

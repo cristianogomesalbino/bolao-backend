@@ -1,11 +1,10 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
   NotFoundException,
   BadRequestException,
   ConflictException,
 } from '@nestjs/common';
 import { GrupoUsuarioService } from './grupo-usuario.service';
-import { PrismaService } from '../../prisma/prisma.service';
 
 const mockGrupo = {
   id: 'grupo-1',
@@ -35,37 +34,26 @@ const mockUsuario = {
 
 const mockPrisma = {
   grupo: {
-    findUnique: jest.fn(),
+    findUnique: vi.fn(),
   },
   usuario: {
-    findUnique: jest.fn(),
+    findUnique: vi.fn(),
   },
   grupoUsuario: {
-    findUnique: jest.fn(),
-    findMany: jest.fn(),
-    create: jest.fn(),
-    count: jest.fn(),
-    delete: jest.fn(),
+    findUnique: vi.fn(),
+    findMany: vi.fn(),
+    create: vi.fn(),
+    count: vi.fn(),
+    delete: vi.fn(),
   },
 };
 
 describe('GrupoUsuarioService', () => {
   let service: GrupoUsuarioService;
 
-  beforeEach(async () => {
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        GrupoUsuarioService,
-        { provide: PrismaService, useValue: mockPrisma },
-      ],
-    }).compile();
-
-    service = module.get<GrupoUsuarioService>(GrupoUsuarioService);
-    jest.clearAllMocks();
-  });
-
-  it('should be defined', () => {
-    expect(service).toBeDefined();
+  beforeEach(() => {
+    service = new GrupoUsuarioService(mockPrisma as any);
+    vi.clearAllMocks();
   });
 
   // ==================== entrarPorConvite ====================

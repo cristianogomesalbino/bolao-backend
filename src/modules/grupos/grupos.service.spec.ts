@@ -1,12 +1,11 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
 import { GruposService } from './grupos.service';
-import { PrismaService } from '../../prisma/prisma.service';
 
-jest.mock('nanoid', () => ({
+vi.mock('nanoid', () => ({
   nanoid: () => 'ABCD1234',
 }));
 
@@ -37,48 +36,37 @@ const mockGrupo = {
 
 const mockTx = {
   grupo: {
-    create: jest.fn(),
+    create: vi.fn(),
   },
   grupoUsuario: {
-    create: jest.fn(),
+    create: vi.fn(),
   },
 };
 
 const mockPrisma = {
   temporada: {
-    findUnique: jest.fn(),
+    findUnique: vi.fn(),
   },
   grupo: {
-    findMany: jest.fn(),
-    findUnique: jest.fn(),
-    create: jest.fn(),
-    update: jest.fn(),
-    delete: jest.fn(),
+    findMany: vi.fn(),
+    findUnique: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
   },
   grupoUsuario: {
-    create: jest.fn(),
+    create: vi.fn(),
   },
-  $transaction: jest.fn((cb) => cb(mockTx)),
+  $transaction: vi.fn((cb) => cb(mockTx)),
 };
 
 describe('GruposService', () => {
   let service: GruposService;
 
-  beforeEach(async () => {
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        GruposService,
-        { provide: PrismaService, useValue: mockPrisma },
-      ],
-    }).compile();
-
-    service = module.get<GruposService>(GruposService);
-    jest.clearAllMocks();
+  beforeEach(() => {
+    service = new GruposService(mockPrisma as any);
+    vi.clearAllMocks();
     mockPrisma.$transaction.mockImplementation((cb) => cb(mockTx));
-  });
-
-  it('should be defined', () => {
-    expect(service).toBeDefined();
   });
 
   // ==================== criar ====================

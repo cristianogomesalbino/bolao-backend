@@ -1,3 +1,4 @@
+import { describe, it, expect, beforeEach } from 'vitest';
 import { BadRequestException } from '@nestjs/common';
 import { ParseUUIDCustomPipe } from './parse-uuid-custom.pipe';
 
@@ -6,10 +7,6 @@ describe('ParseUUIDCustomPipe', () => {
 
   beforeEach(() => {
     pipe = new ParseUUIDCustomPipe('id');
-  });
-
-  it('should be defined', () => {
-    expect(pipe).toBeDefined();
   });
 
   it('deve aceitar UUID v4 válido', () => {

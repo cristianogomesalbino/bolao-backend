@@ -1,6 +1,5 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { CampeonatosService } from './campeonatos.service';
-import { PrismaService } from '../../prisma/prisma.service';
 
 const mockCampeonato = {
   id: 'camp-1',
@@ -9,28 +8,17 @@ const mockCampeonato = {
 
 const mockPrisma = {
   campeonato: {
-    create: jest.fn(),
-    findMany: jest.fn(),
+    create: vi.fn(),
+    findMany: vi.fn(),
   },
 };
 
 describe('CampeonatosService', () => {
   let service: CampeonatosService;
 
-  beforeEach(async () => {
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        CampeonatosService,
-        { provide: PrismaService, useValue: mockPrisma },
-      ],
-    }).compile();
-
-    service = module.get<CampeonatosService>(CampeonatosService);
-    jest.clearAllMocks();
-  });
-
-  it('should be defined', () => {
-    expect(service).toBeDefined();
+  beforeEach(() => {
+    service = new CampeonatosService(mockPrisma as any);
+    vi.clearAllMocks();
   });
 
   describe('criar', () => {

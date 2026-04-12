@@ -1,3 +1,4 @@
+import { describe, it, expect, beforeEach } from 'vitest';
 import { ForbiddenException } from '@nestjs/common';
 import { SelfOrAdminGuard } from './self-or-admin.guard';
 
@@ -12,10 +13,6 @@ describe('SelfOrAdminGuard', () => {
 
   beforeEach(() => {
     guard = new SelfOrAdminGuard();
-  });
-
-  it('should be defined', () => {
-    expect(guard).toBeDefined();
   });
 
   it('deve permitir SUPER_ADMIN acessar qualquer recurso', () => {

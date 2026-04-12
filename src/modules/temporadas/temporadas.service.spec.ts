@@ -1,7 +1,6 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { NotFoundException } from '@nestjs/common';
 import { TemporadasService } from './temporadas.service';
-import { PrismaService } from '../../prisma/prisma.service';
 
 const mockCampeonato = {
   id: 'camp-1',
@@ -18,31 +17,20 @@ const mockTemporada = {
 
 const mockPrisma = {
   campeonato: {
-    findUnique: jest.fn(),
+    findUnique: vi.fn(),
   },
   temporada: {
-    create: jest.fn(),
-    findMany: jest.fn(),
+    create: vi.fn(),
+    findMany: vi.fn(),
   },
 };
 
 describe('TemporadasService', () => {
   let service: TemporadasService;
 
-  beforeEach(async () => {
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        TemporadasService,
-        { provide: PrismaService, useValue: mockPrisma },
-      ],
-    }).compile();
-
-    service = module.get<TemporadasService>(TemporadasService);
-    jest.clearAllMocks();
-  });
-
-  it('should be defined', () => {
-    expect(service).toBeDefined();
+  beforeEach(() => {
+    service = new TemporadasService(mockPrisma as any);
+    vi.clearAllMocks();
   });
 
   describe('criar', () => {

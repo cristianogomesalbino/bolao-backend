@@ -17,6 +17,17 @@ API REST para gerenciamento de bolões de campeonatos de futebol.
 - Em desenvolvimento usar `sh dev start-dev` (hot reload, sem rebuild)
 - Em produção usar `sh dev start-prod` (rebuild da imagem)
 
+## Ambiente de Desenvolvimento (Docker)
+
+O projeto roda 100% dentro de Docker. **NUNCA executar comandos npm/npx diretamente na máquina host.**
+
+- Instalar pacotes: `sh dev npm install <pacote>`
+- Rodar testes: `sh dev npx vitest run`
+- Rodar qualquer comando npm: `sh dev npm <comando>`
+- Rodar qualquer comando npx: `sh dev npx <comando>`
+- Logs: `sh dev logs`
+- Parar: `sh dev stop`
+
 ## Estrutura de Módulos
 
 ```

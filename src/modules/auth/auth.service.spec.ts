@@ -1,30 +1,25 @@
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
   UnauthorizedException,
   NotFoundException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
+import { AuthService } from './auth.service';
 
-jest.mock('bcryptjs');
-jest.mock('../../prisma/prisma.service');
-jest.mock('../../common/errors/error.factory', () => ({
-  ErrorFactory: {
-    unauthorized: (msg: string) => new UnauthorizedException({ erros: [{ mensagens: [msg] }] }),
-    notFound: (msg: string) => new NotFoundException({ erros: [{ mensagens: [msg] }] }),
-  },
-}));
+vi.mock('bcryptjs');
 
 const mockPrisma = {
-  usuario: { findUnique: jest.fn() },
+  usuario: { findUnique: vi.fn() },
   refreshToken: {
-    create: jest.fn(),
-    findUnique: jest.fn(),
-    deleteMany: jest.fn(),
+    create: vi.fn(),
+    findUnique: vi.fn(),
+    deleteMany: vi.fn(),
   },
 };
 
 const mockJwt = {
-  sign: jest.fn(),
-  verify: jest.fn(),
+  sign: vi.fn(),
+  verify: vi.fn(),
 };
 
 const mockUsuario = {
@@ -36,26 +31,17 @@ const mockUsuario = {
 };
 
 describe('AuthService', () => {
-  let AuthService: any;
-  let service: any;
-
-  beforeAll(() => {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const mod = require('./auth.service');
-    AuthService = mod.AuthService;
-  });
+  let service: AuthService;
 
   beforeEach(() => {
-    service = Object.create(AuthService.prototype);
-    service.prisma = mockPrisma;
-    service.jwtService = mockJwt;
-    jest.clearAllMocks();
+    service = new AuthService(mockPrisma as any, mockJwt as any);
+    vi.clearAllMocks();
   });
 
   describe('login', () => {
     it('deve limpar tokens antigos e retornar novos tokens', async () => {
       mockPrisma.usuario.findUnique.mockResolvedValue(mockUsuario);
-      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+      (bcrypt.compare as any).mockResolvedValue(true);
       mockPrisma.refreshToken.deleteMany.mockResolvedValue({ count: 1 });
       mockJwt.sign.mockReturnValueOnce('at').mockReturnValueOnce('rt');
       mockPrisma.refreshToken.create.mockResolvedValue({});
@@ -81,7 +67,7 @@ describe('AuthService', () => {
 
     it('deve lançar se senha inválida', async () => {
       mockPrisma.usuario.findUnique.mockResolvedValue(mockUsuario);
-      (bcrypt.compare as jest.Mock).mockResolvedValue(false);
+      (bcrypt.compare as any).mockResolvedValue(false);
       await expect(service.login('joao@example.com', 'x')).rejects.toThrow(UnauthorizedException);
     });
   });

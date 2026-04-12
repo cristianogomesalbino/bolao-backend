@@ -1,9 +1,10 @@
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { AuthController } from './auth.controller';
 
 const mockAuthService = {
-  login: jest.fn(),
-  refresh: jest.fn(),
-  logout: jest.fn(),
+  login: vi.fn(),
+  refresh: vi.fn(),
+  logout: vi.fn(),
 };
 
 describe('AuthController', () => {
@@ -11,11 +12,7 @@ describe('AuthController', () => {
 
   beforeEach(() => {
     controller = new AuthController(mockAuthService as any);
-    jest.clearAllMocks();
-  });
-
-  it('should be defined', () => {
-    expect(controller).toBeDefined();
+    vi.clearAllMocks();
   });
 
   describe('login', () => {

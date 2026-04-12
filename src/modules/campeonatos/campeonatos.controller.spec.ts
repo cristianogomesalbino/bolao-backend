@@ -1,28 +1,17 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { CampeonatosController } from './campeonatos.controller';
 import { CampeonatosService } from './campeonatos.service';
-import { PrismaService } from '../../prisma/prisma.service';
-import { prismaMock } from '../../../test/mocks/prisma.mock';
+
+const mockService = {} as CampeonatosService;
 
 describe('CampeonatosController', () => {
   let controller: CampeonatosController;
 
-  beforeEach(async () => {
-    const module: TestingModule = await Test.createTestingModule({
-      controllers: [CampeonatosController],
-      providers: [
-        CampeonatosService,
-        {
-          provide: PrismaService,
-          useValue: prismaMock,
-        },
-      ],
-    }).compile();
-
-    controller = module.get<CampeonatosController>(CampeonatosController);
+  beforeEach(() => {
+    controller = new CampeonatosController(mockService as any);
   });
 
-  it('should be defined', () => {
-    expect(controller).toBeDefined();
+  it('deve instanciar o controller', () => {
+    expect(controller).toBeTruthy();
   });
 });

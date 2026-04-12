@@ -1,16 +1,14 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ForbiddenException } from '@nestjs/common';
-import { Reflector } from '@nestjs/core';
 import { GroupRoleGuard } from './group-role.guard';
-import { PrismaService } from '../../prisma/prisma.service';
 
 const mockReflector = {
-  getAllAndOverride: jest.fn(),
+  getAllAndOverride: vi.fn(),
 };
 
 const mockPrisma = {
   grupoUsuario: {
-    findUnique: jest.fn(),
+    findUnique: vi.fn(),
   },
 };
 
@@ -25,21 +23,9 @@ const createMockContext = (user: any, params: any = {}) => ({
 describe('GroupRoleGuard', () => {
   let guard: GroupRoleGuard;
 
-  beforeEach(async () => {
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        GroupRoleGuard,
-        { provide: Reflector, useValue: mockReflector },
-        { provide: PrismaService, useValue: mockPrisma },
-      ],
-    }).compile();
-
-    guard = module.get<GroupRoleGuard>(GroupRoleGuard);
-    jest.clearAllMocks();
-  });
-
-  it('should be defined', () => {
-    expect(guard).toBeDefined();
+  beforeEach(() => {
+    guard = new GroupRoleGuard(mockReflector as any, mockPrisma as any);
+    vi.clearAllMocks();
   });
 
   it('deve permitir acesso se não há roles requeridas', async () => {

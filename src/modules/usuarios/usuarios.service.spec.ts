@@ -1,13 +1,12 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
   ConflictException,
   NotFoundException,
 } from '@nestjs/common';
 import { UsuariosService } from './usuarios.service';
-import { PrismaService } from '../../prisma/prisma.service';
 import * as bcrypt from 'bcryptjs';
 
-jest.mock('bcryptjs');
+vi.mock('bcryptjs');
 
 const mockUsuario = {
   id: 'user-1',
@@ -22,30 +21,19 @@ const mockUsuario = {
 
 const mockPrisma = {
   usuario: {
-    findUnique: jest.fn(),
-    findMany: jest.fn(),
-    create: jest.fn(),
-    update: jest.fn(),
+    findUnique: vi.fn(),
+    findMany: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
   },
 };
 
 describe('UsuariosService', () => {
   let service: UsuariosService;
 
-  beforeEach(async () => {
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        UsuariosService,
-        { provide: PrismaService, useValue: mockPrisma },
-      ],
-    }).compile();
-
-    service = module.get<UsuariosService>(UsuariosService);
-    jest.clearAllMocks();
-  });
-
-  it('should be defined', () => {
-    expect(service).toBeDefined();
+  beforeEach(() => {
+    service = new UsuariosService(mockPrisma as any);
+    vi.clearAllMocks();
   });
 
   // ==================== criar ====================
@@ -53,7 +41,7 @@ describe('UsuariosService', () => {
   describe('criar', () => {
     it('deve criar usuário com sucesso', async () => {
       mockPrisma.usuario.findUnique.mockResolvedValue(null);
-      (bcrypt.hash as jest.Mock).mockResolvedValue('hashed');
+      (bcrypt.hash as any).mockResolvedValue('hashed');
       mockPrisma.usuario.create.mockResolvedValue(mockUsuario);
 
       const result = await service.criar({
@@ -146,7 +134,7 @@ describe('UsuariosService', () => {
 
     it('deve fazer hash da senha ao atualizar', async () => {
       mockPrisma.usuario.findUnique.mockResolvedValue(mockUsuario);
-      (bcrypt.hash as jest.Mock).mockResolvedValue('new-hash');
+      (bcrypt.hash as any).mockResolvedValue('new-hash');
       mockPrisma.usuario.update.mockResolvedValue(mockUsuario);
 
       await service.atualizar('user-1', { senha: 'novasenha' });
