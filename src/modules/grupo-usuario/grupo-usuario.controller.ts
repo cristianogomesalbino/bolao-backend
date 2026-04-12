@@ -18,7 +18,6 @@ import {
 import { GrupoUsuarioService } from './grupo-usuario.service';
 import { EntrarGrupoDto } from './dto/entrar-grupo.dto';
 import { AdicionarMembroDto } from './dto/adicionar-membro.dto';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { GroupRoleGuard } from '../auth/group-role.guard';
 import { GroupRoles } from '../auth/group-roles.decorator';
 import { CurrentUser } from '../auth/current-user.decorator';
@@ -27,7 +26,6 @@ import { GRUPO_USUARIO } from './grupo-usuario.constants';
 import { GRUPO_ROLE } from '../../common/constants/roles.constants';
 
 @ApiTags(GRUPO_USUARIO.TAG)
-@UseGuards(JwtAuthGuard)
 @Controller('grupos')
 export class GrupoUsuarioController {
   constructor(private readonly service: GrupoUsuarioService) {}

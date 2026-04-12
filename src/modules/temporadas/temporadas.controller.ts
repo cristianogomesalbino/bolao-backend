@@ -1,12 +1,10 @@
-import { Controller, Get, Post, Body, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body } from '@nestjs/common';
 import { TemporadasService } from './temporadas.service';
 import { CreateTemporadaDto } from './dto/create-temporada.dto';
 import { ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { TEMPORADAS } from './temporadas.constants';
 
 @ApiTags(TEMPORADAS.TAG)
-@UseGuards(JwtAuthGuard)
 @Controller('temporadas')
 export class TemporadasController {
   constructor(private readonly temporadasService: TemporadasService) {}

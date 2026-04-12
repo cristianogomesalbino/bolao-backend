@@ -44,14 +44,28 @@ Não usar `"campo": "geral"`. O campo `campo` é opcional — omitir quando não
 - Validação de UUID em params via `ParseUUIDCustomPipe`
 - Mensagens de validação sempre em português brasileiro via parâmetro `message` dos decorators (ex: `@IsString({ message: 'nome deve ser uma string' })`)
 
+## Autenticação e Autorização
+
+- `JwtAuthGuard` é registrado como guard global via `APP_GUARD` no `AppModule` — todas as rotas são protegidas por padrão
+- Rotas públicas (sem autenticação) usam `@Public()` de `src/common/decorators/public.decorator.ts`
+- **NUNCA** usar `@UseGuards(JwtAuthGuard)` manualmente — o guard global já cobre
+- Rotas de admin de grupo usam `@UseGuards(GroupRoleGuard)` + `@GroupRoles(GRUPO_ROLE.ADMIN)`
+- Rotas restritas a membros do grupo usam `@UseGuards(GroupRoleGuard)` + `@GroupRoles(GRUPO_ROLE.ADMIN, GRUPO_ROLE.MEMBER)`
+- Rotas de usuário próprio usam `@UseGuards(SelfOrAdminGuard)`
+- Usar constantes de `src/common/constants/roles.constants.ts` para roles (`GRUPO_ROLE.ADMIN`, `PERFIL.SUPER_ADMIN`, etc.)
+
 ## Controllers
 
 - Decorar com `@ApiTags`, `@ApiOperation`, `@ApiResponse` para Swagger
-- Rotas protegidas usam `@UseGuards(JwtAuthGuard)`
-- Rotas de admin de grupo usam `@UseGuards(GroupRoleGuard)` + `@GroupRoles('ADMIN')`
-- Rotas restritas a membros do grupo usam `@UseGuards(GroupRoleGuard)` + `@GroupRoles('ADMIN', 'MEMBER')`
+- Usar constantes do módulo para `@ApiTags` (ex: `@ApiTags(AUTH.TAG)`)
 - Usuário autenticado via `@CurrentUser()` decorator
-- Rotas de usuário próprio usam `@UseGuards(SelfOrAdminGuard)`
+
+## Constantes
+
+- Cada módulo tem um arquivo `{modulo}.constants.ts` com `TAG` (Swagger) e `MENSAGENS` (erros e respostas) como `as const`
+- Usar constantes do módulo em vez de strings hardcoded em controllers, services e guards
+- Roles globais em `src/common/constants/roles.constants.ts` (`PERFIL`, `GRUPO_ROLE`)
+- Mensagens de validação de DTOs ficam inline (não extrair pra constantes)
 
 ## Services
 

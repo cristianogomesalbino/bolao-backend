@@ -11,7 +11,6 @@ import {
   ApiBadRequestResponse,
   ApiNotFoundResponse,
 } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { GroupRoleGuard } from '../auth/group-role.guard';
 import { GroupRoles } from '../auth/group-roles.decorator';
 import { CurrentUser } from '../auth/current-user.decorator';
@@ -19,7 +18,6 @@ import { GRUPOS } from './grupos.constants';
 import { GRUPO_ROLE } from '../../common/constants/roles.constants';
 
 @ApiTags(GRUPOS.TAG)
-@UseGuards(JwtAuthGuard)
 @Controller('grupos')
 export class GruposController {
   constructor(private readonly gruposService: GruposService) {}

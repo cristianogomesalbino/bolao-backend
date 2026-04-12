@@ -4,6 +4,7 @@ import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RefreshDto } from './dto/refresh.dto';
 import { AUTH } from './auth.constants';
+import { Public } from '../../common/decorators/public.decorator';
 
 @ApiTags(AUTH.TAG)
 @Controller('auth')
@@ -13,6 +14,7 @@ export class AuthController {
   @ApiOperation({ summary: 'Fazer login' })
   @ApiResponse({ status: 200, description: 'Login realizado com sucesso.' })
   @ApiBadRequestResponse({ description: 'Credenciais inválidas.' })
+  @Public()
   @Post('login')
   async login(@Body() loginDto: LoginDto) {
     return this.authService.login(loginDto.email, loginDto.senha);
@@ -21,6 +23,7 @@ export class AuthController {
   @ApiOperation({ summary: 'Renovar token de acesso' })
   @ApiResponse({ status: 200, description: 'Token renovado com sucesso.' })
   @ApiBadRequestResponse({ description: 'Refresh token inválido.' })
+  @Public()
   @Post('refresh')
   async refresh(@Body() refreshDto: RefreshDto) {
     return this.authService.refresh(refreshDto.refreshToken);
