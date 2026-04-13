@@ -1,69 +1,58 @@
+import { Inject, Injectable } from '@nestjs/common';
 import {
-  Injectable,
-  ConflictException,
-  NotFoundException,
-} from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service';
-import { UsuarioResponseDto } from './dto/usuario-response.dto';
-import * as bcrypt from 'bcrypt';
+  EmailJaCadastradoError,
+  UsuarioNaoEncontradoError,
+} from '../../common/errors/domain-errors';
+import * as bcrypt from 'bcryptjs';
+import { USUARIOS } from './usuarios.constants';
+import { UsuarioRepository } from './repositories/usuario.repository.interface';
 
 @Injectable()
 export class UsuariosService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    @Inject(USUARIOS.REPOSITORY_TOKEN)
+    private readonly usuarioRepo: UsuarioRepository,
+  ) {}
 
   async criar(data: { nome: string; email: string; senha: string }) {
-    const existe = await this.prisma.usuario.findUnique({
-      where: { email: data.email },
-    });
+    const existe = await this.usuarioRepo.buscarPorEmail(data.email);
 
     if (existe) {
-      throw new ConflictException('Email já cadastrado');
+      throw new EmailJaCadastradoError();
     }
 
     const senhaHash = await bcrypt.hash(data.senha, 10);
 
-    const usuario = await this.prisma.usuario.create({
-      data: {
-        nome: data.nome,
-        email: data.email,
-        senha: senhaHash,
-        ativo: true,
-      },
+    return this.usuarioRepo.criar({
+      nome: data.nome,
+      email: data.email,
+      senha: senhaHash,
+      ativo: true,
     });
-
-    return UsuarioResponseDto.fromEntity(usuario);
   }
 
   async listar() {
-    const usuarios = await this.prisma.usuario.findMany({
-      where: { ativo: true },
-    });
-
-    return usuarios.map(UsuarioResponseDto.fromEntity);
+    return this.usuarioRepo.listar({ ativo: true });
   }
 
   async buscarPorId(id: string) {
-    const usuario = await this.prisma.usuario.findUnique({
-      where: { id },
-    });
+    const usuario = await this.usuarioRepo.buscarPorId(id);
 
     if (!usuario || !usuario.ativo) {
-      throw new NotFoundException('Usuário não encontrado');
+      throw new UsuarioNaoEncontradoError();
     }
 
-    return UsuarioResponseDto.fromEntity(usuario);
+    return usuario;
   }
 
   async atualizar(
     id: string,
     data: { nome?: string; email?: string; senha?: string },
   ) {
-    const usuarioExistente = await this.prisma.usuario.findUnique({
-      where: { id },
-    });
+    const usuarioExistente = await this.usuarioRepo.buscarPorId(id);
 
     if (!usuarioExistente || !usuarioExistente.ativo) {
-      throw new NotFoundException('Usuário não encontrado');
+      throw new UsuarioNaoEncontradoError();
     }
 
     let senhaHash: string | undefined;
@@ -72,42 +61,30 @@ export class UsuariosService {
       senhaHash = await bcrypt.hash(data.senha, 10);
     }
 
-    const usuario = await this.prisma.usuario.update({
-      where: { id },
-      data: {
-        nome: data.nome,
-        email: data.email,
-        senha: senhaHash,
-      },
+    return this.usuarioRepo.atualizar(id, {
+      nome: data.nome,
+      email: data.email,
+      senha: senhaHash,
     });
-
-    return UsuarioResponseDto.fromEntity(usuario);
   }
 
   async remover(id: string) {
-    const usuario = await this.prisma.usuario.findUnique({
-      where: { id },
-    });
+    const usuario = await this.usuarioRepo.buscarPorId(id);
 
     if (!usuario) {
-      throw new NotFoundException('Usuário não encontrado');
+      throw new UsuarioNaoEncontradoError();
     }
 
     if (!usuario.ativo) {
-      return { mensagem: 'Usuário já está inativo' };
+      return { mensagem: USUARIOS.MENSAGENS.USUARIO_JA_INATIVO };
     }
 
-    await this.prisma.usuario.update({
-      where: { id },
-      data: { ativo: false },
-    });
+    await this.usuarioRepo.desativar(id);
 
-    return { mensagem: 'Usuário desativado com sucesso' };
+    return { mensagem: USUARIOS.MENSAGENS.USUARIO_DESATIVADO };
   }
 
   async buscarPorEmail(email: string) {
-    return this.prisma.usuario.findUnique({
-      where: { email },
-    });
+    return this.usuarioRepo.buscarPorEmail(email);
   }
 }

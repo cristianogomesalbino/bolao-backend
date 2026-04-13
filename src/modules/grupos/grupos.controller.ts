@@ -1,102 +1,91 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
 import { GruposService } from './grupos.service';
 import { CriarGrupoDto } from './dto/create-grupo.dto';
 import { UpdateGrupoDto } from './dto/update-grupo.dto';
 import { UpdateStatusGrupoDto } from './dto/update-status-grupo.dto';
 import { ParseUUIDCustomPipe } from '../../common/pipes/parse-uuid-custom.pipe';
-import { ApiTags, ApiOperation, ApiResponse, ApiBadRequestResponse, ApiNotFoundResponse, ApiConflictResponse,} from '@nestjs/swagger';
-import { UseGuards } from '@nestjs/common';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBadRequestResponse,
+  ApiNotFoundResponse,
+} from '@nestjs/swagger';
 import { GroupRoleGuard } from '../auth/group-role.guard';
 import { GroupRoles } from '../auth/group-roles.decorator';
 import { CurrentUser } from '../auth/current-user.decorator';
-import { GrupoUsuarioService } from '../grupo-usuario/grupo-usuario.service';
-import { EntrarGrupoDto } from '../grupo-usuario/dto/entrar-grupo.dto';
+import { GRUPOS } from './grupos.constants';
+import { GRUPO_ROLE } from '../../common/constants/roles.constants';
+import { GrupoPresenter } from '../../common/presenters';
 
-@ApiTags('Grupos')
-@UseGuards(JwtAuthGuard)
+@ApiTags(GRUPOS.TAG)
 @Controller('grupos')
 export class GruposController {
-  constructor(
-    private readonly gruposService: GruposService,
-    private readonly grupoUsuarioService: GrupoUsuarioService,
-  ) {}
-
-  @ApiOperation({ summary: 'Entrar em grupo por código de convite' })
-  @ApiResponse({ status: 201, description: 'Entrou no grupo com sucesso.' })
-  @ApiNotFoundResponse({ description: 'Código de convite inválido.' })
-  @ApiConflictResponse({ description: 'Já está no grupo.' })
-  @ApiBadRequestResponse({ description: 'Grupo inativo ou limite atingido.' })
-  @Post('entrar')
-  entrar(
-    @Body() dto: EntrarGrupoDto,
-    @CurrentUser() user: { id: string },
-  ) {
-    return this.grupoUsuarioService.entrarPorConvite(dto.codigoConvite, user.id);
-  }
+  constructor(private readonly gruposService: GruposService) {}
 
   @ApiOperation({ summary: 'Criar um novo grupo' })
   @ApiResponse({ status: 201, description: 'Grupo criado com sucesso.' })
   @ApiBadRequestResponse({ description: 'Erro de validação.' })
-  @ApiNotFoundResponse({ description: 'Temporada ou administrador não encontrado.' })
+  @ApiNotFoundResponse({ description: 'Temporada não encontrada.' })
   @Post()
-  criarGrupo(
+  async criarGrupo(
     @Body() criarGrupoDto: CriarGrupoDto,
     @CurrentUser() user,
   ) {
-    return this.gruposService.criar(criarGrupoDto, user.id);
+    return GrupoPresenter.toHttp(await this.gruposService.criar(criarGrupoDto, user.id));
   }
 
   @ApiOperation({ summary: 'Listar todos os grupos ativos' })
   @ApiResponse({ status: 200, description: 'Lista de grupos retornada com sucesso.' })
   @Get()
-  buscarGrupos() {
-    return this.gruposService.buscarTodos();
+  async buscarGrupos() {
+    const grupos = await this.gruposService.buscarTodos();
+    return grupos.map((g) => GrupoPresenter.toHttp(g));
   }
 
   @ApiOperation({ summary: 'Buscar grupo por ID' })
-  @ApiResponse({ status: 200, description: 'Lista de grupos retornada com sucesso.' })
+  @ApiResponse({ status: 200, description: 'Grupo encontrado.' })
   @ApiNotFoundResponse({ description: 'Grupo não encontrado.' })
   @Get(':grupoId')
-  buscarGrupoPorId(
+  async buscarGrupoPorId(
     @Param('grupoId', new ParseUUIDCustomPipe('grupoId')) grupoId: string,
   ) {
-    return this.gruposService.buscarPorId(grupoId);
+    return GrupoPresenter.toHttp(await this.gruposService.buscarPorId(grupoId));
   }
 
   @ApiOperation({ summary: 'Atualizar grupo por ID' })
-  @ApiResponse({ status: 200, description: 'Grupo encontrado.' })
+  @ApiResponse({ status: 200, description: 'Grupo atualizado com sucesso.' })
   @ApiNotFoundResponse({ description: 'Grupo não encontrado.' })
   @UseGuards(GroupRoleGuard)
-  @GroupRoles('ADMIN')
+  @GroupRoles(GRUPO_ROLE.ADMIN)
   @Patch(':grupoId')
-  atualizarGrupo(
-    @Param('grupoId') grupoId: string,
+  async atualizarGrupo(
+    @Param('grupoId', new ParseUUIDCustomPipe('grupoId')) grupoId: string,
     @Body() updateGrupoDto: UpdateGrupoDto,
   ) {
-    return this.gruposService.atualizar(grupoId, updateGrupoDto);
+    return GrupoPresenter.toHttp(await this.gruposService.atualizar(grupoId, updateGrupoDto));
   }
 
   @ApiOperation({ summary: 'Alterar status (ativo/inativo) do grupo' })
   @ApiResponse({ status: 200, description: 'Status atualizado com sucesso.' })
   @ApiBadRequestResponse({ description: 'Erro de validação.' })
   @ApiNotFoundResponse({ description: 'Grupo não encontrado.' })
-  @UseGuards( GroupRoleGuard)
+  @UseGuards(GroupRoleGuard)
+  @GroupRoles(GRUPO_ROLE.ADMIN)
   @Patch(':grupoId/status')
-  @GroupRoles('ADMIN')
-  atualizarStatusGrupo(
+  async atualizarStatusGrupo(
     @Param('grupoId', new ParseUUIDCustomPipe('grupoId')) grupoId: string,
     @Body() updateStatusGrupoDto: UpdateStatusGrupoDto,
   ) {
-    return this.gruposService.atualizarStatus(grupoId, updateStatusGrupoDto);
+    return GrupoPresenter.toHttp(await this.gruposService.atualizarStatus(grupoId, updateStatusGrupoDto));
   }
 
   @ApiOperation({ summary: 'Exclui um grupo inativo' })
   @ApiResponse({ status: 200, description: 'Grupo excluído com sucesso.' })
   @ApiBadRequestResponse({ description: 'Erro de validação.' })
   @ApiNotFoundResponse({ description: 'Grupo não encontrado.' })
-  @UseGuards( GroupRoleGuard)
-  @GroupRoles('ADMIN')
+  @UseGuards(GroupRoleGuard)
+  @GroupRoles(GRUPO_ROLE.ADMIN)
   @Delete(':grupoId')
   removerGrupo(
     @Param('grupoId', new ParseUUIDCustomPipe('grupoId')) grupoId: string,

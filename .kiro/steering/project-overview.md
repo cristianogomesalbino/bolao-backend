@@ -10,12 +10,27 @@ API REST para gerenciamento de bolões de campeonatos de futebol.
 
 - NestJS 11 com TypeScript
 - Prisma ORM 6 com PostgreSQL (Supabase)
-- Autenticação JWT (access token 15min + refresh token 7d)
+- Vitest 4 para testes unitários
+- Autenticação JWT (access token 15min + refresh token 7d) com guard global via APP_GUARD
 - Swagger em `/docs`
+- Repository Pattern (interfaces + Prisma impl + InMemory impl)
+- Domain Errors para erros de negócio tipados
+- Presenters para transformação de respostas HTTP
 - Docker Compose com profiles `dev` (hot reload) e `prod` (build)
 - Script `dev` para gerenciar containers: `sh dev start-dev`, `sh dev stop`, `sh dev logs`, `sh dev npm ...`, `sh dev npx ...`
 - Em desenvolvimento usar `sh dev start-dev` (hot reload, sem rebuild)
 - Em produção usar `sh dev start-prod` (rebuild da imagem)
+
+## Ambiente de Desenvolvimento (Docker)
+
+O projeto roda 100% dentro de Docker. **NUNCA executar comandos npm/npx diretamente na máquina host.**
+
+- Instalar pacotes: `sh dev npm install <pacote>`
+- Rodar testes: `sh dev npx vitest run`
+- Rodar qualquer comando npm: `sh dev npm <comando>`
+- Rodar qualquer comando npx: `sh dev npx <comando>`
+- Logs: `sh dev logs`
+- Parar: `sh dev stop`
 
 ## Estrutura de Módulos
 

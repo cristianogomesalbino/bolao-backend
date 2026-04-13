@@ -1,38 +1,36 @@
-import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service';
+import { Inject, Injectable } from '@nestjs/common';
 import { CreateTemporadaDto } from './dto/create-temporada.dto';
-import { UpdateTemporadaDto } from './dto/update-temporada.dto';
+import { CampeonatoNaoEncontradoError } from '../../common/errors/domain-errors';
+import { TEMPORADAS } from './temporadas.constants';
+import { TemporadaRepository } from './repositories/temporada.repository.interface';
+import { CAMPEONATOS } from '../campeonatos/campeonatos.constants';
+import { CampeonatoRepository } from '../campeonatos/repositories/campeonato.repository.interface';
 
 @Injectable()
 export class TemporadasService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    @Inject(TEMPORADAS.REPOSITORY_TOKEN)
+    private readonly temporadaRepo: TemporadaRepository,
+    @Inject(CAMPEONATOS.REPOSITORY_TOKEN)
+    private readonly campeonatoRepo: CampeonatoRepository,
+  ) {}
 
-  criar(createTemporadaDto: CreateTemporadaDto) {
-    return this.prisma.temporada.create({
-      data: {
-        ano: createTemporadaDto.ano,
-        campeonatoId: createTemporadaDto.campeonatoId,
-      },
+  async criar(createTemporadaDto: CreateTemporadaDto) {
+    const campeonato = await this.campeonatoRepo.buscarPorId(
+      createTemporadaDto.campeonatoId,
+    );
+
+    if (!campeonato) {
+      throw new CampeonatoNaoEncontradoError();
+    }
+
+    return this.temporadaRepo.criar({
+      ano: createTemporadaDto.ano,
+      campeonatoId: createTemporadaDto.campeonatoId,
     });
   }
-  
+
   buscarTodos() {
-    return this.prisma.temporada.findMany({
-      include: {
-        campeonato: true,
-      },
-    });
-  }
-  
-  buscarPorId(id: number) {
-    return `This action returns a #${id} temporada`;
-  }
-
-  atualizar(id: number, updateTemporadaDto: UpdateTemporadaDto) {
-    return `This action updates a #${id} temporada`;
-  }
-
-  remover(id: number) {
-    return `This action removes a #${id} temporada`;
+    return this.temporadaRepo.buscarTodos();
   }
 }

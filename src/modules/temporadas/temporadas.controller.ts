@@ -1,10 +1,11 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body } from '@nestjs/common';
 import { TemporadasService } from './temporadas.service';
 import { CreateTemporadaDto } from './dto/create-temporada.dto';
-import { UpdateTemporadaDto } from './dto/update-temporada.dto';
 import { ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
+import { TEMPORADAS } from './temporadas.constants';
+import { TemporadaPresenter } from '../../common/presenters';
 
-@ApiTags('Temporadas')
+@ApiTags(TEMPORADAS.TAG)
 @Controller('temporadas')
 export class TemporadasController {
   constructor(private readonly temporadasService: TemporadasService) {}
@@ -14,14 +15,15 @@ export class TemporadasController {
   @ApiResponse({ status: 201, description: 'Temporada criada com sucesso' })
   @ApiResponse({ status: 400, description: 'Dados inválidos (ano ou campeonatoId)' })
   @Post()
-  create(@Body() createTemporadaDto: CreateTemporadaDto) {
-    return this.temporadasService.criar(createTemporadaDto);
+  async criarTemporada(@Body() createTemporadaDto: CreateTemporadaDto) {
+    return TemporadaPresenter.toHttp(await this.temporadasService.criar(createTemporadaDto));
   }
 
   @ApiOperation({ summary: 'Lista todas as temporadas' })
   @ApiResponse({ status: 200, description: 'Lista de temporadas' })
   @Get()
-  findAll() {
-    return this.temporadasService.buscarTodos();
+  async buscarTemporadas() {
+    const temporadas = await this.temporadasService.buscarTodos();
+    return temporadas.map((t) => TemporadaPresenter.toHttp(t));
   }
 }

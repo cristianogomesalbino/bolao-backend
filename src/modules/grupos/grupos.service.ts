@@ -1,154 +1,116 @@
-import {
-  Injectable,
-  NotFoundException,
-  BadRequestException,
-} from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service';
+import { Inject, Injectable } from '@nestjs/common';
 import { CriarGrupoDto } from './dto/create-grupo.dto';
 import { UpdateGrupoDto } from './dto/update-grupo.dto';
 import { UpdateStatusGrupoDto } from './dto/update-status-grupo.dto';
 import { nanoid } from 'nanoid';
-import { ErrorFactory } from 'src/common/errors/error.factory';
-
-const includeGrupo = {
-  temporada: {
-    include: {
-      campeonato: true,
-    },
-  },
-};
+import {
+  TemporadaNaoEncontradaError,
+  GrupoNaoEncontradoError,
+  DesativeAntesDeExcluirError,
+} from '../../common/errors/domain-errors';
+import { GRUPOS } from './grupos.constants';
+import { GRUPO_ROLE } from '../../common/constants/roles.constants';
+import { GrupoRepository } from './repositories/grupo.repository.interface';
+import { TEMPORADAS } from '../temporadas/temporadas.constants';
+import { TemporadaRepository } from '../temporadas/repositories/temporada.repository.interface';
+import { GRUPO_USUARIO } from '../grupo-usuario/grupo-usuario.constants';
+import { GrupoUsuarioRepository } from '../grupo-usuario/repositories/grupo-usuario.repository.interface';
 
 @Injectable()
 export class GruposService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    @Inject(GRUPOS.REPOSITORY_TOKEN)
+    private readonly grupoRepo: GrupoRepository,
+    @Inject(TEMPORADAS.REPOSITORY_TOKEN)
+    private readonly temporadaRepo: TemporadaRepository,
+    @Inject(GRUPO_USUARIO.REPOSITORY_TOKEN)
+    private readonly grupoUsuarioRepo: GrupoUsuarioRepository,
+  ) {}
 
   async criar(dto: CriarGrupoDto, userId: string) {
-    const temporada = await this.prisma.temporada.findUnique({
-      where: { id: dto.temporadaId },
-    });
+    const temporada = await this.temporadaRepo.buscarPorId(dto.temporadaId);
 
     if (!temporada) {
-      throw new NotFoundException({
-        erros: [
-          {
-            campo: 'temporadaId',
-            mensagens: ['Temporada não encontrada.'],
-          },
-        ],
-      });
+      throw new TemporadaNaoEncontradaError();
     }
 
     const codigoConvite = dto.privado ? nanoid(8).toUpperCase() : null;
 
-    return this.prisma.$transaction(async (tx) => {
-      const grupo = await tx.grupo.create({
-        data: {
-          nome: dto.nome,
-          temporadaId: dto.temporadaId,
-          privado: dto.privado,
-          codigoConvite,
-          permitirPalpiteAutomatico: dto.permitirPalpiteAutomatico ?? false,
-          maxParticipantes: dto.maxParticipantes ?? 50,
-          createdById: userId,
-        },
-        include: includeGrupo,
-      });
-
-      await tx.grupoUsuario.create({
-        data: {
-          usuarioId: userId,
-          grupoId: grupo.id,
-          role: 'ADMIN',
-        },
-      });
-
-      return grupo;
+    const grupo = await this.grupoRepo.criar({
+      nome: dto.nome,
+      temporadaId: dto.temporadaId,
+      privado: dto.privado,
+      codigoConvite,
+      permitirPalpiteAutomatico: dto.permitirPalpiteAutomatico ?? false,
+      maxParticipantes: dto.maxParticipantes ?? 50,
+      createdById: userId,
     });
+
+    await this.grupoUsuarioRepo.criar({
+      usuarioId: userId,
+      grupoId: grupo.id,
+      role: GRUPO_ROLE.ADMIN,
+    });
+
+    return grupo;
   }
 
   async buscarTodos() {
-    return this.prisma.grupo.findMany({
-      where: { ativo: true },
-      include: includeGrupo,
-    });
+    return this.grupoRepo.buscarTodos({ ativo: true });
   }
 
   async buscarPorId(id: string) {
-    const grupo = await this.prisma.grupo.findUnique({
-      where: { id },
-      include: includeGrupo,
-    });
+    const grupo = await this.grupoRepo.buscarPorId(id);
 
-    if (!grupo || !grupo.ativo) {
-      throw ErrorFactory.notFound('Grupo não encontrado');
+    if (!grupo?.ativo) {
+      throw new GrupoNaoEncontradoError();
     }
 
     return grupo;
   }
 
   async atualizar(id: string, dto: UpdateGrupoDto) {
-    const grupo = await this.prisma.grupo.findUnique({
-      where: { id },
-    });
+    const grupo = await this.grupoRepo.buscarPorIdSimples(id);
 
-    if (!grupo || !grupo.ativo) {
-      throw ErrorFactory.notFound('Grupo não encontrado');
+    if (!grupo?.ativo) {
+      throw new GrupoNaoEncontradoError();
     }
 
-    return this.prisma.grupo.update({
-      where: { id },
-      data: {
-        nome: dto.nome ?? grupo.nome,
-        privado: dto.privado ?? grupo.privado,
-        permitirPalpiteAutomatico:
-          dto.permitirPalpiteAutomatico ?? grupo.permitirPalpiteAutomatico,
-      },
+    return this.grupoRepo.atualizar(id, {
+      nome: dto.nome ?? grupo.nome,
+      privado: dto.privado ?? grupo.privado,
+      permitirPalpiteAutomatico:
+        dto.permitirPalpiteAutomatico ?? grupo.permitirPalpiteAutomatico,
     });
   }
 
   async atualizarStatus(id: string, dto: UpdateStatusGrupoDto) {
-    const grupo = await this.prisma.grupo.findUnique({
-      where: { id },
-    });
+    const grupo = await this.grupoRepo.buscarPorIdSimples(id);
 
     if (!grupo) {
-      throw ErrorFactory.notFound('Grupo não encontrado');
+      throw new GrupoNaoEncontradoError();
     }
 
-    return this.prisma.grupo.update({
-      where: { id },
-      data: {
-        ativo: dto.ativo,
-      },
+    return this.grupoRepo.atualizar(id, {
+      ativo: dto.ativo,
     });
   }
 
   async remover(id: string) {
-    const grupo = await this.prisma.grupo.findUnique({
-      where: { id },
-    });
+    const grupo = await this.grupoRepo.buscarPorIdSimples(id);
 
     if (!grupo) {
-      throw ErrorFactory.notFound('Grupo não encontrado');
+      throw new GrupoNaoEncontradoError();
     }
 
     if (grupo.ativo) {
-      throw new BadRequestException({
-        erros: [
-          {
-            campo: 'ativo',
-            mensagens: ['Desative o grupo antes de excluí-lo.'],
-          },
-        ],
-      });
+      throw new DesativeAntesDeExcluirError();
     }
 
-    await this.prisma.grupo.delete({
-      where: { id },
-    });
+    await this.grupoRepo.remover(id);
 
     return {
-      mensagem: 'Grupo excluído com sucesso.',
+      mensagem: GRUPOS.MENSAGENS.GRUPO_EXCLUIDO,
     };
   }
 }

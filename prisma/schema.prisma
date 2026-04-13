@@ -11,6 +11,9 @@ model Campeonato {
   id         String      @id @default(uuid())
   nome       String
   temporadas Temporada[]
+
+  dataCriacao  DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
 }
 
 model Temporada {

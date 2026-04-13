@@ -1,14 +1,21 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
-import { ErrorFactory } from 'src/common/errors/error.factory';
+import { PrismaService } from '../../prisma/prisma.service';
+import {
+  CredenciaisInvalidasError,
+  RefreshNaoFornecidoError,
+  RefreshInvalidoError,
+  RefreshExpiradoError,
+} from '../../common/errors/domain-errors';
+import { UsuarioNaoEncontradoError } from '../../common/errors/domain-errors/usuarios.errors';
+import { AUTH } from './auth.constants';
 
 @Injectable()
 export class AuthService {
   constructor(
-    private prisma: PrismaService,
-    private jwtService: JwtService,
+    private readonly prisma: PrismaService,
+    private readonly jwtService: JwtService,
   ) {}
 
   async login(email: string, senha: string) {
@@ -16,43 +23,28 @@ export class AuthService {
       where: { email },
     });
 
-    if (!usuario) {
-      throw new UnauthorizedException('Usuário não encontrado');
+    if (!usuario || !usuario.ativo) {
+      throw new CredenciaisInvalidasError();
     }
 
-    const senhaValida = await bcrypt.compare(
-      senha,
-      usuario.senha,
-    );
-
+    const senhaValida = await bcrypt.compare(senha, usuario.senha);
     if (!senhaValida) {
-      throw new UnauthorizedException('Senha inválida');
+      throw new CredenciaisInvalidasError();
     }
 
-    const payload = {
-      id: usuario.id,
-      perfil: usuario.perfil,
-    };
-
-    const accessToken = this.jwtService.sign(payload, {
-      expiresIn: '15m',
+    await this.prisma.refreshToken.deleteMany({
+      where: { usuarioId: usuario.id },
     });
 
-    const refreshToken = this.jwtService.sign(
-      { id: usuario.id },
-      {
-        secret: process.env.JWT_REFRESH_SECRET,
-        expiresIn: '7d',
-      },
-    );
+    const payload = { sub: usuario.id, email: usuario.email, perfil: usuario.perfil };
+    const accessToken = this.jwtService.sign(payload, { expiresIn: '15m' });
+    const refreshToken = this.jwtService.sign(payload, { expiresIn: '7d' });
 
     await this.prisma.refreshToken.create({
       data: {
         token: refreshToken,
         usuarioId: usuario.id,
-        expiresAt: new Date(
-          Date.now() + 7 * 24 * 60 * 60 * 1000,
-        ),
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       },
     });
 
@@ -61,53 +53,46 @@ export class AuthService {
 
   async refresh(refreshToken: string) {
     if (!refreshToken) {
-      throw new UnauthorizedException('Refresh token não enviado');
+      throw new RefreshNaoFornecidoError();
     }
 
-    const stored = await this.prisma.refreshToken.findUnique({
+    const tokenRegistro = await this.prisma.refreshToken.findUnique({
       where: { token: refreshToken },
     });
 
-    if (!stored) {
-      throw new UnauthorizedException('Refresh inválido');
+    if (!tokenRegistro) {
+      throw new RefreshInvalidoError();
     }
 
     try {
-      this.jwtService.verify(refreshToken, {
-        secret: process.env.JWT_REFRESH_SECRET,
-      });
+      this.jwtService.verify(tokenRegistro.token);
     } catch {
-      throw new UnauthorizedException('Refresh expirado ou inválido');
+      throw new RefreshExpiradoError();
     }
 
     const usuario = await this.prisma.usuario.findUnique({
-      where: { id: stored.usuarioId },
+      where: { id: tokenRegistro.usuarioId },
     });
 
     if (!usuario) {
-      throw ErrorFactory.notFound('Usuário não encontrado');
+      throw new UsuarioNaoEncontradoError();
     }
 
-    const newAccessToken = this.jwtService.sign(
-      {
-        id: usuario.id,
-        perfil: usuario.perfil,
-      },
-      { expiresIn: '15m' },
-    );
+    const payload = { sub: usuario.id, email: usuario.email, perfil: usuario.perfil };
+    const accessToken = this.jwtService.sign(payload, { expiresIn: '15m' });
 
-    return { accessToken: newAccessToken };
+    return { accessToken };
   }
 
   async logout(refreshToken: string) {
     if (!refreshToken) {
-      throw new UnauthorizedException('Refresh token não enviado');
+      throw new RefreshNaoFornecidoError();
     }
 
     await this.prisma.refreshToken.deleteMany({
       where: { token: refreshToken },
     });
 
-    return { message: 'Logout realizado com sucesso' };
+    return { mensagem: AUTH.MENSAGENS.LOGOUT_SUCESSO };
   }
 }

@@ -1,130 +1,169 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import { describe, it, expect, beforeEach } from 'vitest';
+import { NotFoundException } from '@nestjs/common';
 import {
-  NotFoundException,
-  BadRequestException,
-  ConflictException,
-} from '@nestjs/common';
+  CodigoConviteInvalidoError,
+  GrupoInativoError,
+  JaEstaNoGrupoError,
+  LimiteParticipantesError,
+  UnicoAdminError,
+} from '../../common/errors/domain-errors';
+import { GrupoNaoEncontradoError } from '../../common/errors/domain-errors/grupos.errors';
+import { UsuarioNaoEncontradoError } from '../../common/errors/domain-errors/usuarios.errors';
 import { GrupoUsuarioService } from './grupo-usuario.service';
-import { PrismaService } from '../../prisma/prisma.service';
-
-const mockGrupo = {
-  id: 'grupo-1',
-  nome: 'Bolão da Galera',
-  ativo: true,
-  maxParticipantes: 50,
-  codigoConvite: 'ABC12345',
-  privado: true,
-  temporadaId: 'temp-1',
-  createdById: 'user-1',
-  permitirPalpiteAutomatico: false,
-  dataCriacao: new Date(),
-};
-
-const mockRegistro = {
-  id: 'gu-1',
-  usuarioId: 'user-1',
-  grupoId: 'grupo-1',
-  role: 'MEMBER' as const,
-};
-
-const mockPrisma = {
-  grupo: {
-    findUnique: jest.fn(),
-  },
-  grupoUsuario: {
-    findUnique: jest.fn(),
-    findMany: jest.fn(),
-    create: jest.fn(),
-    count: jest.fn(),
-    delete: jest.fn(),
-  },
-};
+import { InMemoryGrupoUsuarioRepository } from './repositories/in-memory-grupo-usuario.repository';
+import { InMemoryGrupoRepository } from '../grupos/repositories/in-memory-grupo.repository';
+import { InMemoryUsuarioRepository } from '../usuarios/repositories/in-memory-usuario.repository';
 
 describe('GrupoUsuarioService', () => {
   let service: GrupoUsuarioService;
+  let grupoUsuarioRepo: InMemoryGrupoUsuarioRepository;
+  let grupoRepo: InMemoryGrupoRepository;
+  let usuarioRepo: InMemoryUsuarioRepository;
 
-  beforeEach(async () => {
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        GrupoUsuarioService,
-        { provide: PrismaService, useValue: mockPrisma },
-      ],
-    }).compile();
+  const grupoId = 'grupo-1';
+  const userId = 'user-1';
+  const userId2 = 'user-2';
 
-    service = module.get<GrupoUsuarioService>(GrupoUsuarioService);
-    jest.clearAllMocks();
-  });
+  const grupo = {
+    id: grupoId,
+    nome: 'Bolão da Galera',
+    ativo: true,
+    maxParticipantes: 50,
+    codigoConvite: 'ABC12345',
+    privado: true,
+    temporadaId: 'temp-1',
+    createdById: userId,
+    permitirPalpiteAutomatico: false,
+    dataCriacao: new Date(),
+  };
 
-  it('should be defined', () => {
-    expect(service).toBeDefined();
+  const usuario2 = {
+    id: userId2,
+    nome: 'Maria',
+    email: 'maria@example.com',
+    senha: 'hashed',
+    perfil: 'USER',
+    ativo: true,
+    dataCriacao: new Date(),
+    atualizadoEm: new Date(),
+  };
+
+  beforeEach(() => {
+    grupoUsuarioRepo = new InMemoryGrupoUsuarioRepository();
+    grupoRepo = new InMemoryGrupoRepository();
+    usuarioRepo = new InMemoryUsuarioRepository();
+    service = new GrupoUsuarioService(grupoUsuarioRepo, grupoRepo, usuarioRepo);
   });
 
   // ==================== entrarPorConvite ====================
 
   describe('entrarPorConvite', () => {
     it('deve adicionar usuário ao grupo com código válido', async () => {
-      mockPrisma.grupo.findUnique.mockResolvedValue(mockGrupo);
-      mockPrisma.grupoUsuario.findUnique.mockResolvedValue(null);
-      mockPrisma.grupoUsuario.count.mockResolvedValue(5);
-      mockPrisma.grupoUsuario.create.mockResolvedValue({
-        ...mockRegistro,
-        grupo: { id: 'grupo-1', nome: 'Bolão da Galera' },
-      });
+      grupoRepo.items.push({ ...grupo });
+      grupoUsuarioRepo.grupos.push({ ...grupo });
 
-      const result = await service.entrarPorConvite('ABC12345', 'user-1');
+      const result = await service.entrarPorConvite('ABC12345', userId);
 
       expect(result.grupo.nome).toBe('Bolão da Galera');
-      expect(mockPrisma.grupoUsuario.create).toHaveBeenCalledWith({
-        data: {
-          usuarioId: 'user-1',
-          grupoId: 'grupo-1',
-          role: 'MEMBER',
-        },
-        include: {
-          grupo: { select: { id: true, nome: true } },
-        },
+      expect(result.role).toBe('MEMBER');
+      expect(grupoUsuarioRepo.items).toHaveLength(1);
+    });
+
+    it('deve lançar CodigoConviteInvalidoError se código não existe', async () => {
+      await expect(
+        service.entrarPorConvite('INVALIDO', userId),
+      ).rejects.toThrow(CodigoConviteInvalidoError);
+    });
+
+    it('deve lançar GrupoInativoError se grupo está inativo', async () => {
+      grupoRepo.items.push({ ...grupo, ativo: false });
+
+      await expect(
+        service.entrarPorConvite('ABC12345', userId),
+      ).rejects.toThrow(GrupoInativoError);
+    });
+
+    it('deve lançar JaEstaNoGrupoError se usuário já está no grupo', async () => {
+      grupoRepo.items.push({ ...grupo });
+      grupoUsuarioRepo.items.push({
+        usuarioId: userId,
+        grupoId,
+        role: 'MEMBER',
+        dataCriacao: new Date(),
       });
-    });
-
-    it('deve lançar NotFoundException se código não existe', async () => {
-      mockPrisma.grupo.findUnique.mockResolvedValue(null);
 
       await expect(
-        service.entrarPorConvite('INVALIDO', 'user-1'),
-      ).rejects.toThrow(NotFoundException);
+        service.entrarPorConvite('ABC12345', userId),
+      ).rejects.toThrow(JaEstaNoGrupoError);
     });
 
-    it('deve lançar BadRequestException se grupo está inativo', async () => {
-      mockPrisma.grupo.findUnique.mockResolvedValue({
-        ...mockGrupo,
-        ativo: false,
+    it('deve lançar LimiteParticipantesError se grupo atingiu limite', async () => {
+      grupoRepo.items.push({ ...grupo, maxParticipantes: 2 });
+      grupoUsuarioRepo.items.push(
+        { usuarioId: 'u1', grupoId, role: 'ADMIN', dataCriacao: new Date() },
+        { usuarioId: 'u2', grupoId, role: 'MEMBER', dataCriacao: new Date() },
+      );
+
+      await expect(
+        service.entrarPorConvite('ABC12345', userId),
+      ).rejects.toThrow(LimiteParticipantesError);
+    });
+  });
+
+  // ==================== adicionarPorEmail ====================
+
+  describe('adicionarPorEmail', () => {
+    it('deve adicionar membro por email', async () => {
+      grupoRepo.items.push({ ...grupo });
+      usuarioRepo.items.push({ ...usuario2 });
+      grupoUsuarioRepo.grupos.push({ ...grupo });
+      grupoUsuarioRepo.usuarios.push({ ...usuario2 });
+
+      const result = await service.adicionarPorEmail(
+        grupoId,
+        'maria@example.com',
+      );
+
+      expect(result.usuario.nome).toBe('Maria');
+      expect(result.grupo.nome).toBe('Bolão da Galera');
+      expect(grupoUsuarioRepo.items).toHaveLength(1);
+    });
+
+    it('deve lançar GrupoNaoEncontradoError se grupo não existe', async () => {
+      await expect(
+        service.adicionarPorEmail('inexistente', 'maria@example.com'),
+      ).rejects.toThrow(GrupoNaoEncontradoError);
+    });
+
+    it('deve lançar GrupoInativoError se grupo está inativo', async () => {
+      grupoRepo.items.push({ ...grupo, ativo: false });
+
+      await expect(
+        service.adicionarPorEmail(grupoId, 'maria@example.com'),
+      ).rejects.toThrow(GrupoInativoError);
+    });
+
+    it('deve lançar UsuarioNaoEncontradoError se usuário não existe', async () => {
+      grupoRepo.items.push({ ...grupo });
+
+      await expect(
+        service.adicionarPorEmail(grupoId, 'naoexiste@example.com'),
+      ).rejects.toThrow(UsuarioNaoEncontradoError);
+    });
+
+    it('deve lançar JaEstaNoGrupoError se usuário já está no grupo', async () => {
+      grupoRepo.items.push({ ...grupo });
+      usuarioRepo.items.push({ ...usuario2 });
+      grupoUsuarioRepo.items.push({
+        usuarioId: userId2,
+        grupoId,
+        role: 'MEMBER',
+        dataCriacao: new Date(),
       });
 
       await expect(
-        service.entrarPorConvite('ABC12345', 'user-1'),
-      ).rejects.toThrow(BadRequestException);
-    });
-
-    it('deve lançar ConflictException se usuário já está no grupo', async () => {
-      mockPrisma.grupo.findUnique.mockResolvedValue(mockGrupo);
-      mockPrisma.grupoUsuario.findUnique.mockResolvedValue(mockRegistro);
-
-      await expect(
-        service.entrarPorConvite('ABC12345', 'user-1'),
-      ).rejects.toThrow(ConflictException);
-    });
-
-    it('deve lançar BadRequestException se grupo atingiu limite', async () => {
-      mockPrisma.grupo.findUnique.mockResolvedValue({
-        ...mockGrupo,
-        maxParticipantes: 2,
-      });
-      mockPrisma.grupoUsuario.findUnique.mockResolvedValue(null);
-      mockPrisma.grupoUsuario.count.mockResolvedValue(2);
-
-      await expect(
-        service.entrarPorConvite('ABC12345', 'user-1'),
-      ).rejects.toThrow(BadRequestException);
+        service.adicionarPorEmail(grupoId, 'maria@example.com'),
+      ).rejects.toThrow(JaEstaNoGrupoError);
     });
   });
 
@@ -132,24 +171,26 @@ describe('GrupoUsuarioService', () => {
 
   describe('listarMembros', () => {
     it('deve retornar lista de membros do grupo', async () => {
-      mockPrisma.grupo.findUnique.mockResolvedValue(mockGrupo);
-      mockPrisma.grupoUsuario.findMany.mockResolvedValue([
-        { role: 'ADMIN', usuario: { id: 'user-1', nome: 'João' } },
-        { role: 'MEMBER', usuario: { id: 'user-2', nome: 'Maria' } },
-      ]);
+      grupoRepo.items.push({ ...grupo });
+      grupoUsuarioRepo.items.push(
+        { usuarioId: userId, grupoId, role: 'ADMIN', dataCriacao: new Date() },
+        { usuarioId: userId2, grupoId, role: 'MEMBER', dataCriacao: new Date() },
+      );
+      grupoUsuarioRepo.usuarios.push(
+        { id: userId, nome: 'João' },
+        { id: userId2, nome: 'Maria' },
+      );
 
-      const result = await service.listarMembros('grupo-1');
+      const result = await service.listarMembros(grupoId);
 
       expect(result).toHaveLength(2);
       expect(result[0].usuario.nome).toBe('João');
       expect(result[0].role).toBe('ADMIN');
     });
 
-    it('deve lançar NotFoundException se grupo não existe', async () => {
-      mockPrisma.grupo.findUnique.mockResolvedValue(null);
-
+    it('deve lançar GrupoNaoEncontradoError se grupo não existe', async () => {
       await expect(service.listarMembros('inexistente')).rejects.toThrow(
-        NotFoundException,
+        GrupoNaoEncontradoError,
       );
     });
   });
@@ -158,44 +199,46 @@ describe('GrupoUsuarioService', () => {
 
   describe('sair', () => {
     it('deve permitir MEMBER sair do grupo', async () => {
-      mockPrisma.grupoUsuario.findUnique.mockResolvedValue(mockRegistro);
-      mockPrisma.grupoUsuario.delete.mockResolvedValue(mockRegistro);
+      grupoUsuarioRepo.items.push({
+        usuarioId: userId,
+        grupoId,
+        role: 'MEMBER',
+        dataCriacao: new Date(),
+      });
 
-      const result = await service.sair('grupo-1', 'user-1');
+      const result = await service.sair(grupoId, userId);
 
       expect(result.mensagem).toBe('Você saiu do grupo');
-      expect(mockPrisma.grupoUsuario.delete).toHaveBeenCalled();
+      expect(grupoUsuarioRepo.items).toHaveLength(0);
     });
 
     it('deve permitir ADMIN sair se houver outro admin', async () => {
-      mockPrisma.grupoUsuario.findUnique.mockResolvedValue({
-        ...mockRegistro,
-        role: 'ADMIN',
-      });
-      mockPrisma.grupoUsuario.count.mockResolvedValue(2);
-      mockPrisma.grupoUsuario.delete.mockResolvedValue(mockRegistro);
+      grupoUsuarioRepo.items.push(
+        { usuarioId: userId, grupoId, role: 'ADMIN', dataCriacao: new Date() },
+        { usuarioId: userId2, grupoId, role: 'ADMIN', dataCriacao: new Date() },
+      );
 
-      const result = await service.sair('grupo-1', 'user-1');
+      const result = await service.sair(grupoId, userId);
 
       expect(result.mensagem).toBe('Você saiu do grupo');
+      expect(grupoUsuarioRepo.items).toHaveLength(1);
     });
 
     it('deve bloquear saída do único ADMIN', async () => {
-      mockPrisma.grupoUsuario.findUnique.mockResolvedValue({
-        ...mockRegistro,
+      grupoUsuarioRepo.items.push({
+        usuarioId: userId,
+        grupoId,
         role: 'ADMIN',
+        dataCriacao: new Date(),
       });
-      mockPrisma.grupoUsuario.count.mockResolvedValue(1);
 
-      await expect(service.sair('grupo-1', 'user-1')).rejects.toThrow(
-        BadRequestException,
+      await expect(service.sair(grupoId, userId)).rejects.toThrow(
+        UnicoAdminError,
       );
     });
 
     it('deve lançar NotFoundException se não está no grupo', async () => {
-      mockPrisma.grupoUsuario.findUnique.mockResolvedValue(null);
-
-      await expect(service.sair('grupo-1', 'user-1')).rejects.toThrow(
+      await expect(service.sair(grupoId, userId)).rejects.toThrow(
         NotFoundException,
       );
     });
@@ -205,25 +248,23 @@ describe('GrupoUsuarioService', () => {
 
   describe('removerMembro', () => {
     it('deve remover membro do grupo', async () => {
-      mockPrisma.grupoUsuario.findUnique.mockResolvedValue(mockRegistro);
-      mockPrisma.grupoUsuario.delete.mockResolvedValue(mockRegistro);
+      grupoUsuarioRepo.items.push({
+        usuarioId: userId,
+        grupoId,
+        role: 'MEMBER',
+        dataCriacao: new Date(),
+      });
 
-      const result = await service.removerMembro('grupo-1', 'user-1');
+      const result = await service.removerMembro(grupoId, userId);
 
       expect(result.mensagem).toBe('Usuário removido do grupo');
-      expect(mockPrisma.grupoUsuario.delete).toHaveBeenCalledWith({
-        where: {
-          usuarioId_grupoId: { usuarioId: 'user-1', grupoId: 'grupo-1' },
-        },
-      });
+      expect(grupoUsuarioRepo.items).toHaveLength(0);
     });
 
     it('deve lançar NotFoundException se usuário não está no grupo', async () => {
-      mockPrisma.grupoUsuario.findUnique.mockResolvedValue(null);
-
-      await expect(
-        service.removerMembro('grupo-1', 'user-999'),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.removerMembro(grupoId, 'user-999')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 });
