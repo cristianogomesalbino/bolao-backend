@@ -1,8 +1,9 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
-  NotFoundException,
-  BadRequestException,
-} from '@nestjs/common';
+  TemporadaNaoEncontradaError,
+  GrupoNaoEncontradoError,
+  DesativeAntesDeExcluirError,
+} from '../../common/errors/domain-errors';
 import { GruposService } from './grupos.service';
 
 vi.mock('nanoid', () => ({
@@ -133,7 +134,7 @@ describe('GruposService', () => {
       );
     });
 
-    it('deve lançar NotFoundException se temporada não existe', async () => {
+    it('deve lançar TemporadaNaoEncontradaError se temporada não existe', async () => {
       mockPrisma.temporada.findUnique.mockResolvedValue(null);
 
       await expect(
@@ -141,7 +142,7 @@ describe('GruposService', () => {
           { nome: 'Teste', temporadaId: 'inexistente', privado: true },
           'user-1',
         ),
-      ).rejects.toThrow(NotFoundException);
+      ).rejects.toThrow(TemporadaNaoEncontradaError);
     });
   });
 
@@ -172,22 +173,22 @@ describe('GruposService', () => {
       expect(result.nome).toBe('Bolão da Galera');
     });
 
-    it('deve lançar NotFoundException se grupo não existe', async () => {
+    it('deve lançar GrupoNaoEncontradoError se grupo não existe', async () => {
       mockPrisma.grupo.findUnique.mockResolvedValue(null);
 
       await expect(service.buscarPorId('inexistente')).rejects.toThrow(
-        NotFoundException,
+        GrupoNaoEncontradoError,
       );
     });
 
-    it('deve lançar NotFoundException se grupo está inativo', async () => {
+    it('deve lançar GrupoNaoEncontradoError se grupo está inativo', async () => {
       mockPrisma.grupo.findUnique.mockResolvedValue({
         ...mockGrupo,
         ativo: false,
       });
 
       await expect(service.buscarPorId('grupo-1')).rejects.toThrow(
-        NotFoundException,
+        GrupoNaoEncontradoError,
       );
     });
   });
@@ -207,15 +208,15 @@ describe('GruposService', () => {
       expect(result.nome).toBe('Novo Nome');
     });
 
-    it('deve lançar NotFoundException se grupo não existe', async () => {
+    it('deve lançar GrupoNaoEncontradoError se grupo não existe', async () => {
       mockPrisma.grupo.findUnique.mockResolvedValue(null);
 
       await expect(
         service.atualizar('inexistente', { nome: 'Teste' }),
-      ).rejects.toThrow(NotFoundException);
+      ).rejects.toThrow(GrupoNaoEncontradoError);
     });
 
-    it('deve lançar NotFoundException se grupo está inativo', async () => {
+    it('deve lançar GrupoNaoEncontradoError se grupo está inativo', async () => {
       mockPrisma.grupo.findUnique.mockResolvedValue({
         ...mockGrupo,
         ativo: false,
@@ -223,7 +224,7 @@ describe('GruposService', () => {
 
       await expect(
         service.atualizar('grupo-1', { nome: 'Teste' }),
-      ).rejects.toThrow(NotFoundException);
+      ).rejects.toThrow(GrupoNaoEncontradoError);
     });
   });
 
@@ -242,12 +243,12 @@ describe('GruposService', () => {
       expect(result.ativo).toBe(false);
     });
 
-    it('deve lançar NotFoundException se grupo não existe', async () => {
+    it('deve lançar GrupoNaoEncontradoError se grupo não existe', async () => {
       mockPrisma.grupo.findUnique.mockResolvedValue(null);
 
       await expect(
         service.atualizarStatus('inexistente', { ativo: false }),
-      ).rejects.toThrow(NotFoundException);
+      ).rejects.toThrow(GrupoNaoEncontradoError);
     });
   });
 
@@ -269,19 +270,19 @@ describe('GruposService', () => {
       });
     });
 
-    it('deve lançar BadRequestException se grupo está ativo', async () => {
+    it('deve lançar DesativeAntesDeExcluirError se grupo está ativo', async () => {
       mockPrisma.grupo.findUnique.mockResolvedValue(mockGrupo);
 
       await expect(service.remover('grupo-1')).rejects.toThrow(
-        BadRequestException,
+        DesativeAntesDeExcluirError,
       );
     });
 
-    it('deve lançar NotFoundException se grupo não existe', async () => {
+    it('deve lançar GrupoNaoEncontradoError se grupo não existe', async () => {
       mockPrisma.grupo.findUnique.mockResolvedValue(null);
 
       await expect(service.remover('inexistente')).rejects.toThrow(
-        NotFoundException,
+        GrupoNaoEncontradoError,
       );
     });
   });

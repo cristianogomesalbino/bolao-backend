@@ -4,7 +4,11 @@ import { CriarGrupoDto } from './dto/create-grupo.dto';
 import { UpdateGrupoDto } from './dto/update-grupo.dto';
 import { UpdateStatusGrupoDto } from './dto/update-status-grupo.dto';
 import { nanoid } from 'nanoid';
-import { ErrorFactory } from '../../common/errors/error.factory';
+import {
+  TemporadaNaoEncontradaError,
+  GrupoNaoEncontradoError,
+  DesativeAntesDeExcluirError,
+} from '../../common/errors/domain-errors';
 import { GRUPOS } from './grupos.constants';
 import { GRUPO_ROLE } from '../../common/constants/roles.constants';
 
@@ -26,7 +30,7 @@ export class GruposService {
     });
 
     if (!temporada) {
-      throw ErrorFactory.notFound(GRUPOS.MENSAGENS.TEMPORADA_NAO_ENCONTRADA);
+      throw new TemporadaNaoEncontradaError();
     }
 
     const codigoConvite = dto.privado ? nanoid(8).toUpperCase() : null;
@@ -71,7 +75,7 @@ export class GruposService {
     });
 
     if (!grupo || !grupo.ativo) {
-      throw ErrorFactory.notFound(GRUPOS.MENSAGENS.GRUPO_NAO_ENCONTRADO);
+      throw new GrupoNaoEncontradoError();
     }
 
     return grupo;
@@ -83,7 +87,7 @@ export class GruposService {
     });
 
     if (!grupo || !grupo.ativo) {
-      throw ErrorFactory.notFound(GRUPOS.MENSAGENS.GRUPO_NAO_ENCONTRADO);
+      throw new GrupoNaoEncontradoError();
     }
 
     return this.prisma.grupo.update({
@@ -103,7 +107,7 @@ export class GruposService {
     });
 
     if (!grupo) {
-      throw ErrorFactory.notFound(GRUPOS.MENSAGENS.GRUPO_NAO_ENCONTRADO);
+      throw new GrupoNaoEncontradoError();
     }
 
     return this.prisma.grupo.update({
@@ -120,11 +124,11 @@ export class GruposService {
     });
 
     if (!grupo) {
-      throw ErrorFactory.notFound(GRUPOS.MENSAGENS.GRUPO_NAO_ENCONTRADO);
+      throw new GrupoNaoEncontradoError();
     }
 
     if (grupo.ativo) {
-      throw ErrorFactory.badRequest(GRUPOS.MENSAGENS.DESATIVE_ANTES_EXCLUIR);
+      throw new DesativeAntesDeExcluirError();
     }
 
     await this.prisma.grupo.delete({

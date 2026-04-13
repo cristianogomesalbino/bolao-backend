@@ -1,6 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ErrorFactory } from '../../common/errors/error.factory';
+import {
+  CodigoConviteInvalidoError,
+  GrupoInativoError,
+  JaEstaNoGrupoError,
+  LimiteParticipantesError,
+  UnicoAdminError,
+} from '../../common/errors/domain-errors';
+import { GrupoNaoEncontradoError } from '../../common/errors/domain-errors/grupos.errors';
+import { UsuarioNaoEncontradoError } from '../../common/errors/domain-errors/usuarios.errors';
 import { GRUPO_USUARIO } from './grupo-usuario.constants';
 import { GRUPO_ROLE } from '../../common/constants/roles.constants';
 
@@ -18,13 +27,11 @@ export class GrupoUsuarioService {
     });
 
     if (!grupo) {
-      throw ErrorFactory.notFound(
-        GRUPO_USUARIO.MENSAGENS.CODIGO_CONVITE_INVALIDO,
-      );
+      throw new CodigoConviteInvalidoError();
     }
 
     if (!grupo.ativo) {
-      throw ErrorFactory.badRequest(GRUPO_USUARIO.MENSAGENS.GRUPO_INATIVO);
+      throw new GrupoInativoError();
     }
 
     await this.validarEntrada(usuarioId, grupo.id, grupo.maxParticipantes);
@@ -47,7 +54,7 @@ export class GrupoUsuarioService {
     });
 
     if (!grupo) {
-      throw ErrorFactory.notFound(GRUPO_USUARIO.MENSAGENS.GRUPO_NAO_ENCONTRADO);
+      throw new GrupoNaoEncontradoError();
     }
 
     return this.prisma.grupoUsuario.findMany({
@@ -102,11 +109,11 @@ export class GrupoUsuarioService {
     });
 
     if (!grupo) {
-      throw ErrorFactory.notFound(GRUPO_USUARIO.MENSAGENS.GRUPO_NAO_ENCONTRADO);
+      throw new GrupoNaoEncontradoError();
     }
 
     if (!grupo.ativo) {
-      throw ErrorFactory.badRequest(GRUPO_USUARIO.MENSAGENS.GRUPO_INATIVO);
+      throw new GrupoInativoError();
     }
 
     const usuario = await this.prisma.usuario.findUnique({
@@ -114,9 +121,7 @@ export class GrupoUsuarioService {
     });
 
     if (!usuario) {
-      throw ErrorFactory.notFound(
-        GRUPO_USUARIO.MENSAGENS.USUARIO_NAO_ENCONTRADO,
-      );
+      throw new UsuarioNaoEncontradoError();
     }
 
     await this.validarEntrada(usuario.id, grupoId, grupo.maxParticipantes);
@@ -144,7 +149,7 @@ export class GrupoUsuarioService {
     });
 
     if (jaExiste) {
-      throw ErrorFactory.conflict(GRUPO_USUARIO.MENSAGENS.JA_ESTA_NO_GRUPO);
+      throw new JaEstaNoGrupoError();
     }
 
     const totalMembros = await this.prisma.grupoUsuario.count({
@@ -152,9 +157,7 @@ export class GrupoUsuarioService {
     });
 
     if (totalMembros >= maxParticipantes) {
-      throw ErrorFactory.badRequest(
-        GRUPO_USUARIO.MENSAGENS.LIMITE_PARTICIPANTES,
-      );
+      throw new LimiteParticipantesError();
     }
   }
 
@@ -180,7 +183,7 @@ export class GrupoUsuarioService {
     });
 
     if (admins <= 1) {
-      throw ErrorFactory.badRequest(GRUPO_USUARIO.MENSAGENS.UNICO_ADMIN);
+      throw new UnicoAdminError();
     }
   }
 }

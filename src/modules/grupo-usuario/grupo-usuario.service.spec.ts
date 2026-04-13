@@ -1,9 +1,16 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
   NotFoundException,
-  BadRequestException,
-  ConflictException,
 } from '@nestjs/common';
+import {
+  CodigoConviteInvalidoError,
+  GrupoInativoError,
+  JaEstaNoGrupoError,
+  LimiteParticipantesError,
+  UnicoAdminError,
+} from '../../common/errors/domain-errors';
+import { GrupoNaoEncontradoError } from '../../common/errors/domain-errors/grupos.errors';
+import { UsuarioNaoEncontradoError } from '../../common/errors/domain-errors/usuarios.errors';
 import { GrupoUsuarioService } from './grupo-usuario.service';
 
 const mockGrupo = {
@@ -83,15 +90,15 @@ describe('GrupoUsuarioService', () => {
       });
     });
 
-    it('deve lançar NotFoundException se código não existe', async () => {
+    it('deve lançar CodigoConviteInvalidoError se código não existe', async () => {
       mockPrisma.grupo.findUnique.mockResolvedValue(null);
 
       await expect(
         service.entrarPorConvite('INVALIDO', 'user-1'),
-      ).rejects.toThrow(NotFoundException);
+      ).rejects.toThrow(CodigoConviteInvalidoError);
     });
 
-    it('deve lançar BadRequestException se grupo está inativo', async () => {
+    it('deve lançar GrupoInativoError se grupo está inativo', async () => {
       mockPrisma.grupo.findUnique.mockResolvedValue({
         ...mockGrupo,
         ativo: false,
@@ -99,19 +106,19 @@ describe('GrupoUsuarioService', () => {
 
       await expect(
         service.entrarPorConvite('ABC12345', 'user-1'),
-      ).rejects.toThrow(BadRequestException);
+      ).rejects.toThrow(GrupoInativoError);
     });
 
-    it('deve lançar ConflictException se usuário já está no grupo', async () => {
+    it('deve lançar JaEstaNoGrupoError se usuário já está no grupo', async () => {
       mockPrisma.grupo.findUnique.mockResolvedValue(mockGrupo);
       mockPrisma.grupoUsuario.findUnique.mockResolvedValue(mockRegistro);
 
       await expect(
         service.entrarPorConvite('ABC12345', 'user-1'),
-      ).rejects.toThrow(ConflictException);
+      ).rejects.toThrow(JaEstaNoGrupoError);
     });
 
-    it('deve lançar BadRequestException se grupo atingiu limite', async () => {
+    it('deve lançar LimiteParticipantesError se grupo atingiu limite', async () => {
       mockPrisma.grupo.findUnique.mockResolvedValue({
         ...mockGrupo,
         maxParticipantes: 2,
@@ -121,7 +128,7 @@ describe('GrupoUsuarioService', () => {
 
       await expect(
         service.entrarPorConvite('ABC12345', 'user-1'),
-      ).rejects.toThrow(BadRequestException);
+      ).rejects.toThrow(LimiteParticipantesError);
     });
   });
 
@@ -146,15 +153,15 @@ describe('GrupoUsuarioService', () => {
       expect(result.grupo.nome).toBe('Bolão da Galera');
     });
 
-    it('deve lançar NotFoundException se grupo não existe', async () => {
+    it('deve lançar GrupoNaoEncontradoError se grupo não existe', async () => {
       mockPrisma.grupo.findUnique.mockResolvedValue(null);
 
       await expect(
         service.adicionarPorEmail('inexistente', 'maria@example.com'),
-      ).rejects.toThrow(NotFoundException);
+      ).rejects.toThrow(GrupoNaoEncontradoError);
     });
 
-    it('deve lançar BadRequestException se grupo está inativo', async () => {
+    it('deve lançar GrupoInativoError se grupo está inativo', async () => {
       mockPrisma.grupo.findUnique.mockResolvedValue({
         ...mockGrupo,
         ativo: false,
@@ -162,26 +169,26 @@ describe('GrupoUsuarioService', () => {
 
       await expect(
         service.adicionarPorEmail('grupo-1', 'maria@example.com'),
-      ).rejects.toThrow(BadRequestException);
+      ).rejects.toThrow(GrupoInativoError);
     });
 
-    it('deve lançar NotFoundException se usuário não existe', async () => {
+    it('deve lançar UsuarioNaoEncontradoError se usuário não existe', async () => {
       mockPrisma.grupo.findUnique.mockResolvedValue(mockGrupo);
       mockPrisma.usuario.findUnique.mockResolvedValue(null);
 
       await expect(
         service.adicionarPorEmail('grupo-1', 'naoexiste@example.com'),
-      ).rejects.toThrow(NotFoundException);
+      ).rejects.toThrow(UsuarioNaoEncontradoError);
     });
 
-    it('deve lançar ConflictException se usuário já está no grupo', async () => {
+    it('deve lançar JaEstaNoGrupoError se usuário já está no grupo', async () => {
       mockPrisma.grupo.findUnique.mockResolvedValue(mockGrupo);
       mockPrisma.usuario.findUnique.mockResolvedValue(mockUsuario);
       mockPrisma.grupoUsuario.findUnique.mockResolvedValue(mockRegistro);
 
       await expect(
         service.adicionarPorEmail('grupo-1', 'maria@example.com'),
-      ).rejects.toThrow(ConflictException);
+      ).rejects.toThrow(JaEstaNoGrupoError);
     });
   });
 
@@ -202,11 +209,11 @@ describe('GrupoUsuarioService', () => {
       expect(result[0].role).toBe('ADMIN');
     });
 
-    it('deve lançar NotFoundException se grupo não existe', async () => {
+    it('deve lançar GrupoNaoEncontradoError se grupo não existe', async () => {
       mockPrisma.grupo.findUnique.mockResolvedValue(null);
 
       await expect(service.listarMembros('inexistente')).rejects.toThrow(
-        NotFoundException,
+        GrupoNaoEncontradoError,
       );
     });
   });
@@ -245,7 +252,7 @@ describe('GrupoUsuarioService', () => {
       mockPrisma.grupoUsuario.count.mockResolvedValue(1);
 
       await expect(service.sair('grupo-1', 'user-1')).rejects.toThrow(
-        BadRequestException,
+        UnicoAdminError,
       );
     });
 

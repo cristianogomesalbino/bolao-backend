@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD } from '@nestjs/core';
+import { DomainExceptionFilter } from './common/filters/domain-exception.filter';
 import { AppController } from './app.controller';
 import { TemporadasModule } from './modules/temporadas/temporadas.module';
 import { PrismaModule } from './prisma/prisma.module';
@@ -22,6 +23,10 @@ import { JwtAuthGuard } from './modules/auth/jwt-auth.guard';
   ],
   controllers: [AppController],
   providers: [
+    {
+      provide: APP_FILTER,
+      useClass: DomainExceptionFilter,
+    },
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,

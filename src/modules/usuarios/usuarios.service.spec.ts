@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import {
-  ConflictException,
-  NotFoundException,
-} from '@nestjs/common';
 import { UsuariosService } from './usuarios.service';
+import {
+  EmailJaCadastradoError,
+  UsuarioNaoEncontradoError,
+} from '../../common/errors/domain-errors';
 import * as bcrypt from 'bcryptjs';
 
 vi.mock('bcryptjs');
@@ -63,7 +63,7 @@ describe('UsuariosService', () => {
           email: 'joao@example.com',
           senha: 'senha123',
         }),
-      ).rejects.toThrow(ConflictException);
+      ).rejects.toThrow(EmailJaCadastradoError);
     });
   });
 
@@ -98,7 +98,7 @@ describe('UsuariosService', () => {
       mockPrisma.usuario.findUnique.mockResolvedValue(null);
 
       await expect(service.buscarPorId('inexistente')).rejects.toThrow(
-        NotFoundException,
+        UsuarioNaoEncontradoError,
       );
     });
 
@@ -109,7 +109,7 @@ describe('UsuariosService', () => {
       });
 
       await expect(service.buscarPorId('user-1')).rejects.toThrow(
-        NotFoundException,
+        UsuarioNaoEncontradoError,
       );
     });
   });
@@ -154,7 +154,7 @@ describe('UsuariosService', () => {
 
       await expect(
         service.atualizar('inexistente', { nome: 'Teste' }),
-      ).rejects.toThrow(NotFoundException);
+      ).rejects.toThrow(UsuarioNaoEncontradoError);
     });
 
     it('deve lançar NotFoundException se usuário está inativo', async () => {
@@ -165,7 +165,7 @@ describe('UsuariosService', () => {
 
       await expect(
         service.atualizar('user-1', { nome: 'Teste' }),
-      ).rejects.toThrow(NotFoundException);
+      ).rejects.toThrow(UsuarioNaoEncontradoError);
     });
   });
 
@@ -203,7 +203,7 @@ describe('UsuariosService', () => {
       mockPrisma.usuario.findUnique.mockResolvedValue(null);
 
       await expect(service.remover('inexistente')).rejects.toThrow(
-        NotFoundException,
+        UsuarioNaoEncontradoError,
       );
     });
   });

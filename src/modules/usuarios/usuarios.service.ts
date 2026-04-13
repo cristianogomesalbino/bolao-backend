@@ -1,6 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { ErrorFactory } from '../../common/errors/error.factory';
+import {
+  EmailJaCadastradoError,
+  UsuarioNaoEncontradoError,
+} from '../../common/errors/domain-errors';
 import * as bcrypt from 'bcryptjs';
 import { USUARIOS } from './usuarios.constants';
 
@@ -14,7 +17,7 @@ export class UsuariosService {
     });
 
     if (existe) {
-      throw ErrorFactory.conflict(USUARIOS.MENSAGENS.EMAIL_JA_CADASTRADO);
+      throw new EmailJaCadastradoError();
     }
 
     const senhaHash = await bcrypt.hash(data.senha, 10);
@@ -43,7 +46,7 @@ export class UsuariosService {
     });
 
     if (!usuario || !usuario.ativo) {
-      throw ErrorFactory.notFound(USUARIOS.MENSAGENS.USUARIO_NAO_ENCONTRADO);
+      throw new UsuarioNaoEncontradoError();
     }
 
     return usuario;
@@ -58,7 +61,7 @@ export class UsuariosService {
     });
 
     if (!usuarioExistente || !usuarioExistente.ativo) {
-      throw ErrorFactory.notFound(USUARIOS.MENSAGENS.USUARIO_NAO_ENCONTRADO);
+      throw new UsuarioNaoEncontradoError();
     }
 
     let senhaHash: string | undefined;
@@ -83,7 +86,7 @@ export class UsuariosService {
     });
 
     if (!usuario) {
-      throw ErrorFactory.notFound(USUARIOS.MENSAGENS.USUARIO_NAO_ENCONTRADO);
+      throw new UsuarioNaoEncontradoError();
     }
 
     if (!usuario.ativo) {

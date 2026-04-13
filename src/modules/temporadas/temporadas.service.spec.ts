@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { NotFoundException } from '@nestjs/common';
+import { CampeonatoNaoEncontradoError } from '../../common/errors/domain-errors';
 import { TemporadasService } from './temporadas.service';
 
 const mockCampeonato = {
@@ -51,7 +51,7 @@ describe('TemporadasService', () => {
 
       await expect(
         service.criar({ ano: 2026, campeonatoId: 'inexistente' }),
-      ).rejects.toThrow(NotFoundException);
+      ).rejects.toThrow(CampeonatoNaoEncontradoError);
     });
   });
 

@@ -1,10 +1,13 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import {
-  UnauthorizedException,
-  NotFoundException,
-} from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
 import { AuthService } from './auth.service';
+import {
+  CredenciaisInvalidasError,
+  RefreshNaoFornecidoError,
+  RefreshInvalidoError,
+  RefreshExpiradoError,
+} from '../../common/errors/domain-errors';
+import { UsuarioNaoEncontradoError } from '../../common/errors/domain-errors/usuarios.errors';
 
 vi.mock('bcryptjs');
 
@@ -57,18 +60,18 @@ describe('AuthService', () => {
 
     it('deve lançar se usuário não existe', async () => {
       mockPrisma.usuario.findUnique.mockResolvedValue(null);
-      await expect(service.login('x@x.com', '1')).rejects.toThrow(UnauthorizedException);
+      await expect(service.login('x@x.com', '1')).rejects.toThrow(CredenciaisInvalidasError);
     });
 
     it('deve lançar se usuário inativo', async () => {
       mockPrisma.usuario.findUnique.mockResolvedValue({ ...mockUsuario, ativo: false });
-      await expect(service.login('joao@example.com', '1')).rejects.toThrow(UnauthorizedException);
+      await expect(service.login('joao@example.com', '1')).rejects.toThrow(CredenciaisInvalidasError);
     });
 
     it('deve lançar se senha inválida', async () => {
       mockPrisma.usuario.findUnique.mockResolvedValue(mockUsuario);
       (bcrypt.compare as any).mockResolvedValue(false);
-      await expect(service.login('joao@example.com', 'x')).rejects.toThrow(UnauthorizedException);
+      await expect(service.login('joao@example.com', 'x')).rejects.toThrow(CredenciaisInvalidasError);
     });
   });
 
@@ -82,25 +85,25 @@ describe('AuthService', () => {
     });
 
     it('deve lançar se vazio', async () => {
-      await expect(service.refresh('')).rejects.toThrow(UnauthorizedException);
+      await expect(service.refresh('')).rejects.toThrow(RefreshNaoFornecidoError);
     });
 
     it('deve lançar se não existe', async () => {
       mockPrisma.refreshToken.findUnique.mockResolvedValue(null);
-      await expect(service.refresh('x')).rejects.toThrow(UnauthorizedException);
+      await expect(service.refresh('x')).rejects.toThrow(RefreshInvalidoError);
     });
 
     it('deve lançar se expirado', async () => {
       mockPrisma.refreshToken.findUnique.mockResolvedValue({ token: 'e', usuarioId: 'user-1' });
       mockJwt.verify.mockImplementation(() => { throw new Error(); });
-      await expect(service.refresh('e')).rejects.toThrow(UnauthorizedException);
+      await expect(service.refresh('e')).rejects.toThrow(RefreshExpiradoError);
     });
 
     it('deve lançar se usuário deletado', async () => {
       mockPrisma.refreshToken.findUnique.mockResolvedValue({ token: 'v', usuarioId: 'x' });
       mockJwt.verify.mockReturnValue({});
       mockPrisma.usuario.findUnique.mockResolvedValue(null);
-      await expect(service.refresh('v')).rejects.toThrow(NotFoundException);
+      await expect(service.refresh('v')).rejects.toThrow(UsuarioNaoEncontradoError);
     });
   });
 
@@ -112,7 +115,7 @@ describe('AuthService', () => {
     });
 
     it('deve lançar se vazio', async () => {
-      await expect(service.logout('')).rejects.toThrow(UnauthorizedException);
+      await expect(service.logout('')).rejects.toThrow(RefreshNaoFornecidoError);
     });
   });
 });

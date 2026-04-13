@@ -2,7 +2,13 @@ import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../../prisma/prisma.service';
-import { ErrorFactory } from '../../common/errors/error.factory';
+import {
+  CredenciaisInvalidasError,
+  RefreshNaoFornecidoError,
+  RefreshInvalidoError,
+  RefreshExpiradoError,
+} from '../../common/errors/domain-errors';
+import { UsuarioNaoEncontradoError } from '../../common/errors/domain-errors/usuarios.errors';
 import { AUTH } from './auth.constants';
 
 @Injectable()
@@ -18,12 +24,12 @@ export class AuthService {
     });
 
     if (!usuario || !usuario.ativo) {
-      throw ErrorFactory.unauthorized(AUTH.MENSAGENS.CREDENCIAIS_INVALIDAS);
+      throw new CredenciaisInvalidasError();
     }
 
     const senhaValida = await bcrypt.compare(senha, usuario.senha);
     if (!senhaValida) {
-      throw ErrorFactory.unauthorized(AUTH.MENSAGENS.CREDENCIAIS_INVALIDAS);
+      throw new CredenciaisInvalidasError();
     }
 
     await this.prisma.refreshToken.deleteMany({
@@ -38,6 +44,7 @@ export class AuthService {
       data: {
         token: refreshToken,
         usuarioId: usuario.id,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       },
     });
 
@@ -46,7 +53,7 @@ export class AuthService {
 
   async refresh(refreshToken: string) {
     if (!refreshToken) {
-      throw ErrorFactory.unauthorized(AUTH.MENSAGENS.REFRESH_NAO_FORNECIDO);
+      throw new RefreshNaoFornecidoError();
     }
 
     const tokenRegistro = await this.prisma.refreshToken.findUnique({
@@ -54,13 +61,13 @@ export class AuthService {
     });
 
     if (!tokenRegistro) {
-      throw ErrorFactory.unauthorized(AUTH.MENSAGENS.REFRESH_INVALIDO);
+      throw new RefreshInvalidoError();
     }
 
     try {
       this.jwtService.verify(tokenRegistro.token);
     } catch {
-      throw ErrorFactory.unauthorized(AUTH.MENSAGENS.REFRESH_EXPIRADO);
+      throw new RefreshExpiradoError();
     }
 
     const usuario = await this.prisma.usuario.findUnique({
@@ -68,7 +75,7 @@ export class AuthService {
     });
 
     if (!usuario) {
-      throw ErrorFactory.notFound(AUTH.MENSAGENS.USUARIO_NAO_ENCONTRADO);
+      throw new UsuarioNaoEncontradoError();
     }
 
     const payload = { sub: usuario.id, email: usuario.email, perfil: usuario.perfil };
@@ -79,7 +86,7 @@ export class AuthService {
 
   async logout(refreshToken: string) {
     if (!refreshToken) {
-      throw ErrorFactory.unauthorized(AUTH.MENSAGENS.REFRESH_NAO_FORNECIDO);
+      throw new RefreshNaoFornecidoError();
     }
 
     await this.prisma.refreshToken.deleteMany({

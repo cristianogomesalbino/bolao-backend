@@ -3,6 +3,7 @@ import { AppModule } from './app.module';
 import { ValidationPipe, BadRequestException } from '@nestjs/common';
 import { PrismaExceptionFilter } from './common/filters/prisma-exception.filter';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { DomainExceptionFilter } from './common/filters/domain-exception.filter';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
 async function bootstrap() {
@@ -11,8 +12,9 @@ async function bootstrap() {
   app.enableCors();
 
   app.useGlobalFilters(
-    new PrismaExceptionFilter(),
     new HttpExceptionFilter(),
+    new PrismaExceptionFilter(),
+    new DomainExceptionFilter(),
   );
 
   app.useGlobalPipes(
