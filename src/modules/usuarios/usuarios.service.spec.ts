@@ -5,63 +5,50 @@ import {
   UsuarioNaoEncontradoError,
 } from '../../common/errors/domain-errors';
 import * as bcrypt from 'bcryptjs';
+import { InMemoryUsuarioRepository } from './repositories/in-memory-usuario.repository';
 
 vi.mock('bcryptjs');
 
-const mockUsuario = {
-  id: 'user-1',
-  nome: 'João Silva',
-  email: 'joao@example.com',
-  senha: '$2a$10$hashedpassword',
-  perfil: 'USER',
-  ativo: true,
-  dataCriacao: new Date(),
-  atualizadoEm: new Date(),
-};
-
-const mockPrisma = {
-  usuario: {
-    findUnique: vi.fn(),
-    findMany: vi.fn(),
-    create: vi.fn(),
-    update: vi.fn(),
-  },
-};
-
 describe('UsuariosService', () => {
   let service: UsuariosService;
+  let usuarioRepo: InMemoryUsuarioRepository;
 
   beforeEach(() => {
-    service = new UsuariosService(mockPrisma as any);
+    usuarioRepo = new InMemoryUsuarioRepository();
+    service = new UsuariosService(usuarioRepo);
     vi.clearAllMocks();
+    (bcrypt.hash as any).mockResolvedValue('hashed');
   });
 
   // ==================== criar ====================
 
   describe('criar', () => {
     it('deve criar usuário com sucesso', async () => {
-      mockPrisma.usuario.findUnique.mockResolvedValue(null);
-      (bcrypt.hash as any).mockResolvedValue('hashed');
-      mockPrisma.usuario.create.mockResolvedValue(mockUsuario);
-
       const result = await service.criar({
         nome: 'João Silva',
         email: 'joao@example.com',
         senha: 'senha123',
       });
 
-      expect(result.id).toBe('user-1');
       expect(result.nome).toBe('João Silva');
+      expect(result.email).toBe('joao@example.com');
+      expect(result.senha).toBe('hashed');
+      expect(result.id).toBeDefined();
+      expect(usuarioRepo.items).toHaveLength(1);
     });
 
-    it('deve lançar ConflictException se email já existe', async () => {
-      mockPrisma.usuario.findUnique.mockResolvedValue(mockUsuario);
+    it('deve lançar EmailJaCadastradoError se email já existe', async () => {
+      await service.criar({
+        nome: 'João',
+        email: 'joao@example.com',
+        senha: 'senha123',
+      });
 
       await expect(
         service.criar({
-          nome: 'João',
+          nome: 'Outro João',
           email: 'joao@example.com',
-          senha: 'senha123',
+          senha: 'senha456',
         }),
       ).rejects.toThrow(EmailJaCadastradoError);
     });
@@ -71,15 +58,14 @@ describe('UsuariosService', () => {
 
   describe('listar', () => {
     it('deve retornar lista de usuários ativos', async () => {
-      mockPrisma.usuario.findMany.mockResolvedValue([mockUsuario]);
+      await service.criar({ nome: 'João', email: 'joao@example.com', senha: 's' });
+      await service.criar({ nome: 'Maria', email: 'maria@example.com', senha: 's' });
 
       const result = await service.listar();
 
-      expect(result).toHaveLength(1);
-      expect(result[0].nome).toBe('João Silva');
-      expect(mockPrisma.usuario.findMany).toHaveBeenCalledWith({
-        where: { ativo: true },
-      });
+      expect(result).toHaveLength(2);
+      expect(result[0].nome).toBe('João');
+      expect(result[1].nome).toBe('Maria');
     });
   });
 
@@ -87,28 +73,33 @@ describe('UsuariosService', () => {
 
   describe('buscarPorId', () => {
     it('deve retornar usuário por ID', async () => {
-      mockPrisma.usuario.findUnique.mockResolvedValue(mockUsuario);
+      const criado = await service.criar({
+        nome: 'João Silva',
+        email: 'joao@example.com',
+        senha: 'senha123',
+      });
 
-      const result = await service.buscarPorId('user-1');
+      const result = await service.buscarPorId(criado.id);
 
-      expect(result.id).toBe('user-1');
+      expect(result.id).toBe(criado.id);
+      expect(result.nome).toBe('João Silva');
     });
 
-    it('deve lançar NotFoundException se usuário não existe', async () => {
-      mockPrisma.usuario.findUnique.mockResolvedValue(null);
-
+    it('deve lançar UsuarioNaoEncontradoError se usuário não existe', async () => {
       await expect(service.buscarPorId('inexistente')).rejects.toThrow(
         UsuarioNaoEncontradoError,
       );
     });
 
-    it('deve lançar NotFoundException se usuário está inativo', async () => {
-      mockPrisma.usuario.findUnique.mockResolvedValue({
-        ...mockUsuario,
-        ativo: false,
+    it('deve lançar UsuarioNaoEncontradoError se usuário está inativo', async () => {
+      const criado = await service.criar({
+        nome: 'João',
+        email: 'joao@example.com',
+        senha: 's',
       });
+      await usuarioRepo.desativar(criado.id);
 
-      await expect(service.buscarPorId('user-1')).rejects.toThrow(
+      await expect(service.buscarPorId(criado.id)).rejects.toThrow(
         UsuarioNaoEncontradoError,
       );
     });
@@ -118,13 +109,13 @@ describe('UsuariosService', () => {
 
   describe('atualizar', () => {
     it('deve atualizar nome do usuário', async () => {
-      mockPrisma.usuario.findUnique.mockResolvedValue(mockUsuario);
-      mockPrisma.usuario.update.mockResolvedValue({
-        ...mockUsuario,
-        nome: 'João Atualizado',
+      const criado = await service.criar({
+        nome: 'João Silva',
+        email: 'joao@example.com',
+        senha: 'senha123',
       });
 
-      const result = await service.atualizar('user-1', {
+      const result = await service.atualizar(criado.id, {
         nome: 'João Atualizado',
       });
 
@@ -132,39 +123,36 @@ describe('UsuariosService', () => {
     });
 
     it('deve fazer hash da senha ao atualizar', async () => {
-      mockPrisma.usuario.findUnique.mockResolvedValue(mockUsuario);
+      const criado = await service.criar({
+        nome: 'João',
+        email: 'joao@example.com',
+        senha: 'senha123',
+      });
       (bcrypt.hash as any).mockResolvedValue('new-hash');
-      mockPrisma.usuario.update.mockResolvedValue(mockUsuario);
 
-      await service.atualizar('user-1', { senha: 'novasenha' });
+      await service.atualizar(criado.id, { senha: 'novasenha' });
 
       expect(bcrypt.hash).toHaveBeenCalledWith('novasenha', 10);
-      expect(mockPrisma.usuario.update).toHaveBeenCalledWith({
-        where: { id: 'user-1' },
-        data: {
-          nome: undefined,
-          email: undefined,
-          senha: 'new-hash',
-        },
-      });
+      const atualizado = usuarioRepo.items.find((u) => u.id === criado.id);
+      expect(atualizado.senha).toBe('new-hash');
     });
 
-    it('deve lançar NotFoundException se usuário não existe', async () => {
-      mockPrisma.usuario.findUnique.mockResolvedValue(null);
-
+    it('deve lançar UsuarioNaoEncontradoError se usuário não existe', async () => {
       await expect(
         service.atualizar('inexistente', { nome: 'Teste' }),
       ).rejects.toThrow(UsuarioNaoEncontradoError);
     });
 
-    it('deve lançar NotFoundException se usuário está inativo', async () => {
-      mockPrisma.usuario.findUnique.mockResolvedValue({
-        ...mockUsuario,
-        ativo: false,
+    it('deve lançar UsuarioNaoEncontradoError se usuário está inativo', async () => {
+      const criado = await service.criar({
+        nome: 'João',
+        email: 'joao@example.com',
+        senha: 's',
       });
+      await usuarioRepo.desativar(criado.id);
 
       await expect(
-        service.atualizar('user-1', { nome: 'Teste' }),
+        service.atualizar(criado.id, { nome: 'Teste' }),
       ).rejects.toThrow(UsuarioNaoEncontradoError);
     });
   });
@@ -173,35 +161,33 @@ describe('UsuariosService', () => {
 
   describe('remover', () => {
     it('deve desativar usuário ativo', async () => {
-      mockPrisma.usuario.findUnique.mockResolvedValue(mockUsuario);
-      mockPrisma.usuario.update.mockResolvedValue({
-        ...mockUsuario,
-        ativo: false,
+      const criado = await service.criar({
+        nome: 'João',
+        email: 'joao@example.com',
+        senha: 's',
       });
 
-      const result = await service.remover('user-1');
+      const result = await service.remover(criado.id);
 
       expect(result.mensagem).toBe('Usuário desativado com sucesso');
-      expect(mockPrisma.usuario.update).toHaveBeenCalledWith({
-        where: { id: 'user-1' },
-        data: { ativo: false },
-      });
+      const usuario = usuarioRepo.items.find((u) => u.id === criado.id);
+      expect(usuario.ativo).toBe(false);
     });
 
     it('deve retornar mensagem se já está inativo', async () => {
-      mockPrisma.usuario.findUnique.mockResolvedValue({
-        ...mockUsuario,
-        ativo: false,
+      const criado = await service.criar({
+        nome: 'João',
+        email: 'joao@example.com',
+        senha: 's',
       });
+      await usuarioRepo.desativar(criado.id);
 
-      const result = await service.remover('user-1');
+      const result = await service.remover(criado.id);
 
       expect(result.mensagem).toBe('Usuário já está inativo');
     });
 
-    it('deve lançar NotFoundException se usuário não existe', async () => {
-      mockPrisma.usuario.findUnique.mockResolvedValue(null);
-
+    it('deve lançar UsuarioNaoEncontradoError se usuário não existe', async () => {
       await expect(service.remover('inexistente')).rejects.toThrow(
         UsuarioNaoEncontradoError,
       );
@@ -212,16 +198,19 @@ describe('UsuariosService', () => {
 
   describe('buscarPorEmail', () => {
     it('deve retornar usuário pelo email', async () => {
-      mockPrisma.usuario.findUnique.mockResolvedValue(mockUsuario);
+      await service.criar({
+        nome: 'João Silva',
+        email: 'joao@example.com',
+        senha: 'senha123',
+      });
 
       const result = await service.buscarPorEmail('joao@example.com');
 
-      expect(result).toEqual(mockUsuario);
+      expect(result).not.toBeNull();
+      expect(result.nome).toBe('João Silva');
     });
 
     it('deve retornar null se email não existe', async () => {
-      mockPrisma.usuario.findUnique.mockResolvedValue(null);
-
       const result = await service.buscarPorEmail('naoexiste@example.com');
 
       expect(result).toBeNull();

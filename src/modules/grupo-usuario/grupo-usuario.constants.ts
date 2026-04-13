@@ -1,5 +1,6 @@
 export const GRUPO_USUARIO = {
   TAG: 'Grupo - Membros',
+  REPOSITORY_TOKEN: 'GRUPO_USUARIO_REPOSITORY',
   MENSAGENS: {
     CODIGO_CONVITE_INVALIDO: 'Código de convite inválido',
     GRUPO_INATIVO: 'Grupo está inativo',

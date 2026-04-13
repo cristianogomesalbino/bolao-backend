@@ -1,20 +1,20 @@
-import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service';
+import { Inject, Injectable } from '@nestjs/common';
 import { CreateCampeonatoDto } from './dto/create-campeonato.dto';
+import { CAMPEONATOS } from './campeonatos.constants';
+import { CampeonatoRepository } from './repositories/campeonato.repository.interface';
 
 @Injectable()
 export class CampeonatosService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    @Inject(CAMPEONATOS.REPOSITORY_TOKEN)
+    private readonly campeonatoRepo: CampeonatoRepository,
+  ) {}
 
   criar(createCampeonatoDto: CreateCampeonatoDto) {
-    return this.prisma.campeonato.create({
-      data: {
-        nome: createCampeonatoDto.nome,
-      },
-    });
+    return this.campeonatoRepo.criar({ nome: createCampeonatoDto.nome });
   }
 
   buscarTodos() {
-    return this.prisma.campeonato.findMany();
+    return this.campeonatoRepo.buscarTodos();
   }
 }

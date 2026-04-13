@@ -7,9 +7,10 @@ API REST para gerenciamento de bolões de campeonatos de futebol.
 - NestJS 11
 - Prisma ORM 6
 - PostgreSQL (Supabase)
+- Vitest 4 (testes unitários)
 - Docker Compose (profiles dev/prod)
 - TypeScript
-- JWT (autenticação)
+- JWT (autenticação com guard global via APP_GUARD)
 - Swagger (documentação)
 
 ## Estrutura do Projeto
@@ -24,10 +25,25 @@ src/
 │   ├── grupos/             # Grupos de bolão
 │   └── grupo-usuario/      # Membros dos grupos (adicionar, remover, convite)
 ├── common/
-│   ├── errors/             # ErrorFactory (respostas padronizadas)
-│   ├── filters/            # Exception filters (HTTP, Prisma)
-│   └── pipes/              # Custom pipes (UUID validation)
+│   ├── constants/          # Constantes globais (roles)
+│   ├── decorators/         # @Public(), @CurrentUser(), @GroupRoles()
+│   ├── errors/             # ErrorFactory + DomainError + domain errors por módulo
+│   ├── filters/            # Exception filters (HTTP, Prisma, DomainException)
+│   ├── pipes/              # Custom pipes (UUID validation)
+│   └── presenters/         # Presenters com toHttp() por entidade
 └── prisma/                 # Prisma service e configurações
+```
+
+Cada módulo segue a estrutura:
+```
+src/modules/{modulo}/
+├── repositories/           # Interface + Prisma impl + InMemory impl
+├── {modulo}.constants.ts   # TAG, MENSAGENS, REPOSITORY_TOKEN
+├── {modulo}.service.ts     # Lógica de negócio (injeta repositórios)
+├── {modulo}.controller.ts  # Rotas HTTP (usa Presenters)
+├── {modulo}.module.ts      # Registro de providers
+├── {modulo}.service.spec.ts # Testes com InMemory repositories
+└── dto/                    # DTOs com class-validator
 ```
 
 ## Pré-requisitos
@@ -82,7 +98,7 @@ sh dev start-prod      # Build e inicia em modo produção
 |--------|------------------|------------------------|------|
 | POST   | `/auth/login`    | Login                  | Não  |
 | POST   | `/auth/refresh`  | Renovar token          | Não  |
-| POST   | `/auth/logout`   | Logout                 | Não  |
+| POST   | `/auth/logout`   | Logout                 | JWT  |
 
 ### Usuários (`/usuarios`)
 
@@ -133,9 +149,11 @@ sh dev start-prod      # Build e inicia em modo produção
 ## Testes
 
 ```bash
-npm run test          # testes unitários
-npm run test:cov      # cobertura
+docker exec bolao-backend-dev npx vitest run       # testes unitários
+docker exec bolao-backend-dev npx vitest run --coverage  # cobertura
 ```
+
+> Todos os comandos rodam dentro do Docker. Nunca executar npm/npx diretamente na máquina host.
 
 ## Licença
 

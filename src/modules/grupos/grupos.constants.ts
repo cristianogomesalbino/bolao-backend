@@ -1,5 +1,6 @@
 export const GRUPOS = {
   TAG: 'Grupos',
+  REPOSITORY_TOKEN: 'GRUPO_REPOSITORY',
   MENSAGENS: {
     TEMPORADA_NAO_ENCONTRADA: 'Temporada não encontrada',
     GRUPO_NAO_ENCONTRADO: 'Grupo não encontrado',

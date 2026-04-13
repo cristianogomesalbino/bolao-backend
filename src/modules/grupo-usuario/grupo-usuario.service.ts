@@ -1,5 +1,4 @@
-import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service';
+import { Inject, Injectable } from '@nestjs/common';
 import { ErrorFactory } from '../../common/errors/error.factory';
 import {
   CodigoConviteInvalidoError,
@@ -12,19 +11,25 @@ import { GrupoNaoEncontradoError } from '../../common/errors/domain-errors/grupo
 import { UsuarioNaoEncontradoError } from '../../common/errors/domain-errors/usuarios.errors';
 import { GRUPO_USUARIO } from './grupo-usuario.constants';
 import { GRUPO_ROLE } from '../../common/constants/roles.constants';
-
-function compositeKey(usuarioId: string, grupoId: string) {
-  return { usuarioId_grupoId: { usuarioId, grupoId } };
-}
+import { GrupoUsuarioRepository } from './repositories/grupo-usuario.repository.interface';
+import { GRUPOS } from '../grupos/grupos.constants';
+import { GrupoRepository } from '../grupos/repositories/grupo.repository.interface';
+import { USUARIOS } from '../usuarios/usuarios.constants';
+import { UsuarioRepository } from '../usuarios/repositories/usuario.repository.interface';
 
 @Injectable()
 export class GrupoUsuarioService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    @Inject(GRUPO_USUARIO.REPOSITORY_TOKEN)
+    private readonly grupoUsuarioRepo: GrupoUsuarioRepository,
+    @Inject(GRUPOS.REPOSITORY_TOKEN)
+    private readonly grupoRepo: GrupoRepository,
+    @Inject(USUARIOS.REPOSITORY_TOKEN)
+    private readonly usuarioRepo: UsuarioRepository,
+  ) {}
 
   async entrarPorConvite(codigoConvite: string, usuarioId: string) {
-    const grupo = await this.prisma.grupo.findUnique({
-      where: { codigoConvite },
-    });
+    const grupo = await this.grupoRepo.buscarPorCodigoConvite(codigoConvite);
 
     if (!grupo) {
       throw new CodigoConviteInvalidoError();
@@ -36,39 +41,20 @@ export class GrupoUsuarioService {
 
     await this.validarEntrada(usuarioId, grupo.id, grupo.maxParticipantes);
 
-    return this.prisma.grupoUsuario.create({
-      data: {
-        usuarioId,
-        grupoId: grupo.id,
-        role: GRUPO_ROLE.MEMBER,
-      },
-      include: {
-        grupo: { select: { id: true, nome: true } },
-      },
-    });
+    return this.grupoUsuarioRepo.criar(
+      { usuarioId, grupoId: grupo.id, role: GRUPO_ROLE.MEMBER },
+      { grupo: { select: { id: true, nome: true } } },
+    );
   }
 
   async listarMembros(grupoId: string) {
-    const grupo = await this.prisma.grupo.findUnique({
-      where: { id: grupoId },
-    });
+    const grupo = await this.grupoRepo.buscarPorIdSimples(grupoId);
 
     if (!grupo) {
       throw new GrupoNaoEncontradoError();
     }
 
-    return this.prisma.grupoUsuario.findMany({
-      where: { grupoId },
-      select: {
-        role: true,
-        usuario: {
-          select: {
-            id: true,
-            nome: true,
-          },
-        },
-      },
-    });
+    return this.grupoUsuarioRepo.listarPorGrupo(grupoId);
   }
 
   async sair(grupoId: string, usuarioId: string) {
@@ -82,9 +68,7 @@ export class GrupoUsuarioService {
       await this.validarUnicoAdmin(grupoId);
     }
 
-    await this.prisma.grupoUsuario.delete({
-      where: compositeKey(usuarioId, grupoId),
-    });
+    await this.grupoUsuarioRepo.remover(usuarioId, grupoId);
 
     return { mensagem: GRUPO_USUARIO.MENSAGENS.SAIU_DO_GRUPO };
   }
@@ -96,17 +80,13 @@ export class GrupoUsuarioService {
       GRUPO_USUARIO.MENSAGENS.USUARIO_NAO_ESTA_NO_GRUPO,
     );
 
-    await this.prisma.grupoUsuario.delete({
-      where: compositeKey(usuarioId, grupoId),
-    });
+    await this.grupoUsuarioRepo.remover(usuarioId, grupoId);
 
     return { mensagem: GRUPO_USUARIO.MENSAGENS.USUARIO_REMOVIDO };
   }
 
   async adicionarPorEmail(grupoId: string, email: string) {
-    const grupo = await this.prisma.grupo.findUnique({
-      where: { id: grupoId },
-    });
+    const grupo = await this.grupoRepo.buscarPorIdSimples(grupoId);
 
     if (!grupo) {
       throw new GrupoNaoEncontradoError();
@@ -116,9 +96,7 @@ export class GrupoUsuarioService {
       throw new GrupoInativoError();
     }
 
-    const usuario = await this.prisma.usuario.findUnique({
-      where: { email },
-    });
+    const usuario = await this.usuarioRepo.buscarPorEmail(email);
 
     if (!usuario) {
       throw new UsuarioNaoEncontradoError();
@@ -126,17 +104,13 @@ export class GrupoUsuarioService {
 
     await this.validarEntrada(usuario.id, grupoId, grupo.maxParticipantes);
 
-    return this.prisma.grupoUsuario.create({
-      data: {
-        usuarioId: usuario.id,
-        grupoId,
-        role: GRUPO_ROLE.MEMBER,
-      },
-      include: {
+    return this.grupoUsuarioRepo.criar(
+      { usuarioId: usuario.id, grupoId, role: GRUPO_ROLE.MEMBER },
+      {
         usuario: { select: { id: true, nome: true, email: true } },
         grupo: { select: { id: true, nome: true } },
       },
-    });
+    );
   }
 
   private async validarEntrada(
@@ -144,17 +118,13 @@ export class GrupoUsuarioService {
     grupoId: string,
     maxParticipantes: number,
   ) {
-    const jaExiste = await this.prisma.grupoUsuario.findUnique({
-      where: compositeKey(usuarioId, grupoId),
-    });
+    const jaExiste = await this.grupoUsuarioRepo.buscarPorChave(usuarioId, grupoId);
 
     if (jaExiste) {
       throw new JaEstaNoGrupoError();
     }
 
-    const totalMembros = await this.prisma.grupoUsuario.count({
-      where: { grupoId },
-    });
+    const totalMembros = await this.grupoUsuarioRepo.contarPorGrupo(grupoId);
 
     if (totalMembros >= maxParticipantes) {
       throw new LimiteParticipantesError();
@@ -166,9 +136,7 @@ export class GrupoUsuarioService {
     grupoId: string,
     mensagem: string,
   ) {
-    const registro = await this.prisma.grupoUsuario.findUnique({
-      where: compositeKey(usuarioId, grupoId),
-    });
+    const registro = await this.grupoUsuarioRepo.buscarPorChave(usuarioId, grupoId);
 
     if (!registro) {
       throw ErrorFactory.notFound(mensagem);
@@ -178,9 +146,7 @@ export class GrupoUsuarioService {
   }
 
   private async validarUnicoAdmin(grupoId: string) {
-    const admins = await this.prisma.grupoUsuario.count({
-      where: { grupoId, role: GRUPO_ROLE.ADMIN },
-    });
+    const admins = await this.grupoUsuarioRepo.contarAdminsPorGrupo(grupoId);
 
     if (admins <= 1) {
       throw new UnicoAdminError();

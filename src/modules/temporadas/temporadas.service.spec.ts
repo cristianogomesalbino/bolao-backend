@@ -1,54 +1,36 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { CampeonatoNaoEncontradoError } from '../../common/errors/domain-errors';
 import { TemporadasService } from './temporadas.service';
-
-const mockCampeonato = {
-  id: 'camp-1',
-  nome: 'Brasileirão',
-};
-
-const mockTemporada = {
-  id: 'temp-1',
-  ano: 2026,
-  campeonatoId: 'camp-1',
-  dataCriacao: new Date(),
-  campeonato: mockCampeonato,
-};
-
-const mockPrisma = {
-  campeonato: {
-    findUnique: vi.fn(),
-  },
-  temporada: {
-    create: vi.fn(),
-    findMany: vi.fn(),
-  },
-};
+import { InMemoryTemporadaRepository } from './repositories/in-memory-temporada.repository';
+import { InMemoryCampeonatoRepository } from '../campeonatos/repositories/in-memory-campeonato.repository';
 
 describe('TemporadasService', () => {
   let service: TemporadasService;
+  let temporadaRepo: InMemoryTemporadaRepository;
+  let campeonatoRepo: InMemoryCampeonatoRepository;
 
   beforeEach(() => {
-    service = new TemporadasService(mockPrisma as any);
-    vi.clearAllMocks();
+    temporadaRepo = new InMemoryTemporadaRepository();
+    campeonatoRepo = new InMemoryCampeonatoRepository();
+    service = new TemporadasService(temporadaRepo, campeonatoRepo);
   });
 
   describe('criar', () => {
     it('deve criar uma temporada quando campeonato existe', async () => {
-      mockPrisma.campeonato.findUnique.mockResolvedValue(mockCampeonato);
-      mockPrisma.temporada.create.mockResolvedValue(mockTemporada);
+      const campeonato = await campeonatoRepo.criar({ nome: 'Brasileirão' });
 
-      const result = await service.criar({ ano: 2026, campeonatoId: 'camp-1' });
-
-      expect(result).toEqual(mockTemporada);
-      expect(mockPrisma.campeonato.findUnique).toHaveBeenCalledWith({
-        where: { id: 'camp-1' },
+      const result = await service.criar({
+        ano: 2026,
+        campeonatoId: campeonato.id,
       });
+
+      expect(result.ano).toBe(2026);
+      expect(result.campeonatoId).toBe(campeonato.id);
+      expect(result.id).toBeDefined();
+      expect(temporadaRepo.items).toHaveLength(1);
     });
 
-    it('deve lançar NotFoundException se campeonato não existe', async () => {
-      mockPrisma.campeonato.findUnique.mockResolvedValue(null);
-
+    it('deve lançar CampeonatoNaoEncontradoError se campeonato não existe', async () => {
       await expect(
         service.criar({ ano: 2026, campeonatoId: 'inexistente' }),
       ).rejects.toThrow(CampeonatoNaoEncontradoError);
@@ -57,15 +39,14 @@ describe('TemporadasService', () => {
 
   describe('buscarTodos', () => {
     it('deve retornar temporadas com campeonato incluso', async () => {
-      mockPrisma.temporada.findMany.mockResolvedValue([mockTemporada]);
+      const campeonato = await campeonatoRepo.criar({ nome: 'Brasileirão' });
+      temporadaRepo.campeonatos = campeonatoRepo.items;
+      await service.criar({ ano: 2026, campeonatoId: campeonato.id });
 
       const result = await service.buscarTodos();
 
       expect(result).toHaveLength(1);
       expect(result[0].campeonato.nome).toBe('Brasileirão');
-      expect(mockPrisma.temporada.findMany).toHaveBeenCalledWith({
-        include: { campeonato: true },
-      });
     });
   });
 });
