@@ -8,6 +8,7 @@ import { ParseUUIDCustomPipe } from '../../common/pipes/parse-uuid-custom.pipe';
 import { SelfOrAdminGuard } from '../auth/self-or-admin.guard';
 import { USUARIOS } from './usuarios.constants';
 import { Public } from '../../common/decorators/public.decorator';
+import { UsuarioPresenter } from '../../common/presenters';
 
 @ApiTags(USUARIOS.TAG)
 @Controller('usuarios')
@@ -19,15 +20,15 @@ export class UsuariosController {
   @ApiBadRequestResponse({ description: 'Erro de validação.' })
   @Public()
   @Post()
-  criarUsuario(@Body() criarUsuarioDto: CriarUsuarioDto) {
-    return this.usuariosService.criar(criarUsuarioDto);
+  async criarUsuario(@Body() criarUsuarioDto: CriarUsuarioDto) {
+    return UsuarioPresenter.toHttp(await this.usuariosService.criar(criarUsuarioDto));
   }
 
   @ApiOperation({ summary: 'Buscar perfil do usuário autenticado' })
   @ApiResponse({ status: 200, description: 'Perfil retornado com sucesso.' })
   @Get('me')
-  buscarPerfil(@CurrentUser() user) {
-    return this.usuariosService.buscarPorId(user.id);
+  async buscarPerfil(@CurrentUser() user) {
+    return UsuarioPresenter.toHttp(await this.usuariosService.buscarPorId(user.id));
   }
 
   @ApiOperation({ summary: 'Buscar usuário por ID' })
@@ -35,10 +36,10 @@ export class UsuariosController {
   @ApiNotFoundResponse({ description: 'Usuário não encontrado.' })
   @UseGuards(SelfOrAdminGuard)
   @Get(':id')
-  buscarPorId(
+  async buscarPorId(
     @Param('id', new ParseUUIDCustomPipe('id')) id: string,
   ) {
-    return this.usuariosService.buscarPorId(id);
+    return UsuarioPresenter.toHttp(await this.usuariosService.buscarPorId(id));
   }
 
   @ApiOperation({ summary: 'Atualizar dados do usuário' })
@@ -46,11 +47,11 @@ export class UsuariosController {
   @ApiNotFoundResponse({ description: 'Usuário não encontrado.' })
   @UseGuards(SelfOrAdminGuard)
   @Patch(':id')
-  atualizarUsuario(
+  async atualizarUsuario(
     @Param('id', new ParseUUIDCustomPipe('id')) id: string,
     @Body() atualizarUsuarioDto: AtualizarUsuarioDto,
   ) {
-    return this.usuariosService.atualizar(id, atualizarUsuarioDto);
+    return UsuarioPresenter.toHttp(await this.usuariosService.atualizar(id, atualizarUsuarioDto));
   }
 
   @ApiOperation({ summary: 'Remover usuário' })

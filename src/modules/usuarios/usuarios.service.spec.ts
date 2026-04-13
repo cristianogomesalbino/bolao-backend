@@ -52,7 +52,6 @@ describe('UsuariosService', () => {
 
       expect(result.id).toBe('user-1');
       expect(result.nome).toBe('João Silva');
-      expect((result as any).senha).toBeUndefined();
     });
 
     it('deve lançar ConflictException se email já existe', async () => {

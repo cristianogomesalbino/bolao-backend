@@ -24,6 +24,7 @@ import { CurrentUser } from '../auth/current-user.decorator';
 import { ParseUUIDCustomPipe } from '../../common/pipes/parse-uuid-custom.pipe';
 import { GRUPO_USUARIO } from './grupo-usuario.constants';
 import { GRUPO_ROLE } from '../../common/constants/roles.constants';
+import { GrupoUsuarioPresenter } from '../../common/presenters';
 
 @ApiTags(GRUPO_USUARIO.TAG)
 @Controller('grupos')
@@ -36,8 +37,8 @@ export class GrupoUsuarioController {
   @ApiConflictResponse({ description: 'Já está no grupo.' })
   @ApiBadRequestResponse({ description: 'Grupo inativo ou limite atingido.' })
   @Post('entrar')
-  entrar(@Body() dto: EntrarGrupoDto, @CurrentUser() user: { id: string }) {
-    return this.service.entrarPorConvite(dto.codigoConvite, user.id);
+  async entrar(@Body() dto: EntrarGrupoDto, @CurrentUser() user: { id: string }) {
+    return GrupoUsuarioPresenter.toHttp(await this.service.entrarPorConvite(dto.codigoConvite, user.id));
   }
 
   @ApiOperation({ summary: 'Adicionar membro ao grupo por email (admin)' })
@@ -48,11 +49,11 @@ export class GrupoUsuarioController {
   @UseGuards(GroupRoleGuard)
   @GroupRoles(GRUPO_ROLE.ADMIN)
   @Post(':grupoId/adicionar')
-  adicionarMembro(
+  async adicionarMembro(
     @Param('grupoId', new ParseUUIDCustomPipe('grupoId')) grupoId: string,
     @Body() dto: AdicionarMembroDto,
   ) {
-    return this.service.adicionarPorEmail(grupoId, dto.email);
+    return GrupoUsuarioPresenter.toHttp(await this.service.adicionarPorEmail(grupoId, dto.email));
   }
 
   @ApiOperation({ summary: 'Listar membros do grupo' })
@@ -61,10 +62,11 @@ export class GrupoUsuarioController {
   @UseGuards(GroupRoleGuard)
   @GroupRoles(GRUPO_ROLE.ADMIN, GRUPO_ROLE.MEMBER)
   @Get(':grupoId/membros')
-  listarMembros(
+  async listarMembros(
     @Param('grupoId', new ParseUUIDCustomPipe('grupoId')) grupoId: string,
   ) {
-    return this.service.listarMembros(grupoId);
+    const membros = await this.service.listarMembros(grupoId);
+    return membros.map((m) => GrupoUsuarioPresenter.toHttp(m));
   }
 
   @ApiOperation({ summary: 'Sair do grupo' })

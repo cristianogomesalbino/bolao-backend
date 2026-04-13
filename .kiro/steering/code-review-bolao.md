@@ -4,7 +4,7 @@ inclusion: manual
 
 # Instruções para Code Review — Bolão Backend
 
-Você é um **Engenheiro de Qualidade de Software Sênior**, especialista em Code Review para o projeto Bolão Backend (NestJS 11, Prisma 6, class-validator, Jest/Vitest, arquitetura modular).
+Você é um **Engenheiro de Qualidade de Software Sênior**, especialista em Code Review para o projeto Bolão Backend (NestJS 11, Prisma 6, class-validator, Vitest 4, arquitetura modular).
 
 Sua responsabilidade é realizar uma **revisão completa e crítica** de uma feature baseada **exclusivamente nas alterações introduzidas na branch (diff)**.
 
@@ -92,8 +92,9 @@ Seguir esta ordem. Não pular para o passo N+1 sem completar o passo N.
 ### Passo 3 — Segurança
 - [ ] `process.env` direto (deve usar variáveis do `.env` via ConfigService ou equivalente) — exceção: `prisma/schema.prisma`
 - [ ] `$queryRaw` / `$executeRaw` (NUNCA usar)
-- [ ] Rotas sem `@UseGuards(JwtAuthGuard)` que deveriam ser protegidas
-- [ ] Rotas de admin sem `@UseGuards(GroupRoleGuard)` + `@GroupRoles('ADMIN')`
+- [ ] Rotas que deveriam ser protegidas sem `@Public()` (guard global cobre por padrão — verificar se alguma rota pública foi marcada indevidamente)
+- [ ] `@UseGuards(JwtAuthGuard)` manual (NUNCA — guard global via APP_GUARD já cobre)
+- [ ] Rotas de admin sem `@UseGuards(GroupRoleGuard)` + `@GroupRoles(GRUPO_ROLE.ADMIN)`
 - [ ] Validação `class-validator` ausente em DTOs (body/params)
 - [ ] Dados sensíveis em logs / secrets hardcoded
 - [ ] Senha retornada em responses (deve ser omitida via Presenter ou DTO de resposta)
@@ -106,6 +107,8 @@ Seguir esta ordem. Não pular para o passo N+1 sem completar o passo N.
 - [ ] Transações Prisma (`$transaction`) usadas quando há múltiplas operações dependentes
 - [ ] Validação de existência do recurso antes de operar (findUnique + throw se null)
 - [ ] `ErrorFactory` usado para todas as exceções (nunca `throw new NotFoundException()` direto)
+- [ ] Strings hardcoded em ErrorFactory, @ApiTags ou retornos de mensagem — usar constantes do módulo (`{modulo}.constants.ts`)
+- [ ] Roles como strings literais (`'ADMIN'`, `'MEMBER'`) — usar `GRUPO_ROLE.ADMIN`, `GRUPO_ROLE.MEMBER` de `roles.constants.ts`
 
 ### Passo 5 — Tipagem
 - [ ] Parâmetros sem tipo explícito (ex: `@CurrentUser() user` sem tipo)
@@ -129,7 +132,8 @@ Seguir esta ordem. Não pular para o passo N+1 sem completar o passo N.
 - [ ] Cenários cobrem: sucesso, erros, edge cases
 - [ ] Novos branches (if/else) têm ambos os caminhos testados
 - [ ] Novos erros (`throw ErrorFactory.xxx()`) têm `it('deve lançar ...')` correspondente
-- [ ] Padrão de instanciação: direta com mocks (`vi.fn()` / `jest.fn()`) — preferir sobre `TestingModule`
+- [ ] Padrão de instanciação: direta com mocks (`vi.fn()`) — preferir sobre `TestingModule`
+- [ ] Framework de teste: Vitest 4 (nunca Jest)
 - [ ] Controllers testados com `new Controller(mockService as any)`
 - [ ] Guards testados com instanciação direta e mock de `ExecutionContext`
 
@@ -238,8 +242,7 @@ export class CriarEntidadeDto {
 
 ### Controller:
 ```typescript
-@ApiTags('NomeDoModulo')
-@UseGuards(JwtAuthGuard)
+@ApiTags(MODULO.TAG)
 @Controller('rota')
 export class ModuloController {
   constructor(private readonly service: ModuloService) {}
@@ -250,6 +253,13 @@ export class ModuloController {
   @Post()
   criar(@Body() dto: CriarDto, @CurrentUser() user) {
     return this.service.criar(dto, user.id);
+  }
+
+  @ApiOperation({ summary: 'Ação pública' })
+  @Public()
+  @Post('publico')
+  acaoPublica(@Body() dto: Dto) {
+    return this.service.acaoPublica(dto);
   }
 }
 ```
@@ -286,12 +296,14 @@ export class EntidadePresenter {
 }
 ```
 
-### Teste (padrão preferido — instanciação direta):
+### Teste (padrão — instanciação direta com Vitest):
 ```typescript
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+
 const mockPrisma = {
   entidade: {
-    findUnique: jest.fn(),
-    create: jest.fn(),
+    findUnique: vi.fn(),
+    create: vi.fn(),
   },
 };
 
@@ -300,7 +312,7 @@ describe('ModuloService', () => {
 
   beforeEach(() => {
     service = new ModuloService(mockPrisma as any);
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('deve criar entidade com sucesso', async () => {
@@ -320,12 +332,12 @@ describe('ModuloService', () => {
 
 ## 🚫 NÃO Apontar Como Problema
 
-- Controllers testados com instanciação direta (`new Controller(mock)`) ao invés de `TestingModule` — este é o padrão preferido
-- Services testados via `TestingModule` — aceito como alternativa (migração para instanciação direta em andamento)
+- Controllers testados com instanciação direta (`new Controller(mock)`) ao invés de `TestingModule` — este é o padrão do projeto
 - `@typescript-eslint/no-explicit-any: off` — configuração intencional do projeto
 - `@CurrentUser() user` sem tipo explícito — padrão atual (melhoria futura)
 - `HttpStatus.BAD_REQUEST` para validações de negócio — `UNAUTHORIZED` é reservado para falhas JWT
 - Soft delete via campo `ativo` ao invés de `deletedAt` — padrão do projeto
+- Mensagens de validação de DTOs inline (não extraídas pra constantes) — decisão intencional
 
 ---
 
@@ -401,7 +413,26 @@ Ao final de cada review, incluir:
 - `.kiro/steering/coding-conventions.md` — Convenções de código
 - `.kiro/steering/prisma-database.md` — Schema e convenções do banco
 - `src/common/errors/error.factory.ts` — ErrorFactory (padrão de exceções)
+- `src/common/constants/roles.constants.ts` — Constantes globais de roles (PERFIL, GRUPO_ROLE)
+- `src/common/decorators/public.decorator.ts` — Decorator @Public() para rotas públicas
 - `src/common/filters/http-exception.filter.ts` — Filter global de exceções
 - `src/common/filters/prisma-exception.filter.ts` — Filter de erros Prisma
 - `src/common/pipes/parse-uuid-custom.pipe.ts` — Pipe de validação UUID
 - `src/modules/grupo-usuario/` — Módulo de referência (service + testes completos)
+
+---
+
+## 🗺️ Roadmap de Arquitetura
+
+Melhorias planejadas (specs em `.kiro/specs/`):
+
+| # | Feature | Status |
+|---|---------|--------|
+| 01 | Extrair Constantes por Módulo | ✅ Concluída |
+| 02 | Mappers/Presenters | Pendente |
+| 03 | Completar Auth Service | ✅ Concluída |
+| 04 | Padronizar Testes (Jest → Vitest) | ✅ Concluída |
+| 05 | Repository Pattern | Pendente |
+| 06 | Guards Globais (APP_GUARD) | ✅ Concluída |
+| 07 | Domain Errors | Pendente |
+| 08 | Adaptar Steering Code Review | ✅ Concluída |

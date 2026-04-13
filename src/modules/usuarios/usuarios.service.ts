@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { UsuarioResponseDto } from './dto/usuario-response.dto';
 import { ErrorFactory } from '../../common/errors/error.factory';
 import * as bcrypt from 'bcryptjs';
 import { USUARIOS } from './usuarios.constants';
@@ -29,15 +28,13 @@ export class UsuariosService {
       },
     });
 
-    return UsuarioResponseDto.fromEntity(usuario);
+    return usuario;
   }
 
   async listar() {
-    const usuarios = await this.prisma.usuario.findMany({
+    return this.prisma.usuario.findMany({
       where: { ativo: true },
     });
-
-    return usuarios.map(UsuarioResponseDto.fromEntity);
   }
 
   async buscarPorId(id: string) {
@@ -49,7 +46,7 @@ export class UsuariosService {
       throw ErrorFactory.notFound(USUARIOS.MENSAGENS.USUARIO_NAO_ENCONTRADO);
     }
 
-    return UsuarioResponseDto.fromEntity(usuario);
+    return usuario;
   }
 
   async atualizar(
@@ -70,7 +67,7 @@ export class UsuariosService {
       senhaHash = await bcrypt.hash(data.senha, 10);
     }
 
-    const usuario = await this.prisma.usuario.update({
+    return this.prisma.usuario.update({
       where: { id },
       data: {
         nome: data.nome,
@@ -78,8 +75,6 @@ export class UsuariosService {
         senha: senhaHash,
       },
     });
-
-    return UsuarioResponseDto.fromEntity(usuario);
   }
 
   async remover(id: string) {

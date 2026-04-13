@@ -16,6 +16,7 @@ import { GroupRoles } from '../auth/group-roles.decorator';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { GRUPOS } from './grupos.constants';
 import { GRUPO_ROLE } from '../../common/constants/roles.constants';
+import { GrupoPresenter } from '../../common/presenters';
 
 @ApiTags(GRUPOS.TAG)
 @Controller('grupos')
@@ -27,28 +28,29 @@ export class GruposController {
   @ApiBadRequestResponse({ description: 'Erro de validação.' })
   @ApiNotFoundResponse({ description: 'Temporada não encontrada.' })
   @Post()
-  criarGrupo(
+  async criarGrupo(
     @Body() criarGrupoDto: CriarGrupoDto,
     @CurrentUser() user,
   ) {
-    return this.gruposService.criar(criarGrupoDto, user.id);
+    return GrupoPresenter.toHttp(await this.gruposService.criar(criarGrupoDto, user.id));
   }
 
   @ApiOperation({ summary: 'Listar todos os grupos ativos' })
   @ApiResponse({ status: 200, description: 'Lista de grupos retornada com sucesso.' })
   @Get()
-  buscarGrupos() {
-    return this.gruposService.buscarTodos();
+  async buscarGrupos() {
+    const grupos = await this.gruposService.buscarTodos();
+    return grupos.map((g) => GrupoPresenter.toHttp(g));
   }
 
   @ApiOperation({ summary: 'Buscar grupo por ID' })
   @ApiResponse({ status: 200, description: 'Grupo encontrado.' })
   @ApiNotFoundResponse({ description: 'Grupo não encontrado.' })
   @Get(':grupoId')
-  buscarGrupoPorId(
+  async buscarGrupoPorId(
     @Param('grupoId', new ParseUUIDCustomPipe('grupoId')) grupoId: string,
   ) {
-    return this.gruposService.buscarPorId(grupoId);
+    return GrupoPresenter.toHttp(await this.gruposService.buscarPorId(grupoId));
   }
 
   @ApiOperation({ summary: 'Atualizar grupo por ID' })
@@ -57,11 +59,11 @@ export class GruposController {
   @UseGuards(GroupRoleGuard)
   @GroupRoles(GRUPO_ROLE.ADMIN)
   @Patch(':grupoId')
-  atualizarGrupo(
+  async atualizarGrupo(
     @Param('grupoId', new ParseUUIDCustomPipe('grupoId')) grupoId: string,
     @Body() updateGrupoDto: UpdateGrupoDto,
   ) {
-    return this.gruposService.atualizar(grupoId, updateGrupoDto);
+    return GrupoPresenter.toHttp(await this.gruposService.atualizar(grupoId, updateGrupoDto));
   }
 
   @ApiOperation({ summary: 'Alterar status (ativo/inativo) do grupo' })
@@ -71,11 +73,11 @@ export class GruposController {
   @UseGuards(GroupRoleGuard)
   @GroupRoles(GRUPO_ROLE.ADMIN)
   @Patch(':grupoId/status')
-  atualizarStatusGrupo(
+  async atualizarStatusGrupo(
     @Param('grupoId', new ParseUUIDCustomPipe('grupoId')) grupoId: string,
     @Body() updateStatusGrupoDto: UpdateStatusGrupoDto,
   ) {
-    return this.gruposService.atualizarStatus(grupoId, updateStatusGrupoDto);
+    return GrupoPresenter.toHttp(await this.gruposService.atualizarStatus(grupoId, updateStatusGrupoDto));
   }
 
   @ApiOperation({ summary: 'Exclui um grupo inativo' })
