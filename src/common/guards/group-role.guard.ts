@@ -5,9 +5,9 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { PrismaService } from '../../prisma/prisma.service';
-import { GROUP_ROLES_KEY } from './group-roles.decorator';
-import { ErrorFactory } from '../../common/errors/error.factory';
-import { AUTH } from './auth.constants';
+import { GROUP_ROLES_KEY } from '../decorators/group-roles.decorator';
+import { ErrorFactory } from '../errors/error.factory';
+import { AUTH } from '../../modules/auth/auth.constants';
 
 @Injectable()
 export class GroupRoleGuard implements CanActivate {

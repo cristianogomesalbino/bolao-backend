@@ -3,8 +3,8 @@ import { JwtModule } from '@nestjs/jwt';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtStrategy } from './jwt.strategy';
-import { GroupRoleGuard } from './group-role.guard';
-import { SelfOrAdminGuard } from './self-or-admin.guard';
+import { GroupRoleGuard } from '../../common/guards/group-role.guard';
+import { SelfOrAdminGuard } from '../../common/guards/self-or-admin.guard';
 
 @Module({
   imports: [

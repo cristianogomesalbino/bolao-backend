@@ -3,9 +3,9 @@ import { ApiTags, ApiOperation, ApiResponse, ApiBadRequestResponse, ApiNotFoundR
 import { UsuariosService } from './usuarios.service';
 import { CriarUsuarioDto } from './dto/criar-usuario.dto';
 import { AtualizarUsuarioDto } from './dto/atualizar-usuario.dto';
-import { CurrentUser } from '../auth/current-user.decorator';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { ParseUUIDCustomPipe } from '../../common/pipes/parse-uuid-custom.pipe';
-import { SelfOrAdminGuard } from '../auth/self-or-admin.guard';
+import { SelfOrAdminGuard } from '../../common/guards/self-or-admin.guard';
 import { USUARIOS } from './usuarios.constants';
 import { Public } from '../../common/decorators/public.decorator';
 import { UsuarioPresenter } from '../../common/presenters';

@@ -1,0 +1,21 @@
+export const JOGOS = {
+  TAG: 'Jogos',
+  FASE_REPOSITORY_TOKEN: 'FASE_REPOSITORY',
+  JOGO_REPOSITORY_TOKEN: 'JOGO_REPOSITORY',
+  MENSAGENS: {
+    FASE_NAO_ENCONTRADA: 'Fase não encontrada',
+    JOGO_NAO_ENCONTRADO: 'Jogo não encontrado',
+    TIMES_IGUAIS: 'Time da casa e time visitante devem ser diferentes',
+    JOGO_FINALIZADO: 'Não é possível alterar um jogo finalizado',
+    JOGO_CANCELADO: 'Não é possível alterar um jogo cancelado',
+    PLACAR_INVALIDO: 'Placar deve ser um número inteiro não negativo',
+    PRORROGACAO_NAO_PERMITIDA: 'Prorrogação não é permitida neste tipo de fase',
+    PENALTIS_NAO_PERMITIDO: 'Pênaltis não são permitidos sem empate na prorrogação',
+    PLACAR_PENALTIS_EMPATADO: 'Placar de pênaltis não pode ser empatado',
+    VENCEDOR_OBRIGATORIO: 'É obrigatório definir um vencedor em jogos de mata-mata',
+    TRANSICAO_STATUS_INVALIDA: 'Transição de status inválida',
+    IDA_VOLTA_NAO_PERMITIDA: 'Jogos de ida e volta não são permitidos nesta fase',
+    JOGO_IDA_NAO_ENCONTRADO: 'Jogo de ida não encontrado para este confronto',
+    API_FOOTBALL_INDISPONIVEL: 'API-Football está indisponível no momento',
+  },
+} as const;

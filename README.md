@@ -23,7 +23,8 @@ src/
 │   ├── campeonatos/        # Gerenciamento de campeonatos
 │   ├── temporadas/         # Temporadas dos campeonatos
 │   ├── grupos/             # Grupos de bolão
-│   └── grupo-usuario/      # Membros dos grupos (adicionar, remover, convite)
+│   ├── grupo-usuario/      # Membros dos grupos (adicionar, remover, convite)
+│   └── jogos/              # Fases, jogos, integração API-Football
 ├── common/
 │   ├── constants/          # Constantes globais (roles)
 │   ├── decorators/         # @Public(), @CurrentUser(), @GroupRoles()
@@ -146,6 +147,50 @@ sh dev start-prod      # Build e inicia em modo produção
 | DELETE | `/grupos/:grupoId/sair`                 | Sair do grupo                | JWT + Membro  |
 | DELETE | `/grupos/:grupoId/usuarios/:usuarioId`  | Remover membro               | JWT + Admin   |
 
+### Fases (`/temporadas/:temporadaId/fases`)
+
+| Método | Rota                                          | Descrição              | Auth |
+|--------|-----------------------------------------------|------------------------|------|
+| POST   | `/temporadas/:temporadaId/fases`              | Criar fase             | JWT  |
+| GET    | `/temporadas/:temporadaId/fases`              | Listar fases           | JWT  |
+| GET    | `/temporadas/:temporadaId/fases/:id`          | Buscar fase por ID     | JWT  |
+
+### Jogos (`/fases/:faseId/jogos`, `/jogos`)
+
+| Método | Rota                                          | Descrição                    | Auth              |
+|--------|-----------------------------------------------|------------------------------|--------------------|
+| POST   | `/fases/:faseId/jogos`                        | Criar jogo                   | JWT                |
+| PATCH  | `/jogos/:id`                                  | Atualizar jogo               | JWT                |
+| PATCH  | `/jogos/:id/finalizar`                        | Finalizar jogo com placar    | JWT                |
+| GET    | `/fases/:faseId/jogos`                        | Listar jogos da fase         | JWT                |
+| GET    | `/jogos/:id`                                  | Buscar jogo por ID           | JWT                |
+| POST   | `/jogos/importar`                             | Importar jogos (API-Football)| JWT + SUPER_ADMIN  |
+| POST   | `/fases/:faseId/jogos/sincronizar`            | Sincronizar placares         | JWT + SUPER_ADMIN  |
+| PATCH  | `/jogos/:id/resetar-fonte`                    | Resetar fonte resultado      | JWT                |
+
+## Integração API-Football
+
+O módulo de Jogos suporta importação e sincronização de jogos via [API-Football](https://www.api-football.com/) (RapidAPI).
+
+Ligas suportadas:
+- Brasileirão Série A (leagueId: 71)
+- Copa do Mundo (leagueId: 1)
+
+Para usar a integração, adicione a variável de ambiente:
+
+```env
+RAPIDAPI_KEY=sua_chave_rapidapi
+```
+
+Funcionalidades:
+- Importar jogos de uma liga/temporada para uma fase
+- Sincronizar placares automaticamente via API-Football
+- Modo híbrido: jogos podem ter `fonteResultado` MANUAL ou API_FOOTBALL
+- Edições manuais em jogos importados alteram `fonteResultado` para MANUAL, protegendo contra sobrescrita na sincronização
+- Endpoint de reset permite reverter `fonteResultado` para API_FOOTBALL
+
+Transições de status dos jogos: AGENDADO → EM_ANDAMENTO → FINALIZADO, AGENDADO → CANCELADO, EM_ANDAMENTO → CANCELADO.
+
 ## Testes
 
 ```bash
@@ -154,6 +199,18 @@ docker exec bolao-backend-dev npx vitest run --coverage  # cobertura
 ```
 
 > Todos os comandos rodam dentro do Docker. Nunca executar npm/npx diretamente na máquina host.
+
+## Roadmap
+
+1. ~~Auth~~ ✅
+2. ~~Usuarios~~ ✅
+3. ~~Campeonatos~~ ✅
+4. ~~Temporadas~~ ✅
+5. ~~Grupos~~ ✅
+6. ~~GrupoUsuario~~ ✅
+7. ~~Jogos~~ ✅
+8. Palpites
+9. Ranking
 
 ## Licença
 

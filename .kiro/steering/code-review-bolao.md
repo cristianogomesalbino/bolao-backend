@@ -137,7 +137,14 @@ Seguir esta ordem. Não pular para o passo N+1 sem completar o passo N.
 - [ ] Controllers testados com `new Controller(mockService as any)`
 - [ ] Guards testados com instanciação direta e mock de `ExecutionContext`
 
-### Passo 8 — Clean Code
+### Passo 8 — Princípios SOLID
+- [ ] **S — Single Responsibility:** Service com mais de uma responsabilidade de domínio? (ex: CRUD + finalização + importação no mesmo service). Limite: ~200 linhas por service. Se ultrapassar, sugerir split
+- [ ] **O — Open/Closed:** Lógica condicional por tipo (if/else ou switch) que precisaria ser aberta pra adicionar variantes? Para 2-3 variantes, aceitável. Acima disso, sugerir Strategy pattern
+- [ ] **L — Liskov Substitution:** Implementações de repositório (Prisma e InMemory) são intercambiáveis? Domain errors estendem `DomainError` corretamente?
+- [ ] **I — Interface Segregation:** Services externos (APIs de terceiros) acessados via interface ou classe concreta? Deve ter interface + token de injeção, igual repositories
+- [ ] **D — Dependency Inversion:** Services dependem de abstrações (interfaces) ou implementações concretas? `process.env` direto em vez de `ConfigService`?
+
+### Passo 9 — Clean Code
 - [ ] Early returns ao invés de if aninhados
 - [ ] Métodos > 30 linhas → considerar quebrar
 - [ ] Arquivos > 200 linhas → considerar dividir
@@ -145,16 +152,16 @@ Seguir esta ordem. Não pular para o passo N+1 sem completar o passo N.
 - [ ] Código morto / imports não utilizados / código comentado
 - [ ] Helpers privados extraídos para lógica reutilizada (ex: `compositeKey()`, `validarEntrada()`)
 
-### Passo 9 — Debug e Logs
+### Passo 10 — Debug e Logs
 - [ ] `console.log` / `console.debug` / `debugger` em código de produção
 - [ ] Dados sensíveis em logs (senhas, tokens, emails)
 
-### Passo 10 — Performance
+### Passo 11 — Performance
 - [ ] N+1 queries (consultas em loop ao invés de includes/joins)
 - [ ] Listagens sem paginação
 - [ ] `include` excessivo em queries (trazer apenas o necessário com `select`)
 
-### Passo 11 — Postman & Documentação
+### Passo 12 — Postman & Documentação
 - [ ] `postman_collection.json` atualizado se rotas foram criadas/alteradas
 - [ ] `README.md` atualizado se módulos, rotas ou regras de domínio mudaram
 

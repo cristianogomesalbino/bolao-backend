@@ -4,6 +4,33 @@ inclusion: always
 
 # Convenções de Código
 
+## Regras Críticas (NUNCA violar)
+
+- **NUNCA duplicar funções com propósito similar** — se duas funções fazem mapeamento parecido (ex: `mapearStatus` e `mapearStatusApiFootball`), unificar em uma só ou deixar claro qual é a canônica
+- **NUNCA colocar lógica de autorização no controller** — sempre via Guards (`SuperAdminGuard`, `GroupRoleGuard`, etc.)
+- **NUNCA duplicar dados entre URL param e body do DTO** — se o dado vem do `@Param`, não incluir no DTO
+- **NUNCA operar sobre dados dependentes sem validar estado** — ex: calcular placar agregado sem verificar se o jogo de ida está FINALIZADO
+- **NUNCA permitir mudança de estado sem validar contexto** — ex: resetar fonteResultado sem verificar se externoId existe
+- **SEMPRE adicionar `@@index` no Prisma para campos usados em queries de listagem** — FK não cria índice automático no PostgreSQL
+- **SEMPRE criar testes junto com o código** — testes unitários de services e controllers NUNCA são opcionais, devem ser criados na mesma task que o código
+- **SEMPRE revisar o fluxo completo após gerar código** — geração automática pode criar inconsistências entre componentes
+- **SEMPRE tipar DTOs com union types em vez de `string` genérico** — ex: `tipo: 'PONTOS_CORRIDOS' | 'MATA_MATA'` em vez de `tipo: string` com `@IsIn`
+- **SEMPRE validar variáveis de ambiente no startup** — usar `OnModuleInit` para validar e logar warning se env var obrigatória estiver ausente
+- **SEMPRE extrair métodos quando complexidade cognitiva > 15** — quebrar em helpers privados com nomes descritivos
+- **SEMPRE usar early returns em vez de ifs aninhados** — reduz complexidade cognitiva e melhora legibilidade
+- **SEMPRE extrair lógica duplicada em helpers** — se o mesmo bloco aparece 2+ vezes, criar método privado (ex: `validarSemDesempate`, `determinarVencedorPorPlacar`, `buildUpdateFinalizado`)
+- **NUNCA fazer queries em loop (N+1)** — buscar todos os dados necessários antes do loop com uma única query
+- **NUNCA deixar código morto** — remover funções não chamadas por ninguém (YAGNI)
+- **SEMPRE validar variáveis de ambiente no startup** — usar `OnModuleInit` para validar e logar warning se env var obrigatória estiver ausente
+- **SEMPRE colocar guards genéricos em `src/modules/auth/`** — guards reutilizáveis (ex: `SuperAdminGuard`) não devem ficar dentro de módulos específicos
+- **SEMPRE usar erro semântico correto** — se o jogo foi encontrado mas falta `externoId`, não lançar `JogoNaoEncontradoError`
+- **NUNCA usar `any` em interfaces de repositório** — usar tipos do Prisma ou criar tipos próprios (dívida técnica atual, migrar gradualmente)
+
+## Dívida Técnica
+
+- Interfaces de repositório usam `Promise<any>` — migrar para tipos Prisma (`Prisma.Jogo`, `Prisma.Fase`, etc.)
+- Presenters e services usam `any` nos parâmetros — tipar gradualmente
+
 ## Padrões de Erro
 
 Preferir Domain Errors específicos (`src/common/errors/domain-errors/`) para erros de negócio nos services:
@@ -46,6 +73,19 @@ Não usar `"campo": "geral"`. O campo `campo` é opcional — omitir quando não
 - Autorização sempre via Guards (JwtAuthGuard, GroupRoleGuard, SelfOrAdminGuard)
 - Não duplicar regras de negócio
 - Usar transação Prisma (`$transaction`) quando necessário (ex: criar grupo + adicionar admin)
+
+### Princípios SOLID
+
+- **Single Responsibility:** Um service não deve acumular mais de uma responsabilidade de domínio. Se um service ultrapassa ~200 linhas ou mistura CRUD com lógica complexa de negócio (ex: finalização, importação, sincronização), dividir em services especializados (ex: `JogoService` + `FinalizacaoService` + `ImportacaoService`)
+- **Open/Closed:** Preferir composição e Strategy pattern quando houver lógica condicional por tipo (ex: tipo de fase). Para 2-3 variantes, if/else é aceitável; acima disso, extrair estratégias
+- **Liskov Substitution:** Implementações de repositório (Prisma e InMemory) devem ser intercambiáveis sem alterar comportamento. Mesma regra para domain errors que estendem `DomainError`
+- **Interface Segregation:** Services externos (APIs de terceiros) devem ser acessados via interface, não classe concreta. Criar interface com os métodos necessários e injetar via token, igual aos repositories
+- **Dependency Inversion:** Services dependem de abstrações (interfaces de repositório, interfaces de serviços externos), nunca de implementações concretas. Configuração de ambiente via `ConfigService` do NestJS, nunca `process.env` direto nos services
+
+### Guards reutilizáveis
+
+- Guards genéricos (ex: `SuperAdminGuard`) devem ficar em `src/common/guards/` ou `src/modules/auth/`, não dentro de módulos específicos
+- Guards específicos de domínio (ex: `GroupRoleGuard`) ficam no módulo correspondente
 
 ## DTOs
 

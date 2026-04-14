@@ -11,9 +11,9 @@ import {
   ApiBadRequestResponse,
   ApiNotFoundResponse,
 } from '@nestjs/swagger';
-import { GroupRoleGuard } from '../auth/group-role.guard';
-import { GroupRoles } from '../auth/group-roles.decorator';
-import { CurrentUser } from '../auth/current-user.decorator';
+import { GroupRoleGuard } from '../../common/guards/group-role.guard';
+import { GroupRoles } from '../../common/decorators/group-roles.decorator';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { GRUPOS } from './grupos.constants';
 import { GRUPO_ROLE } from '../../common/constants/roles.constants';
 import { GrupoPresenter } from '../../common/presenters';

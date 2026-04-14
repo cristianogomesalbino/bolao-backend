@@ -1,0 +1,351 @@
+# Plano de Implementação: Módulo de Jogos
+
+## Visão Geral
+
+Implementação incremental do módulo de Jogos seguindo a arquitetura existente do projeto: Prisma schema, constantes, domain errors, repositories (interface + Prisma + InMemory), services, presenters, controllers, integração API-Football, testes e documentação.
+
+## Tasks
+
+- [x] 1. Schema Prisma e migração
+  - [x] 1.1 Adicionar enums TipoFase, StatusJogo, FonteResultado e models Fase e Jogo ao schema.prisma
+    - Criar enums TipoFase (PONTOS_CORRIDOS, MATA_MATA), StatusJogo (AGENDADO, EM_ANDAMENTO, FINALIZADO, CANCELADO), FonteResultado (MANUAL, API_FOOTBALL)
+    - Criar model Fase com campos: id, nome, tipo, ordem, idaVolta, temporadaId, dataCriacao e relação com Temporada
+    - Criar model Jogo com todos os campos do design: placar, prorrogação, pênaltis, vencedorId, ida/volta, fonteResultado, externoId (unique), criadoPor
+    - Adicionar relação `fases Fase[]` no model Temporada existente
+    - _Requisitos: 11.1, 11.2, 11.5_
+  - [x] 1.2 Gerar e aplicar migração Prisma
+    - Rodar `sh dev npx prisma migrate dev --name add-fase-jogo`
+    - Verificar que o schema está sincronizado
+    - _Requisitos: 11.1, 11.2_
+
+- [x] 2. Constantes e Domain Errors
+  - [x] 2.1 Criar arquivo de constantes do módulo jogos
+    - Criar `src/modules/jogos/jogos.constants.ts` com TAG, MENSAGENS (erros e respostas), FASE_REPOSITORY_TOKEN e JOGO_REPOSITORY_TOKEN
+    - _Requisitos: 1.1, 2.1_
+  - [x] 2.2 Criar Domain Errors do módulo jogos
+    - Criar `src/common/errors/domain-errors/jogos.errors.ts` com as 14 classes de erro: FaseNaoEncontradaError, JogoNaoEncontradoError, TimesIguaisError, JogoFinalizadoError, JogoCanceladoError, PlacarInvalidoError, ProrrogacaoNaoPermitidaError, PenaltisNaoPermitidoError, PlacarPenaltisEmpatadoError, VencedorObrigatorioError, TransicaoStatusInvalidaError, IdaVoltaNaoPermitidaError, JogoIdaNaoEncontradoError, ApiFootballIndisponivelError
+    - Cada classe estende DomainError com statusCode e mensagem padrão via constantes
+    - _Requisitos: 1.2, 2.2, 2.3, 3.2, 3.3, 3.5, 4.2, 4.5, 5.3, 5.5, 5.7, 5.8, 5.9, 6.2, 6.3, 10.3, 12.8_
+
+- [x] 3. Repositories de Fase
+  - [x] 3.1 Criar interface FaseRepository
+    - Criar `src/modules/jogos/repositories/fase.repository.interface.ts` com métodos: criar, buscarPorId, buscarPorTemporada
+    - _Requisitos: 1.1, 1.3, 1.4_
+  - [x] 3.2 Criar implementação Prisma do FaseRepository
+    - Criar `src/modules/jogos/repositories/prisma-fase.repository.ts` implementando FaseRepository com PrismaService
+    - buscarPorTemporada deve ordenar por campo `ordem`
+    - _Requisitos: 1.1, 1.3, 1.4_
+  - [x] 3.3 Criar implementação InMemory do FaseRepository
+    - Criar `src/modules/jogos/repositories/in-memory-fase.repository.ts` para testes
+    - _Requisitos: 1.1, 1.3, 1.4_
+
+- [x] 4. Repositories de Jogo
+  - [x] 4.1 Criar interface JogoRepository
+    - Criar `src/modules/jogos/repositories/jogo.repository.interface.ts` com métodos: criar, atualizar, buscarPorId, buscarPorFase, buscarPorExternoId, buscarPorGrupoIdaVolta
+    - _Requisitos: 2.1, 3.1, 8.1, 8.2, 11.5, 6.1_
+  - [x] 4.2 Criar implementação Prisma do JogoRepository
+    - Criar `src/modules/jogos/repositories/prisma-jogo.repository.ts` implementando JogoRepository com PrismaService
+    - buscarPorFase deve ordenar por campo `dataHora`
+    - _Requisitos: 2.1, 3.1, 8.1, 8.2, 11.5, 6.1_
+  - [x] 4.3 Criar implementação InMemory do JogoRepository
+    - Criar `src/modules/jogos/repositories/in-memory-jogo.repository.ts` para testes
+    - _Requisitos: 2.1, 3.1, 8.1, 8.2, 11.5, 6.1_
+
+- [x] 5. Checkpoint — Verificar schema, constantes, errors e repositories
+  - Ensure all tests pass, ask the user if questions arise.
+
+- [x] 6. DTOs
+  - [x] 6.1 Criar DTOs do módulo jogos
+    - Criar CriarFaseDto, CriarJogoDto, AtualizarJogoDto, FinalizarJogoDto, ImportarJogosDto em `src/modules/jogos/dto/`
+    - Usar class-validator com mensagens em pt-BR e @ApiProperty/@ApiPropertyOptional do Swagger
+    - _Requisitos: 1.1, 2.1, 3.1, 4.1, 12.1_
+
+- [ ] 7. FaseService e testes
+  - [x] 7.1 Criar FaseService
+    - Criar `src/modules/jogos/fase.service.ts` com métodos: criar, listar, buscarPorId
+    - Injetar FaseRepository via @Inject(JOGOS.FASE_REPOSITORY_TOKEN)
+    - Validar temporadaId existente (reusar TemporadaRepository ou validar via Prisma)
+    - Validar que idaVolta true só é aceito com tipo MATA_MATA
+    - _Requisitos: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6_
+  - [ ]* 7.2 Escrever testes unitários do FaseService
+    - Testar criação com temporadaId inexistente → TemporadaNaoEncontradaError
+    - Testar criação com idaVolta true e tipo PONTOS_CORRIDOS → erro
+    - Testar listagem ordenada por ordem
+    - Testar busca por ID inexistente → FaseNaoEncontradaError
+    - _Requisitos: 1.1, 1.2, 1.3, 1.4, 1.6_
+  - [ ]* 7.3 Escrever teste de propriedade: Round-trip de criação de Fase
+    - **Propriedade 1: Round-trip de criação de Fase**
+    - **Valida: Requisitos 1.1, 1.4**
+  - [ ]* 7.4 Escrever teste de propriedade: Listagem de fases ordenada por ordem
+    - **Propriedade 2: Listagem de fases ordenada por ordem**
+    - **Valida: Requisito 1.3**
+  - [ ]* 7.5 Escrever teste de propriedade: Restrição idaVolta apenas em MATA_MATA
+    - **Propriedade 3: Restrição idaVolta apenas em MATA_MATA**
+    - **Valida: Requisito 1.6**
+
+- [ ] 8. JogoService — Criação, atualização e transições de status
+  - [x] 8.1 Criar JogoService com métodos de criação e atualização
+    - Criar `src/modules/jogos/jogo.service.ts` com métodos: criar, atualizar
+    - Validar faseId existente, times diferentes, campos ida/volta conforme tipo da fase
+    - Em fase PONTOS_CORRIDOS, forçar grupoIdaVolta null e ehJogoVolta false
+    - Definir status AGENDADO, placar null, fonteResultado MANUAL, criadoPor do usuário
+    - Validar imutabilidade de jogos FINALIZADOS e CANCELADOS
+    - _Requisitos: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 3.1, 3.2, 3.3, 3.4, 3.5, 10.1, 11.3_
+  - [x] 8.2 Implementar validação de transições de status no JogoService
+    - Permitir apenas: AGENDADO→EM_ANDAMENTO, AGENDADO→CANCELADO, EM_ANDAMENTO→FINALIZADO, EM_ANDAMENTO→CANCELADO
+    - Lançar TransicaoStatusInvalidaError para transições inválidas
+    - Bloquear qualquer alteração após CANCELADO
+    - _Requisitos: 10.2, 10.3, 10.4_
+  - [ ]* 8.3 Escrever testes unitários do JogoService (criação e atualização)
+    - Testar criação com times iguais → TimesIguaisError
+    - Testar criação com faseId inexistente → FaseNaoEncontradaError
+    - Testar atualização de jogo FINALIZADO → JogoFinalizadoError
+    - Testar atualização de jogo CANCELADO → JogoCanceladoError
+    - Testar transições de status válidas e inválidas
+    - _Requisitos: 2.1, 2.2, 2.3, 3.1, 3.2, 3.3, 10.2, 10.3_
+  - [ ]* 8.4 Escrever teste de propriedade: Invariantes de criação de Jogo
+    - **Propriedade 4: Invariantes de criação de Jogo**
+    - **Valida: Requisitos 2.1, 2.6, 11.3**
+  - [ ]* 8.5 Escrever teste de propriedade: Times sempre diferentes
+    - **Propriedade 5: Times sempre diferentes**
+    - **Valida: Requisitos 2.2, 3.4**
+  - [ ]* 8.6 Escrever teste de propriedade: Pontos corridos ignora campos ida/volta
+    - **Propriedade 6: Pontos corridos ignora campos ida/volta**
+    - **Valida: Requisito 2.5**
+  - [ ]* 8.7 Escrever teste de propriedade: Imutabilidade após status terminal
+    - **Propriedade 7: Imutabilidade após status terminal**
+    - **Valida: Requisitos 3.2, 3.3, 10.4**
+  - [ ]* 8.8 Escrever teste de propriedade: Transições de status válidas
+    - **Propriedade 19: Transições de status válidas**
+    - **Valida: Requisitos 10.2, 10.3**
+
+- [ ] 9. JogoService — Finalização pontos corridos e mata-mata
+  - [x] 9.1 Implementar método finalizar no JogoService para pontos corridos
+    - Validar placares não negativos
+    - Rejeitar prorrogação/pênaltis em pontos corridos
+    - Definir status FINALIZADO, registrar placar, calcular vencedorId (ou null em empate)
+    - _Requisitos: 4.1, 4.2, 4.3, 4.4, 4.5, 9.1_
+  - [x] 9.2 Implementar método finalizar no JogoService para mata-mata
+    - Validar cascata: tempo normal → prorrogação (se empate) → pênaltis (se empate na prorrogação)
+    - Rejeitar prorrogação sem empate no tempo normal
+    - Rejeitar pênaltis sem empate na prorrogação
+    - Rejeitar pênaltis empatados
+    - Exigir vencedor em mata-mata (VencedorObrigatorioError se empate sem desempate)
+    - Definir vencedorId como timeCasaId ou timeForaId
+    - _Requisitos: 5.1, 5.2, 5.3, 5.4, 5.5, 5.6, 5.7, 5.8, 5.9, 9.2, 9.3, 9.4, 9.5, 9.7_
+  - [x] 9.3 Implementar método calcularVencedor no JogoService
+    - Centralizar lógica de determinação do vencedor para todos os cenários
+    - Retornar null para jogos não finalizados
+    - _Requisitos: 7.1, 7.2, 7.4, 7.5_
+  - [ ]* 9.4 Escrever testes unitários do JogoService (finalização)
+    - Testar finalização pontos corridos: vitória casa, vitória fora, empate
+    - Testar finalização mata-mata: sem empate, com prorrogação, com pênaltis
+    - Testar rejeição de prorrogação em pontos corridos
+    - Testar rejeição de pênaltis empatados
+    - Testar placar negativo → PlacarInvalidoError
+    - _Requisitos: 4.1, 4.2, 4.3, 4.4, 4.5, 5.1, 5.3, 5.7, 5.8, 5.9_
+  - [ ]* 9.5 Escrever teste de propriedade: Vencedor em pontos corridos
+    - **Propriedade 8: Vencedor em pontos corridos**
+    - **Valida: Requisitos 4.3, 4.4, 7.1**
+  - [ ]* 9.6 Escrever teste de propriedade: Prorrogação proibida em pontos corridos
+    - **Propriedade 9: Prorrogação proibida em pontos corridos**
+    - **Valida: Requisito 4.2**
+  - [ ]* 9.7 Escrever teste de propriedade: Placares são inteiros não negativos
+    - **Propriedade 10: Placares são inteiros não negativos**
+    - **Valida: Requisitos 4.5, 9.1, 9.2, 9.3**
+  - [ ]* 9.8 Escrever teste de propriedade: Cascata de vencedor em mata-mata
+    - **Propriedade 11: Cascata de vencedor em mata-mata**
+    - **Valida: Requisitos 5.1, 5.6, 7.2**
+  - [ ]* 9.9 Escrever teste de propriedade: Empate em mata-mata exige desempate
+    - **Propriedade 12: Empate em mata-mata exige desempate**
+    - **Valida: Requisitos 5.3, 5.5**
+  - [ ]* 9.10 Escrever teste de propriedade: Sequenciamento de prorrogação e pênaltis
+    - **Propriedade 13: Sequenciamento de prorrogação e pênaltis**
+    - **Valida: Requisitos 5.7, 5.8, 5.9**
+  - [ ]* 9.11 Escrever teste de propriedade: Consistência de campos de placar
+    - **Propriedade 18: Consistência de campos de placar**
+    - **Valida: Requisitos 9.4, 9.5**
+  - [ ]* 9.12 Escrever teste de propriedade: Invariante de vencedorId
+    - **Propriedade 16: Invariante de vencedorId**
+    - **Valida: Requisitos 7.4, 9.7**
+  - [ ]* 9.13 Escrever teste de propriedade: Jogo não finalizado tem placares null
+    - **Propriedade 17: Jogo não finalizado tem placares null**
+    - **Valida: Requisito 9.6**
+
+- [ ] 10. JogoService — Jogos de ida e volta
+  - [x] 10.1 Implementar lógica de ida e volta no JogoService
+    - Validar ehJogoVolta true apenas em fase com idaVolta habilitado
+    - Validar existência de jogo de ida com mesmo grupoIdaVolta
+    - Permitir prorrogação/pênaltis apenas no jogo de volta
+    - Jogo de ida finalizado: vencedorId null
+    - Jogo de volta: calcular vencedor por placar agregado (ida + volta)
+    - _Requisitos: 6.1, 6.2, 6.3, 6.4, 6.5, 7.3_
+  - [ ]* 10.2 Escrever testes unitários do JogoService (ida e volta)
+    - Testar criação de jogo de volta sem jogo de ida → JogoIdaNaoEncontradoError
+    - Testar ehJogoVolta em fase sem idaVolta → IdaVoltaNaoPermitidaError
+    - Testar finalização de jogo de ida → vencedorId null
+    - Testar cálculo de vencedor por placar agregado
+    - _Requisitos: 6.2, 6.3, 6.4, 6.5, 7.3_
+  - [ ]* 10.3 Escrever teste de propriedade: Restrições de ida e volta
+    - **Propriedade 14: Restrições de ida e volta**
+    - **Valida: Requisitos 6.2, 6.3, 6.4, 6.5**
+  - [ ]* 10.4 Escrever teste de propriedade: Vencedor por placar agregado
+    - **Propriedade 15: Vencedor por placar agregado**
+    - **Valida: Requisito 7.3**
+
+- [x] 11. Checkpoint — Verificar services e testes
+  - Ensure all tests pass, ask the user if questions arise.
+
+- [ ] 12. Presenters
+  - [x] 12.1 Criar FasePresenter e JogoPresenter
+    - Criar `src/common/presenters/fase.presenter.ts` com método estático toHttp() — allowlist: id, nome, tipo, ordem, idaVolta, temporadaId, dataCriacao
+    - Criar `src/common/presenters/jogo.presenter.ts` com método estático toHttp() — allowlist: id, faseId, timeCasaId, timeForaId, dataHora, status, golsCasa, golsFora, temProrrogacao, golsProrrogacaoCasa, golsProrrogacaoFora, temPenaltis, penaltisCasa, penaltisFora, vencedorId, ehJogoVolta, grupoIdaVolta, fonteResultado, externoId, criadoPor, dataCriacao
+    - _Requisitos: 8.3, 8.4, 14.4_
+  - [ ]* 12.2 Escrever teste de propriedade: Presenter expõe apenas campos permitidos
+    - **Propriedade 21: Presenter expõe apenas campos permitidos (allowlist)**
+    - **Valida: Requisitos 8.3, 8.4, 14.4**
+
+- [ ] 13. FaseController e testes
+  - [x] 13.1 Criar FaseController
+    - Criar `src/modules/jogos/fase.controller.ts` com rotas: POST /temporadas/:temporadaId/fases, GET /temporadas/:temporadaId/fases, GET /temporadas/:temporadaId/fases/:id
+    - Decorar com @ApiTags(JOGOS.TAG), @ApiOperation, @ApiResponse
+    - Usar FasePresenter.toHttp() nos retornos
+    - Usar ParseUUIDCustomPipe para params UUID
+    - _Requisitos: 1.1, 1.3, 1.4_
+  - [ ]* 13.2 Escrever testes unitários do FaseController
+    - Testar que controller chama service corretamente
+    - Testar transformação via FasePresenter
+    - _Requisitos: 1.1, 1.3, 1.4_
+
+- [ ] 14. JogoController e testes
+  - [x] 14.1 Criar JogoController
+    - Criar `src/modules/jogos/jogo.controller.ts` com rotas: POST /fases/:faseId/jogos, PATCH /jogos/:id, PATCH /jogos/:id/finalizar, GET /fases/:faseId/jogos, GET /jogos/:id, POST /jogos/importar, POST /fases/:faseId/jogos/sincronizar, PATCH /jogos/:id/resetar-fonte
+    - Decorar com @ApiTags(JOGOS.TAG), @ApiOperation, @ApiResponse
+    - Usar JogoPresenter.toHttp() nos retornos
+    - Usar @CurrentUser() para obter usuário autenticado
+    - Rotas de importação e sincronização restritas a SUPER_ADMIN via guard
+    - _Requisitos: 2.1, 3.1, 4.1, 5.1, 8.1, 8.2, 12.1, 13.1, 14.5_
+  - [ ]* 14.2 Escrever testes unitários do JogoController
+    - Testar que controller chama service corretamente para cada rota
+    - Testar transformação via JogoPresenter
+    - _Requisitos: 2.1, 3.1, 4.1, 8.1, 8.2_
+  - [ ]* 14.3 Escrever teste de propriedade: Listagem de jogos ordenada por dataHora
+    - **Propriedade 20: Listagem de jogos ordenada por dataHora**
+    - **Valida: Requisito 8.1**
+
+- [x] 15. Checkpoint — Verificar controllers e presenters
+  - Ensure all tests pass, ask the user if questions arise.
+
+- [ ] 16. ApiFootballService e integração
+  - [x] 16.1 Criar ApiFootballService
+    - Criar `src/modules/jogos/api-football.service.ts` com métodos: buscarFixtures(leagueId, season), buscarFixturesPorIds(fixtureIds)
+    - Comunicação HTTP com API-Football via RapidAPI (headers x-rapidapi-key, x-rapidapi-host)
+    - Tratar erros de rede/timeout → ApiFootballIndisponivelError
+    - Suportar ligas: Brasileirão Série A (71) e Copa do Mundo (1)
+    - _Requisitos: 12.1, 12.8, 12.9_
+  - [x] 16.2 Implementar importação de jogos no JogoService
+    - Método importarJogos(leagueId, season, faseId, userId)
+    - Mapear status API-Football → StatusJogo conforme tabela do design
+    - Definir fonteResultado API_FOOTBALL e externoId
+    - Ignorar fixtures com externoId já existente (idempotência)
+    - Para fixtures FINALIZADO, registrar placar e calcular vencedor
+    - _Requisitos: 12.2, 12.3, 12.4, 12.5, 12.6, 12.7, 11.4, 11.5_
+  - [x] 16.3 Implementar sincronização de placares no JogoService
+    - Método sincronizarPlacares(faseId)
+    - Buscar jogos da fase com externoId preenchido
+    - Consultar API-Football para placares atualizados
+    - Atualizar apenas jogos com fonteResultado API_FOOTBALL
+    - Ignorar jogos com fonteResultado MANUAL
+    - Calcular vencedorId ao finalizar
+    - Log de aviso para fixtures não encontrados
+    - _Requisitos: 13.1, 13.2, 13.3, 13.4, 13.5, 13.7_
+  - [x] 16.4 Implementar modo híbrido no JogoService
+    - Ao editar manualmente placar de jogo API_FOOTBALL → alterar fonteResultado para MANUAL
+    - Endpoint resetar-fonte: alterar fonteResultado de MANUAL para API_FOOTBALL
+    - _Requisitos: 14.1, 14.2, 14.3, 14.5_
+  - [ ]* 16.5 Escrever testes unitários do ApiFootballService e integração
+    - Testar buscarFixtures com mock HTTP
+    - Testar importação: criação de jogos, idempotência, mapeamento de status
+    - Testar sincronização: atualização seletiva por fonteResultado
+    - Testar API indisponível → ApiFootballIndisponivelError
+    - Testar fixture não encontrado → log + continua
+    - _Requisitos: 12.1, 12.7, 12.8, 13.1, 13.2, 13.3, 13.5_
+  - [ ]* 16.6 Escrever teste de propriedade: Mapeamento de status API-Football
+    - **Propriedade 22: Mapeamento de status API-Football**
+    - **Valida: Requisitos 12.3, 12.4, 12.5, 12.6**
+  - [ ]* 16.7 Escrever teste de propriedade: Idempotência de importação
+    - **Propriedade 23: Idempotência de importação**
+    - **Valida: Requisitos 12.7, 11.5**
+  - [ ]* 16.8 Escrever teste de propriedade: Sincronização respeita fonteResultado
+    - **Propriedade 24: Sincronização respeita fonteResultado**
+    - **Valida: Requisitos 13.2, 13.3**
+  - [ ]* 16.9 Escrever teste de propriedade: Edição manual altera fonteResultado
+    - **Propriedade 25: Edição manual altera fonteResultado**
+    - **Valida: Requisito 14.1**
+  - [ ]* 16.10 Escrever teste de propriedade: Criação manual não afeta jogos importados
+    - **Propriedade 26: Criação manual não afeta jogos importados**
+    - **Valida: Requisito 14.2**
+  - [ ]* 16.11 Escrever teste de propriedade: Reset de fonteResultado
+    - **Propriedade 27: Reset de fonteResultado**
+    - **Valida: Requisito 14.5**
+
+- [ ] 16b. Status Híbrido (API + Fallback)
+  - [x] 16b.1 Implementar métodos de status híbrido no JogoService
+    - Implementar `definirStatusFinal(jogo, statusApi?)`: prioriza API, usa fallback interno, nunca regride FINALIZADO
+    - Implementar `calcularStatusInterno(jogo)`: AGENDADO se agora < dataHora, EM_ANDAMENTO se dataHora <= agora <= dataHora+2h, FINALIZADO se agora > dataHora+2h
+    - Implementar `mapearStatus(statusApi)`: SCHEDULED→AGENDADO, LIVE/IN_PLAY→EM_ANDAMENTO, FINISHED→FINALIZADO, CANCELLED→CANCELADO, default→AGENDADO
+    - Integrar `definirStatusFinal()` no fluxo de sincronização (task 16.3)
+    - _Requisitos: 15.1, 15.2, 15.3, 15.4, 15.5, 15.6, 15.7, 15.8, 15.9, 15.10_
+  - [x] 16b.2 Implementar resiliência a falhas de API
+    - Quando API indisponível durante sync, usar fallback interno para atualizar status
+    - Quando API retorna dados parciais, usar fallback seletivo por jogo
+    - Registrar log de aviso quando fallback é utilizado
+    - Nunca bloquear operações do usuário por falha na API
+    - _Requisitos: 16.1, 16.2, 16.3, 16.4_
+  - [ ]* 16b.3 Escrever testes unitários do status híbrido
+    - Testar definirStatusFinal com jogo FINALIZADO + statusApi diferente → mantém FINALIZADO
+    - Testar definirStatusFinal com statusApi fornecido → usa mapearStatus
+    - Testar definirStatusFinal sem statusApi → usa calcularStatusInterno
+    - Testar calcularStatusInterno com datas passadas, presentes e futuras
+    - Testar mapearStatus com todos os valores conhecidos e default
+    - _Requisitos: 15.1, 15.2, 15.3, 15.4, 15.5, 15.6, 15.7, 15.8_
+  - [ ]* 16b.4 Escrever teste de propriedade: Não-regressão de status
+    - **Propriedade 28: Não-regressão de status**
+    - **Valida: Requisitos 15.2, 15.10**
+  - [ ]* 16b.5 Escrever teste de propriedade: Prioridade da API sobre fallback
+    - **Propriedade 29: Prioridade da API sobre fallback**
+    - **Valida: Requisito 15.3**
+  - [ ]* 16b.6 Escrever teste de propriedade: Fallback baseado em tempo
+    - **Propriedade 30: Fallback baseado em tempo**
+    - **Valida: Requisitos 15.4, 15.5, 15.6, 15.7**
+
+- [ ] 17. Módulo NestJS e wiring
+  - [x] 17.1 Criar JogosModule e registrar no AppModule
+    - Criar `src/modules/jogos/jogos.module.ts` registrando controllers, services, repositories (Prisma impl) e tokens de injeção
+    - Importar módulo no AppModule
+    - _Requisitos: 1.1, 2.1_
+
+- [ ] 18. Postman Collection e README
+  - [x] 18.1 Atualizar postman_collection.json com rotas do módulo Jogos
+    - Adicionar folder "Jogos" com todas as rotas: CRUD de fases, CRUD de jogos, finalizar, importar, sincronizar, resetar-fonte
+    - Endpoints autenticados herdam Bearer token da collection
+    - Importar e sincronizar exigem SUPER_ADMIN
+    - Adicionar variável `faseId` e `jogoId`
+    - _Requisitos: 1.1, 2.1, 4.1, 8.1, 12.1, 13.1, 14.5_
+  - [x] 18.2 Atualizar README.md com documentação do módulo Jogos
+    - Adicionar módulo Jogos na estrutura de módulos
+    - Documentar rotas, regras de domínio (transições de status, ida/volta, modo híbrido)
+    - Atualizar roadmap marcando Jogos como concluído
+    - _Requisitos: 1.1, 2.1_
+
+- [x] 19. Checkpoint final — Verificar tudo integrado
+  - Ensure all tests pass, ask the user if questions arise.
+
+## Notas
+
+- Tasks marcadas com `*` são opcionais e podem ser puladas para um MVP mais rápido
+- Cada task referencia requisitos específicos para rastreabilidade
+- Checkpoints garantem validação incremental
+- Testes de propriedade validam propriedades universais de corretude usando fast-check
+- Testes unitários validam exemplos específicos e edge cases
+- Todos os testes usam InMemory repositories para isolamento
