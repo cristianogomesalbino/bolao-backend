@@ -1,6 +1,6 @@
 import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
-import { ErrorFactory } from '../../common/errors/error.factory';
-import { PERFIL } from '../../common/constants/roles.constants';
+import { ErrorFactory } from '../errors/error.factory';
+import { PERFIL } from '../constants/roles.constants';
 
 @Injectable()
 export class SuperAdminGuard implements CanActivate {

@@ -3,9 +3,9 @@ import {
   CanActivate,
   ExecutionContext,
 } from '@nestjs/common';
-import { ErrorFactory } from '../../common/errors/error.factory';
-import { AUTH } from './auth.constants';
-import { PERFIL } from '../../common/constants/roles.constants';
+import { ErrorFactory } from '../errors/error.factory';
+import { AUTH } from '../../modules/auth/auth.constants';
+import { PERFIL } from '../constants/roles.constants';
 
 @Injectable()
 export class SelfOrAdminGuard implements CanActivate {
