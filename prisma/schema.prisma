@@ -11,9 +11,6 @@ model Campeonato {
   id         String      @id @default(uuid())
   nome       String
   temporadas Temporada[]
-
-  dataCriacao  DateTime @default(now())
-  atualizadoEm DateTime @updatedAt
 }
 
 model Temporada {
@@ -23,6 +20,7 @@ model Temporada {
   campeonato   Campeonato @relation(fields: [campeonatoId], references: [id])
 
   grupos Grupo[]
+  fases  Fase[]
 
   dataCriacao DateTime @default(now())
 }
@@ -96,4 +94,63 @@ model RefreshToken {
   usuario   Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
   expiresAt DateTime
   createdAt DateTime @default(now())
+}
+
+enum TipoFase {
+  PONTOS_CORRIDOS
+  MATA_MATA
+}
+
+enum StatusJogo {
+  AGENDADO
+  EM_ANDAMENTO
+  FINALIZADO
+  CANCELADO
+}
+
+enum FonteResultado {
+  MANUAL
+  API_FOOTBALL
+}
+
+model Fase {
+  id           String    @id @default(uuid())
+  nome         String
+  tipo         TipoFase
+  ordem        Int
+  idaVolta     Boolean   @default(false)
+  temporadaId  String
+  temporada    Temporada @relation(fields: [temporadaId], references: [id])
+  jogos        Jogo[]
+  dataCriacao  DateTime  @default(now())
+
+  @@index([temporadaId])
+}
+
+model Jogo {
+  id                     String         @id @default(uuid())
+  faseId                 String
+  fase                   Fase           @relation(fields: [faseId], references: [id])
+  timeCasaId             String
+  timeForaId             String
+  dataHora               DateTime
+  status                 StatusJogo     @default(AGENDADO)
+  golsCasa               Int?
+  golsFora               Int?
+  temProrrogacao         Boolean        @default(false)
+  golsProrrogacaoCasa    Int?
+  golsProrrogacaoFora    Int?
+  temPenaltis            Boolean        @default(false)
+  penaltisCasa           Int?
+  penaltisFora           Int?
+  vencedorId             String?
+  ehJogoVolta            Boolean        @default(false)
+  grupoIdaVolta          String?
+  fonteResultado         FonteResultado @default(MANUAL)
+  externoId              String?        @unique
+  criadoPor              String
+  dataCriacao            DateTime       @default(now())
+  atualizadoEm           DateTime       @updatedAt
+
+  @@index([faseId])
 }

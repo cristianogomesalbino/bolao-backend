@@ -5,7 +5,7 @@ import {
 } from '../../common/errors/domain-errors';
 import * as bcrypt from 'bcryptjs';
 import { USUARIOS } from './usuarios.constants';
-import { UsuarioRepository } from './repositories/usuario.repository.interface';
+import type { UsuarioRepository } from './repositories/usuario.repository.interface';
 
 @Injectable()
 export class UsuariosService {

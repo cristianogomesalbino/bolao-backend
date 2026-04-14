@@ -60,6 +60,16 @@
       "key": "membroId",
       "value": "",
       "type": "string"
+    },
+    {
+      "key": "faseId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "jogoId",
+      "value": "",
+      "type": "string"
     }
   ],
   "item": [
@@ -622,6 +632,223 @@
               "path": ["grupos", "{{grupoId}}", "usuarios", "{{membroId}}"]
             },
             "description": "Remover um usuário do grupo (requer ser ADMIN do grupo)."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Jogos",
+      "item": [
+        {
+          "name": "Criar Fase",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const json = pm.response.json();",
+                  "  if (json.id) pm.collectionVariables.set('faseId', json.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Rodada 1\",\n  \"tipo\": \"PONTOS_CORRIDOS\",\n  \"ordem\": 1,\n  \"idaVolta\": false\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/temporadas/{{temporadaId}}/fases",
+              "host": ["{{baseUrl}}"],
+              "path": ["temporadas", "{{temporadaId}}", "fases"]
+            },
+            "description": "Criar uma nova fase na temporada (requer JWT). Salva faseId automaticamente."
+          },
+          "response": []
+        },
+        {
+          "name": "Listar Fases",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/temporadas/{{temporadaId}}/fases",
+              "host": ["{{baseUrl}}"],
+              "path": ["temporadas", "{{temporadaId}}", "fases"]
+            },
+            "description": "Listar todas as fases de uma temporada ordenadas por ordem (requer JWT)."
+          },
+          "response": []
+        },
+        {
+          "name": "Buscar Fase por ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/temporadas/{{temporadaId}}/fases/{{faseId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["temporadas", "{{temporadaId}}", "fases", "{{faseId}}"]
+            },
+            "description": "Buscar fase por ID (requer JWT)."
+          },
+          "response": []
+        },
+        {
+          "name": "Criar Jogo",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const json = pm.response.json();",
+                  "  if (json.id) pm.collectionVariables.set('jogoId', json.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"timeCasaId\": \"flamengo\",\n  \"timeForaId\": \"palmeiras\",\n  \"dataHora\": \"2026-03-15T16:00:00.000Z\",\n  \"grupoIdaVolta\": null,\n  \"ehJogoVolta\": false\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/fases/{{faseId}}/jogos",
+              "host": ["{{baseUrl}}"],
+              "path": ["fases", "{{faseId}}", "jogos"]
+            },
+            "description": "Criar um novo jogo na fase (requer JWT). Salva jogoId automaticamente."
+          },
+          "response": []
+        },
+        {
+          "name": "Atualizar Jogo",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"dataHora\": \"2026-03-16T18:00:00.000Z\",\n  \"status\": \"EM_ANDAMENTO\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/jogos/{{jogoId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["jogos", "{{jogoId}}"]
+            },
+            "description": "Atualizar dados de um jogo (requer JWT). Campos opcionais: dataHora, timeCasaId, timeForaId, status."
+          },
+          "response": []
+        },
+        {
+          "name": "Finalizar Jogo",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"golsCasa\": 2,\n  \"golsFora\": 1,\n  \"temProrrogacao\": false,\n  \"temPenaltis\": false\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/jogos/{{jogoId}}/finalizar",
+              "host": ["{{baseUrl}}"],
+              "path": ["jogos", "{{jogoId}}", "finalizar"]
+            },
+            "description": "Finalizar um jogo com placar (requer JWT). Suporta prorrogação e pênaltis em mata-mata."
+          },
+          "response": []
+        },
+        {
+          "name": "Listar Jogos da Fase",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/fases/{{faseId}}/jogos",
+              "host": ["{{baseUrl}}"],
+              "path": ["fases", "{{faseId}}", "jogos"]
+            },
+            "description": "Listar todos os jogos de uma fase ordenados por dataHora (requer JWT)."
+          },
+          "response": []
+        },
+        {
+          "name": "Buscar Jogo por ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/jogos/{{jogoId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["jogos", "{{jogoId}}"]
+            },
+            "description": "Buscar jogo por ID (requer JWT)."
+          },
+          "response": []
+        },
+        {
+          "name": "Importar Jogos (SUPER_ADMIN)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"leagueId\": 71,\n  \"season\": 2026,\n  \"faseId\": \"{{faseId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/jogos/importar",
+              "host": ["{{baseUrl}}"],
+              "path": ["jogos", "importar"]
+            },
+            "description": "Importar jogos da API-Football (requer JWT + SUPER_ADMIN). leagueId: 71=Brasileirão, 1=Copa do Mundo."
+          },
+          "response": []
+        },
+        {
+          "name": "Sincronizar Placares (SUPER_ADMIN)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/fases/{{faseId}}/jogos/sincronizar",
+              "host": ["{{baseUrl}}"],
+              "path": ["fases", "{{faseId}}", "jogos", "sincronizar"]
+            },
+            "description": "Sincronizar placares dos jogos importados via API-Football (requer JWT + SUPER_ADMIN)."
+          },
+          "response": []
+        },
+        {
+          "name": "Resetar Fonte Resultado",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/jogos/{{jogoId}}/resetar-fonte",
+              "host": ["{{baseUrl}}"],
+              "path": ["jogos", "{{jogoId}}", "resetar-fonte"]
+            },
+            "description": "Resetar fonteResultado de MANUAL para API_FOOTBALL, permitindo re-sincronização (requer JWT)."
           },
           "response": []
         }

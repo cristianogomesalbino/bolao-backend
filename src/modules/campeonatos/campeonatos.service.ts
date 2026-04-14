@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { CreateCampeonatoDto } from './dto/create-campeonato.dto';
 import { CAMPEONATOS } from './campeonatos.constants';
-import { CampeonatoRepository } from './repositories/campeonato.repository.interface';
+import type { CampeonatoRepository } from './repositories/campeonato.repository.interface';
 
 @Injectable()
 export class CampeonatosService {

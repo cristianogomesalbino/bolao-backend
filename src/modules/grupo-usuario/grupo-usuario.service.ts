@@ -11,11 +11,11 @@ import { GrupoNaoEncontradoError } from '../../common/errors/domain-errors/grupo
 import { UsuarioNaoEncontradoError } from '../../common/errors/domain-errors/usuarios.errors';
 import { GRUPO_USUARIO } from './grupo-usuario.constants';
 import { GRUPO_ROLE } from '../../common/constants/roles.constants';
-import { GrupoUsuarioRepository } from './repositories/grupo-usuario.repository.interface';
+import type { GrupoUsuarioRepository } from './repositories/grupo-usuario.repository.interface';
 import { GRUPOS } from '../grupos/grupos.constants';
-import { GrupoRepository } from '../grupos/repositories/grupo.repository.interface';
+import type { GrupoRepository } from '../grupos/repositories/grupo.repository.interface';
 import { USUARIOS } from '../usuarios/usuarios.constants';
-import { UsuarioRepository } from '../usuarios/repositories/usuario.repository.interface';
+import type { UsuarioRepository } from '../usuarios/repositories/usuario.repository.interface';
 
 @Injectable()
 export class GrupoUsuarioService {

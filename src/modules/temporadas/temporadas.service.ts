@@ -2,9 +2,9 @@ import { Inject, Injectable } from '@nestjs/common';
 import { CreateTemporadaDto } from './dto/create-temporada.dto';
 import { CampeonatoNaoEncontradoError } from '../../common/errors/domain-errors';
 import { TEMPORADAS } from './temporadas.constants';
-import { TemporadaRepository } from './repositories/temporada.repository.interface';
+import type { TemporadaRepository } from './repositories/temporada.repository.interface';
 import { CAMPEONATOS } from '../campeonatos/campeonatos.constants';
-import { CampeonatoRepository } from '../campeonatos/repositories/campeonato.repository.interface';
+import type { CampeonatoRepository } from '../campeonatos/repositories/campeonato.repository.interface';
 
 @Injectable()
 export class TemporadasService {

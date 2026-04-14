@@ -10,11 +10,11 @@ import {
 } from '../../common/errors/domain-errors';
 import { GRUPOS } from './grupos.constants';
 import { GRUPO_ROLE } from '../../common/constants/roles.constants';
-import { GrupoRepository } from './repositories/grupo.repository.interface';
+import type { GrupoRepository } from './repositories/grupo.repository.interface';
 import { TEMPORADAS } from '../temporadas/temporadas.constants';
-import { TemporadaRepository } from '../temporadas/repositories/temporada.repository.interface';
+import type { TemporadaRepository } from '../temporadas/repositories/temporada.repository.interface';
 import { GRUPO_USUARIO } from '../grupo-usuario/grupo-usuario.constants';
-import { GrupoUsuarioRepository } from '../grupo-usuario/repositories/grupo-usuario.repository.interface';
+import type { GrupoUsuarioRepository } from '../grupo-usuario/repositories/grupo-usuario.repository.interface';
 
 @Injectable()
 export class GruposService {
