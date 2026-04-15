@@ -3,7 +3,6 @@ import fc from 'fast-check';
 import { JogoService } from '@src/modules/jogos/jogo.service';
 import { InMemoryJogoRepository } from '@src/modules/jogos/repositories/in-memory-jogo.repository';
 import { InMemoryFaseRepository } from '@src/modules/jogos/repositories/in-memory-fase.repository';
-import { ApiFootballService } from '@src/modules/jogos/api-football.service';
 import {
   TimesIguaisError,
   JogoFinalizadoError,
@@ -542,16 +541,199 @@ describe('JogoService — Property-Based Tests', () => {
     const agora = Date.now();
     const duasHoras = 2 * 60 * 60 * 1000;
 
-    // Jogo no futuro → AGENDADO
     const jogoFuturo = { status: 'AGENDADO', dataHora: new Date(agora + 3600000) };
     expect(service.calcularStatusInterno(jogoFuturo)).toBe('AGENDADO');
 
-    // Jogo recente (dentro de 2h) → EM_ANDAMENTO
     const jogoRecente = { status: 'AGENDADO', dataHora: new Date(agora - 3600000) };
     expect(service.calcularStatusInterno(jogoRecente)).toBe('EM_ANDAMENTO');
 
-    // Jogo antigo (mais de 2h) → FINALIZADO
     const jogoAntigo = { status: 'AGENDADO', dataHora: new Date(agora - duasHoras - 60000) };
     expect(service.calcularStatusInterno(jogoAntigo)).toBe('FINALIZADO');
+  });
+
+  // ==================== Propriedade 14 ====================
+  // Feature: modulo-jogos, Property 14: Restrições de ida e volta
+  // Valida: Requisitos 6.2, 6.3, 6.4, 6.5
+  it('Propriedade 14: jogo de ida finalizado tem vencedorId null', async () => {
+    await fc.assert(
+      fc.asyncProperty(arbPlacar, arbPlacar, async (golsCasa, golsFora) => {
+        jogoRepo.items = [];
+
+        const jogoIda = await service.criar({
+          faseId: 'fase-mm-iv',
+          timeCasaId: 'time-a',
+          timeForaId: 'time-b',
+          dataHora: '2026-03-15T16:00:00.000Z',
+          grupoIdaVolta: 'grupo-pbt',
+          ehJogoVolta: false,
+        }, userId);
+        await jogoRepo.atualizar(jogoIda.id, { status: 'EM_ANDAMENTO' });
+
+        const result = await service.finalizar(jogoIda.id, { golsCasa, golsFora });
+
+        expect(result.status).toBe('FINALIZADO');
+        expect(result.vencedorId).toBeNull();
+      }),
+      { numRuns: 100 },
+    );
+  });
+
+  // ==================== Propriedade 15 ====================
+  // Feature: modulo-jogos, Property 15: Vencedor por placar agregado
+  // Valida: Requisito 7.3
+  it('Propriedade 15: vencedor do jogo de volta por placar agregado', async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        arbPlacar, arbPlacar, arbPlacar, arbPlacar,
+        async (idaCasa, idaFora, voltaCasa, voltaFora) => {
+          const golsTimeA = idaCasa + voltaFora;
+          const golsTimeB = idaFora + voltaCasa;
+          fc.pre(golsTimeA !== golsTimeB);
+
+          jogoRepo.items = [];
+
+          const jogoIda = await service.criar({
+            faseId: 'fase-mm-iv',
+            timeCasaId: 'time-a',
+            timeForaId: 'time-b',
+            dataHora: '2026-03-15T16:00:00.000Z',
+            grupoIdaVolta: 'grupo-pbt',
+            ehJogoVolta: false,
+          }, userId);
+          await jogoRepo.atualizar(jogoIda.id, { status: 'EM_ANDAMENTO' });
+          await service.finalizar(jogoIda.id, { golsCasa: idaCasa, golsFora: idaFora });
+
+          const jogoVolta = await service.criar({
+            faseId: 'fase-mm-iv',
+            timeCasaId: 'time-b',
+            timeForaId: 'time-a',
+            dataHora: '2026-03-20T16:00:00.000Z',
+            grupoIdaVolta: 'grupo-pbt',
+            ehJogoVolta: true,
+          }, userId);
+          await jogoRepo.atualizar(jogoVolta.id, { status: 'EM_ANDAMENTO' });
+
+          const result = await service.finalizar(jogoVolta.id, { golsCasa: voltaCasa, golsFora: voltaFora });
+
+          if (golsTimeA > golsTimeB) {
+            expect(result.vencedorId).toBe('time-a');
+          } else {
+            expect(result.vencedorId).toBe('time-b');
+          }
+        },
+      ),
+      { numRuns: 100 },
+    );
+  });
+
+  // ==================== Propriedade 23 ====================
+  // Feature: modulo-jogos, Property 23: Idempotência de importação
+  // Valida: Requisitos 12.7, 11.5
+  it('Propriedade 23: importar mesmos fixtures duas vezes não duplica', async () => {
+    const mockApi = { buscarFixtures: vi.fn(), buscarFixturesPorIds: vi.fn() } as any;
+    const svc = new JogoService(jogoRepo, faseRepo, mockApi);
+
+    await fc.assert(
+      fc.asyncProperty(fc.integer({ min: 1, max: 5 }), async (n) => {
+        jogoRepo.items = [];
+        const fixtures = Array.from({ length: n }, (_, i) => ({
+          fixture: { id: 1000 + i, date: '2026-06-15T16:00:00Z', status: { short: 'NS' } },
+          teams: { home: { id: 100 + i }, away: { id: 200 + i } },
+          goals: { home: null, away: null },
+        }));
+        mockApi.buscarFixtures.mockResolvedValue(fixtures);
+
+        const r1 = await svc.importarJogos(71, 2026, 'fase-pc', userId);
+        const r2 = await svc.importarJogos(71, 2026, 'fase-pc', userId);
+
+        expect(r1.importados).toBe(n);
+        expect(r2.importados).toBe(0);
+        expect(jogoRepo.items).toHaveLength(n);
+      }),
+      { numRuns: 50 },
+    );
+  });
+
+  // ==================== Propriedade 24 ====================
+  // Feature: modulo-jogos, Property 24: Sincronização respeita fonteResultado
+  // Valida: Requisitos 13.2, 13.3
+  it('Propriedade 24: sync não altera jogos com fonteResultado MANUAL', async () => {
+    const mockApi = { buscarFixtures: vi.fn(), buscarFixturesPorIds: vi.fn() } as any;
+    const svc = new JogoService(jogoRepo, faseRepo, mockApi);
+
+    jogoRepo.items = [];
+    await jogoRepo.criar({
+      faseId: 'fase-pc', timeCasaId: 'time-a', timeForaId: 'time-b',
+      dataHora: new Date('2026-06-15T16:00:00Z'), status: 'EM_ANDAMENTO',
+      fonteResultado: 'MANUAL', externoId: '9999', criadoPor: userId,
+      ehJogoVolta: false, grupoIdaVolta: null, temProrrogacao: false, temPenaltis: false,
+    });
+
+    mockApi.buscarFixturesPorIds.mockResolvedValue([{
+      fixture: { id: 9999, status: { short: 'FT' } },
+      goals: { home: 3, away: 1 },
+    }]);
+
+    await svc.sincronizarPlacares('fase-pc');
+    expect(jogoRepo.items[0].fonteResultado).toBe('MANUAL');
+  });
+
+  // ==================== Propriedade 25 ====================
+  // Feature: modulo-jogos, Property 25: Edição manual altera fonteResultado
+  // Valida: Requisito 14.1
+  it('Propriedade 25: editar jogo API_FOOTBALL muda para MANUAL', async () => {
+    await fc.assert(
+      fc.asyncProperty(arbDataHora, async (novaData) => {
+        jogoRepo.items = [];
+        const jogo = await service.criar({
+          faseId: 'fase-pc', timeCasaId: 'time-a', timeForaId: 'time-b',
+          dataHora: '2026-03-15T16:00:00.000Z',
+        }, userId);
+        await jogoRepo.atualizar(jogo.id, { fonteResultado: 'API_FOOTBALL', externoId: '123' });
+
+        const result = await service.atualizar(jogo.id, { dataHora: novaData.toISOString() });
+        expect(result.fonteResultado).toBe('MANUAL');
+      }),
+      { numRuns: 100 },
+    );
+  });
+
+  // ==================== Propriedade 26 ====================
+  // Feature: modulo-jogos, Property 26: Criação manual não afeta jogos importados
+  // Valida: Requisito 14.2
+  it('Propriedade 26: criar jogo manual não altera importados existentes', async () => {
+    await fc.assert(
+      fc.asyncProperty(arbTimePar, arbDataHora, async ([tc, tf], dh) => {
+        jogoRepo.items = [];
+        await jogoRepo.criar({
+          faseId: 'fase-pc', timeCasaId: 'imp-a', timeForaId: 'imp-b',
+          dataHora: new Date('2026-06-15T16:00:00Z'), status: 'AGENDADO',
+          fonteResultado: 'API_FOOTBALL', externoId: '5555', criadoPor: userId,
+          ehJogoVolta: false, grupoIdaVolta: null, temProrrogacao: false, temPenaltis: false,
+        });
+        const antes = { ...jogoRepo.items[0] };
+
+        await service.criar({ faseId: 'fase-pc', timeCasaId: tc, timeForaId: tf, dataHora: dh.toISOString() }, userId);
+
+        expect(jogoRepo.items[0].fonteResultado).toBe(antes.fonteResultado);
+        expect(jogoRepo.items[0].externoId).toBe(antes.externoId);
+      }),
+      { numRuns: 100 },
+    );
+  });
+
+  // ==================== Propriedade 27 ====================
+  // Feature: modulo-jogos, Property 27: Reset de fonteResultado
+  // Valida: Requisito 14.5
+  it('Propriedade 27: resetarFonte muda MANUAL para API_FOOTBALL', async () => {
+    jogoRepo.items = [];
+    const jogo = await service.criar({
+      faseId: 'fase-pc', timeCasaId: 'time-a', timeForaId: 'time-b',
+      dataHora: '2026-03-15T16:00:00.000Z',
+    }, userId);
+    await jogoRepo.atualizar(jogo.id, { fonteResultado: 'MANUAL', externoId: '12345' });
+
+    const result = await service.resetarFonte(jogo.id);
+    expect(result.fonteResultado).toBe('API_FOOTBALL');
   });
 });

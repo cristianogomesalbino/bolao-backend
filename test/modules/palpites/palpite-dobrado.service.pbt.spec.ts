@@ -271,4 +271,62 @@ describe('PalpiteDobradoService — Property-Based Tests', () => {
       { numRuns: 100 },
     );
   });
+
+  // Feature: modulo-palpites, Property 22: Dados completos do token
+  // Valida: Requisito 10.5
+  it('Propriedade 22: registro de token contém dados completos', async () => {
+    const arbMotivo = fc.constantFrom(
+      'PALPITES_COMPLETOS' as const,
+      'ACERTO_EM_CHEIO' as const,
+      'ULTIMO_RANKING' as const,
+      'PRIMEIRO_RANKING' as const,
+    );
+
+    await fc.assert(
+      fc.asyncProperty(fc.uuid(), fc.uuid(), arbMotivo, fc.uuid(), async (uid, gid, motivo, refId) => {
+        tokenDobroRepo.items = [];
+
+        const token = await tokenDobroService.concederToken(uid, gid, motivo, refId);
+
+        expect(token.usuarioId).toBe(uid);
+        expect(token.grupoId).toBe(gid);
+        expect(token.tipo).toBe('CONCESSAO');
+        expect(token.motivo).toBe(motivo);
+        expect(token.referenciaId).toBe(refId);
+        expect(token.dataCriacao).toBeDefined();
+        expect(token.id).toBeDefined();
+      }),
+      { numRuns: 100 },
+    );
+  });
+
+  // Feature: modulo-palpites, Property 24: Desabilitar preserva tokens
+  // Valida: Requisito 9.4
+  it('Propriedade 24: desabilitar dobro preserva tokens mas impede ativações', async () => {
+    await fc.assert(
+      fc.asyncProperty(fc.integer({ min: 1, max: 5 }), async (tokensIniciais) => {
+        palpiteDobradoRepo.items = [];
+        tokenDobroRepo.items = [];
+        await concederTokens(tokensIniciais);
+
+        const saldoAntes = await tokenDobroService.calcularSaldo(userId, grupoId);
+
+        // Desabilitar dobro no grupo
+        await service.atualizarConfiguracaoDobro(grupoId, false);
+
+        // Saldo preservado
+        const saldoDepois = await tokenDobroService.calcularSaldo(userId, grupoId);
+        expect(saldoDepois).toBe(saldoAntes);
+
+        // Ativação bloqueada
+        await expect(
+          service.ativarDobro(grupoId, jogoAgendadoId, userId),
+        ).rejects.toThrow(GrupoNaoPermiteDobroError);
+
+        // Reabilitar pra não afetar outros testes
+        await service.atualizarConfiguracaoDobro(grupoId, true);
+      }),
+      { numRuns: 50 },
+    );
+  });
 });

@@ -67,7 +67,7 @@ Implementação incremental do módulo de Jogos seguindo a arquitetura existente
     - Validar temporadaId existente (reusar TemporadaRepository ou validar via Prisma)
     - Validar que idaVolta true só é aceito com tipo MATA_MATA
     - _Requisitos: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6_
-  - [ ]* 7.2 Escrever testes unitários do FaseService
+  - [x]* 7.2 Escrever testes unitários do FaseService
     - Testar criação com temporadaId inexistente → TemporadaNaoEncontradaError
     - Testar criação com idaVolta true e tipo PONTOS_CORRIDOS → erro
     - Testar listagem ordenada por ordem
@@ -96,7 +96,7 @@ Implementação incremental do módulo de Jogos seguindo a arquitetura existente
     - Lançar TransicaoStatusInvalidaError para transições inválidas
     - Bloquear qualquer alteração após CANCELADO
     - _Requisitos: 10.2, 10.3, 10.4_
-  - [ ]* 8.3 Escrever testes unitários do JogoService (criação e atualização)
+  - [x]* 8.3 Escrever testes unitários do JogoService (criação e atualização)
     - Testar criação com times iguais → TimesIguaisError
     - Testar criação com faseId inexistente → FaseNaoEncontradaError
     - Testar atualização de jogo FINALIZADO → JogoFinalizadoError
@@ -137,7 +137,7 @@ Implementação incremental do módulo de Jogos seguindo a arquitetura existente
     - Centralizar lógica de determinação do vencedor para todos os cenários
     - Retornar null para jogos não finalizados
     - _Requisitos: 7.1, 7.2, 7.4, 7.5_
-  - [ ]* 9.4 Escrever testes unitários do JogoService (finalização)
+  - [x]* 9.4 Escrever testes unitários do JogoService (finalização)
     - Testar finalização pontos corridos: vitória casa, vitória fora, empate
     - Testar finalização mata-mata: sem empate, com prorrogação, com pênaltis
     - Testar rejeição de prorrogação em pontos corridos
@@ -180,16 +180,16 @@ Implementação incremental do módulo de Jogos seguindo a arquitetura existente
     - Jogo de ida finalizado: vencedorId null
     - Jogo de volta: calcular vencedor por placar agregado (ida + volta)
     - _Requisitos: 6.1, 6.2, 6.3, 6.4, 6.5, 7.3_
-  - [ ]* 10.2 Escrever testes unitários do JogoService (ida e volta)
+  - [x]* 10.2 Escrever testes unitários do JogoService (ida e volta)
     - Testar criação de jogo de volta sem jogo de ida → JogoIdaNaoEncontradoError
     - Testar ehJogoVolta em fase sem idaVolta → IdaVoltaNaoPermitidaError
     - Testar finalização de jogo de ida → vencedorId null
     - Testar cálculo de vencedor por placar agregado
     - _Requisitos: 6.2, 6.3, 6.4, 6.5, 7.3_
-  - [ ]* 10.3 Escrever teste de propriedade: Restrições de ida e volta
+  - [x]* 10.3 Escrever teste de propriedade: Restrições de ida e volta
     - **Propriedade 14: Restrições de ida e volta**
     - **Valida: Requisitos 6.2, 6.3, 6.4, 6.5**
-  - [ ]* 10.4 Escrever teste de propriedade: Vencedor por placar agregado
+  - [x]* 10.4 Escrever teste de propriedade: Vencedor por placar agregado
     - **Propriedade 15: Vencedor por placar agregado**
     - **Valida: Requisito 7.3**
 
@@ -212,7 +212,7 @@ Implementação incremental do módulo de Jogos seguindo a arquitetura existente
     - Usar FasePresenter.toHttp() nos retornos
     - Usar ParseUUIDCustomPipe para params UUID
     - _Requisitos: 1.1, 1.3, 1.4_
-  - [ ]* 13.2 Escrever testes unitários do FaseController
+  - [x]* 13.2 Escrever testes unitários do FaseController
     - Testar que controller chama service corretamente
     - Testar transformação via FasePresenter
     - _Requisitos: 1.1, 1.3, 1.4_
@@ -225,11 +225,11 @@ Implementação incremental do módulo de Jogos seguindo a arquitetura existente
     - Usar @CurrentUser() para obter usuário autenticado
     - Rotas de importação e sincronização restritas a SUPER_ADMIN via guard
     - _Requisitos: 2.1, 3.1, 4.1, 5.1, 8.1, 8.2, 12.1, 13.1, 14.5_
-  - [ ]* 14.2 Escrever testes unitários do JogoController
+  - [x]* 14.2 Escrever testes unitários do JogoController
     - Testar que controller chama service corretamente para cada rota
     - Testar transformação via JogoPresenter
     - _Requisitos: 2.1, 3.1, 4.1, 8.1, 8.2_
-  - [ ]* 14.3 Escrever teste de propriedade: Listagem de jogos ordenada por dataHora
+  - [x]* 14.3 Escrever teste de propriedade: Listagem de jogos ordenada por dataHora
     - **Propriedade 20: Listagem de jogos ordenada por dataHora**
     - **Valida: Requisito 8.1**
 
@@ -263,7 +263,7 @@ Implementação incremental do módulo de Jogos seguindo a arquitetura existente
     - Ao editar manualmente placar de jogo API_FOOTBALL → alterar fonteResultado para MANUAL
     - Endpoint resetar-fonte: alterar fonteResultado de MANUAL para API_FOOTBALL
     - _Requisitos: 14.1, 14.2, 14.3, 14.5_
-  - [ ]* 16.5 Escrever testes unitários do ApiFootballService e integração
+  - [x]* 16.5 Escrever testes unitários do ApiFootballService e integração
     - Testar buscarFixtures com mock HTTP
     - Testar importação: criação de jogos, idempotência, mapeamento de status
     - Testar sincronização: atualização seletiva por fonteResultado
@@ -273,19 +273,19 @@ Implementação incremental do módulo de Jogos seguindo a arquitetura existente
   - [x]* 16.6 Escrever teste de propriedade: Mapeamento de status API-Football
     - **Propriedade 22: Mapeamento de status API-Football**
     - **Valida: Requisitos 12.3, 12.4, 12.5, 12.6**
-  - [ ]* 16.7 Escrever teste de propriedade: Idempotência de importação
+  - [x]* 16.7 Escrever teste de propriedade: Idempotência de importação
     - **Propriedade 23: Idempotência de importação**
     - **Valida: Requisitos 12.7, 11.5**
-  - [ ]* 16.8 Escrever teste de propriedade: Sincronização respeita fonteResultado
+  - [x]* 16.8 Escrever teste de propriedade: Sincronização respeita fonteResultado
     - **Propriedade 24: Sincronização respeita fonteResultado**
     - **Valida: Requisitos 13.2, 13.3**
-  - [ ]* 16.9 Escrever teste de propriedade: Edição manual altera fonteResultado
+  - [x]* 16.9 Escrever teste de propriedade: Edição manual altera fonteResultado
     - **Propriedade 25: Edição manual altera fonteResultado**
     - **Valida: Requisito 14.1**
-  - [ ]* 16.10 Escrever teste de propriedade: Criação manual não afeta jogos importados
+  - [x]* 16.10 Escrever teste de propriedade: Criação manual não afeta jogos importados
     - **Propriedade 26: Criação manual não afeta jogos importados**
     - **Valida: Requisito 14.2**
-  - [ ]* 16.11 Escrever teste de propriedade: Reset de fonteResultado
+  - [x]* 16.11 Escrever teste de propriedade: Reset de fonteResultado
     - **Propriedade 27: Reset de fonteResultado**
     - **Valida: Requisito 14.5**
 
@@ -302,7 +302,7 @@ Implementação incremental do módulo de Jogos seguindo a arquitetura existente
     - Registrar log de aviso quando fallback é utilizado
     - Nunca bloquear operações do usuário por falha na API
     - _Requisitos: 16.1, 16.2, 16.3, 16.4_
-  - [ ]* 16b.3 Escrever testes unitários do status híbrido
+  - [x]* 16b.3 Escrever testes unitários do status híbrido
     - Testar definirStatusFinal com jogo FINALIZADO + statusApi diferente → mantém FINALIZADO
     - Testar definirStatusFinal com statusApi fornecido → usa mapearStatus
     - Testar definirStatusFinal sem statusApi → usa calcularStatusInterno

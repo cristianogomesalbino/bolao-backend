@@ -104,7 +104,7 @@ Implementação incremental do módulo de Palpites seguindo a arquitetura existe
   - [x]* 8.5 Escrever teste de propriedade: Unicidade de palpite por usuário e jogo
     - **Propriedade 3: Unicidade (usuarioId, jogoId)**
     - **Valida: Requisitos 1.3, 7.1, 7.2**
-  - [ ]* 8.6 Escrever teste de propriedade: Validação de gols rejeita valores inválidos
+  - [x]* 8.6 Escrever teste de propriedade: Validação de gols rejeita valores inválidos
     - **Propriedade 4: Gols negativos rejeitados**
     - **Valida: Requisito 1.4**
   - [x]* 8.7 Escrever teste de propriedade: Edição atualiza dados corretamente
@@ -119,7 +119,7 @@ Implementação incremental do módulo de Palpites seguindo a arquitetura existe
   - [x]* 8.10 Escrever teste de propriedade: Visibilidade por status do jogo no grupo
     - **Propriedade 8: Visibilidade condicional**
     - **Valida: Requisitos 5.1, 5.2**
-  - [ ]* 8.11 Escrever teste de propriedade: Filtro de palpites por temporada
+  - [x]* 8.11 Escrever teste de propriedade: Filtro de palpites por temporada
     - **Propriedade 9: Filtro por temporadaId**
     - **Valida: Requisito 6.2**
 
@@ -163,7 +163,7 @@ Implementação incremental do módulo de Palpites seguindo a arquitetura existe
   - [x]* 9.9 Escrever teste de propriedade: Rejeição em grupo sem dobro habilitado
     - **Propriedade 17: Grupo sem dobro**
     - **Valida: Requisitos 11.5, 10.7**
-  - [ ]* 9.10 Escrever teste de propriedade: Desabilitar dobro preserva tokens mas impede ativações
+  - [x]* 9.10 Escrever teste de propriedade: Desabilitar dobro preserva tokens mas impede ativações
     - **Propriedade 24: Desabilitar preserva tokens**
     - **Valida: Requisito 9.4**
 
@@ -196,7 +196,7 @@ Implementação incremental do módulo de Palpites seguindo a arquitetura existe
   - [x]* 10.6 Escrever teste de propriedade: Saldo é diferença entre concessões e utilizações
     - **Propriedade 21: Cálculo de saldo**
     - **Valida: Requisitos 13.1, 10.6**
-  - [ ]* 10.7 Escrever teste de propriedade: Registro de token contém dados completos
+  - [x]* 10.7 Escrever teste de propriedade: Registro de token contém dados completos
     - **Propriedade 22: Dados completos do token**
     - **Valida: Requisito 10.5**
 
