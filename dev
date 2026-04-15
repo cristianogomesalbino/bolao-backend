@@ -104,7 +104,7 @@ execute_npx () {
   echo "$ICON Executando NPX..."
   echo
   shift 1
-  $NPX "$@"
+  $NPX_DEV "$@"
 }
 
 start_dev () {

@@ -10,6 +10,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { UsuariosModule } from './modules/usuarios/usuarios.module';
 import { GrupoUsuarioModule } from './modules/grupo-usuario/grupo-usuario.module';
 import { JogosModule } from './modules/jogos/jogos.module';
+import { PalpitesModule } from './modules/palpites/palpites.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 
 @Module({
@@ -22,6 +23,7 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
     AuthModule,
     UsuariosModule,
     JogosModule,
+    PalpitesModule,
   ],
   controllers: [AppController],
   providers: [

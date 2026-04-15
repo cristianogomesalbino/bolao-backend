@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Bolão Backend API",
-    "description": "Coleção completa de endpoints da API de Bolão.\n\nFluxo de teste sugerido:\n1. Criar Usuário\n2. Login (tokens salvos automaticamente)\n3. Testar endpoints autenticados\n4. Refresh Token quando expirar",
+    "description": "API para gerenciamento de bolões de campeonatos de futebol",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "version": "1.0.0"
   },
@@ -16,61 +16,18 @@
     ]
   },
   "variable": [
-    {
-      "key": "baseUrl",
-      "value": "http://localhost:3002",
-      "type": "string"
-    },
-    {
-      "key": "accessToken",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "refreshToken",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "usuarioId",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "campeonatoId",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "temporadaId",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "grupoId",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "codigoConvite",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "membroId",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "faseId",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "jogoId",
-      "value": "",
-      "type": "string"
-    }
+    { "key": "baseUrl", "value": "http://localhost:3002", "type": "string" },
+    { "key": "accessToken", "value": "", "type": "string" },
+    { "key": "refreshToken", "value": "", "type": "string" },
+    { "key": "usuarioId", "value": "", "type": "string" },
+    { "key": "campeonatoId", "value": "", "type": "string" },
+    { "key": "temporadaId", "value": "", "type": "string" },
+    { "key": "grupoId", "value": "", "type": "string" },
+    { "key": "codigoConvite", "value": "", "type": "string" },
+    { "key": "membroId", "value": "", "type": "string" },
+    { "key": "faseId", "value": "", "type": "string" },
+    { "key": "jogoId", "value": "", "type": "string" },
+    { "key": "palpiteId", "value": "", "type": "string" }
   ],
   "item": [
     {
@@ -86,10 +43,8 @@
               "raw": "{{baseUrl}}/health",
               "host": ["{{baseUrl}}"],
               "path": ["health"]
-            },
-            "description": "Verifica o status da API"
-          },
-          "response": []
+            }
+          }
         }
       ]
     },
@@ -102,36 +57,29 @@
             {
               "listen": "test",
               "script": {
-                "type": "text/javascript",
                 "exec": [
-                  "if (pm.response.code === 200 || pm.response.code === 201) {",
-                  "  const json = pm.response.json();",
-                  "  if (json.accessToken) pm.collectionVariables.set('accessToken', json.accessToken);",
-                  "  if (json.refreshToken) pm.collectionVariables.set('refreshToken', json.refreshToken);",
-                  "  if (json.usuario && json.usuario.id) pm.collectionVariables.set('usuarioId', json.usuario.id);",
-                  "}"
-                ]
+                  "const res = pm.response.json();",
+                  "if (res.accessToken) pm.collectionVariables.set('accessToken', res.accessToken);",
+                  "if (res.refreshToken) pm.collectionVariables.set('refreshToken', res.refreshToken);"
+                ],
+                "type": "text/javascript"
               }
             }
           ],
           "request": {
             "auth": { "type": "noauth" },
             "method": "POST",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" }
-            ],
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"joao@example.com\",\n  \"senha\": \"senha123\"\n}"
+              "raw": "{\n  \"email\": \"usuario@email.com\",\n  \"senha\": \"senha123\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/auth/login",
               "host": ["{{baseUrl}}"],
               "path": ["auth", "login"]
-            },
-            "description": "Fazer login. Salva accessToken e refreshToken automaticamente nas variáveis."
-          },
-          "response": []
+            }
+          }
         },
         {
           "name": "Refresh Token",
@@ -139,23 +87,19 @@
             {
               "listen": "test",
               "script": {
-                "type": "text/javascript",
                 "exec": [
-                  "if (pm.response.code === 200 || pm.response.code === 201) {",
-                  "  const json = pm.response.json();",
-                  "  if (json.accessToken) pm.collectionVariables.set('accessToken', json.accessToken);",
-                  "  if (json.refreshToken) pm.collectionVariables.set('refreshToken', json.refreshToken);",
-                  "}"
-                ]
+                  "const res = pm.response.json();",
+                  "if (res.accessToken) pm.collectionVariables.set('accessToken', res.accessToken);",
+                  "if (res.refreshToken) pm.collectionVariables.set('refreshToken', res.refreshToken);"
+                ],
+                "type": "text/javascript"
               }
             }
           ],
           "request": {
             "auth": { "type": "noauth" },
             "method": "POST",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" }
-            ],
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
@@ -164,33 +108,14 @@
               "raw": "{{baseUrl}}/auth/refresh",
               "host": ["{{baseUrl}}"],
               "path": ["auth", "refresh"]
-            },
-            "description": "Renovar token de acesso. Atualiza accessToken e refreshToken automaticamente."
-          },
-          "response": []
+            }
+          }
         },
         {
           "name": "Logout",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "if (pm.response.code === 200 || pm.response.code === 201) {",
-                  "  pm.collectionVariables.set('accessToken', '');",
-                  "  pm.collectionVariables.set('refreshToken', '');",
-                  "}"
-                ]
-              }
-            }
-          ],
           "request": {
-            "auth": { "type": "noauth" },
             "method": "POST",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" }
-            ],
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
@@ -199,10 +124,8 @@
               "raw": "{{baseUrl}}/auth/logout",
               "host": ["{{baseUrl}}"],
               "path": ["auth", "logout"]
-            },
-            "description": "Fazer logout. Limpa os tokens das variáveis automaticamente."
-          },
-          "response": []
+            }
+          }
         }
       ]
     },
@@ -215,22 +138,18 @@
             {
               "listen": "test",
               "script": {
-                "type": "text/javascript",
                 "exec": [
-                  "if (pm.response.code === 201) {",
-                  "  const json = pm.response.json();",
-                  "  if (json.id) pm.collectionVariables.set('usuarioId', json.id);",
-                  "}"
-                ]
+                  "const res = pm.response.json();",
+                  "if (res.id) pm.collectionVariables.set('usuarioId', res.id);"
+                ],
+                "type": "text/javascript"
               }
             }
           ],
           "request": {
             "auth": { "type": "noauth" },
             "method": "POST",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" }
-            ],
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"nome\": \"João Silva\",\n  \"email\": \"joao@example.com\",\n  \"senha\": \"senha123\"\n}"
@@ -239,13 +158,11 @@
               "raw": "{{baseUrl}}/usuarios",
               "host": ["{{baseUrl}}"],
               "path": ["usuarios"]
-            },
-            "description": "Criar um novo usuário. Salva o ID automaticamente."
-          },
-          "response": []
+            }
+          }
         },
         {
-          "name": "Meu Perfil",
+          "name": "Buscar Meu Perfil",
           "request": {
             "method": "GET",
             "header": [],
@@ -253,10 +170,8 @@
               "raw": "{{baseUrl}}/usuarios/me",
               "host": ["{{baseUrl}}"],
               "path": ["usuarios", "me"]
-            },
-            "description": "Buscar perfil do usuário autenticado (requer JWT)."
-          },
-          "response": []
+            }
+          }
         },
         {
           "name": "Buscar Usuário por ID",
@@ -267,18 +182,14 @@
               "raw": "{{baseUrl}}/usuarios/{{usuarioId}}",
               "host": ["{{baseUrl}}"],
               "path": ["usuarios", "{{usuarioId}}"]
-            },
-            "description": "Buscar usuário por ID (requer JWT + ser o próprio ou SUPER_ADMIN)."
-          },
-          "response": []
+            }
+          }
         },
         {
           "name": "Atualizar Usuário",
           "request": {
             "method": "PATCH",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" }
-            ],
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"nome\": \"João Silva Atualizado\"\n}"
@@ -287,10 +198,8 @@
               "raw": "{{baseUrl}}/usuarios/{{usuarioId}}",
               "host": ["{{baseUrl}}"],
               "path": ["usuarios", "{{usuarioId}}"]
-            },
-            "description": "Atualizar dados do usuário. Campos opcionais: nome, email, senha."
-          },
-          "response": []
+            }
+          }
         },
         {
           "name": "Remover Usuário",
@@ -301,10 +210,8 @@
               "raw": "{{baseUrl}}/usuarios/{{usuarioId}}",
               "host": ["{{baseUrl}}"],
               "path": ["usuarios", "{{usuarioId}}"]
-            },
-            "description": "Soft delete do usuário (requer JWT + ser o próprio ou SUPER_ADMIN)."
-          },
-          "response": []
+            }
+          }
         }
       ]
     },
@@ -317,33 +224,27 @@
             {
               "listen": "test",
               "script": {
-                "type": "text/javascript",
                 "exec": [
-                  "if (pm.response.code === 201) {",
-                  "  const json = pm.response.json();",
-                  "  if (json.id) pm.collectionVariables.set('campeonatoId', json.id);",
-                  "}"
-                ]
+                  "const res = pm.response.json();",
+                  "if (res.id) pm.collectionVariables.set('campeonatoId', res.id);"
+                ],
+                "type": "text/javascript"
               }
             }
           ],
           "request": {
             "method": "POST",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" }
-            ],
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nome\": \"Copa do Mundo 2026\"\n}"
+              "raw": "{\n  \"nome\": \"Brasileirão Série A\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/campeonatos",
               "host": ["{{baseUrl}}"],
               "path": ["campeonatos"]
-            },
-            "description": "Cria um novo campeonato (requer JWT). Salva o ID automaticamente."
-          },
-          "response": []
+            }
+          }
         },
         {
           "name": "Listar Campeonatos",
@@ -354,10 +255,8 @@
               "raw": "{{baseUrl}}/campeonatos",
               "host": ["{{baseUrl}}"],
               "path": ["campeonatos"]
-            },
-            "description": "Lista todos os campeonatos (requer JWT)."
-          },
-          "response": []
+            }
+          }
         }
       ]
     },
@@ -370,21 +269,17 @@
             {
               "listen": "test",
               "script": {
-                "type": "text/javascript",
                 "exec": [
-                  "if (pm.response.code === 201) {",
-                  "  const json = pm.response.json();",
-                  "  if (json.id) pm.collectionVariables.set('temporadaId', json.id);",
-                  "}"
-                ]
+                  "const res = pm.response.json();",
+                  "if (res.id) pm.collectionVariables.set('temporadaId', res.id);"
+                ],
+                "type": "text/javascript"
               }
             }
           ],
           "request": {
             "method": "POST",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" }
-            ],
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"ano\": 2026,\n  \"campeonatoId\": \"{{campeonatoId}}\"\n}"
@@ -393,10 +288,8 @@
               "raw": "{{baseUrl}}/temporadas",
               "host": ["{{baseUrl}}"],
               "path": ["temporadas"]
-            },
-            "description": "Cria uma nova temporada vinculada a um campeonato (requer JWT). Salva o ID automaticamente."
-          },
-          "response": []
+            }
+          }
         },
         {
           "name": "Listar Temporadas",
@@ -407,10 +300,8 @@
               "raw": "{{baseUrl}}/temporadas",
               "host": ["{{baseUrl}}"],
               "path": ["temporadas"]
-            },
-            "description": "Lista todas as temporadas (requer JWT)."
-          },
-          "response": []
+            }
+          }
         }
       ]
     },
@@ -423,34 +314,28 @@
             {
               "listen": "test",
               "script": {
-                "type": "text/javascript",
                 "exec": [
-                  "if (pm.response.code === 201) {",
-                  "  const json = pm.response.json();",
-                  "  if (json.id) pm.collectionVariables.set('grupoId', json.id);",
-                  "  if (json.codigoConvite) pm.collectionVariables.set('codigoConvite', json.codigoConvite);",
-                  "}"
-                ]
+                  "const res = pm.response.json();",
+                  "if (res.id) pm.collectionVariables.set('grupoId', res.id);",
+                  "if (res.codigoConvite) pm.collectionVariables.set('codigoConvite', res.codigoConvite);"
+                ],
+                "type": "text/javascript"
               }
             }
           ],
           "request": {
             "method": "POST",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" }
-            ],
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nome\": \"Grupo dos Amigos\",\n  \"temporadaId\": \"{{temporadaId}}\",\n  \"privado\": true,\n  \"permitirPalpiteAutomatico\": true,\n  \"maxParticipantes\": 20\n}"
+              "raw": "{\n  \"nome\": \"Bolão da Firma\",\n  \"temporadaId\": \"{{temporadaId}}\",\n  \"privado\": true,\n  \"permitirPalpiteAutomatico\": false,\n  \"maxParticipantes\": 20\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/grupos",
               "host": ["{{baseUrl}}"],
               "path": ["grupos"]
-            },
-            "description": "Criar um novo grupo. Salva grupoId e codigoConvite automaticamente."
-          },
-          "response": []
+            }
+          }
         },
         {
           "name": "Listar Grupos",
@@ -461,10 +346,8 @@
               "raw": "{{baseUrl}}/grupos",
               "host": ["{{baseUrl}}"],
               "path": ["grupos"]
-            },
-            "description": "Listar todos os grupos ativos."
-          },
-          "response": []
+            }
+          }
         },
         {
           "name": "Buscar Grupo por ID",
@@ -475,38 +358,30 @@
               "raw": "{{baseUrl}}/grupos/{{grupoId}}",
               "host": ["{{baseUrl}}"],
               "path": ["grupos", "{{grupoId}}"]
-            },
-            "description": "Buscar grupo por ID."
-          },
-          "response": []
+            }
+          }
         },
         {
           "name": "Atualizar Grupo",
           "request": {
             "method": "PATCH",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" }
-            ],
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nome\": \"Grupo Atualizado\",\n  \"privado\": false,\n  \"permitirPalpiteAutomatico\": false\n}"
+              "raw": "{\n  \"nome\": \"Bolão Atualizado\",\n  \"privado\": false\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/grupos/{{grupoId}}",
               "host": ["{{baseUrl}}"],
               "path": ["grupos", "{{grupoId}}"]
-            },
-            "description": "Atualizar informações do grupo (requer ser ADMIN do grupo)."
-          },
-          "response": []
+            }
+          }
         },
         {
           "name": "Alterar Status do Grupo",
           "request": {
             "method": "PATCH",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" }
-            ],
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"ativo\": false\n}"
@@ -515,10 +390,8 @@
               "raw": "{{baseUrl}}/grupos/{{grupoId}}/status",
               "host": ["{{baseUrl}}"],
               "path": ["grupos", "{{grupoId}}", "status"]
-            },
-            "description": "Ativar/desativar grupo (requer ser ADMIN do grupo)."
-          },
-          "response": []
+            }
+          }
         },
         {
           "name": "Excluir Grupo",
@@ -529,23 +402,19 @@
               "raw": "{{baseUrl}}/grupos/{{grupoId}}",
               "host": ["{{baseUrl}}"],
               "path": ["grupos", "{{grupoId}}"]
-            },
-            "description": "Excluir grupo inativo (requer ser ADMIN do grupo)."
-          },
-          "response": []
+            }
+          }
         }
       ]
     },
     {
-      "name": "Grupo - Membros",
+      "name": "Membros do Grupo",
       "item": [
         {
           "name": "Entrar no Grupo por Convite",
           "request": {
             "method": "POST",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" }
-            ],
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"codigoConvite\": \"{{codigoConvite}}\"\n}"
@@ -554,10 +423,8 @@
               "raw": "{{baseUrl}}/grupos/entrar",
               "host": ["{{baseUrl}}"],
               "path": ["grupos", "entrar"]
-            },
-            "description": "Entrar em um grupo usando código de convite (8 caracteres)."
-          },
-          "response": []
+            }
+          }
         },
         {
           "name": "Adicionar Membro por Email",
@@ -565,36 +432,30 @@
             {
               "listen": "test",
               "script": {
-                "type": "text/javascript",
                 "exec": [
-                  "if (pm.response.code === 201) {",
-                  "  const json = pm.response.json();",
-                  "  if (json.usuario && json.usuario.id) pm.collectionVariables.set('membroId', json.usuario.id);",
-                  "}"
-                ]
+                  "const res = pm.response.json();",
+                  "if (res.id) pm.collectionVariables.set('membroId', res.id);"
+                ],
+                "type": "text/javascript"
               }
             }
           ],
           "request": {
             "method": "POST",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" }
-            ],
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"maria@example.com\"\n}"
+              "raw": "{\n  \"email\": \"usuario@example.com\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/grupos/{{grupoId}}/adicionar",
               "host": ["{{baseUrl}}"],
               "path": ["grupos", "{{grupoId}}", "adicionar"]
-            },
-            "description": "Adicionar membro ao grupo por email (requer ser ADMIN do grupo). Salva membroId automaticamente."
-          },
-          "response": []
+            }
+          }
         },
         {
-          "name": "Listar Membros do Grupo",
+          "name": "Listar Membros",
           "request": {
             "method": "GET",
             "header": [],
@@ -602,10 +463,8 @@
               "raw": "{{baseUrl}}/grupos/{{grupoId}}/membros",
               "host": ["{{baseUrl}}"],
               "path": ["grupos", "{{grupoId}}", "membros"]
-            },
-            "description": "Listar todos os membros de um grupo."
-          },
-          "response": []
+            }
+          }
         },
         {
           "name": "Sair do Grupo",
@@ -616,10 +475,8 @@
               "raw": "{{baseUrl}}/grupos/{{grupoId}}/sair",
               "host": ["{{baseUrl}}"],
               "path": ["grupos", "{{grupoId}}", "sair"]
-            },
-            "description": "Sair de um grupo (único admin não pode sair)."
-          },
-          "response": []
+            }
+          }
         },
         {
           "name": "Remover Membro do Grupo",
@@ -627,18 +484,16 @@
             "method": "DELETE",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/grupos/{{grupoId}}/usuarios/{{membroId}}",
+              "raw": "{{baseUrl}}/grupos/{{grupoId}}/usuarios/{{usuarioId}}",
               "host": ["{{baseUrl}}"],
-              "path": ["grupos", "{{grupoId}}", "usuarios", "{{membroId}}"]
-            },
-            "description": "Remover um usuário do grupo (requer ser ADMIN do grupo)."
-          },
-          "response": []
+              "path": ["grupos", "{{grupoId}}", "usuarios", "{{usuarioId}}"]
+            }
+          }
         }
       ]
     },
     {
-      "name": "Jogos",
+      "name": "Fases",
       "item": [
         {
           "name": "Criar Fase",
@@ -646,21 +501,17 @@
             {
               "listen": "test",
               "script": {
-                "type": "text/javascript",
                 "exec": [
-                  "if (pm.response.code === 201) {",
-                  "  const json = pm.response.json();",
-                  "  if (json.id) pm.collectionVariables.set('faseId', json.id);",
-                  "}"
-                ]
+                  "const res = pm.response.json();",
+                  "if (res.id) pm.collectionVariables.set('faseId', res.id);"
+                ],
+                "type": "text/javascript"
               }
             }
           ],
           "request": {
             "method": "POST",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" }
-            ],
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"nome\": \"Rodada 1\",\n  \"tipo\": \"PONTOS_CORRIDOS\",\n  \"ordem\": 1,\n  \"idaVolta\": false\n}"
@@ -669,13 +520,11 @@
               "raw": "{{baseUrl}}/temporadas/{{temporadaId}}/fases",
               "host": ["{{baseUrl}}"],
               "path": ["temporadas", "{{temporadaId}}", "fases"]
-            },
-            "description": "Criar uma nova fase na temporada (requer JWT). Salva faseId automaticamente."
-          },
-          "response": []
+            }
+          }
         },
         {
-          "name": "Listar Fases",
+          "name": "Listar Fases da Temporada",
           "request": {
             "method": "GET",
             "header": [],
@@ -683,10 +532,8 @@
               "raw": "{{baseUrl}}/temporadas/{{temporadaId}}/fases",
               "host": ["{{baseUrl}}"],
               "path": ["temporadas", "{{temporadaId}}", "fases"]
-            },
-            "description": "Listar todas as fases de uma temporada ordenadas por ordem (requer JWT)."
-          },
-          "response": []
+            }
+          }
         },
         {
           "name": "Buscar Fase por ID",
@@ -697,84 +544,41 @@
               "raw": "{{baseUrl}}/temporadas/{{temporadaId}}/fases/{{faseId}}",
               "host": ["{{baseUrl}}"],
               "path": ["temporadas", "{{temporadaId}}", "fases", "{{faseId}}"]
-            },
-            "description": "Buscar fase por ID (requer JWT)."
-          },
-          "response": []
-        },
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Jogos",
+      "item": [
         {
           "name": "Criar Jogo",
           "event": [
             {
               "listen": "test",
               "script": {
-                "type": "text/javascript",
                 "exec": [
-                  "if (pm.response.code === 201) {",
-                  "  const json = pm.response.json();",
-                  "  if (json.id) pm.collectionVariables.set('jogoId', json.id);",
-                  "}"
-                ]
+                  "const res = pm.response.json();",
+                  "if (res.id) pm.collectionVariables.set('jogoId', res.id);"
+                ],
+                "type": "text/javascript"
               }
             }
           ],
           "request": {
             "method": "POST",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" }
-            ],
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"timeCasaId\": \"flamengo\",\n  \"timeForaId\": \"palmeiras\",\n  \"dataHora\": \"2026-03-15T16:00:00.000Z\",\n  \"grupoIdaVolta\": null,\n  \"ehJogoVolta\": false\n}"
+              "raw": "{\n  \"timeCasaId\": \"flamengo\",\n  \"timeForaId\": \"palmeiras\",\n  \"dataHora\": \"2026-03-15T16:00:00.000Z\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/fases/{{faseId}}/jogos",
               "host": ["{{baseUrl}}"],
               "path": ["fases", "{{faseId}}", "jogos"]
-            },
-            "description": "Criar um novo jogo na fase (requer JWT). Salva jogoId automaticamente."
-          },
-          "response": []
-        },
-        {
-          "name": "Atualizar Jogo",
-          "request": {
-            "method": "PATCH",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"dataHora\": \"2026-03-16T18:00:00.000Z\",\n  \"status\": \"EM_ANDAMENTO\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/jogos/{{jogoId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["jogos", "{{jogoId}}"]
-            },
-            "description": "Atualizar dados de um jogo (requer JWT). Campos opcionais: dataHora, timeCasaId, timeForaId, status."
-          },
-          "response": []
-        },
-        {
-          "name": "Finalizar Jogo",
-          "request": {
-            "method": "PATCH",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"golsCasa\": 2,\n  \"golsFora\": 1,\n  \"temProrrogacao\": false,\n  \"temPenaltis\": false\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/jogos/{{jogoId}}/finalizar",
-              "host": ["{{baseUrl}}"],
-              "path": ["jogos", "{{jogoId}}", "finalizar"]
-            },
-            "description": "Finalizar um jogo com placar (requer JWT). Suporta prorrogação e pênaltis em mata-mata."
-          },
-          "response": []
+            }
+          }
         },
         {
           "name": "Listar Jogos da Fase",
@@ -785,10 +589,8 @@
               "raw": "{{baseUrl}}/fases/{{faseId}}/jogos",
               "host": ["{{baseUrl}}"],
               "path": ["fases", "{{faseId}}", "jogos"]
-            },
-            "description": "Listar todos os jogos de uma fase ordenados por dataHora (requer JWT)."
-          },
-          "response": []
+            }
+          }
         },
         {
           "name": "Buscar Jogo por ID",
@@ -799,18 +601,58 @@
               "raw": "{{baseUrl}}/jogos/{{jogoId}}",
               "host": ["{{baseUrl}}"],
               "path": ["jogos", "{{jogoId}}"]
+            }
+          }
+        },
+        {
+          "name": "Atualizar Jogo",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"dataHora\": \"2026-03-16T18:00:00.000Z\",\n  \"status\": \"EM_ANDAMENTO\"\n}"
             },
-            "description": "Buscar jogo por ID (requer JWT)."
-          },
-          "response": []
+            "url": {
+              "raw": "{{baseUrl}}/jogos/{{jogoId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["jogos", "{{jogoId}}"]
+            }
+          }
+        },
+        {
+          "name": "Finalizar Jogo",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"golsCasa\": 2,\n  \"golsFora\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/jogos/{{jogoId}}/finalizar",
+              "host": ["{{baseUrl}}"],
+              "path": ["jogos", "{{jogoId}}", "finalizar"]
+            }
+          }
+        },
+        {
+          "name": "Resetar Fonte de Resultado",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/jogos/{{jogoId}}/resetar-fonte",
+              "host": ["{{baseUrl}}"],
+              "path": ["jogos", "{{jogoId}}", "resetar-fonte"]
+            }
+          }
         },
         {
           "name": "Importar Jogos (SUPER_ADMIN)",
           "request": {
             "method": "POST",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" }
-            ],
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"leagueId\": 71,\n  \"season\": 2026,\n  \"faseId\": \"{{faseId}}\"\n}"
@@ -819,10 +661,8 @@
               "raw": "{{baseUrl}}/jogos/importar",
               "host": ["{{baseUrl}}"],
               "path": ["jogos", "importar"]
-            },
-            "description": "Importar jogos da API-Football (requer JWT + SUPER_ADMIN). leagueId: 71=Brasileirão, 1=Copa do Mundo."
-          },
-          "response": []
+            }
+          }
         },
         {
           "name": "Sincronizar Placares (SUPER_ADMIN)",
@@ -833,24 +673,192 @@
               "raw": "{{baseUrl}}/fases/{{faseId}}/jogos/sincronizar",
               "host": ["{{baseUrl}}"],
               "path": ["fases", "{{faseId}}", "jogos", "sincronizar"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Palpites",
+      "item": [
+        {
+          "name": "Criar Palpite",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.id) pm.collectionVariables.set('palpiteId', res.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"golsCasa\": 2,\n  \"golsFora\": 1\n}"
             },
-            "description": "Sincronizar placares dos jogos importados via API-Football (requer JWT + SUPER_ADMIN)."
-          },
-          "response": []
+            "url": {
+              "raw": "{{baseUrl}}/jogos/{{jogoId}}/palpites",
+              "host": ["{{baseUrl}}"],
+              "path": ["jogos", "{{jogoId}}", "palpites"]
+            }
+          }
         },
         {
-          "name": "Resetar Fonte Resultado",
+          "name": "Editar Palpite",
           "request": {
             "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"golsCasa\": 3,\n  \"golsFora\": 0\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/palpites/{{palpiteId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["palpites", "{{palpiteId}}"]
+            }
+          }
+        },
+        {
+          "name": "Excluir Palpite",
+          "request": {
+            "method": "DELETE",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/jogos/{{jogoId}}/resetar-fonte",
+              "raw": "{{baseUrl}}/palpites/{{palpiteId}}",
               "host": ["{{baseUrl}}"],
-              "path": ["jogos", "{{jogoId}}", "resetar-fonte"]
+              "path": ["palpites", "{{palpiteId}}"]
+            }
+          }
+        },
+        {
+          "name": "Buscar Meu Palpite por Jogo",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/jogos/{{jogoId}}/meu-palpite",
+              "host": ["{{baseUrl}}"],
+              "path": ["jogos", "{{jogoId}}", "meu-palpite"]
+            }
+          }
+        },
+        {
+          "name": "Listar Meus Palpites",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/meus-palpites",
+              "host": ["{{baseUrl}}"],
+              "path": ["meus-palpites"]
+            }
+          }
+        },
+        {
+          "name": "Listar Meus Palpites (filtro por temporada)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/meus-palpites?temporadaId={{temporadaId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["meus-palpites"],
+              "query": [
+                {
+                  "key": "temporadaId",
+                  "value": "{{temporadaId}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Listar Palpites do Grupo por Jogo",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/grupos/{{grupoId}}/jogos/{{jogoId}}/palpites",
+              "host": ["{{baseUrl}}"],
+              "path": ["grupos", "{{grupoId}}", "jogos", "{{jogoId}}", "palpites"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Palpite Dobrado",
+      "item": [
+        {
+          "name": "Ativar Dobro",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/grupos/{{grupoId}}/jogos/{{jogoId}}/dobro",
+              "host": ["{{baseUrl}}"],
+              "path": ["grupos", "{{grupoId}}", "jogos", "{{jogoId}}", "dobro"]
+            }
+          }
+        },
+        {
+          "name": "Desativar Dobro",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/grupos/{{grupoId}}/jogos/{{jogoId}}/dobro",
+              "host": ["{{baseUrl}}"],
+              "path": ["grupos", "{{grupoId}}", "jogos", "{{jogoId}}", "dobro"]
+            }
+          }
+        },
+        {
+          "name": "Consultar Saldo de Fichas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/grupos/{{grupoId}}/tokens-dobro/saldo",
+              "host": ["{{baseUrl}}"],
+              "path": ["grupos", "{{grupoId}}", "tokens-dobro", "saldo"]
+            }
+          }
+        },
+        {
+          "name": "Consultar Histórico de Fichas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/grupos/{{grupoId}}/tokens-dobro/historico",
+              "host": ["{{baseUrl}}"],
+              "path": ["grupos", "{{grupoId}}", "tokens-dobro", "historico"]
+            }
+          }
+        },
+        {
+          "name": "Configurar Palpite Dobrado no Grupo",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"palpiteDobradoHabilitado\": true\n}"
             },
-            "description": "Resetar fonteResultado de MANUAL para API_FOOTBALL, permitindo re-sincronização (requer JWT)."
-          },
-          "response": []
+            "url": {
+              "raw": "{{baseUrl}}/grupos/{{grupoId}}/configuracao-dobro",
+              "host": ["{{baseUrl}}"],
+              "path": ["grupos", "{{grupoId}}", "configuracao-dobro"]
+            }
+          }
         }
       ]
     }

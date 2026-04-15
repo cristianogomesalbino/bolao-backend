@@ -1,0 +1,23 @@
+export const PALPITES = {
+  TAG: 'Palpites',
+  PALPITE_REPOSITORY_TOKEN: 'PALPITE_REPOSITORY',
+  PALPITE_DOBRADO_REPOSITORY_TOKEN: 'PALPITE_DOBRADO_REPOSITORY',
+  TOKEN_DOBRO_REPOSITORY_TOKEN: 'TOKEN_DOBRO_REPOSITORY',
+  MENSAGENS: {
+    PALPITE_NAO_ENCONTRADO: 'Palpite não encontrado',
+    JOGO_NAO_ACEITA_PALPITES: 'O jogo não aceita mais palpites',
+    PALPITE_JA_EXISTE: 'Já existe um palpite para este jogo',
+    PALPITE_NAO_PERTENCE_AO_USUARIO: 'Este palpite não pertence ao usuário',
+    PALPITE_CRIADO: 'Palpite criado com sucesso',
+    PALPITE_ATUALIZADO: 'Palpite atualizado com sucesso',
+    PALPITE_EXCLUIDO: 'Palpite excluído com sucesso',
+    GRUPO_NAO_PERMITE_DOBRO: 'O grupo não permite palpite dobrado',
+    SEM_FICHAS_DOBRO: 'Você não possui fichas de dobro disponíveis',
+    DOBRO_JA_ATIVO: 'Já existe dobro ativo para este jogo neste grupo',
+    DOBRO_NAO_ENCONTRADO: 'Não existe dobro ativo para este jogo neste grupo',
+    JOGO_NAO_ACEITA_DOBRO: 'O jogo não aceita mais ativação de dobro',
+    DOBRO_ATIVADO: 'Palpite dobrado ativado com sucesso',
+    DOBRO_DESATIVADO: 'Palpite dobrado desativado com sucesso',
+    CONFIGURACAO_ATUALIZADA: 'Configuração de palpite dobrado atualizada',
+  },
+} as const;

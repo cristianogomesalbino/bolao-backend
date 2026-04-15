@@ -5,3 +5,6 @@ export { GrupoUsuarioPresenter } from './grupo-usuario.presenter';
 export { UsuarioPresenter } from './usuario.presenter';
 export { FasePresenter } from './fase.presenter';
 export { JogoPresenter } from './jogo.presenter';
+export { PalpitePresenter } from './palpite.presenter';
+export { PalpiteDobradoPresenter } from './palpite-dobrado.presenter';
+export { TokenDobroPresenter } from './token-dobro.presenter';
