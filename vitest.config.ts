@@ -4,14 +4,16 @@ import path from 'node:path';
 export default defineConfig({
   test: {
     environment: 'node',
-    root: 'src',
-    include: ['**/*.spec.ts'],
+    root: '.',
+    include: ['test/**/*.spec.ts'],
     alias: {
-      src: path.resolve(__dirname, 'src'),
+      '@src': path.resolve(__dirname, 'src'),
     },
     coverage: {
       provider: 'v8',
-      reportsDirectory: '../coverage',
+      reportsDirectory: 'coverage',
+      include: ['src/**/*.ts'],
+      exclude: ['src/**/*.spec.ts', 'src/**/*.module.ts', 'src/main.ts'],
     },
   },
 });

@@ -12,6 +12,6 @@ export interface GrupoRepository {
   buscarPorId(id: string): Promise<any>;
   buscarPorIdSimples(id: string): Promise<any>;
   buscarPorCodigoConvite(codigo: string): Promise<any>;
-  atualizar(id: string, data: Partial<{ nome: string; privado: boolean; permitirPalpiteAutomatico: boolean; ativo: boolean }>): Promise<any>;
+  atualizar(id: string, data: Partial<{ nome: string; privado: boolean; permitirPalpiteAutomatico: boolean; ativo: boolean; palpiteDobradoHabilitado: boolean }>): Promise<any>;
   remover(id: string): Promise<void>;
 }

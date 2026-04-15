@@ -73,13 +73,13 @@ Implementação incremental do módulo de Jogos seguindo a arquitetura existente
     - Testar listagem ordenada por ordem
     - Testar busca por ID inexistente → FaseNaoEncontradaError
     - _Requisitos: 1.1, 1.2, 1.3, 1.4, 1.6_
-  - [ ]* 7.3 Escrever teste de propriedade: Round-trip de criação de Fase
+  - [x]* 7.3 Escrever teste de propriedade: Round-trip de criação de Fase
     - **Propriedade 1: Round-trip de criação de Fase**
     - **Valida: Requisitos 1.1, 1.4**
-  - [ ]* 7.4 Escrever teste de propriedade: Listagem de fases ordenada por ordem
+  - [x]* 7.4 Escrever teste de propriedade: Listagem de fases ordenada por ordem
     - **Propriedade 2: Listagem de fases ordenada por ordem**
     - **Valida: Requisito 1.3**
-  - [ ]* 7.5 Escrever teste de propriedade: Restrição idaVolta apenas em MATA_MATA
+  - [x]* 7.5 Escrever teste de propriedade: Restrição idaVolta apenas em MATA_MATA
     - **Propriedade 3: Restrição idaVolta apenas em MATA_MATA**
     - **Valida: Requisito 1.6**
 
@@ -103,19 +103,19 @@ Implementação incremental do módulo de Jogos seguindo a arquitetura existente
     - Testar atualização de jogo CANCELADO → JogoCanceladoError
     - Testar transições de status válidas e inválidas
     - _Requisitos: 2.1, 2.2, 2.3, 3.1, 3.2, 3.3, 10.2, 10.3_
-  - [ ]* 8.4 Escrever teste de propriedade: Invariantes de criação de Jogo
+  - [x]* 8.4 Escrever teste de propriedade: Invariantes de criação de Jogo
     - **Propriedade 4: Invariantes de criação de Jogo**
     - **Valida: Requisitos 2.1, 2.6, 11.3**
-  - [ ]* 8.5 Escrever teste de propriedade: Times sempre diferentes
+  - [x]* 8.5 Escrever teste de propriedade: Times sempre diferentes
     - **Propriedade 5: Times sempre diferentes**
     - **Valida: Requisitos 2.2, 3.4**
-  - [ ]* 8.6 Escrever teste de propriedade: Pontos corridos ignora campos ida/volta
+  - [x]* 8.6 Escrever teste de propriedade: Pontos corridos ignora campos ida/volta
     - **Propriedade 6: Pontos corridos ignora campos ida/volta**
     - **Valida: Requisito 2.5**
-  - [ ]* 8.7 Escrever teste de propriedade: Imutabilidade após status terminal
+  - [x]* 8.7 Escrever teste de propriedade: Imutabilidade após status terminal
     - **Propriedade 7: Imutabilidade após status terminal**
     - **Valida: Requisitos 3.2, 3.3, 10.4**
-  - [ ]* 8.8 Escrever teste de propriedade: Transições de status válidas
+  - [x]* 8.8 Escrever teste de propriedade: Transições de status válidas
     - **Propriedade 19: Transições de status válidas**
     - **Valida: Requisitos 10.2, 10.3**
 
@@ -144,31 +144,31 @@ Implementação incremental do módulo de Jogos seguindo a arquitetura existente
     - Testar rejeição de pênaltis empatados
     - Testar placar negativo → PlacarInvalidoError
     - _Requisitos: 4.1, 4.2, 4.3, 4.4, 4.5, 5.1, 5.3, 5.7, 5.8, 5.9_
-  - [ ]* 9.5 Escrever teste de propriedade: Vencedor em pontos corridos
+  - [x]* 9.5 Escrever teste de propriedade: Vencedor em pontos corridos
     - **Propriedade 8: Vencedor em pontos corridos**
     - **Valida: Requisitos 4.3, 4.4, 7.1**
-  - [ ]* 9.6 Escrever teste de propriedade: Prorrogação proibida em pontos corridos
+  - [x]* 9.6 Escrever teste de propriedade: Prorrogação proibida em pontos corridos
     - **Propriedade 9: Prorrogação proibida em pontos corridos**
     - **Valida: Requisito 4.2**
-  - [ ]* 9.7 Escrever teste de propriedade: Placares são inteiros não negativos
+  - [x]* 9.7 Escrever teste de propriedade: Placares são inteiros não negativos
     - **Propriedade 10: Placares são inteiros não negativos**
     - **Valida: Requisitos 4.5, 9.1, 9.2, 9.3**
-  - [ ]* 9.8 Escrever teste de propriedade: Cascata de vencedor em mata-mata
+  - [x]* 9.8 Escrever teste de propriedade: Cascata de vencedor em mata-mata
     - **Propriedade 11: Cascata de vencedor em mata-mata**
     - **Valida: Requisitos 5.1, 5.6, 7.2**
-  - [ ]* 9.9 Escrever teste de propriedade: Empate em mata-mata exige desempate
+  - [x]* 9.9 Escrever teste de propriedade: Empate em mata-mata exige desempate
     - **Propriedade 12: Empate em mata-mata exige desempate**
     - **Valida: Requisitos 5.3, 5.5**
-  - [ ]* 9.10 Escrever teste de propriedade: Sequenciamento de prorrogação e pênaltis
+  - [x]* 9.10 Escrever teste de propriedade: Sequenciamento de prorrogação e pênaltis
     - **Propriedade 13: Sequenciamento de prorrogação e pênaltis**
     - **Valida: Requisitos 5.7, 5.8, 5.9**
-  - [ ]* 9.11 Escrever teste de propriedade: Consistência de campos de placar
+  - [x]* 9.11 Escrever teste de propriedade: Consistência de campos de placar
     - **Propriedade 18: Consistência de campos de placar**
     - **Valida: Requisitos 9.4, 9.5**
-  - [ ]* 9.12 Escrever teste de propriedade: Invariante de vencedorId
+  - [x]* 9.12 Escrever teste de propriedade: Invariante de vencedorId
     - **Propriedade 16: Invariante de vencedorId**
     - **Valida: Requisitos 7.4, 9.7**
-  - [ ]* 9.13 Escrever teste de propriedade: Jogo não finalizado tem placares null
+  - [x]* 9.13 Escrever teste de propriedade: Jogo não finalizado tem placares null
     - **Propriedade 17: Jogo não finalizado tem placares null**
     - **Valida: Requisito 9.6**
 
@@ -201,7 +201,7 @@ Implementação incremental do módulo de Jogos seguindo a arquitetura existente
     - Criar `src/common/presenters/fase.presenter.ts` com método estático toHttp() — allowlist: id, nome, tipo, ordem, idaVolta, temporadaId, dataCriacao
     - Criar `src/common/presenters/jogo.presenter.ts` com método estático toHttp() — allowlist: id, faseId, timeCasaId, timeForaId, dataHora, status, golsCasa, golsFora, temProrrogacao, golsProrrogacaoCasa, golsProrrogacaoFora, temPenaltis, penaltisCasa, penaltisFora, vencedorId, ehJogoVolta, grupoIdaVolta, fonteResultado, externoId, criadoPor, dataCriacao
     - _Requisitos: 8.3, 8.4, 14.4_
-  - [ ]* 12.2 Escrever teste de propriedade: Presenter expõe apenas campos permitidos
+  - [x]* 12.2 Escrever teste de propriedade: Presenter expõe apenas campos permitidos
     - **Propriedade 21: Presenter expõe apenas campos permitidos (allowlist)**
     - **Valida: Requisitos 8.3, 8.4, 14.4**
 
@@ -270,7 +270,7 @@ Implementação incremental do módulo de Jogos seguindo a arquitetura existente
     - Testar API indisponível → ApiFootballIndisponivelError
     - Testar fixture não encontrado → log + continua
     - _Requisitos: 12.1, 12.7, 12.8, 13.1, 13.2, 13.3, 13.5_
-  - [ ]* 16.6 Escrever teste de propriedade: Mapeamento de status API-Football
+  - [x]* 16.6 Escrever teste de propriedade: Mapeamento de status API-Football
     - **Propriedade 22: Mapeamento de status API-Football**
     - **Valida: Requisitos 12.3, 12.4, 12.5, 12.6**
   - [ ]* 16.7 Escrever teste de propriedade: Idempotência de importação
@@ -309,13 +309,13 @@ Implementação incremental do módulo de Jogos seguindo a arquitetura existente
     - Testar calcularStatusInterno com datas passadas, presentes e futuras
     - Testar mapearStatus com todos os valores conhecidos e default
     - _Requisitos: 15.1, 15.2, 15.3, 15.4, 15.5, 15.6, 15.7, 15.8_
-  - [ ]* 16b.4 Escrever teste de propriedade: Não-regressão de status
+  - [x]* 16b.4 Escrever teste de propriedade: Não-regressão de status
     - **Propriedade 28: Não-regressão de status**
     - **Valida: Requisitos 15.2, 15.10**
-  - [ ]* 16b.5 Escrever teste de propriedade: Prioridade da API sobre fallback
+  - [x]* 16b.5 Escrever teste de propriedade: Prioridade da API sobre fallback
     - **Propriedade 29: Prioridade da API sobre fallback**
     - **Valida: Requisito 15.3**
-  - [ ]* 16b.6 Escrever teste de propriedade: Fallback baseado em tempo
+  - [x]* 16b.6 Escrever teste de propriedade: Fallback baseado em tempo
     - **Propriedade 30: Fallback baseado em tempo**
     - **Valida: Requisitos 15.4, 15.5, 15.6, 15.7**
 

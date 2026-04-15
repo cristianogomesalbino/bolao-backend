@@ -38,6 +38,10 @@ model Usuario {
 
   refreshTokens RefreshToken[]
 
+  palpites       Palpite[]
+  palpitesDobrados PalpiteDobrado[]
+  tokensDobro    TokenDobro[]
+
   dataCriacao  DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 }
@@ -56,11 +60,15 @@ model Grupo {
   ativo       Boolean  @default(true)
   dataCriacao DateTime @default(now())
 
+  palpiteDobradoHabilitado Boolean @default(false)
+
   createdById String
   createdBy   Usuario @relation("GrupoCriador", fields: [createdById], references: [id])
 
   temporada Temporada      @relation(fields: [temporadaId], references: [id])
   usuarios  GrupoUsuario[]
+  palpitesDobrados PalpiteDobrado[]
+  tokensDobro      TokenDobro[]
 }
 
 model GrupoUsuario {
@@ -152,5 +160,69 @@ model Jogo {
   dataCriacao            DateTime       @default(now())
   atualizadoEm           DateTime       @updatedAt
 
+  palpites       Palpite[]
+  palpitesDobrados PalpiteDobrado[]
+
   @@index([faseId])
+}
+
+model Palpite {
+  id           String   @id @default(uuid())
+  usuarioId    String
+  jogoId       String
+  golsCasa     Int
+  golsFora     Int
+  dataCriacao  DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id])
+  jogo    Jogo    @relation(fields: [jogoId], references: [id])
+
+  @@unique([usuarioId, jogoId])
+  @@index([jogoId])
+  @@index([usuarioId])
+}
+
+model PalpiteDobrado {
+  id          String   @id @default(uuid())
+  usuarioId   String
+  jogoId      String
+  grupoId     String
+  dataCriacao DateTime @default(now())
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id])
+  jogo    Jogo    @relation(fields: [jogoId], references: [id])
+  grupo   Grupo   @relation(fields: [grupoId], references: [id])
+
+  @@unique([usuarioId, jogoId, grupoId])
+  @@index([jogoId, grupoId])
+}
+
+enum TipoTokenDobro {
+  CONCESSAO
+  UTILIZACAO
+}
+
+enum MotivoTokenDobro {
+  PALPITES_COMPLETOS
+  ACERTO_EM_CHEIO
+  ULTIMO_RANKING
+  PRIMEIRO_RANKING
+  ATIVACAO_DOBRO
+  CANCELAMENTO_DOBRO
+}
+
+model TokenDobro {
+  id           String           @id @default(uuid())
+  usuarioId    String
+  grupoId      String
+  tipo         TipoTokenDobro
+  motivo       MotivoTokenDobro
+  referenciaId String
+  dataCriacao  DateTime         @default(now())
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id])
+  grupo   Grupo   @relation(fields: [grupoId], references: [id])
+
+  @@index([usuarioId, grupoId])
 }

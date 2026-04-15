@@ -1,0 +1,292 @@
+# Plano de Implementação: Módulo de Palpites
+
+## Visão Geral
+
+Implementação incremental do módulo de Palpites seguindo a arquitetura existente do projeto. O módulo é dividido em dois subdomínios: Palpites Universais (CRUD) e Palpite Dobrado (mecânica opcional por grupo com Token Dobro). Segue os padrões: Prisma schema, constantes, domain errors, repositories (interface + Prisma + InMemory), services, presenters, controllers, testes e documentação.
+
+## Tasks
+
+- [x] 1. Schema Prisma e migração
+  - [x] 1.1 Adicionar enums, models e relações ao schema.prisma
+    - Criar enums TipoTokenDobro (CONCESSAO, UTILIZACAO) e MotivoTokenDobro (PALPITES_COMPLETOS, ACERTO_EM_CHEIO, ULTIMO_RANKING, PRIMEIRO_RANKING, ATIVACAO_DOBRO, CANCELAMENTO_DOBRO)
+    - Criar model Palpite com campos: id, usuarioId, jogoId, golsCasa, golsFora, dataCriacao, atualizadoEm + relações Usuario e Jogo + @@unique([usuarioId, jogoId]) + @@index([jogoId]) + @@index([usuarioId])
+    - Criar model PalpiteDobrado com campos: id, usuarioId, jogoId, grupoId, dataCriacao + relações Usuario, Jogo e Grupo + @@unique([usuarioId, jogoId, grupoId]) + @@index([jogoId, grupoId])
+    - Criar model TokenDobro com campos: id, usuarioId, grupoId, tipo, motivo, referenciaId, dataCriacao + relações Usuario e Grupo + @@index([usuarioId, grupoId])
+    - Adicionar campo `palpiteDobradoHabilitado Boolean @default(false)` no model Grupo
+    - Adicionar relações inversas em Usuario (palpites, palpitesDobrados, tokensDobro), Jogo (palpites, palpitesDobrados) e Grupo (palpitesDobrados, tokensDobro)
+    - _Requisitos: 7.1, 15.1, 9.2_
+  - [x] 1.2 Gerar e aplicar migração Prisma
+    - Rodar `sh dev npx prisma migrate dev --name add-palpite-dobro-token`
+    - Verificar que o schema está sincronizado
+    - _Requisitos: 7.1, 15.1_
+
+- [x] 2. Constantes e Domain Errors
+  - [x] 2.1 Criar arquivo de constantes do módulo palpites
+    - Criar `src/modules/palpites/palpites.constants.ts` com TAG, MENSAGENS (erros e respostas), PALPITE_REPOSITORY_TOKEN, PALPITE_DOBRADO_REPOSITORY_TOKEN e TOKEN_DOBRO_REPOSITORY_TOKEN
+    - _Requisitos: 1.1, 8.1_
+  - [x] 2.2 Criar Domain Errors do módulo palpites
+    - Criar `src/common/errors/domain-errors/palpites.errors.ts` com 9 classes: PalpiteNaoEncontradoError, JogoNaoAceitaPalpitesError, PalpiteJaExisteError, PalpiteNaoPertenceAoUsuarioError, GrupoNaoPermiteDobroError, SemFichasDobroError, DobroJaAtivoError, DobroNaoEncontradoError, JogoNaoAceitaDobroError
+    - Cada classe estende DomainError com statusCode e mensagem padrão via constantes
+    - _Requisitos: 1.2, 1.3, 2.2, 2.3, 3.3, 9.3, 11.2, 11.3, 11.4, 11.5, 12.2, 12.3_
+
+- [x] 3. Repositories de Palpite
+  - [x] 3.1 Criar interface PalpiteRepository
+    - Criar `src/modules/palpites/repositories/palpite.repository.interface.ts` com métodos: criar, atualizar, remover, buscarPorId, buscarPorUsuarioEJogo, listarPorUsuario (com filtro temporadaId), listarPorJogoEUsuarios, listarPorFaseEUsuario
+    - _Requisitos: 1.1, 2.1, 3.1, 4.1, 5.1, 6.1, 10.1_
+  - [x] 3.2 Criar implementação Prisma do PalpiteRepository
+    - Criar `src/modules/palpites/repositories/prisma-palpite.repository.ts` implementando PalpiteRepository com PrismaService
+    - listarPorUsuario com filtro opcional por temporadaId (join jogo → fase → temporada)
+    - listarPorJogoEUsuarios filtra por jogoId e array de usuarioIds
+    - _Requisitos: 1.1, 2.1, 3.1, 4.1, 5.1, 6.1, 6.2_
+  - [x] 3.3 Criar implementação InMemory do PalpiteRepository
+    - Criar `src/modules/palpites/repositories/in-memory-palpite.repository.ts` para testes
+    - _Requisitos: 1.1, 2.1, 3.1, 4.1, 5.1, 6.1_
+
+- [x] 4. Repositories de PalpiteDobrado
+  - [x] 4.1 Criar interface PalpiteDobradoRepository
+    - Criar `src/modules/palpites/repositories/palpite-dobrado.repository.interface.ts` com métodos: criar, remover, buscarPorChave, listarPorJogoEGrupo
+    - _Requisitos: 11.1, 12.1, 15.1_
+  - [x] 4.2 Criar implementação Prisma do PalpiteDobradoRepository
+    - Criar `src/modules/palpites/repositories/prisma-palpite-dobrado.repository.ts`
+    - _Requisitos: 11.1, 12.1, 15.1_
+  - [x] 4.3 Criar implementação InMemory do PalpiteDobradoRepository
+    - Criar `src/modules/palpites/repositories/in-memory-palpite-dobrado.repository.ts` para testes
+    - _Requisitos: 11.1, 12.1, 15.1_
+
+- [x] 5. Repositories de TokenDobro
+  - [x] 5.1 Criar interface TokenDobroRepository
+    - Criar `src/modules/palpites/repositories/token-dobro.repository.interface.ts` com métodos: criar, calcularSaldo, listarPorUsuarioEGrupo
+    - _Requisitos: 10.5, 10.6, 13.1, 13.2_
+  - [x] 5.2 Criar implementação Prisma do TokenDobroRepository
+    - Criar `src/modules/palpites/repositories/prisma-token-dobro.repository.ts`
+    - calcularSaldo usa COUNT com FILTER (CONCESSAO - UTILIZACAO)
+    - _Requisitos: 10.5, 10.6, 13.1, 13.2_
+  - [x] 5.3 Criar implementação InMemory do TokenDobroRepository
+    - Criar `src/modules/palpites/repositories/in-memory-token-dobro.repository.ts` para testes
+    - _Requisitos: 10.5, 10.6, 13.1, 13.2_
+
+- [x] 6. Checkpoint — Verificar schema, constantes, errors e repositories
+  - Ensure all tests pass, ask the user if questions arise.
+
+- [x] 7. DTOs
+  - [x] 7.1 Criar DTOs do módulo palpites
+    - Criar CriarPalpiteDto (golsCasa, golsFora — @IsInt + @Min(0)), AtualizarPalpiteDto (golsCasa, golsFora — @IsInt + @Min(0))
+    - Criar AtualizarConfiguracaoDobroDto (palpiteDobradoHabilitado — @IsBoolean)
+    - Usar class-validator com mensagens em pt-BR e @ApiProperty do Swagger
+    - _Requisitos: 1.1, 1.4, 2.1, 9.1_
+
+- [x] 8. PalpiteService e testes
+  - [x] 8.1 Criar PalpiteService
+    - Criar `src/modules/palpites/palpite.service.ts` com métodos: criar, atualizar, remover, buscarMeuPalpitePorJogo, listarMeusPalpites, listarPorJogoNoGrupo
+    - Injetar PalpiteRepository via @Inject(PALPITES.PALPITE_REPOSITORY_TOKEN) e JogoRepository via @Inject(JOGOS.JOGO_REPOSITORY_TOKEN)
+    - Validar jogo existe + status AGENDADO para criar/atualizar/remover
+    - Validar unicidade (usuarioId, jogoId) na criação
+    - Validar ownership para atualizar/remover
+    - listarPorJogoNoGrupo: se jogo FINALIZADO → retorna palpites de todos os membros; senão → retorna só o do usuário solicitante
+    - Injetar GrupoUsuarioRepository para obter lista de membros do grupo
+    - _Requisitos: 1.1, 1.2, 1.3, 1.5, 2.1, 2.2, 2.3, 2.4, 3.1, 3.2, 3.3, 3.4, 4.1, 4.2, 4.3, 5.1, 5.2, 5.3, 6.1, 6.2_
+  - [x] 8.2 Escrever testes unitários do PalpiteService
+    - Testar criação com jogo AGENDADO → sucesso
+    - Testar criação com jogo não AGENDADO → JogoNaoAceitaPalpitesError
+    - Testar criação duplicada → PalpiteJaExisteError
+    - Testar criação com jogo inexistente → JogoNaoEncontradoError
+    - Testar atualização por outro usuário → PalpiteNaoPertenceAoUsuarioError
+    - Testar exclusão com jogo não AGENDADO → JogoNaoAceitaPalpitesError
+    - Testar visibilidade: jogo FINALIZADO retorna todos, senão só o próprio
+    - Testar filtro por temporadaId
+    - _Requisitos: 1.1, 1.2, 1.3, 1.5, 2.2, 2.3, 3.2, 3.3, 5.1, 5.2, 6.2_
+  - [x]* 8.3 Escrever teste de propriedade: Criação de palpite persiste dados corretamente
+    - **Propriedade 1: Round-trip de criação de palpite**
+    - **Valida: Requisitos 1.1, 4.1**
+  - [x]* 8.4 Escrever teste de propriedade: Operações rejeitadas quando jogo não é AGENDADO
+    - **Propriedade 2: Rejeição por status do jogo**
+    - **Valida: Requisitos 1.2, 2.2, 3.2**
+  - [x]* 8.5 Escrever teste de propriedade: Unicidade de palpite por usuário e jogo
+    - **Propriedade 3: Unicidade (usuarioId, jogoId)**
+    - **Valida: Requisitos 1.3, 7.1, 7.2**
+  - [ ]* 8.6 Escrever teste de propriedade: Validação de gols rejeita valores inválidos
+    - **Propriedade 4: Gols negativos rejeitados**
+    - **Valida: Requisito 1.4**
+  - [x]* 8.7 Escrever teste de propriedade: Edição atualiza dados corretamente
+    - **Propriedade 5: Round-trip de edição**
+    - **Valida: Requisito 2.1**
+  - [x]* 8.8 Escrever teste de propriedade: Ownership impede operações de outro usuário
+    - **Propriedade 6: Ownership enforcement**
+    - **Valida: Requisitos 2.3, 3.3**
+  - [x]* 8.9 Escrever teste de propriedade: Exclusão remove palpite permanentemente
+    - **Propriedade 7: Exclusão permanente**
+    - **Valida: Requisito 3.1**
+  - [x]* 8.10 Escrever teste de propriedade: Visibilidade por status do jogo no grupo
+    - **Propriedade 8: Visibilidade condicional**
+    - **Valida: Requisitos 5.1, 5.2**
+  - [ ]* 8.11 Escrever teste de propriedade: Filtro de palpites por temporada
+    - **Propriedade 9: Filtro por temporadaId**
+    - **Valida: Requisito 6.2**
+
+- [x] 9. PalpiteDobradoService e testes
+  - [x] 9.1 Criar PalpiteDobradoService
+    - Criar `src/modules/palpites/palpite-dobrado.service.ts` com métodos: ativarDobro, desativarDobro, atualizarConfiguracaoDobro
+    - Injetar PalpiteDobradoRepository, TokenDobroService, JogoRepository, GrupoRepository
+    - ativarDobro: validar grupo com dobro habilitado, jogo AGENDADO, saldo > 0, unicidade → criar PalpiteDobrado + registrar TokenDobro UTILIZACAO com motivo ATIVACAO_DOBRO
+    - desativarDobro: validar jogo AGENDADO, existência do dobro → remover PalpiteDobrado + registrar TokenDobro CONCESSAO com motivo CANCELAMENTO_DOBRO
+    - atualizarConfiguracaoDobro: atualizar campo palpiteDobradoHabilitado no grupo
+    - _Requisitos: 9.1, 9.4, 11.1, 11.2, 11.3, 11.4, 11.5, 12.1, 12.2, 12.3_
+  - [x] 9.2 Escrever testes unitários do PalpiteDobradoService
+    - Testar ativação com sucesso → cria PalpiteDobrado + decrementa saldo
+    - Testar ativação com jogo não AGENDADO → JogoNaoAceitaDobroError
+    - Testar ativação com saldo zero → SemFichasDobroError
+    - Testar ativação duplicada → DobroJaAtivoError
+    - Testar ativação em grupo sem dobro → GrupoNaoPermiteDobroError
+    - Testar desativação com sucesso → remove PalpiteDobrado + incrementa saldo
+    - Testar desativação com jogo não AGENDADO → JogoNaoAceitaDobroError
+    - Testar desativação sem dobro ativo → DobroNaoEncontradoError
+    - Testar configuração: habilitar/desabilitar dobro
+    - _Requisitos: 9.1, 9.4, 11.1, 11.2, 11.3, 11.4, 11.5, 12.1, 12.2, 12.3_
+  - [x]* 9.3 Escrever teste de propriedade: Ativação decrementa saldo e cria registro
+    - **Propriedade 11: Ativação de dobro**
+    - **Valida: Requisito 11.1**
+  - [x]* 9.4 Escrever teste de propriedade: Desativação incrementa saldo e remove registro
+    - **Propriedade 12: Desativação de dobro**
+    - **Valida: Requisito 12.1**
+  - [x]* 9.5 Escrever teste de propriedade: Round-trip ativação/desativação preserva saldo
+    - **Propriedade 13: Round-trip de saldo**
+    - **Valida: Requisitos 11.1, 12.1**
+  - [x]* 9.6 Escrever teste de propriedade: Rejeição de dobro quando jogo não é AGENDADO
+    - **Propriedade 14: Rejeição por status do jogo**
+    - **Valida: Requisitos 11.2, 12.2**
+  - [x]* 9.7 Escrever teste de propriedade: Rejeição com saldo zero
+    - **Propriedade 15: Saldo insuficiente**
+    - **Valida: Requisito 11.3**
+  - [x]* 9.8 Escrever teste de propriedade: Unicidade de PalpiteDobrado
+    - **Propriedade 16: Unicidade (usuarioId, jogoId, grupoId)**
+    - **Valida: Requisitos 11.4, 15.1, 15.2**
+  - [x]* 9.9 Escrever teste de propriedade: Rejeição em grupo sem dobro habilitado
+    - **Propriedade 17: Grupo sem dobro**
+    - **Valida: Requisitos 11.5, 10.7**
+  - [ ]* 9.10 Escrever teste de propriedade: Desabilitar dobro preserva tokens mas impede ativações
+    - **Propriedade 24: Desabilitar preserva tokens**
+    - **Valida: Requisito 9.4**
+
+- [x] 10. TokenDobroService e testes
+  - [x] 10.1 Criar TokenDobroService
+    - Criar `src/modules/palpites/token-dobro.service.ts` com métodos: calcularSaldo, listarHistorico, concederPorPalpitesCompletos, concederPorAcertoEmCheio, concederPorRankingFase
+    - Injetar TokenDobroRepository, GrupoUsuarioRepository, PalpiteRepository, JogoRepository, FaseRepository
+    - concederPorPalpitesCompletos: verificar quais membros do grupo completaram todos os palpites da fase antes do dataHora do primeiro jogo
+    - concederPorAcertoEmCheio: verificar quais membros acertaram placar exato do jogo finalizado
+    - concederPorRankingFase: conceder token ao primeiro e último do ranking da fase encerrada
+    - _Requisitos: 10.1, 10.2, 10.3, 10.4, 10.5, 10.6, 10.7, 13.1, 13.2, 13.4_
+  - [x] 10.2 Escrever testes unitários do TokenDobroService
+    - Testar cálculo de saldo (concessões - utilizações)
+    - Testar listagem de histórico
+    - Testar concessão por palpites completos na fase
+    - Testar concessão por acerto em cheio
+    - Testar concessão por primeiro/último no ranking
+    - Testar que grupo sem dobro habilitado ignora concessões
+    - Testar saldo em grupo sem dobro → retorna zero
+    - _Requisitos: 10.1, 10.2, 10.3, 10.4, 10.6, 10.7, 13.1, 13.4_
+  - [ ]* 10.3 Escrever teste de propriedade: Concessão por palpites completos na fase
+    - **Propriedade 18: Palpites completos**
+    - **Valida: Requisito 10.1**
+  - [ ]* 10.4 Escrever teste de propriedade: Concessão por acerto em cheio
+    - **Propriedade 19: Acerto em cheio**
+    - **Valida: Requisito 10.2**
+  - [ ]* 10.5 Escrever teste de propriedade: Concessão por posição no ranking da fase
+    - **Propriedade 20: Ranking da fase**
+    - **Valida: Requisitos 10.3, 10.4**
+  - [x]* 10.6 Escrever teste de propriedade: Saldo é diferença entre concessões e utilizações
+    - **Propriedade 21: Cálculo de saldo**
+    - **Valida: Requisitos 13.1, 10.6**
+  - [ ]* 10.7 Escrever teste de propriedade: Registro de token contém dados completos
+    - **Propriedade 22: Dados completos do token**
+    - **Valida: Requisito 10.5**
+
+- [x] 11. Checkpoint — Verificar services e testes
+  - Ensure all tests pass, ask the user if questions arise.
+
+- [x] 12. Presenters
+  - [x] 12.1 Criar PalpitePresenter, PalpiteDobradoPresenter e TokenDobroPresenter
+    - Criar `src/common/presenters/palpite.presenter.ts` com toHttp() — allowlist: id, golsCasa, golsFora, jogoId, usuarioId, dataCriacao
+    - Criar `src/common/presenters/palpite-dobrado.presenter.ts` com toHttp() — allowlist: id, usuarioId, jogoId, grupoId, dataCriacao
+    - Criar `src/common/presenters/token-dobro.presenter.ts` com toHttp() — allowlist: id, usuarioId, grupoId, motivo, referenciaId, tipo, dataCriacao
+    - _Requisitos: 8.1, 8.2, 16.1, 16.2, 16.3_
+  - [x]* 12.2 Escrever teste de propriedade: Presenters retornam apenas campos da allowlist
+    - **Propriedade 10: Allowlist dos presenters**
+    - **Valida: Requisitos 8.1, 8.2, 16.1, 16.2, 16.3**
+
+- [x] 13. PalpiteController e testes
+  - [x] 13.1 Criar PalpiteController
+    - Criar `src/modules/palpites/palpite.controller.ts` com rotas:
+      - POST /jogos/:jogoId/palpites — criar palpite (JWT global)
+      - PATCH /palpites/:id — editar palpite (JWT global)
+      - DELETE /palpites/:id — excluir palpite (JWT global)
+      - GET /jogos/:jogoId/meu-palpite — buscar meu palpite por jogo (JWT global)
+      - GET /meus-palpites — listar meus palpites com filtro opcional por temporadaId (JWT global)
+      - GET /grupos/:grupoId/jogos/:jogoId/palpites — listar palpites no contexto de grupo (GroupRoleGuard ADMIN|MEMBER)
+    - Decorar com @ApiTags(PALPITES.TAG), @ApiOperation, @ApiResponse
+    - Usar PalpitePresenter.toHttp() nos retornos
+    - Usar @CurrentUser() para obter usuário autenticado
+    - Usar ParseUUIDCustomPipe para params UUID
+    - _Requisitos: 1.1, 2.1, 3.1, 4.1, 5.1, 6.1, 8.1_
+  - [x] 13.2 Escrever testes unitários do PalpiteController
+    - Testar que controller chama service corretamente para cada rota
+    - Testar transformação via PalpitePresenter
+    - _Requisitos: 1.1, 2.1, 3.1, 4.1, 5.1, 6.1_
+
+- [x] 14. PalpiteDobradoController e testes
+  - [x] 14.1 Criar PalpiteDobradoController
+    - Criar `src/modules/palpites/palpite-dobrado.controller.ts` com rotas:
+      - POST /grupos/:grupoId/jogos/:jogoId/dobro — ativar dobro (GroupRoleGuard ADMIN|MEMBER)
+      - DELETE /grupos/:grupoId/jogos/:jogoId/dobro — desativar dobro (GroupRoleGuard ADMIN|MEMBER)
+      - GET /grupos/:grupoId/tokens-dobro/saldo — consultar saldo (GroupRoleGuard ADMIN|MEMBER)
+      - GET /grupos/:grupoId/tokens-dobro/historico — consultar histórico (GroupRoleGuard ADMIN|MEMBER)
+      - PATCH /grupos/:grupoId/configuracao-dobro — habilitar/desabilitar dobro (GroupRoleGuard ADMIN)
+    - Decorar com @ApiTags(PALPITES.TAG), @ApiOperation, @ApiResponse
+    - Usar PalpiteDobradoPresenter.toHttp() e TokenDobroPresenter.toHttp() nos retornos
+    - Usar @CurrentUser(), @GroupRoles(), ParseUUIDCustomPipe
+    - _Requisitos: 9.1, 11.1, 12.1, 13.1, 13.2, 16.1, 16.3_
+  - [x] 14.2 Escrever testes unitários do PalpiteDobradoController
+    - Testar que controller chama service corretamente para cada rota
+    - Testar transformação via PalpiteDobradoPresenter e TokenDobroPresenter
+    - _Requisitos: 9.1, 11.1, 12.1, 13.1, 13.2_
+
+- [x] 15. Checkpoint — Verificar controllers e presenters
+  - Ensure all tests pass, ask the user if questions arise.
+
+- [x] 16. Módulo NestJS e wiring
+  - [x] 16.1 Criar PalpitesModule e registrar no AppModule
+    - Criar `src/modules/palpites/palpites.module.ts` registrando controllers, services, repositories (Prisma impl) e tokens de injeção
+    - Importar PrismaModule, e repositórios de módulos externos (JogoRepository, GrupoRepository, GrupoUsuarioRepository, FaseRepository) via exports dos módulos correspondentes
+    - Importar módulo no AppModule
+    - _Requisitos: 1.1, 11.1_
+
+- [ ] 17. Teste de propriedade: Multiplicador no ranking
+  - [ ]* 17.1 Escrever teste de propriedade: Multiplicador de dobro aplicado corretamente
+    - **Propriedade 23: Multiplicador 2x no ranking**
+    - **Valida: Requisitos 14.1, 14.2, 14.3**
+
+- [x] 18. Postman Collection e README
+  - [x] 18.1 Atualizar postman_collection.json com rotas do módulo Palpites
+    - Adicionar folder "Palpites" com todas as rotas: CRUD de palpites, meu palpite, meus palpites, palpites no grupo
+    - Adicionar folder "Palpite Dobrado" com rotas: ativar/desativar dobro, saldo, histórico, configuração
+    - Endpoints autenticados herdam Bearer token da collection
+    - Rotas de grupo usam GroupRoleGuard
+    - Adicionar variáveis `palpiteId` e `jogoId` (se não existir)
+    - _Requisitos: 1.1, 2.1, 3.1, 4.1, 5.1, 6.1, 9.1, 11.1, 12.1, 13.1_
+  - [x] 18.2 Atualizar README.md com documentação do módulo Palpites
+    - Adicionar módulo Palpites na estrutura de módulos
+    - Documentar rotas, regras de domínio (unicidade, visibilidade, palpite dobrado, token dobro)
+    - Atualizar roadmap marcando Palpites como concluído
+    - _Requisitos: 1.1, 9.1, 11.1_
+
+- [x] 19. Checkpoint final — Verificar tudo integrado
+  - 210 testes passando, 25 arquivos de teste, zero falhas.
+
+## Notas
+
+- Tasks marcadas com `*` são opcionais e podem ser puladas para um MVP mais rápido
+- Cada task referencia requisitos específicos para rastreabilidade
+- Checkpoints garantem validação incremental
+- Testes de propriedade validam propriedades universais de corretude usando fast-check
+- Testes unitários validam exemplos específicos e edge cases
+- Todos os testes usam InMemory repositories para isolamento
+- O módulo depende de repositórios de outros módulos (Jogos, Grupos, GrupoUsuario) — garantir que esses módulos exportam seus providers

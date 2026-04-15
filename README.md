@@ -24,7 +24,8 @@ src/
 │   ├── temporadas/         # Temporadas dos campeonatos
 │   ├── grupos/             # Grupos de bolão
 │   ├── grupo-usuario/      # Membros dos grupos (adicionar, remover, convite)
-│   └── jogos/              # Fases, jogos, integração API-Football
+│   ├── jogos/              # Fases, jogos, integração API-Football
+│   └── palpites/           # Palpites universais, palpite dobrado, token dobro
 ├── common/
 │   ├── constants/          # Constantes globais (roles)
 │   ├── decorators/         # @Public(), @CurrentUser(), @GroupRoles()
@@ -147,6 +148,27 @@ sh dev start-prod      # Build e inicia em modo produção
 | DELETE | `/grupos/:grupoId/sair`                 | Sair do grupo                | JWT + Membro  |
 | DELETE | `/grupos/:grupoId/usuarios/:usuarioId`  | Remover membro               | JWT + Admin   |
 
+### Palpites (`/palpites`, `/jogos/:jogoId/palpites`)
+
+| Método | Rota                                              | Descrição                          | Auth          |
+|--------|---------------------------------------------------|------------------------------------|---------------|
+| POST   | `/jogos/:jogoId/palpites`                         | Criar palpite                      | JWT           |
+| PATCH  | `/palpites/:id`                                   | Editar palpite                     | JWT           |
+| DELETE | `/palpites/:id`                                   | Excluir palpite                    | JWT           |
+| GET    | `/jogos/:jogoId/meu-palpite`                      | Buscar meu palpite por jogo        | JWT           |
+| GET    | `/meus-palpites`                                  | Listar meus palpites (filtro temporadaId) | JWT     |
+| GET    | `/grupos/:grupoId/jogos/:jogoId/palpites`         | Listar palpites do grupo por jogo  | JWT + Membro  |
+
+### Palpite Dobrado (`/grupos/:grupoId`)
+
+| Método | Rota                                              | Descrição                          | Auth          |
+|--------|---------------------------------------------------|------------------------------------|---------------|
+| POST   | `/grupos/:grupoId/jogos/:jogoId/dobro`            | Ativar dobro em jogo               | JWT + Membro  |
+| DELETE | `/grupos/:grupoId/jogos/:jogoId/dobro`            | Desativar dobro em jogo            | JWT + Membro  |
+| GET    | `/grupos/:grupoId/tokens-dobro/saldo`             | Consultar saldo de fichas          | JWT + Membro  |
+| GET    | `/grupos/:grupoId/tokens-dobro/historico`          | Consultar histórico de fichas      | JWT + Membro  |
+| PATCH  | `/grupos/:grupoId/configuracao-dobro`             | Habilitar/desabilitar dobro        | JWT + Admin   |
+
 ### Fases (`/temporadas/:temporadaId/fases`)
 
 | Método | Rota                                          | Descrição              | Auth |
@@ -191,6 +213,17 @@ Funcionalidades:
 
 Transições de status dos jogos: AGENDADO → EM_ANDAMENTO → FINALIZADO, AGENDADO → CANCELADO, EM_ANDAMENTO → CANCELADO.
 
+## Palpites e Palpite Dobrado
+
+Regras de domínio:
+- Palpite é universal: um por usuário por jogo, vale para todos os grupos
+- Palpites só podem ser criados, editados ou excluídos enquanto o jogo estiver AGENDADO
+- Visibilidade no grupo: palpites de outros membros só são visíveis após o jogo ser FINALIZADO
+- Palpite Dobrado é opcional por grupo (campo `palpiteDobradoHabilitado`)
+- Token Dobro: fichas acumuladas por conquistas (palpites completos na fase, acerto em cheio, primeiro/último no ranking)
+- Ativar dobro consome 1 ficha; desativar antes do jogo começar devolve a ficha
+- Multiplicador 2x aplicado apenas no contexto do grupo onde o dobro foi ativado
+
 ## Testes
 
 ```bash
@@ -209,7 +242,7 @@ docker exec bolao-backend-dev npx vitest run --coverage  # cobertura
 5. ~~Grupos~~ ✅
 6. ~~GrupoUsuario~~ ✅
 7. ~~Jogos~~ ✅
-8. Palpites
+8. ~~Palpites~~ ✅
 9. Ranking
 
 ## Licença
