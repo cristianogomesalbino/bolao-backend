@@ -1,20 +1,22 @@
-import { IsInt, IsUUID, IsNotEmpty } from 'class-validator';
+import { IsInt, IsUUID, IsNotEmpty, Min, Max } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class ImportarJogosDto {
-  @ApiProperty({
-    description: 'ID da liga na API-Football (71=Brasileirão, 1=Copa do Mundo)',
-    example: 71,
-  })
-  @IsInt({ message: 'leagueId deve ser um número inteiro' })
-  leagueId: number;
-
   @ApiProperty({
     description: 'Ano da temporada',
     example: 2026,
   })
   @IsInt({ message: 'season deve ser um número inteiro' })
   season: number;
+
+  @ApiProperty({
+    description: 'Número da rodada (1-38)',
+    example: 1,
+  })
+  @IsInt({ message: 'rodada deve ser um número inteiro' })
+  @Min(1, { message: 'rodada deve ser no mínimo 1' })
+  @Max(38, { message: 'rodada deve ser no máximo 38' })
+  rodada: number;
 
   @ApiProperty({
     description: 'ID da fase onde os jogos serão importados',

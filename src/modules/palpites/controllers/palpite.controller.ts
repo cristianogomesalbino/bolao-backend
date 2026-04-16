@@ -8,7 +8,6 @@ import {
   Param,
   Query,
   UseGuards,
-  Inject,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -18,26 +17,22 @@ import {
   ApiNotFoundResponse,
   ApiConflictResponse,
 } from '@nestjs/swagger';
-import { PalpiteService } from './palpite.service';
-import { CriarPalpiteDto } from './dto/criar-palpite.dto';
-import { AtualizarPalpiteDto } from './dto/atualizar-palpite.dto';
-import { ParseUUIDCustomPipe } from '../../common/pipes/parse-uuid-custom.pipe';
-import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { GroupRoleGuard } from '../../common/guards/group-role.guard';
-import { GroupRoles } from '../../common/decorators/group-roles.decorator';
-import { PALPITES } from './palpites.constants';
-import { GRUPO_ROLE } from '../../common/constants/roles.constants';
-import { PalpitePresenter } from '../../common/presenters';
-import { GRUPO_USUARIO } from '../grupo-usuario/grupo-usuario.constants';
-import type { GrupoUsuarioRepository } from '../grupo-usuario/repositories/grupo-usuario.repository.interface';
+import { PalpiteService } from '../services/palpite.service';
+import { CriarPalpiteDto } from '../dto/criar-palpite.dto';
+import { AtualizarPalpiteDto } from '../dto/atualizar-palpite.dto';
+import { ParseUUIDCustomPipe } from '../../../common/pipes/parse-uuid-custom.pipe';
+import { CurrentUser } from '../../../common/decorators/current-user.decorator';
+import { GroupRoleGuard } from '../../../common/guards/group-role.guard';
+import { GroupRoles } from '../../../common/decorators/group-roles.decorator';
+import { PALPITES } from '../palpites.constants';
+import { GRUPO_ROLE } from '../../../common/constants/roles.constants';
+import { PalpitePresenter } from '../../../common/presenters';
 
 @ApiTags(PALPITES.TAG)
 @Controller()
 export class PalpiteController {
   constructor(
     private readonly palpiteService: PalpiteService,
-    @Inject(GRUPO_USUARIO.REPOSITORY_TOKEN)
-    private readonly grupoUsuarioRepo: GrupoUsuarioRepository,
   ) {}
 
   @ApiOperation({ summary: 'Criar palpite para um jogo' })
@@ -113,9 +108,7 @@ export class PalpiteController {
     @Param('jogoId', new ParseUUIDCustomPipe('jogoId')) jogoId: string,
     @CurrentUser() user: { id: string },
   ) {
-    const membros = await this.grupoUsuarioRepo.listarPorGrupo(grupoId);
-    const membrosIds = membros.map((m) => m.usuarioId);
-    const palpites = await this.palpiteService.listarPorJogoNoGrupo(jogoId, grupoId, user.id, membrosIds);
+    const palpites = await this.palpiteService.listarPorJogoNoGrupo(jogoId, grupoId, user.id);
     return palpites.map((p) => PalpitePresenter.toHttp(p));
   }
 }

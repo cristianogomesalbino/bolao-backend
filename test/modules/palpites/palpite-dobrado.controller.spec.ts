@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { PalpiteDobradoController } from '@src/modules/palpites/palpite-dobrado.controller';
+import { PalpiteDobradoController } from '@src/modules/palpites/controllers/palpite-dobrado.controller';
 import { PalpiteDobradoPresenter, TokenDobroPresenter } from '@src/common/presenters';
 
 describe('PalpiteDobradoController', () => {
@@ -74,7 +74,7 @@ describe('PalpiteDobradoController', () => {
   });
 
   it('configurarDobro deve chamar service e retornar mensagem', async () => {
-    const result = await controller.configurarDobro(grupoId, { palpiteDobradoHabilitado: true });
+    const result = await controller.configurarDobro(grupoId, { permitirPalpiteDobrado: true });
 
     expect(mockPalpiteDobradoService.atualizarConfiguracaoDobro).toHaveBeenCalledWith(grupoId, true);
     expect(result.mensagem).toBeDefined();

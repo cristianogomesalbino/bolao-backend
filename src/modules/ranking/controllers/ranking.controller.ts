@@ -6,13 +6,13 @@ import {
   ApiNotFoundResponse,
   ApiBadRequestResponse,
 } from '@nestjs/swagger';
-import { RankingService } from './ranking.service';
-import { RANKING } from './ranking.constants';
-import { GRUPO_ROLE } from '../../common/constants/roles.constants';
-import { GroupRoleGuard } from '../../common/guards/group-role.guard';
-import { GroupRoles } from '../../common/decorators/group-roles.decorator';
-import { ParseUUIDCustomPipe } from '../../common/pipes/parse-uuid-custom.pipe';
-import { RankingPresenter, PontuacaoJogoPresenter } from '../../common/presenters';
+import { RankingService } from '../services/ranking.service';
+import { RANKING } from '../ranking.constants';
+import { GRUPO_ROLE } from '../../../common/constants/roles.constants';
+import { GroupRoleGuard } from '../../../common/guards/group-role.guard';
+import { GroupRoles } from '../../../common/decorators/group-roles.decorator';
+import { ParseUUIDCustomPipe } from '../../../common/pipes/parse-uuid-custom.pipe';
+import { RankingPresenter, PontuacaoJogoPresenter } from '../../../common/presenters';
 
 @ApiTags(RANKING.TAG)
 @Controller('grupos')

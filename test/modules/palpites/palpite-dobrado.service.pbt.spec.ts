@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import fc from 'fast-check';
-import { PalpiteDobradoService } from '@src/modules/palpites/palpite-dobrado.service';
-import { TokenDobroService } from '@src/modules/palpites/token-dobro.service';
+import { PalpiteDobradoService } from '@src/modules/palpites/services/palpite-dobrado.service';
+import { TokenDobroService } from '@src/modules/palpites/services/token-dobro.service';
 import { InMemoryPalpiteDobradoRepository } from '@src/modules/palpites/repositories/in-memory-palpite-dobrado.repository';
 import { InMemoryTokenDobroRepository } from '@src/modules/palpites/repositories/in-memory-token-dobro.repository';
 import { InMemoryJogoRepository } from '@src/modules/jogos/repositories/in-memory-jogo.repository';
@@ -64,7 +64,7 @@ describe('PalpiteDobradoService — Property-Based Tests', () => {
         nome: 'Grupo Teste',
         temporadaId: 'temp-1',
         privado: false,
-        palpiteDobradoHabilitado: true,
+        permitirPalpiteDobrado: true,
         ativo: true,
       },
       {
@@ -72,7 +72,7 @@ describe('PalpiteDobradoService — Property-Based Tests', () => {
         nome: 'Grupo Sem Dobro',
         temporadaId: 'temp-1',
         privado: false,
-        palpiteDobradoHabilitado: false,
+        permitirPalpiteDobrado: false,
         ativo: true,
       },
     ];

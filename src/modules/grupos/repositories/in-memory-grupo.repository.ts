@@ -11,7 +11,8 @@ export class InMemoryGrupoRepository implements GrupoRepository {
     codigoConvite: string | null;
     permitirPalpiteAutomatico: boolean;
     maxParticipantes: number;
-    createdById: string;
+    permitirPalpiteDobrado: boolean;
+    criadoPor: string;
   }) {
     const grupo = {
       id: crypto.randomUUID(),
@@ -21,7 +22,8 @@ export class InMemoryGrupoRepository implements GrupoRepository {
       codigoConvite: data.codigoConvite,
       permitirPalpiteAutomatico: data.permitirPalpiteAutomatico,
       maxParticipantes: data.maxParticipantes,
-      createdById: data.createdById,
+      permitirPalpiteDobrado: data.permitirPalpiteDobrado,
+      criadoPor: data.criadoPor,
       ativo: true,
       dataCriacao: new Date(),
     };

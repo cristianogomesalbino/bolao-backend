@@ -4,6 +4,7 @@ CREATE TABLE "Temporada" (
     "ano" INTEGER NOT NULL,
     "campeonato" TEXT NOT NULL,
     "dataCriacao" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "atualizadoEm" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "Temporada_pkey" PRIMARY KEY ("id")
 );

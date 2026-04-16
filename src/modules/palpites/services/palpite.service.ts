@@ -1,17 +1,19 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { PALPITES } from './palpites.constants';
-import { JOGOS } from '../jogos/jogos.constants';
-import type { PalpiteRepository } from './repositories/palpite.repository.interface';
-import type { JogoRepository } from '../jogos/repositories/jogo.repository.interface';
-import { JogoNaoEncontradoError } from '../../common/errors/domain-errors/jogos.errors';
+import { PALPITES } from '../palpites.constants';
+import { JOGOS } from '../../jogos/jogos.constants';
+import { GRUPO_USUARIO } from '../../grupo-usuario/grupo-usuario.constants';
+import type { PalpiteRepository } from '../repositories/palpite.repository.interface';
+import type { JogoRepository } from '../../jogos/repositories/jogo.repository.interface';
+import type { GrupoUsuarioRepository } from '../../grupo-usuario/repositories/grupo-usuario.repository.interface';
+import { JogoNaoEncontradoError } from '../../../common/errors/domain-errors/jogos.errors';
 import {
   PalpiteNaoEncontradoError,
   JogoNaoAceitaPalpitesError,
   PalpiteJaExisteError,
   PalpiteNaoPertenceAoUsuarioError,
-} from '../../common/errors/domain-errors/palpites.errors';
-import { CriarPalpiteDto } from './dto/criar-palpite.dto';
-import { AtualizarPalpiteDto } from './dto/atualizar-palpite.dto';
+} from '../../../common/errors/domain-errors/palpites.errors';
+import { CriarPalpiteDto } from '../dto/criar-palpite.dto';
+import { AtualizarPalpiteDto } from '../dto/atualizar-palpite.dto';
 
 @Injectable()
 export class PalpiteService {
@@ -20,6 +22,8 @@ export class PalpiteService {
     private readonly palpiteRepo: PalpiteRepository,
     @Inject(JOGOS.JOGO_REPOSITORY_TOKEN)
     private readonly jogoRepo: JogoRepository,
+    @Inject(GRUPO_USUARIO.REPOSITORY_TOKEN)
+    private readonly grupoUsuarioRepo: GrupoUsuarioRepository,
   ) {}
 
   async criar(jogoId: string, dto: CriarPalpiteDto, usuarioId: string) {
@@ -73,9 +77,12 @@ export class PalpiteService {
     return this.palpiteRepo.listarPorUsuario(usuarioId, filtros);
   }
 
-  async listarPorJogoNoGrupo(jogoId: string, grupoId: string, usuarioId: string, membrosIds: string[]) {
+  async listarPorJogoNoGrupo(jogoId: string, grupoId: string, usuarioId: string) {
     const jogo = await this.jogoRepo.buscarPorId(jogoId);
     if (!jogo) throw new JogoNaoEncontradoError();
+
+    const membros = await this.grupoUsuarioRepo.listarPorGrupo(grupoId);
+    const membrosIds = membros.map((m) => m.usuario.id);
 
     if (jogo.status === 'FINALIZADO') {
       return this.palpiteRepo.listarPorJogoEUsuarios(jogoId, membrosIds);

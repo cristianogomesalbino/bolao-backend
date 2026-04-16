@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
-import { PontuacaoService } from './pontuacao.service';
-import { RankingService } from './ranking.service';
-import { RankingController } from './ranking.controller';
+import { PontuacaoService } from './services/pontuacao.service';
+import { RankingService } from './services/ranking.service';
+import { RankingController } from './controllers/ranking.controller';
 import { PalpitesModule } from '../palpites/palpites.module';
 import { JogosModule } from '../jogos/jogos.module';
 import { GruposModule } from '../grupos/grupos.module';

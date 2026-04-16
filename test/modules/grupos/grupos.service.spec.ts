@@ -103,7 +103,7 @@ describe('GruposService', () => {
         codigoConvite: null,
         permitirPalpiteAutomatico: false,
         maxParticipantes: 50,
-        createdById: 'user-1',
+        criadoPor: 'user-1',
         ativo: false,
         dataCriacao: new Date(),
       });

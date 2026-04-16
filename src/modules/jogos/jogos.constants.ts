@@ -16,6 +16,6 @@ export const JOGOS = {
     TRANSICAO_STATUS_INVALIDA: 'Transição de status inválida',
     IDA_VOLTA_NAO_PERMITIDA: 'Jogos de ida e volta não são permitidos nesta fase',
     JOGO_IDA_NAO_ENCONTRADO: 'Jogo de ida não encontrado para este confronto',
-    API_FOOTBALL_INDISPONIVEL: 'API-Football está indisponível no momento',
+    API_EXTERNA_INDISPONIVEL: 'API externa de futebol está indisponível no momento',
   },
 } as const;

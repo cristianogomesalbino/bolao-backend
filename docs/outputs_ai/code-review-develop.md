@@ -224,7 +224,7 @@ Arquivo: `src/modules/palpites/dto/configurar-dobro.dto.ts` (linha 7)
 
 Código sugerido:
 ```typescript
-@IsDefined({ message: 'palpiteDobradoHabilitado é obrigatório' })
+@IsDefined({ message: 'permitirPalpiteDobrado é obrigatório' })
 ```
 
 Impacto: baixo

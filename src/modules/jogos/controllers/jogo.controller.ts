@@ -12,16 +12,16 @@ import {
   ApiOperation,
   ApiResponse,
 } from '@nestjs/swagger';
-import { JogoService } from './jogo.service';
-import { CriarJogoDto } from './dto/criar-jogo.dto';
-import { AtualizarJogoDto } from './dto/atualizar-jogo.dto';
-import { FinalizarJogoDto } from './dto/finalizar-jogo.dto';
-import { ImportarJogosDto } from './dto/importar-jogos.dto';
-import { ParseUUIDCustomPipe } from '../../common/pipes/parse-uuid-custom.pipe';
-import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { JOGOS } from './jogos.constants';
-import { JogoPresenter } from '../../common/presenters';
-import { SuperAdminGuard } from '../../common/guards/super-admin.guard';
+import { JogoService } from '../services/jogo.service';
+import { CriarJogoDto } from '../dto/criar-jogo.dto';
+import { AtualizarJogoDto } from '../dto/atualizar-jogo.dto';
+import { FinalizarJogoDto } from '../dto/finalizar-jogo.dto';
+import { ImportarJogosDto } from '../dto/importar-jogos.dto';
+import { ParseUUIDCustomPipe } from '../../../common/pipes/parse-uuid-custom.pipe';
+import { CurrentUser } from '../../../common/decorators/current-user.decorator';
+import { JOGOS } from '../jogos.constants';
+import { JogoPresenter } from '../../../common/presenters';
+import { SuperAdminGuard } from '../../../common/guards/super-admin.guard';
 
 @ApiTags(JOGOS.TAG)
 @Controller()
@@ -80,7 +80,7 @@ export class JogoController {
     return JogoPresenter.toHttp(await this.jogoService.buscarPorId(id));
   }
 
-  @ApiOperation({ summary: 'Importar jogos da API-Football (SUPER_ADMIN)' })
+  @ApiOperation({ summary: 'Importar jogos da API externa (SUPER_ADMIN)' })
   @ApiResponse({ status: 201, description: 'Jogos importados com sucesso' })
   @UseGuards(SuperAdminGuard)
   @Post('jogos/importar')
@@ -89,14 +89,14 @@ export class JogoController {
     @CurrentUser() user: { id: string },
   ) {
     return this.jogoService.importarJogos(
-      dto.leagueId,
       dto.season,
+      dto.rodada,
       dto.faseId,
       user.id,
     );
   }
 
-  @ApiOperation({ summary: 'Sincronizar placares via API-Football (SUPER_ADMIN)' })
+  @ApiOperation({ summary: 'Sincronizar placares via API externa (SUPER_ADMIN)' })
   @ApiResponse({ status: 200, description: 'Placares sincronizados com sucesso' })
   @UseGuards(SuperAdminGuard)
   @Post('fases/:faseId/jogos/sincronizar')
@@ -106,7 +106,7 @@ export class JogoController {
     return this.jogoService.sincronizarPlacares(faseId);
   }
 
-  @ApiOperation({ summary: 'Resetar fonte de resultado para API_FOOTBALL' })
+  @ApiOperation({ summary: 'Resetar fonte de resultado para API_EXTERNA' })
   @ApiResponse({ status: 200, description: 'Fonte resetada com sucesso' })
   @Patch('jogos/:id/resetar-fonte')
   async resetarFonte(

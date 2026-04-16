@@ -1,24 +1,24 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { PontuacaoService } from './pontuacao.service';
-import { TokenDobroService } from '../palpites/token-dobro.service';
-import { JOGOS } from '../jogos/jogos.constants';
-import { PALPITES } from '../palpites/palpites.constants';
-import { GRUPOS } from '../grupos/grupos.constants';
-import { GRUPO_USUARIO } from '../grupo-usuario/grupo-usuario.constants';
-import { RANKING } from './ranking.constants';
-import type { JogoRepository } from '../jogos/repositories/jogo.repository.interface';
-import type { FaseRepository } from '../jogos/repositories/fase.repository.interface';
-import type { PalpiteRepository } from '../palpites/repositories/palpite.repository.interface';
-import type { PalpiteDobradoRepository } from '../palpites/repositories/palpite-dobrado.repository.interface';
-import type { GrupoUsuarioRepository } from '../grupo-usuario/repositories/grupo-usuario.repository.interface';
-import type { GrupoRepository } from '../grupos/repositories/grupo.repository.interface';
-import type { TokenDobroRepository } from '../palpites/repositories/token-dobro.repository.interface';
+import { TokenDobroService } from '../../palpites/services/token-dobro.service';
+import { JOGOS } from '../../jogos/jogos.constants';
+import { PALPITES } from '../../palpites/palpites.constants';
+import { GRUPOS } from '../../grupos/grupos.constants';
+import { GRUPO_USUARIO } from '../../grupo-usuario/grupo-usuario.constants';
+import { RANKING } from '../ranking.constants';
+import type { JogoRepository } from '../../jogos/repositories/jogo.repository.interface';
+import type { FaseRepository } from '../../jogos/repositories/fase.repository.interface';
+import type { PalpiteRepository } from '../../palpites/repositories/palpite.repository.interface';
+import type { PalpiteDobradoRepository } from '../../palpites/repositories/palpite-dobrado.repository.interface';
+import type { GrupoUsuarioRepository } from '../../grupo-usuario/repositories/grupo-usuario.repository.interface';
+import type { GrupoRepository } from '../../grupos/repositories/grupo.repository.interface';
+import type { TokenDobroRepository } from '../../palpites/repositories/token-dobro.repository.interface';
 import {
   GrupoNaoEncontradoError,
   FaseNaoEncontradaError,
   JogoNaoEncontradoError,
   JogoNaoFinalizadoError,
-} from '../../common/errors/domain-errors';
+} from '../../../common/errors/domain-errors';
 
 interface RankingEntry {
   posicao: number;
@@ -134,7 +134,7 @@ export class RankingService {
       );
 
       const multiplicador =
-        grupo.palpiteDobradoHabilitado && dobrado
+        grupo.permitirPalpiteDobrado && dobrado
           ? RANKING.MULTIPLICADOR_DOBRO
           : 1;
 
@@ -178,7 +178,7 @@ export class RankingService {
 
   async verificarPalpitesCompletos(faseId: string, grupoId: string): Promise<void> {
     const grupo = await this.grupoRepo.buscarPorId(grupoId);
-    if (!grupo?.palpiteDobradoHabilitado) return;
+    if (!grupo?.permitirPalpiteDobrado) return;
 
     const jogos = await this.jogoRepo.buscarPorFase(faseId);
     const jogosNaoCancelados = jogos.filter((j: any) => j.status !== 'CANCELADO');
@@ -243,7 +243,7 @@ export class RankingService {
     const palpiteMap = new Map(palpites.map((p: any) => [p.usuarioId, p]));
 
     // Conceder TokenDobro por acerto em cheio
-    if (grupo.palpiteDobradoHabilitado) {
+    if (grupo.permitirPalpiteDobrado) {
       await this.concederTokensPorAcertoEmCheio(membros, palpiteMap, jogo, grupo.id);
     }
 
@@ -254,7 +254,7 @@ export class RankingService {
     );
     const temJogoFinalizado = jogosDaFase.some((j: any) => j.status === 'FINALIZADO');
 
-    if (faseEncerrada && temJogoFinalizado && grupo.palpiteDobradoHabilitado) {
+    if (faseEncerrada && temJogoFinalizado && grupo.permitirPalpiteDobrado) {
       await this.concederTokensPorPosicaoRanking(grupo, fase.id);
     }
   }
@@ -356,7 +356,7 @@ export class RankingService {
       ? await this.palpiteRepo.listarPorJogosEUsuarios(jogoIds, usuarioIds)
       : [];
 
-    const dobrados = jogoIds.length > 0 && grupo.palpiteDobradoHabilitado
+    const dobrados = jogoIds.length > 0 && grupo.permitirPalpiteDobrado
       ? await this.palpiteDobradoRepo.listarPorJogosEGrupo(jogoIds, grupo.id)
       : [];
 
@@ -378,7 +378,7 @@ export class RankingService {
         );
 
         const multiplicador =
-          grupo.palpiteDobradoHabilitado && dobradoSet.has(`${membro.usuarioId}:${jogo.id}`)
+          grupo.permitirPalpiteDobrado && dobradoSet.has(`${membro.usuarioId}:${jogo.id}`)
             ? RANKING.MULTIPLICADOR_DOBRO
             : 1;
 

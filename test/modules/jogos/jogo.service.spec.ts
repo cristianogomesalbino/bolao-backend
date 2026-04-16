@@ -1,9 +1,10 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { BadRequestException } from '@nestjs/common';
-import { JogoService } from '@src/modules/jogos/jogo.service';
+import { JogoService } from '@src/modules/jogos/services/jogo.service';
 import { InMemoryJogoRepository } from '@src/modules/jogos/repositories/in-memory-jogo.repository';
 import { InMemoryFaseRepository } from '@src/modules/jogos/repositories/in-memory-fase.repository';
-import { ApiFootballService } from '@src/modules/jogos/api-football.service';
+import { InMemoryTimeRepository } from '@src/modules/times/repositories/in-memory-time.repository';
+import { FutebolApiService } from '@src/modules/jogos/services/futebol-api.service';
 import {
   FaseNaoEncontradaError,
   JogoNaoEncontradoError,
@@ -24,7 +25,8 @@ describe('JogoService', () => {
   let service: JogoService;
   let jogoRepo: InMemoryJogoRepository;
   let faseRepo: InMemoryFaseRepository;
-  let apiFootballService: ApiFootballService;
+  let timeRepo: InMemoryTimeRepository;
+  let futebolApiService: FutebolApiService;
 
   const userId = 'user-1';
 
@@ -61,18 +63,21 @@ describe('JogoService', () => {
   beforeEach(() => {
     jogoRepo = new InMemoryJogoRepository();
     faseRepo = new InMemoryFaseRepository();
+    timeRepo = new InMemoryTimeRepository();
     faseRepo.items = [
       { ...fasePontosCorridos },
       { ...faseMataMata },
       { ...faseMataMataIdaVolta },
     ];
 
-    apiFootballService = {
-      buscarFixtures: vi.fn(),
-      buscarFixturesPorIds: vi.fn(),
+    futebolApiService = {
+      buscarJogosPorRodada: vi.fn(),
+      buscarJogosPorIds: vi.fn(),
+      normalizarJogo: vi.fn(),
+      mapearStatus: vi.fn(),
     } as any;
 
-    service = new JogoService(jogoRepo, faseRepo, apiFootballService);
+    service = new JogoService(jogoRepo, faseRepo, futebolApiService, timeRepo);
   });
 
   // ==================== criar ====================
@@ -223,14 +228,14 @@ describe('JogoService', () => {
       ).rejects.toThrow(JogoNaoEncontradoError);
     });
 
-    it('deve mudar fonteResultado para MANUAL ao atualizar jogo API_FOOTBALL', async () => {
+    it('deve mudar fonteResultado para MANUAL ao atualizar jogo API_EXTERNA', async () => {
       const jogo = await service.criar({
         faseId: 'fase-pc',
         timeCasaId: 'time-a',
         timeForaId: 'time-b',
         dataHora: '2026-03-15T16:00:00.000Z',
       }, userId);
-      await jogoRepo.atualizar(jogo.id, { fonteResultado: 'API_FOOTBALL' });
+      await jogoRepo.atualizar(jogo.id, { fonteResultado: 'API_EXTERNA' });
 
       const result = await service.atualizar(jogo.id, {
         dataHora: '2026-04-01T20:00:00.000Z',
@@ -519,10 +524,8 @@ describe('JogoService', () => {
       await jogoRepo.atualizar(jogoIda.id, { status: 'EM_ANDAMENTO' });
       await service.finalizar(jogoIda.id, { golsCasa: 2, golsFora: 1 });
 
-      // Jogo de volta: time-b 1 x 0 time-a
-      // Agregado: time-a = 2 (ida casa) + 0 (volta fora) = 2
-      //           time-b = 1 (ida fora) + 1 (volta casa) = 2
-      // Empate no agregado → precisa prorrogação
+      // Jogo de volta: time-b 3 x 0 time-a
+      // Agregado: time-a = 2 + 0 = 2, time-b = 1 + 3 = 4
       const jogoVolta = await service.criar({
         faseId: 'fase-mm-iv',
         timeCasaId: 'time-b',
@@ -533,10 +536,6 @@ describe('JogoService', () => {
       }, userId);
       await jogoRepo.atualizar(jogoVolta.id, { status: 'EM_ANDAMENTO' });
 
-      // Volta: time-b 3 x 0 time-a
-      // Agregado: time-a (ida casa) = 2 + 0 (volta fora) = 2
-      //           time-b (ida fora) = 1 + 3 (volta casa) = 4
-      // time-b vence → timeCasaId do jogo de volta
       const result = await service.finalizar(jogoVolta.id, {
         golsCasa: 3,
         golsFora: 0,
@@ -554,7 +553,6 @@ describe('JogoService', () => {
         grupoIdaVolta: 'grupo-1',
         ehJogoVolta: false,
       }, userId);
-      // Jogo de ida NÃO finalizado (status AGENDADO)
 
       const jogoVolta = await service.criar({
         faseId: 'fase-mm-iv',
@@ -709,7 +707,7 @@ describe('JogoService', () => {
 
       const result = await service.resetarFonte(jogo.id);
 
-      expect(result.fonteResultado).toBe('API_FOOTBALL');
+      expect(result.fonteResultado).toBe('API_EXTERNA');
     });
 
     it('jogo sem externoId → erro BadRequestException', async () => {

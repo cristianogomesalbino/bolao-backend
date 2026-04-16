@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { FaseController } from '@src/modules/jogos/fase.controller';
+import { FaseController } from '@src/modules/jogos/controllers/fase.controller';
 import { FasePresenter } from '@src/common/presenters';
 
 describe('FaseController', () => {

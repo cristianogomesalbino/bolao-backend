@@ -3,13 +3,15 @@ CREATE TABLE "Grupo" (
     "id" TEXT NOT NULL,
     "nome" TEXT NOT NULL,
     "temporadaId" TEXT NOT NULL,
-    "adminId" TEXT NOT NULL,
+    "criadoPor" TEXT NOT NULL,
     "privado" BOOLEAN NOT NULL DEFAULT false,
     "codigoConvite" TEXT,
     "permitirPalpiteAutomatico" BOOLEAN NOT NULL DEFAULT false,
     "maxParticipantes" INTEGER NOT NULL DEFAULT 50,
     "ativo" BOOLEAN NOT NULL DEFAULT true,
+    "permitirPalpiteDobrado" BOOLEAN NOT NULL DEFAULT false,
     "dataCriacao" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "atualizadoEm" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "Grupo_pkey" PRIMARY KEY ("id")
 );

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { RankingService } from '@src/modules/ranking/ranking.service';
-import { PontuacaoService } from '@src/modules/ranking/pontuacao.service';
-import { TokenDobroService } from '@src/modules/palpites/token-dobro.service';
+import { RankingService } from '@src/modules/ranking/services/ranking.service';
+import { PontuacaoService } from '@src/modules/ranking/services/pontuacao.service';
+import { TokenDobroService } from '@src/modules/palpites/services/token-dobro.service';
 import { InMemoryJogoRepository } from '@src/modules/jogos/repositories/in-memory-jogo.repository';
 import { InMemoryFaseRepository } from '@src/modules/jogos/repositories/in-memory-fase.repository';
 import { InMemoryPalpiteRepository } from '@src/modules/palpites/repositories/in-memory-palpite.repository';
@@ -37,7 +37,7 @@ describe('RankingService', () => {
       id: grupoId,
       nome: 'Grupo Teste',
       temporadaId,
-      palpiteDobradoHabilitado: false,
+      permitirPalpiteDobrado: false,
       ativo: true,
       ...overrides,
     };
@@ -281,7 +281,7 @@ describe('RankingService', () => {
     });
 
     it('deve indicar flag dobrado quando PalpiteDobrado existe', async () => {
-      criarGrupo({ palpiteDobradoHabilitado: true });
+      criarGrupo({ permitirPalpiteDobrado: true });
       criarFase();
       criarMembro(userId1, 'Alice');
 
@@ -301,7 +301,7 @@ describe('RankingService', () => {
 
   describe('processarPontuacaoJogo', () => {
     it('deve conceder token por acerto em cheio quando grupo tem dobro habilitado', async () => {
-      criarGrupo({ palpiteDobradoHabilitado: true });
+      criarGrupo({ permitirPalpiteDobrado: true });
       criarFase();
       criarMembro(userId1, 'Alice');
 
@@ -318,7 +318,7 @@ describe('RankingService', () => {
     });
 
     it('deve ser idempotente — processar 2x não duplica tokens', async () => {
-      criarGrupo({ palpiteDobradoHabilitado: true });
+      criarGrupo({ permitirPalpiteDobrado: true });
       criarFase();
       criarMembro(userId1, 'Alice');
 
@@ -335,7 +335,7 @@ describe('RankingService', () => {
     });
 
     it('deve conceder tokens de posição quando fase encerra', async () => {
-      criarGrupo({ palpiteDobradoHabilitado: true });
+      criarGrupo({ permitirPalpiteDobrado: true });
       criarFase();
       criarMembro(userId1, 'Alice');
       criarMembro(userId2, 'Bob');
@@ -361,7 +361,7 @@ describe('RankingService', () => {
     });
 
     it('não deve conceder tokens de posição quando fase não encerrou', async () => {
-      criarGrupo({ palpiteDobradoHabilitado: true });
+      criarGrupo({ permitirPalpiteDobrado: true });
       criarFase();
       criarMembro(userId1, 'Alice');
 
@@ -379,7 +379,7 @@ describe('RankingService', () => {
     });
 
     it('não deve conceder tokens quando grupo não tem dobro habilitado', async () => {
-      criarGrupo({ palpiteDobradoHabilitado: false });
+      criarGrupo({ permitirPalpiteDobrado: false });
       criarFase();
       criarMembro(userId1, 'Alice');
 
@@ -408,13 +408,13 @@ describe('RankingService', () => {
 
     it('erro em um grupo não deve propagar para outros', async () => {
       // Grupo 1 normal
-      criarGrupo({ id: 'grupo-1', palpiteDobradoHabilitado: true });
+      criarGrupo({ id: 'grupo-1', permitirPalpiteDobrado: true });
       // Grupo 2 — sem membros configurados no grupoUsuarioRepo, vai funcionar mas sem palpites
       grupoRepo.items.push({
         id: 'grupo-2',
         nome: 'Grupo 2',
         temporadaId,
-        palpiteDobradoHabilitado: true,
+        permitirPalpiteDobrado: true,
         ativo: true,
       });
 
@@ -429,7 +429,7 @@ describe('RankingService', () => {
     });
 
     it('deve aplicar multiplicador dobro corretamente no ranking', async () => {
-      criarGrupo({ palpiteDobradoHabilitado: true });
+      criarGrupo({ permitirPalpiteDobrado: true });
       criarFase();
       criarMembro(userId1, 'Alice');
       criarMembro(userId2, 'Bob');
@@ -453,7 +453,7 @@ describe('RankingService', () => {
     });
 
     it('fase com apenas jogos cancelados não deve conceder tokens de posição', async () => {
-      criarGrupo({ palpiteDobradoHabilitado: true });
+      criarGrupo({ permitirPalpiteDobrado: true });
       criarFase();
       criarMembro(userId1, 'Alice');
 
@@ -482,7 +482,7 @@ describe('RankingService', () => {
 
   describe('verificarPalpitesCompletos', () => {
     it('deve conceder token PALPITES_COMPLETOS quando membro tem todos os palpites antes do primeiro jogo', async () => {
-      criarGrupo({ palpiteDobradoHabilitado: true });
+      criarGrupo({ permitirPalpiteDobrado: true });
       criarFase();
       criarMembro(userId1, 'Alice');
 
@@ -514,7 +514,7 @@ describe('RankingService', () => {
     });
 
     it('não deve conceder token quando grupo não tem dobro habilitado', async () => {
-      criarGrupo({ palpiteDobradoHabilitado: false });
+      criarGrupo({ permitirPalpiteDobrado: false });
       criarFase();
       criarMembro(userId1, 'Alice');
 
@@ -527,7 +527,7 @@ describe('RankingService', () => {
     });
 
     it('deve ser idempotente — não duplicar token PALPITES_COMPLETOS', async () => {
-      criarGrupo({ palpiteDobradoHabilitado: true });
+      criarGrupo({ permitirPalpiteDobrado: true });
       criarFase();
       criarMembro(userId1, 'Alice');
 

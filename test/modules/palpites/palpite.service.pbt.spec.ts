@@ -1,8 +1,9 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import fc from 'fast-check';
-import { PalpiteService } from '@src/modules/palpites/palpite.service';
+import { PalpiteService } from '@src/modules/palpites/services/palpite.service';
 import { InMemoryPalpiteRepository } from '@src/modules/palpites/repositories/in-memory-palpite.repository';
 import { InMemoryJogoRepository } from '@src/modules/jogos/repositories/in-memory-jogo.repository';
+import { InMemoryGrupoUsuarioRepository } from '@src/modules/grupo-usuario/repositories/in-memory-grupo-usuario.repository';
 import {
   JogoNaoAceitaPalpitesError,
   PalpiteJaExisteError,
@@ -14,6 +15,7 @@ describe('PalpiteService — Property-Based Tests', () => {
   let service: PalpiteService;
   let palpiteRepo: InMemoryPalpiteRepository;
   let jogoRepo: InMemoryJogoRepository;
+  let grupoUsuarioRepo: InMemoryGrupoUsuarioRepository;
 
   const jogoAgendado = {
     id: 'jogo-agendado',
@@ -56,13 +58,24 @@ describe('PalpiteService — Property-Based Tests', () => {
   beforeEach(() => {
     palpiteRepo = new InMemoryPalpiteRepository();
     jogoRepo = new InMemoryJogoRepository();
+    grupoUsuarioRepo = new InMemoryGrupoUsuarioRepository();
     jogoRepo.items = [
       { ...jogoAgendado },
       { ...jogoEmAndamento },
       { ...jogoFinalizado },
       { ...jogoCancelado },
     ];
-    service = new PalpiteService(palpiteRepo, jogoRepo);
+
+    grupoUsuarioRepo.usuarios = [
+      { id: 'user-1', nome: 'User 1' },
+      { id: 'user-2', nome: 'User 2' },
+    ];
+    grupoUsuarioRepo.items = [
+      { usuarioId: 'user-1', grupoId: 'grupo-1', role: 'MEMBER' },
+      { usuarioId: 'user-2', grupoId: 'grupo-1', role: 'MEMBER' },
+    ];
+
+    service = new PalpiteService(palpiteRepo, jogoRepo, grupoUsuarioRepo);
   });
 
   const arbGols = fc.nat({ max: 20 });
@@ -197,7 +210,7 @@ describe('PalpiteService — Property-Based Tests', () => {
 
         // Jogo FINALIZADO → todos visíveis
         const todosFinalizado = await service.listarPorJogoNoGrupo(
-          'jogo-finalizado', 'grupo-1', 'user-1', ['user-1', 'user-2'],
+          'jogo-finalizado', 'grupo-1', 'user-1',
         );
         expect(todosFinalizado).toHaveLength(2);
 
@@ -207,7 +220,7 @@ describe('PalpiteService — Property-Based Tests', () => {
 
         // Jogo AGENDADO → só o próprio
         const apenasProprioAgendado = await service.listarPorJogoNoGrupo(
-          'jogo-agendado', 'grupo-1', 'user-1', ['user-1', 'user-2'],
+          'jogo-agendado', 'grupo-1', 'user-1',
         );
         expect(apenasProprioAgendado).toHaveLength(1);
         expect(apenasProprioAgendado[0].usuarioId).toBe('user-1');

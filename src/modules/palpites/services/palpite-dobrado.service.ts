@@ -1,20 +1,20 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { PALPITES } from './palpites.constants';
-import { JOGOS } from '../jogos/jogos.constants';
-import { GRUPOS } from '../grupos/grupos.constants';
-import type { PalpiteDobradoRepository } from './repositories/palpite-dobrado.repository.interface';
-import type { JogoRepository } from '../jogos/repositories/jogo.repository.interface';
-import type { GrupoRepository } from '../grupos/repositories/grupo.repository.interface';
+import { PALPITES } from '../palpites.constants';
+import { JOGOS } from '../../jogos/jogos.constants';
+import { GRUPOS } from '../../grupos/grupos.constants';
+import type { PalpiteDobradoRepository } from '../repositories/palpite-dobrado.repository.interface';
+import type { JogoRepository } from '../../jogos/repositories/jogo.repository.interface';
+import type { GrupoRepository } from '../../grupos/repositories/grupo.repository.interface';
 import { TokenDobroService } from './token-dobro.service';
-import { JogoNaoEncontradoError } from '../../common/errors/domain-errors/jogos.errors';
-import { GrupoNaoEncontradoError } from '../../common/errors/domain-errors/grupos.errors';
+import { JogoNaoEncontradoError } from '../../../common/errors/domain-errors/jogos.errors';
+import { GrupoNaoEncontradoError } from '../../../common/errors/domain-errors/grupos.errors';
 import {
   GrupoNaoPermiteDobroError,
   SemFichasDobroError,
   DobroJaAtivoError,
   DobroNaoEncontradoError,
   JogoNaoAceitaDobroError,
-} from '../../common/errors/domain-errors/palpites.errors';
+} from '../../../common/errors/domain-errors/palpites.errors';
 
 @Injectable()
 export class PalpiteDobradoService {
@@ -31,7 +31,7 @@ export class PalpiteDobradoService {
   async ativarDobro(grupoId: string, jogoId: string, usuarioId: string) {
     const grupo = await this.grupoRepo.buscarPorId(grupoId);
     if (!grupo) throw new GrupoNaoEncontradoError();
-    if (!grupo.palpiteDobradoHabilitado) throw new GrupoNaoPermiteDobroError();
+    if (!grupo.permitirPalpiteDobrado) throw new GrupoNaoPermiteDobroError();
 
     const jogo = await this.jogoRepo.buscarPorId(jogoId);
     if (!jogo) throw new JogoNaoEncontradoError();
@@ -43,8 +43,9 @@ export class PalpiteDobradoService {
     const saldo = await this.tokenDobroService.calcularSaldo(usuarioId, grupoId);
     if (saldo <= 0) throw new SemFichasDobroError();
 
+    const palpiteDobrado = await this.palpiteDobradoRepo.criar({ usuarioId, jogoId, grupoId });
     await this.tokenDobroService.registrarUtilizacao(usuarioId, grupoId, jogoId);
-    return this.palpiteDobradoRepo.criar({ usuarioId, jogoId, grupoId });
+    return palpiteDobrado;
   }
 
   async desativarDobro(grupoId: string, jogoId: string, usuarioId: string) {
@@ -63,6 +64,6 @@ export class PalpiteDobradoService {
     const grupo = await this.grupoRepo.buscarPorId(grupoId);
     if (!grupo) throw new GrupoNaoEncontradoError();
 
-    return this.grupoRepo.atualizar(grupoId, { palpiteDobradoHabilitado: habilitado });
+    return this.grupoRepo.atualizar(grupoId, { permitirPalpiteDobrado: habilitado });
   }
 }

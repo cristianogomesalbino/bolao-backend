@@ -1,14 +1,14 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { CriarFaseDto } from './dto/criar-fase.dto';
-import { JOGOS } from './jogos.constants';
-import { TEMPORADAS } from '../temporadas/temporadas.constants';
-import type { FaseRepository } from './repositories/fase.repository.interface';
-import type { TemporadaRepository } from '../temporadas/repositories/temporada.repository.interface';
+import { CriarFaseDto } from '../dto/criar-fase.dto';
+import { JOGOS } from '../jogos.constants';
+import { TEMPORADAS } from '../../temporadas/temporadas.constants';
+import type { FaseRepository } from '../repositories/fase.repository.interface';
+import type { TemporadaRepository } from '../../temporadas/repositories/temporada.repository.interface';
 import {
   FaseNaoEncontradaError,
   IdaVoltaNaoPermitidaError,
   TemporadaNaoEncontradaError,
-} from '../../common/errors/domain-errors';
+} from '../../../common/errors/domain-errors';
 
 @Injectable()
 export class FaseService {

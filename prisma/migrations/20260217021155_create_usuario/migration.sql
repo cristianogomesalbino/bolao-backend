@@ -26,4 +26,4 @@ CREATE TABLE "Usuario" (
 CREATE UNIQUE INDEX "Usuario_email_key" ON "Usuario"("email");
 
 -- AddForeignKey
-ALTER TABLE "Grupo" ADD CONSTRAINT "Grupo_adminId_fkey" FOREIGN KEY ("adminId") REFERENCES "Usuario"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "Grupo" ADD CONSTRAINT "Grupo_criadoPor_fkey" FOREIGN KEY ("criadoPor") REFERENCES "Usuario"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

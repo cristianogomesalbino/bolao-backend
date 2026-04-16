@@ -1,21 +1,22 @@
 import { Module } from '@nestjs/common';
-import { FaseController } from './fase.controller';
-import { JogoController } from './jogo.controller';
-import { FaseService } from './fase.service';
-import { JogoService } from './jogo.service';
-import { ApiFootballService } from './api-football.service';
+import { FaseController } from './controllers/fase.controller';
+import { JogoController } from './controllers/jogo.controller';
+import { FaseService } from './services/fase.service';
+import { JogoService } from './services/jogo.service';
+import { FutebolApiService } from './services/futebol-api.service';
 import { JOGOS } from './jogos.constants';
 import { PrismaFaseRepository } from './repositories/prisma-fase.repository';
 import { PrismaJogoRepository } from './repositories/prisma-jogo.repository';
 import { TemporadasModule } from '../temporadas/temporadas.module';
+import { TimesModule } from '../times/times.module';
 
 @Module({
-  imports: [TemporadasModule],
+  imports: [TemporadasModule, TimesModule],
   controllers: [FaseController, JogoController],
   providers: [
     FaseService,
     JogoService,
-    ApiFootballService,
+    FutebolApiService,
     {
       provide: JOGOS.FASE_REPOSITORY_TOKEN,
       useClass: PrismaFaseRepository,

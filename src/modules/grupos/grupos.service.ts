@@ -43,7 +43,8 @@ export class GruposService {
       codigoConvite,
       permitirPalpiteAutomatico: dto.permitirPalpiteAutomatico ?? false,
       maxParticipantes: dto.maxParticipantes ?? 50,
-      createdById: userId,
+      permitirPalpiteDobrado: dto.permitirPalpiteDobrado ?? false,
+      criadoPor: userId,
     });
 
     await this.grupoUsuarioRepo.criar({
@@ -81,6 +82,8 @@ export class GruposService {
       privado: dto.privado ?? grupo.privado,
       permitirPalpiteAutomatico:
         dto.permitirPalpiteAutomatico ?? grupo.permitirPalpiteAutomatico,
+      permitirPalpiteDobrado:
+        dto.permitirPalpiteDobrado ?? grupo.permitirPalpiteDobrado,
     });
   }
 

@@ -10,9 +10,10 @@ export class GrupoPresenter {
       codigoConvite: grupo.codigoConvite,
       permitirPalpiteAutomatico: grupo.permitirPalpiteAutomatico,
       maxParticipantes: grupo.maxParticipantes,
+      permitirPalpiteDobrado: grupo.permitirPalpiteDobrado,
       ativo: grupo.ativo,
       dataCriacao: grupo.dataCriacao,
-      createdById: grupo.createdById,
+      criadoPor: grupo.criadoPor,
       ...(grupo.temporada && {
         temporada: TemporadaPresenter.toHttp(grupo.temporada),
       }),

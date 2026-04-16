@@ -655,7 +655,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"leagueId\": 71,\n  \"season\": 2026,\n  \"faseId\": \"{{faseId}}\"\n}"
+              "raw": "{\n  \"season\": 2026,\n  \"rodada\": 1,\n  \"faseId\": \"{{faseId}}\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/jogos/importar",
@@ -851,7 +851,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"palpiteDobradoHabilitado\": true\n}"
+              "raw": "{\n  \"permitirPalpiteDobrado\": true\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/grupos/{{grupoId}}/configuracao-dobro",

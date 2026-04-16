@@ -60,7 +60,6 @@ async function bootstrap() {
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
-  delete document.components?.schemas;
 
   SwaggerModule.setup('docs', app, document);
 

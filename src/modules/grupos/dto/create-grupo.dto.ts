@@ -31,4 +31,9 @@ export class CriarGrupoDto {
   @IsInt({ message: 'Deve ser do tipo número inteiro.' })
   @Max(50, { message: 'O grupo pode ter no máximo 50 participantes.' })
   maxParticipantes?: number;
+
+  @ApiPropertyOptional({ description: 'Habilitar palpite dobrado no grupo', example: false })
+  @IsOptional()
+  @IsBoolean({ message: 'Deve ser verdadeiro ou falso.' })
+  permitirPalpiteDobrado?: boolean;
 }

@@ -432,3 +432,219 @@
 | Validação Params UUID | 5 |
 | Formato de Resposta | 5 |
 | **TOTAL** | **184** |
+
+
+---
+
+## 26. Palpites — CRUD
+
+### Pré-condição: jogo AGENDADO existente, usuário autenticado
+
+| # | Cenário | Método | Rota | Auth | Body | Esperado | Prioridade |
+|---|---------|--------|------|------|------|----------|------------|
+| 26.1 | Criar palpite com dados válidos | POST | /jogos/:jogoId/palpites | JWT | `{ golsCasa: 2, golsFora: 1 }` | 201, id + dados | P0 |
+| 26.2 | Criar palpite com jogo inexistente | POST | /jogos/:jogoId/palpites | JWT | `{ golsCasa: 1, golsFora: 0 }` | 404 | P0 |
+| 26.3 | Criar palpite com jogo EM_ANDAMENTO | POST | /jogos/:jogoId/palpites | JWT | `{ golsCasa: 1, golsFora: 0 }` | 400 | P0 |
+| 26.4 | Criar palpite com jogo FINALIZADO | POST | /jogos/:jogoId/palpites | JWT | `{ golsCasa: 1, golsFora: 0 }` | 400 | P0 |
+| 26.5 | Criar palpite duplicado (mesmo jogo + usuário) | POST | /jogos/:jogoId/palpites | JWT | `{ golsCasa: 1, golsFora: 0 }` | 409 | P0 |
+| 26.6 | Criar palpite sem auth | POST | /jogos/:jogoId/palpites | Nenhuma | `{ golsCasa: 1, golsFora: 0 }` | 401 | P1 |
+| 26.7 | Editar palpite próprio | PATCH | /palpites/:id | JWT | `{ golsCasa: 3, golsFora: 0 }` | 200, dados atualizados | P0 |
+| 26.8 | Editar palpite de outro usuário | PATCH | /palpites/:id | JWT | `{ golsCasa: 3, golsFora: 0 }` | 403 | P0 |
+| 26.9 | Editar palpite com jogo não AGENDADO | PATCH | /palpites/:id | JWT | `{ golsCasa: 3, golsFora: 0 }` | 400 | P0 |
+| 26.10 | Editar palpite inexistente | PATCH | /palpites/:id | JWT | `{ golsCasa: 3, golsFora: 0 }` | 404 | P1 |
+| 26.11 | Excluir palpite próprio | DELETE | /palpites/:id | JWT | — | 200, `{ mensagem }` | P0 |
+| 26.12 | Excluir palpite de outro usuário | DELETE | /palpites/:id | JWT | — | 403 | P0 |
+| 26.13 | Excluir palpite com jogo não AGENDADO | DELETE | /palpites/:id | JWT | — | 400 | P0 |
+| 26.14 | Excluir palpite inexistente | DELETE | /palpites/:id | JWT | — | 404 | P1 |
+
+---
+
+## 27. Palpites — Consulta
+
+### Pré-condição: palpites existentes
+
+| # | Cenário | Método | Rota | Auth | Body | Esperado | Prioridade |
+|---|---------|--------|------|------|------|----------|------------|
+| 27.1 | Buscar meu palpite por jogo | GET | /jogos/:jogoId/meu-palpite | JWT | — | 200, dados do palpite | P0 |
+| 27.2 | Buscar meu palpite — jogo sem palpite | GET | /jogos/:jogoId/meu-palpite | JWT | — | 404 | P0 |
+| 27.3 | Buscar meu palpite — jogo inexistente | GET | /jogos/:jogoId/meu-palpite | JWT | — | 404 | P1 |
+| 27.4 | Listar meus palpites | GET | /meus-palpites | JWT | — | 200, array | P0 |
+| 27.5 | Listar meus palpites com filtro temporadaId | GET | /meus-palpites?temporadaId=xxx | JWT | — | 200, filtrado | P1 |
+| 27.6 | Listar meus palpites — sem palpites | GET | /meus-palpites | JWT | — | 200, array vazio | P1 |
+
+---
+
+## 28. Palpites — Visibilidade no Grupo
+
+### Pré-condição: grupo com membros, jogos com palpites
+
+| # | Cenário | Método | Rota | Auth | Body | Esperado | Prioridade |
+|---|---------|--------|------|------|------|----------|------------|
+| 28.1 | Jogo FINALIZADO → retorna palpites de todos os membros | GET | /grupos/:grupoId/jogos/:jogoId/palpites | JWT+Membro | — | 200, array com todos | P0 |
+| 28.2 | Jogo AGENDADO → retorna apenas meu palpite | GET | /grupos/:grupoId/jogos/:jogoId/palpites | JWT+Membro | — | 200, array com 1 ou 0 | P0 |
+| 28.3 | Jogo EM_ANDAMENTO → retorna apenas meu palpite | GET | /grupos/:grupoId/jogos/:jogoId/palpites | JWT+Membro | — | 200, array com 1 ou 0 | P1 |
+| 28.4 | Jogo inexistente | GET | /grupos/:grupoId/jogos/:jogoId/palpites | JWT+Membro | — | 404 | P1 |
+| 28.5 | Não membro do grupo → 403 | GET | /grupos/:grupoId/jogos/:jogoId/palpites | JWT | — | 403 | P0 |
+
+---
+
+## 29. Palpite Dobrado — Ativação e Desativação
+
+### Pré-condição: grupo com permitirPalpiteDobrado=true, membro com saldo > 0, jogo AGENDADO
+
+| # | Cenário | Método | Rota | Auth | Body | Esperado | Prioridade |
+|---|---------|--------|------|------|------|----------|------------|
+| 29.1 | Ativar dobro com sucesso | POST | /grupos/:grupoId/jogos/:jogoId/dobro | JWT+Membro | — | 201, PalpiteDobrado criado | P0 |
+| 29.2 | Ativar dobro — jogo não AGENDADO | POST | /grupos/:grupoId/jogos/:jogoId/dobro | JWT+Membro | — | 400 | P0 |
+| 29.3 | Ativar dobro — saldo zero | POST | /grupos/:grupoId/jogos/:jogoId/dobro | JWT+Membro | — | 400 | P0 |
+| 29.4 | Ativar dobro — já ativo | POST | /grupos/:grupoId/jogos/:jogoId/dobro | JWT+Membro | — | 409 | P0 |
+| 29.5 | Ativar dobro — grupo sem dobro habilitado | POST | /grupos/:grupoId/jogos/:jogoId/dobro | JWT+Membro | — | 400 | P0 |
+| 29.6 | Ativar dobro — não membro | POST | /grupos/:grupoId/jogos/:jogoId/dobro | JWT | — | 403 | P1 |
+| 29.7 | Ativar dobro — jogo inexistente | POST | /grupos/:grupoId/jogos/:jogoId/dobro | JWT+Membro | — | 404 | P1 |
+| 29.8 | Ativar dobro — grupo inexistente | POST | /grupos/:grupoId/jogos/:jogoId/dobro | JWT | — | 404 | P1 |
+| 29.9 | Desativar dobro com sucesso | DELETE | /grupos/:grupoId/jogos/:jogoId/dobro | JWT+Membro | — | 200 | P0 |
+| 29.10 | Desativar dobro — jogo não AGENDADO | DELETE | /grupos/:grupoId/jogos/:jogoId/dobro | JWT+Membro | — | 400 | P0 |
+| 29.11 | Desativar dobro — sem dobro ativo | DELETE | /grupos/:grupoId/jogos/:jogoId/dobro | JWT+Membro | — | 404 | P0 |
+| 29.12 | Ativar + desativar → saldo preservado | POST+DELETE | — | JWT+Membro | — | saldo volta ao original | P0 |
+
+---
+
+## 30. Token Dobro — Saldo e Histórico
+
+### Pré-condição: grupo com permitirPalpiteDobrado=true, membro do grupo
+
+| # | Cenário | Método | Rota | Auth | Body | Esperado | Prioridade |
+|---|---------|--------|------|------|------|----------|------------|
+| 30.1 | Consultar saldo | GET | /grupos/:grupoId/tokens-dobro/saldo | JWT+Membro | — | 200, `{ saldo: N }` | P0 |
+| 30.2 | Consultar saldo — grupo sem dobro | GET | /grupos/:grupoId/tokens-dobro/saldo | JWT+Membro | — | 200, `{ saldo: 0 }` | P1 |
+| 30.3 | Consultar saldo — não membro | GET | /grupos/:grupoId/tokens-dobro/saldo | JWT | — | 403 | P1 |
+| 30.4 | Consultar histórico | GET | /grupos/:grupoId/tokens-dobro/historico | JWT+Membro | — | 200, array com tipo/motivo | P0 |
+| 30.5 | Consultar histórico — não membro | GET | /grupos/:grupoId/tokens-dobro/historico | JWT | — | 403 | P1 |
+
+---
+
+## 31. Configuração de Palpite Dobrado
+
+### Pré-condição: grupo existente
+
+| # | Cenário | Método | Rota | Auth | Body | Esperado | Prioridade |
+|---|---------|--------|------|------|------|----------|------------|
+| 31.1 | Habilitar dobro (admin) | PATCH | /grupos/:grupoId/configuracao-dobro | JWT+Admin | `{ permitirPalpiteDobrado: true }` | 200 | P0 |
+| 31.2 | Desabilitar dobro (admin) | PATCH | /grupos/:grupoId/configuracao-dobro | JWT+Admin | `{ permitirPalpiteDobrado: false }` | 200 | P0 |
+| 31.3 | Configurar dobro (membro não admin) → 403 | PATCH | /grupos/:grupoId/configuracao-dobro | JWT+Membro | `{ permitirPalpiteDobrado: true }` | 403 | P0 |
+| 31.4 | Desabilitar dobro preserva tokens existentes | PATCH | /grupos/:grupoId/configuracao-dobro | JWT+Admin | `{ permitirPalpiteDobrado: false }` | 200, saldo mantido | P1 |
+| 31.5 | Desabilitar dobro impede novas ativações | POST | /grupos/:grupoId/jogos/:jogoId/dobro | JWT+Membro | — | 400 | P1 |
+
+---
+
+## 32. Ranking — Consulta
+
+### Pré-condição: grupo com membros, jogos finalizados com palpites
+
+| # | Cenário | Método | Rota | Auth | Body | Esperado | Prioridade |
+|---|---------|--------|------|------|------|----------|------------|
+| 32.1 | Ranking geral do grupo | GET | /grupos/:grupoId/ranking/geral | JWT+Membro | — | 200, array ordenado por pontuação DESC | P0 |
+| 32.2 | Ranking geral — grupo inexistente | GET | /grupos/:grupoId/ranking/geral | JWT | — | 404 | P1 |
+| 32.3 | Ranking geral — não membro | GET | /grupos/:grupoId/ranking/geral | JWT | — | 403 | P0 |
+| 32.4 | Ranking geral — sem jogos finalizados | GET | /grupos/:grupoId/ranking/geral | JWT+Membro | — | 200, todos com 0 pontos | P1 |
+| 32.5 | Ranking por fase | GET | /grupos/:grupoId/ranking/fases/:faseId | JWT+Membro | — | 200, array ordenado | P0 |
+| 32.6 | Ranking por fase — fase inexistente | GET | /grupos/:grupoId/ranking/fases/:faseId | JWT+Membro | — | 404 | P1 |
+| 32.7 | Ranking por fase — sem jogos finalizados na fase | GET | /grupos/:grupoId/ranking/fases/:faseId | JWT+Membro | — | 200, todos com 0 pontos | P1 |
+
+---
+
+## 33. Ranking — Detalhamento por Jogo
+
+### Pré-condição: grupo com membros, jogo existente
+
+| # | Cenário | Método | Rota | Auth | Body | Esperado | Prioridade |
+|---|---------|--------|------|------|------|----------|------------|
+| 33.1 | Detalhamento jogo FINALIZADO | GET | /grupos/:grupoId/ranking/jogos/:jogoId | JWT+Membro | — | 200, array com categoriaAcerto, pontosBase, pontosFinais | P0 |
+| 33.2 | Detalhamento jogo não FINALIZADO → pontuação null | GET | /grupos/:grupoId/ranking/jogos/:jogoId | JWT+Membro | — | 200, pontosBase/pontosFinais null | P0 |
+| 33.3 | Detalhamento — jogo inexistente | GET | /grupos/:grupoId/ranking/jogos/:jogoId | JWT+Membro | — | 404 | P1 |
+| 33.4 | Detalhamento — não membro | GET | /grupos/:grupoId/ranking/jogos/:jogoId | JWT | — | 403 | P1 |
+| 33.5 | Detalhamento — membro sem palpite aparece com null | GET | /grupos/:grupoId/ranking/jogos/:jogoId | JWT+Membro | — | 200, palpite null, 0 pontos | P1 |
+| 33.6 | Detalhamento — flag dobrado=true quando PalpiteDobrado ativo | GET | /grupos/:grupoId/ranking/jogos/:jogoId | JWT+Membro | — | 200, dobrado=true, multiplicador=2 | P1 |
+
+---
+
+## 34. Ranking — Processamento de Pontuação
+
+### Pré-condição: jogo FINALIZADO, grupo com membros e palpites
+
+| # | Cenário | Método | Rota | Auth | Body | Esperado | Prioridade |
+|---|---------|--------|------|------|------|----------|------------|
+| 34.1 | Processar pontuação (admin) | POST | /grupos/:grupoId/ranking/processar-jogo/:jogoId | JWT+Admin | — | 200, `{ mensagem }` | P0 |
+| 34.2 | Processar pontuação (membro não admin) → 403 | POST | /grupos/:grupoId/ranking/processar-jogo/:jogoId | JWT+Membro | — | 403 | P0 |
+| 34.3 | Processar jogo não FINALIZADO → 400 | POST | /grupos/:grupoId/ranking/processar-jogo/:jogoId | JWT+Admin | — | 400 | P0 |
+| 34.4 | Processar jogo inexistente → 404 | POST | /grupos/:grupoId/ranking/processar-jogo/:jogoId | JWT+Admin | — | 404 | P1 |
+| 34.5 | Processar 2x (idempotência) → sem duplicar tokens | POST | /grupos/:grupoId/ranking/processar-jogo/:jogoId | JWT+Admin | — | 200, tokens não duplicados | P0 |
+
+---
+
+## 35. Ranking — Pontuação e Desempate
+
+### Pré-condição: jogo FINALIZADO com placar 2x1
+
+| # | Cenário | Palpite | Esperado | Prioridade |
+|---|---------|---------|----------|------------|
+| 35.1 | Acerto em cheio (2x1) | `{ golsCasa: 2, golsFora: 1 }` | 10 pontos, categoria ACERTO_EM_CHEIO | P0 |
+| 35.2 | Acerto de resultado (3x1, vitória casa) | `{ golsCasa: 3, golsFora: 1 }` | 5 pontos, categoria ACERTO_DE_RESULTADO | P0 |
+| 35.3 | Acerto de gols um time (2x3, acertou golsCasa) | `{ golsCasa: 2, golsFora: 3 }` | 3 pontos, categoria ACERTO_DE_GOLS_UM_TIME | P0 |
+| 35.4 | Erro total (0x3) | `{ golsCasa: 0, golsFora: 3 }` | 0 pontos, categoria ERRO_TOTAL | P0 |
+| 35.5 | Sem palpite | — | 0 pontos, categoria null | P0 |
+| 35.6 | Multiplicador dobro (acerto em cheio + dobro) | `{ golsCasa: 2, golsFora: 1 }` + PalpiteDobrado | 20 pontos (10 * 2) | P0 |
+| 35.7 | Desempate: mais acertos em cheio primeiro | — | Membro com mais acertos em cheio na frente | P1 |
+| 35.8 | Desempate: mais acertos de resultado segundo | — | Segundo critério aplicado | P1 |
+| 35.9 | Empate total → mesma posição, ordem alfabética | — | Mesma posição, nome ASC | P1 |
+
+---
+
+## 36. Ranking — Concessão de TokenDobro
+
+### Pré-condição: grupo com permitirPalpiteDobrado=true
+
+| # | Cenário | Esperado | Prioridade |
+|---|---------|----------|------------|
+| 36.1 | Acerto em cheio → concede 1 token ACERTO_EM_CHEIO | Token criado com motivo correto | P0 |
+| 36.2 | Fase encerrada → token PRIMEIRO_RANKING ao 1º | Token criado | P0 |
+| 36.3 | Fase encerrada → token ULTIMO_RANKING ao último | Token criado | P0 |
+| 36.4 | Empate no 1º lugar → todos empatados recebem token | Múltiplos tokens | P1 |
+| 36.5 | Grupo sem dobro → nenhum token concedido | 0 tokens | P0 |
+| 36.6 | Fase com apenas jogos cancelados → sem tokens de posição | 0 tokens posição | P1 |
+| 36.7 | Idempotência → processar 2x não duplica tokens | 1 token por conquista | P0 |
+
+---
+
+## 37. Validação de DTOs — Palpites
+
+| # | Cenário | Método | Rota | Auth | Body | Esperado | Prioridade |
+|---|---------|--------|------|------|------|----------|------------|
+| 37.1 | Criar sem golsCasa | POST | /jogos/:jogoId/palpites | JWT | `{ golsFora: 1 }` | 400 | P1 |
+| 37.2 | Criar sem golsFora | POST | /jogos/:jogoId/palpites | JWT | `{ golsCasa: 1 }` | 400 | P1 |
+| 37.3 | Criar com gols negativos | POST | /jogos/:jogoId/palpites | JWT | `{ golsCasa: -1, golsFora: 0 }` | 400 | P1 |
+| 37.4 | Criar com gols decimal | POST | /jogos/:jogoId/palpites | JWT | `{ golsCasa: 1.5, golsFora: 0 }` | 400 | P2 |
+| 37.5 | Criar com body vazio | POST | /jogos/:jogoId/palpites | JWT | `{}` | 400 | P1 |
+| 37.6 | Configurar dobro sem campo | PATCH | /grupos/:grupoId/configuracao-dobro | JWT+Admin | `{}` | 400 | P1 |
+| 37.7 | Configurar dobro com valor não booleano | PATCH | /grupos/:grupoId/configuracao-dobro | JWT+Admin | `{ permitirPalpiteDobrado: 'sim' }` | 400 | P2 |
+
+---
+
+## Resumo Final
+
+| Módulo | Total | P0 | P1 | P2 |
+|--------|-------|----|----|-----|
+| Cenários anteriores (1-25) | 184 | — | — | — |
+| Palpites CRUD | 14 | 9 | 5 | 0 |
+| Palpites Consulta | 6 | 2 | 4 | 0 |
+| Palpites Visibilidade | 5 | 3 | 2 | 0 |
+| Palpite Dobrado | 12 | 8 | 4 | 0 |
+| Token Dobro | 5 | 2 | 3 | 0 |
+| Configuração Dobro | 5 | 3 | 2 | 0 |
+| Ranking Consulta | 7 | 3 | 4 | 0 |
+| Ranking Detalhamento | 6 | 2 | 4 | 0 |
+| Ranking Processamento | 5 | 3 | 2 | 0 |
+| Ranking Pontuação/Desempate | 9 | 6 | 3 | 0 |
+| Ranking TokenDobro | 7 | 4 | 3 | 0 |
+| Validação DTOs Palpites | 7 | 0 | 5 | 2 |
+| **TOTAL** | **272** | — | — | — |

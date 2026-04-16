@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { PalpiteDobradoService } from '@src/modules/palpites/palpite-dobrado.service';
-import { TokenDobroService } from '@src/modules/palpites/token-dobro.service';
+import { PalpiteDobradoService } from '@src/modules/palpites/services/palpite-dobrado.service';
+import { TokenDobroService } from '@src/modules/palpites/services/token-dobro.service';
 import { InMemoryPalpiteDobradoRepository } from '@src/modules/palpites/repositories/in-memory-palpite-dobrado.repository';
 import { InMemoryTokenDobroRepository } from '@src/modules/palpites/repositories/in-memory-token-dobro.repository';
 import { InMemoryJogoRepository } from '@src/modules/jogos/repositories/in-memory-jogo.repository';
@@ -29,13 +29,13 @@ describe('PalpiteDobradoService', () => {
   const grupoComDobro = {
     id: grupoId,
     nome: 'Bolão',
-    palpiteDobradoHabilitado: true,
+    permitirPalpiteDobrado: true,
   };
 
   const grupoSemDobro = {
     id: 'grupo-2',
     nome: 'Bolão 2',
-    palpiteDobradoHabilitado: false,
+    permitirPalpiteDobrado: false,
   };
 
   const jogoAgendado = {
@@ -181,7 +181,7 @@ describe('PalpiteDobradoService', () => {
     it('deve atualizar configuração com sucesso', async () => {
       const result = await service.atualizarConfiguracaoDobro(grupoId, false);
 
-      expect(result.palpiteDobradoHabilitado).toBe(false);
+      expect(result.permitirPalpiteDobrado).toBe(false);
     });
 
     it('deve lançar GrupoNaoEncontradoError se grupo inexistente', async () => {

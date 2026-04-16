@@ -16,7 +16,7 @@ describe('Presenters — Property-Based Tests', () => {
   // Feature: modulo-palpites, Property 10: Allowlist dos presenters
   // Valida: Requisitos 8.1, 8.2, 16.1, 16.2, 16.3
   it('PalpitePresenter.toHttp retorna apenas campos da allowlist', () => {
-    const allowlist = ['id', 'golsCasa', 'golsFora', 'jogoId', 'usuarioId', 'dataCriacao'];
+    const allowlist = ['id', 'golsCasa', 'golsFora', 'jogoId', 'usuarioId', 'dataCriacao', 'atualizadoEm'];
 
     fc.assert(
       fc.property(arbExtras, (extras) => {
@@ -27,9 +27,9 @@ describe('Presenters — Property-Based Tests', () => {
           jogoId: 'jogo-1',
           usuarioId: 'user-1',
           dataCriacao: new Date(),
+          atualizadoEm: new Date(),
           // Campos extras que NÃO devem aparecer
           senha: 'secret',
-          atualizadoEm: new Date(),
           ...extras,
         };
 

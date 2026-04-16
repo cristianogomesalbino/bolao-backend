@@ -5,7 +5,7 @@ CREATE TYPE "TipoFase" AS ENUM ('PONTOS_CORRIDOS', 'MATA_MATA');
 CREATE TYPE "StatusJogo" AS ENUM ('AGENDADO', 'EM_ANDAMENTO', 'FINALIZADO', 'CANCELADO');
 
 -- CreateEnum
-CREATE TYPE "FonteResultado" AS ENUM ('MANUAL', 'API_FOOTBALL');
+CREATE TYPE "FonteResultado" AS ENUM ('MANUAL', 'API_EXTERNA');
 
 -- CreateTable
 CREATE TABLE "Fase" (
@@ -16,6 +16,7 @@ CREATE TABLE "Fase" (
     "idaVolta" BOOLEAN NOT NULL DEFAULT false,
     "temporadaId" TEXT NOT NULL,
     "dataCriacao" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "atualizadoEm" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "Fase_pkey" PRIMARY KEY ("id")
 );

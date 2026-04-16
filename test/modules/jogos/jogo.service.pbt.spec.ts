@@ -1,8 +1,9 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import fc from 'fast-check';
-import { JogoService } from '@src/modules/jogos/jogo.service';
+import { JogoService } from '@src/modules/jogos/services/jogo.service';
 import { InMemoryJogoRepository } from '@src/modules/jogos/repositories/in-memory-jogo.repository';
 import { InMemoryFaseRepository } from '@src/modules/jogos/repositories/in-memory-fase.repository';
+import { InMemoryTimeRepository } from '@src/modules/times/repositories/in-memory-time.repository';
 import {
   TimesIguaisError,
   JogoFinalizadoError,
@@ -17,6 +18,7 @@ describe('JogoService — Property-Based Tests', () => {
   let service: JogoService;
   let jogoRepo: InMemoryJogoRepository;
   let faseRepo: InMemoryFaseRepository;
+  let timeRepo: InMemoryTimeRepository;
 
   const userId = 'user-pbt';
 
@@ -53,16 +55,19 @@ describe('JogoService — Property-Based Tests', () => {
   beforeEach(() => {
     jogoRepo = new InMemoryJogoRepository();
     faseRepo = new InMemoryFaseRepository();
+    timeRepo = new InMemoryTimeRepository();
     faseRepo.items = [
       { ...fasePontosCorridos },
       { ...faseMataMata },
       { ...faseMataMataIdaVolta },
     ];
-    const apiFootballService = {
-      buscarFixtures: vi.fn(),
-      buscarFixturesPorIds: vi.fn(),
+    const futebolApiService = {
+      buscarJogosPorRodada: vi.fn(),
+      buscarJogosPorIds: vi.fn(),
+      normalizarJogo: vi.fn(),
+      mapearStatus: vi.fn(),
     } as any;
-    service = new JogoService(jogoRepo, faseRepo, apiFootballService);
+    service = new JogoService(jogoRepo, faseRepo, futebolApiService, timeRepo);
   });
 
   // Generators reutilizáveis
@@ -271,13 +276,12 @@ describe('JogoService — Property-Based Tests', () => {
   // Feature: modulo-jogos, Property 11: Cascata de vencedor em mata-mata
   // Valida: Requisitos 5.1, 5.6, 7.2
   it('Propriedade 11: vencedor em mata-mata segue cascata TN → prorrogação → pênaltis', async () => {
-    // Gera cenários de mata-mata com vencedor no tempo normal
     await fc.assert(
       fc.asyncProperty(
         arbPlacar,
         arbPlacar,
         async (golsCasa, golsFora) => {
-          fc.pre(golsCasa !== golsFora); // sem empate no TN
+          fc.pre(golsCasa !== golsFora);
 
           jogoRepo.items = [];
 
@@ -317,7 +321,6 @@ describe('JogoService — Property-Based Tests', () => {
         }, userId);
         await jogoRepo.atualizar(jogo.id, { status: 'EM_ANDAMENTO' });
 
-        // Empate no TN sem prorrogação
         await expect(
           service.finalizar(jogo.id, { golsCasa: gols, golsFora: gols }),
         ).rejects.toThrow(VencedorObrigatorioError);
@@ -335,7 +338,7 @@ describe('JogoService — Property-Based Tests', () => {
         arbPlacar,
         arbPlacar,
         async (golsCasa, golsFora) => {
-          fc.pre(golsCasa !== golsFora); // sem empate no TN
+          fc.pre(golsCasa !== golsFora);
 
           jogoRepo.items = [];
 
@@ -347,7 +350,6 @@ describe('JogoService — Property-Based Tests', () => {
           }, userId);
           await jogoRepo.atualizar(jogo.id, { status: 'EM_ANDAMENTO' });
 
-          // Prorrogação sem empate no TN → erro
           await expect(
             service.finalizar(jogo.id, {
               golsCasa,
@@ -429,7 +431,6 @@ describe('JogoService — Property-Based Tests', () => {
 
         const result = await service.finalizar(jogo.id, { golsCasa, golsFora });
 
-        // Em pontos corridos, temProrrogacao e temPenaltis são sempre false
         expect(result.temProrrogacao).toBe(false);
         expect(result.golsProrrogacaoCasa).toBeNull();
         expect(result.golsProrrogacaoFora).toBeNull();
@@ -472,26 +473,21 @@ describe('JogoService — Property-Based Tests', () => {
   });
 
   // ==================== Propriedade 22 ====================
-  // Feature: modulo-jogos, Property 22: Mapeamento de status API-Football
+  // Feature: modulo-jogos, Property 22: Mapeamento de status externo
   // Valida: Requisitos 12.3, 12.4, 12.5, 12.6
-  it('Propriedade 22: mapeamento de status API-Football é correto', () => {
+  it('Propriedade 22: mapeamento de status externo é correto', () => {
     const mapeamento: Record<string, string> = {
-      NS: 'AGENDADO',
-      '1H': 'EM_ANDAMENTO',
-      '2H': 'EM_ANDAMENTO',
-      HT: 'EM_ANDAMENTO',
-      FT: 'FINALIZADO',
-      AET: 'FINALIZADO',
-      PEN: 'FINALIZADO',
-      CANC: 'CANCELADO',
-      PST: 'AGENDADO',
+      AGENDADO: 'AGENDADO',
+      EM_ANDAMENTO: 'EM_ANDAMENTO',
+      FINALIZADO: 'FINALIZADO',
+      CANCELADO: 'CANCELADO',
     };
 
     const arbStatusApi = fc.constantFrom(...Object.keys(mapeamento));
 
     fc.assert(
       fc.property(arbStatusApi, (statusApi) => {
-        const result = service.mapearStatusApiFootball(statusApi);
+        const result = service.mapearStatusExterno(statusApi);
         expect(result).toBe(mapeamento[statusApi]);
       }),
       { numRuns: 100 },
@@ -503,7 +499,7 @@ describe('JogoService — Property-Based Tests', () => {
   // Valida: Requisitos 15.2, 15.10
   it('Propriedade 28: jogo FINALIZADO nunca regride de status', () => {
     const arbStatusApi = fc.option(
-      fc.constantFrom('NS', '1H', '2H', 'HT', 'FT', 'AET', 'PEN', 'CANC', 'PST'),
+      fc.constantFrom('AGENDADO', 'EM_ANDAMENTO', 'FINALIZADO', 'CANCELADO'),
     );
 
     fc.assert(
@@ -521,13 +517,13 @@ describe('JogoService — Property-Based Tests', () => {
   // Valida: Requisito 15.3
   it('Propriedade 29: com statusApi fornecido, usa mapearStatus em vez de fallback', () => {
     const arbStatusNaoFinal = fc.constantFrom('AGENDADO', 'EM_ANDAMENTO');
-    const arbStatusApi = fc.constantFrom('NS', '1H', '2H', 'HT', 'FT', 'AET', 'PEN', 'CANC', 'PST');
+    const arbStatusApi = fc.constantFrom('AGENDADO', 'EM_ANDAMENTO', 'FINALIZADO', 'CANCELADO');
 
     fc.assert(
       fc.property(arbStatusNaoFinal, arbStatusApi, (statusAtual, statusApi) => {
         const jogo = { status: statusAtual, dataHora: new Date('2026-06-15T16:00:00Z') };
         const result = service.definirStatusFinal(jogo, statusApi);
-        const esperado = service.mapearStatusApiFootball(statusApi);
+        const esperado = service.mapearStatusExterno(statusApi);
         expect(result).toBe(esperado);
       }),
       { numRuns: 100 },
@@ -629,22 +625,60 @@ describe('JogoService — Property-Based Tests', () => {
   // ==================== Propriedade 23 ====================
   // Feature: modulo-jogos, Property 23: Idempotência de importação
   // Valida: Requisitos 12.7, 11.5
-  it('Propriedade 23: importar mesmos fixtures duas vezes não duplica', async () => {
-    const mockApi = { buscarFixtures: vi.fn(), buscarFixturesPorIds: vi.fn() } as any;
-    const svc = new JogoService(jogoRepo, faseRepo, mockApi);
+  it('Propriedade 23: importar mesmos jogos duas vezes não duplica', async () => {
+    const mockApi = {
+      buscarJogosPorRodada: vi.fn(),
+      buscarJogosPorIds: vi.fn(),
+      normalizarJogo: vi.fn(),
+      mapearStatus: vi.fn(),
+    } as any;
+    const svc = new JogoService(jogoRepo, faseRepo, mockApi, timeRepo);
 
     await fc.assert(
       fc.asyncProperty(fc.integer({ min: 1, max: 5 }), async (n) => {
         jogoRepo.items = [];
-        const fixtures = Array.from({ length: n }, (_, i) => ({
-          fixture: { id: 1000 + i, date: '2026-06-15T16:00:00Z', status: { short: 'NS' } },
-          teams: { home: { id: 100 + i }, away: { id: 200 + i } },
-          goals: { home: null, away: null },
+        timeRepo.items = [];
+        const jogosApi = Array.from({ length: n }, (_, i) => ({
+          id: 1000 + i,
+          data_realizacao: '2026-06-15T16:00:00Z',
+          placar_oficial_mandante: null,
+          placar_oficial_visitante: null,
+          placar_penaltis_mandante: null,
+          placar_penaltis_visitante: null,
+          equipes: {
+            mandante: { id: 100 + i, nome_popular: `Time ${100 + i}`, sigla: `T${100 + i}`, escudo: null },
+            visitante: { id: 200 + i, nome_popular: `Time ${200 + i}`, sigla: `T${200 + i}`, escudo: null },
+          },
+          transmissao: { broadcast: { id: 'PRE_JOGO' } },
+          jogo_ja_comecou: false,
         }));
-        mockApi.buscarFixtures.mockResolvedValue(fixtures);
+        mockApi.buscarJogosPorRodada.mockResolvedValue(jogosApi);
+        mockApi.normalizarJogo.mockImplementation((jogo: any) => ({
+          externoId: String(jogo.id),
+          dataHora: jogo.data_realizacao,
+          timeCasaId: String(jogo.equipes.mandante.id),
+          timeForaId: String(jogo.equipes.visitante.id),
+          golsCasa: null,
+          golsFora: null,
+          status: 'AGENDADO',
+          penaltisCasa: null,
+          penaltisFora: null,
+          timeCasa: {
+            externoId: String(jogo.equipes.mandante.id),
+            nome: jogo.equipes.mandante.nome_popular,
+            sigla: `S${jogo.equipes.mandante.id}`,
+            escudo: null,
+          },
+          timeFora: {
+            externoId: String(jogo.equipes.visitante.id),
+            nome: jogo.equipes.visitante.nome_popular,
+            sigla: `S${jogo.equipes.visitante.id}`,
+            escudo: null,
+          },
+        }));
 
-        const r1 = await svc.importarJogos(71, 2026, 'fase-pc', userId);
-        const r2 = await svc.importarJogos(71, 2026, 'fase-pc', userId);
+        const r1 = await svc.importarJogos(2026, 1, 'fase-pc', userId);
+        const r2 = await svc.importarJogos(2026, 1, 'fase-pc', userId);
 
         expect(r1.importados).toBe(n);
         expect(r2.importados).toBe(0);
@@ -658,8 +692,13 @@ describe('JogoService — Property-Based Tests', () => {
   // Feature: modulo-jogos, Property 24: Sincronização respeita fonteResultado
   // Valida: Requisitos 13.2, 13.3
   it('Propriedade 24: sync não altera jogos com fonteResultado MANUAL', async () => {
-    const mockApi = { buscarFixtures: vi.fn(), buscarFixturesPorIds: vi.fn() } as any;
-    const svc = new JogoService(jogoRepo, faseRepo, mockApi);
+    const mockApi = {
+      buscarJogosPorRodada: vi.fn(),
+      buscarJogosPorIds: vi.fn(),
+      normalizarJogo: vi.fn(),
+      mapearStatus: vi.fn(),
+    } as any;
+    const svc = new JogoService(jogoRepo, faseRepo, mockApi, timeRepo);
 
     jogoRepo.items = [];
     await jogoRepo.criar({
@@ -669,10 +708,26 @@ describe('JogoService — Property-Based Tests', () => {
       ehJogoVolta: false, grupoIdaVolta: null, temProrrogacao: false, temPenaltis: false,
     });
 
-    mockApi.buscarFixturesPorIds.mockResolvedValue([{
-      fixture: { id: 9999, status: { short: 'FT' } },
-      goals: { home: 3, away: 1 },
+    mockApi.buscarJogosPorIds.mockResolvedValue([{
+      id: 9999,
+      data_realizacao: '2026-06-15T16:00:00Z',
+      placar_oficial_mandante: 3,
+      placar_oficial_visitante: 1,
+      equipes: { mandante: { id: 1 }, visitante: { id: 2 } },
+      transmissao: { broadcast: { id: 'ENCERRADA' } },
+      jogo_ja_comecou: true,
     }]);
+    mockApi.normalizarJogo.mockReturnValue({
+      externoId: '9999',
+      dataHora: '2026-06-15T16:00:00Z',
+      timeCasaId: '1',
+      timeForaId: '2',
+      golsCasa: 3,
+      golsFora: 1,
+      status: 'FINALIZADO',
+      penaltisCasa: null,
+      penaltisFora: null,
+    });
 
     await svc.sincronizarPlacares('fase-pc');
     expect(jogoRepo.items[0].fonteResultado).toBe('MANUAL');
@@ -681,7 +736,7 @@ describe('JogoService — Property-Based Tests', () => {
   // ==================== Propriedade 25 ====================
   // Feature: modulo-jogos, Property 25: Edição manual altera fonteResultado
   // Valida: Requisito 14.1
-  it('Propriedade 25: editar jogo API_FOOTBALL muda para MANUAL', async () => {
+  it('Propriedade 25: editar jogo API_EXTERNA muda para MANUAL', async () => {
     await fc.assert(
       fc.asyncProperty(arbDataHora, async (novaData) => {
         jogoRepo.items = [];
@@ -689,7 +744,7 @@ describe('JogoService — Property-Based Tests', () => {
           faseId: 'fase-pc', timeCasaId: 'time-a', timeForaId: 'time-b',
           dataHora: '2026-03-15T16:00:00.000Z',
         }, userId);
-        await jogoRepo.atualizar(jogo.id, { fonteResultado: 'API_FOOTBALL', externoId: '123' });
+        await jogoRepo.atualizar(jogo.id, { fonteResultado: 'API_EXTERNA', externoId: '123' });
 
         const result = await service.atualizar(jogo.id, { dataHora: novaData.toISOString() });
         expect(result.fonteResultado).toBe('MANUAL');
@@ -708,7 +763,7 @@ describe('JogoService — Property-Based Tests', () => {
         await jogoRepo.criar({
           faseId: 'fase-pc', timeCasaId: 'imp-a', timeForaId: 'imp-b',
           dataHora: new Date('2026-06-15T16:00:00Z'), status: 'AGENDADO',
-          fonteResultado: 'API_FOOTBALL', externoId: '5555', criadoPor: userId,
+          fonteResultado: 'API_EXTERNA', externoId: '5555', criadoPor: userId,
           ehJogoVolta: false, grupoIdaVolta: null, temProrrogacao: false, temPenaltis: false,
         });
         const antes = { ...jogoRepo.items[0] };
@@ -725,7 +780,7 @@ describe('JogoService — Property-Based Tests', () => {
   // ==================== Propriedade 27 ====================
   // Feature: modulo-jogos, Property 27: Reset de fonteResultado
   // Valida: Requisito 14.5
-  it('Propriedade 27: resetarFonte muda MANUAL para API_FOOTBALL', async () => {
+  it('Propriedade 27: resetarFonte muda MANUAL para API_EXTERNA', async () => {
     jogoRepo.items = [];
     const jogo = await service.criar({
       faseId: 'fase-pc', timeCasaId: 'time-a', timeForaId: 'time-b',
@@ -734,6 +789,6 @@ describe('JogoService — Property-Based Tests', () => {
     await jogoRepo.atualizar(jogo.id, { fonteResultado: 'MANUAL', externoId: '12345' });
 
     const result = await service.resetarFonte(jogo.id);
-    expect(result.fonteResultado).toBe('API_FOOTBALL');
+    expect(result.fonteResultado).toBe('API_EXTERNA');
   });
 });

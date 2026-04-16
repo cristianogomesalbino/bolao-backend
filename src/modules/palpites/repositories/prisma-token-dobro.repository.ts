@@ -17,17 +17,14 @@ export class PrismaTokenDobroRepository implements TokenDobroRepository {
   }
 
   async calcularSaldo(usuarioId: string, grupoId: string): Promise<number> {
-    const [result] = await this.prisma.$queryRaw<[{ saldo: bigint }]>`
-      SELECT
-        COALESCE(
-          COUNT(*) FILTER (WHERE tipo = 'CONCESSAO') -
-          COUNT(*) FILTER (WHERE tipo = 'UTILIZACAO'),
-          0
-        ) AS saldo
-      FROM "TokenDobro"
-      WHERE "usuarioId" = ${usuarioId} AND "grupoId" = ${grupoId}
-    `;
-    return Number(result.saldo);
+    const tokens = await this.prisma.tokenDobro.groupBy({
+      by: ['tipo'],
+      where: { usuarioId, grupoId },
+      _count: true,
+    });
+    const concessoes = tokens.find((t) => t.tipo === 'CONCESSAO')?._count ?? 0;
+    const utilizacoes = tokens.find((t) => t.tipo === 'UTILIZACAO')?._count ?? 0;
+    return concessoes - utilizacoes;
   }
 
   listarPorUsuarioEGrupo(usuarioId: string, grupoId: string) {

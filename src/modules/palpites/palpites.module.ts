@@ -1,9 +1,9 @@
 import { Module } from '@nestjs/common';
-import { PalpiteController } from './palpite.controller';
-import { PalpiteDobradoController } from './palpite-dobrado.controller';
-import { PalpiteService } from './palpite.service';
-import { PalpiteDobradoService } from './palpite-dobrado.service';
-import { TokenDobroService } from './token-dobro.service';
+import { PalpiteController } from './controllers/palpite.controller';
+import { PalpiteDobradoController } from './controllers/palpite-dobrado.controller';
+import { PalpiteService } from './services/palpite.service';
+import { PalpiteDobradoService } from './services/palpite-dobrado.service';
+import { TokenDobroService } from './services/token-dobro.service';
 import { PALPITES } from './palpites.constants';
 import { PrismaPalpiteRepository } from './repositories/prisma-palpite.repository';
 import { PrismaPalpiteDobradoRepository } from './repositories/prisma-palpite-dobrado.repository';
