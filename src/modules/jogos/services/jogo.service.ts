@@ -2,7 +2,7 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import { JOGOS } from '../jogos.constants';
 import type { JogoRepository } from '../repositories/jogo.repository.interface';
 import type { FaseRepository } from '../repositories/fase.repository.interface';
-import { ApiFootballService } from './api-football.service';
+import { FutebolApiService } from './futebol-api.service';
 import { ErrorFactory } from '../../../common/errors/error.factory';
 import { CriarJogoDto } from '../dto/criar-jogo.dto';
 import { AtualizarJogoDto } from '../dto/atualizar-jogo.dto';
@@ -21,7 +21,7 @@ import {
   TransicaoStatusInvalidaError,
   IdaVoltaNaoPermitidaError,
   JogoIdaNaoEncontradoError,
-  ApiFootballIndisponivelError,
+  ApiExternaIndisponivelError,
 } from '../../../common/errors/domain-errors';
 
 const TRANSICOES_VALIDAS: Record<string, string[]> = {
@@ -38,7 +38,7 @@ export class JogoService {
     private readonly jogoRepo: JogoRepository,
     @Inject(JOGOS.FASE_REPOSITORY_TOKEN)
     private readonly faseRepo: FaseRepository,
-    private readonly apiFootballService: ApiFootballService,
+    private readonly futebolApiService: FutebolApiService,
   ) {}
 
   async criar(dto: CriarJogoDto & { faseId: string }, userId: string) {
@@ -113,7 +113,7 @@ export class JogoService {
       this.validarTransicaoStatus(jogo.status, dto.status);
     }
 
-    // Task 16.4: Modo híbrido — qualquer edição manual em jogo API_FOOTBALL flip para MANUAL
+    // Modo híbrido — qualquer edição manual em jogo API_FOOTBALL flip para MANUAL
     const updateData: any = { ...dto };
     if (jogo.fonteResultado === 'API_FOOTBALL') {
       updateData.fonteResultado = 'MANUAL';
@@ -151,14 +151,14 @@ export class JogoService {
   }
 
   private async finalizarPontosCorridos(jogo: any, dto: FinalizarJogoDto) {
-      this.validarSemDesempate(dto);
+    this.validarSemDesempate(dto);
 
-      const vencedorId = this.determinarVencedorPorPlacar(
-        dto.golsCasa, dto.golsFora, jogo.timeCasaId, jogo.timeForaId,
-      );
+    const vencedorId = this.determinarVencedorPorPlacar(
+      dto.golsCasa, dto.golsFora, jogo.timeCasaId, jogo.timeForaId,
+    );
 
-      return this.jogoRepo.atualizar(jogo.id, this.buildUpdateFinalizado(dto, vencedorId));
-    }
+    return this.jogoRepo.atualizar(jogo.id, this.buildUpdateFinalizado(dto, vencedorId));
+  }
 
   private async finalizarMataMata(jogo: any, fase: any, dto: FinalizarJogoDto) {
     if (fase.idaVolta && !jogo.ehJogoVolta) {
@@ -173,9 +173,9 @@ export class JogoService {
   }
 
   private async finalizarJogoIda(jogo: any, dto: FinalizarJogoDto) {
-      this.validarSemDesempate(dto);
-      return this.jogoRepo.atualizar(jogo.id, this.buildUpdateFinalizado(dto, null));
-    }
+    this.validarSemDesempate(dto);
+    return this.jogoRepo.atualizar(jogo.id, this.buildUpdateFinalizado(dto, null));
+  }
 
   private async finalizarJogoVolta(jogo: any, dto: FinalizarJogoDto) {
     const jogosDoGrupo = await this.jogoRepo.buscarPorGrupoIdaVolta(
@@ -331,6 +331,7 @@ export class JogoService {
       throw new PlacarPenaltisEmpatadoError();
     }
   }
+
   private validarSemDesempate(dto: FinalizarJogoDto) {
     if (
       dto.temProrrogacao ||
@@ -376,28 +377,28 @@ export class JogoService {
   }
 
   calcularVencedor(jogo: any): string | null {
-      if (jogo.status !== 'FINALIZADO') return null;
-      if (jogo.golsCasa == null || jogo.golsFora == null) return null;
+    if (jogo.status !== 'FINALIZADO') return null;
+    if (jogo.golsCasa == null || jogo.golsFora == null) return null;
 
-      if (jogo.golsCasa > jogo.golsFora) return jogo.timeCasaId;
-      if (jogo.golsFora > jogo.golsCasa) return jogo.timeForaId;
+    if (jogo.golsCasa > jogo.golsFora) return jogo.timeCasaId;
+    if (jogo.golsFora > jogo.golsCasa) return jogo.timeForaId;
 
-      if (!jogo.temProrrogacao || jogo.golsProrrogacaoCasa == null || jogo.golsProrrogacaoFora == null) {
-        return null;
-      }
-
-      if (jogo.golsProrrogacaoCasa > jogo.golsProrrogacaoFora) return jogo.timeCasaId;
-      if (jogo.golsProrrogacaoFora > jogo.golsProrrogacaoCasa) return jogo.timeForaId;
-
-      if (!jogo.temPenaltis || jogo.penaltisCasa == null || jogo.penaltisFora == null) {
-        return null;
-      }
-
-      if (jogo.penaltisCasa > jogo.penaltisFora) return jogo.timeCasaId;
-      if (jogo.penaltisFora > jogo.penaltisCasa) return jogo.timeForaId;
-
+    if (!jogo.temProrrogacao || jogo.golsProrrogacaoCasa == null || jogo.golsProrrogacaoFora == null) {
       return null;
     }
+
+    if (jogo.golsProrrogacaoCasa > jogo.golsProrrogacaoFora) return jogo.timeCasaId;
+    if (jogo.golsProrrogacaoFora > jogo.golsProrrogacaoCasa) return jogo.timeForaId;
+
+    if (!jogo.temPenaltis || jogo.penaltisCasa == null || jogo.penaltisFora == null) {
+      return null;
+    }
+
+    if (jogo.penaltisCasa > jogo.penaltisFora) return jogo.timeCasaId;
+    if (jogo.penaltisFora > jogo.penaltisCasa) return jogo.timeForaId;
+
+    return null;
+  }
 
   calcularVencedorAgregado(
     jogoIda: any,
@@ -449,205 +450,193 @@ export class JogoService {
     return jogo;
   }
 
-  // --- Task 16.2: Importação de jogos via API-Football ---
+  // --- Importação de jogos via API externa ---
 
   async importarJogos(
-      leagueId: number,
-      season: number,
-      faseId: string,
-      userId: string,
-    ) {
-      const fase = await this.faseRepo.buscarPorId(faseId);
-      if (!fase) {
-        throw new FaseNaoEncontradaError();
-      }
-
-      const fixtures = await this.apiFootballService.buscarFixtures(
-        leagueId,
-        season,
-      );
-
-      // Buscar todos os externoIds existentes de uma vez (evita N+1)
-      const jogosExistentes = await this.jogoRepo.buscarPorFase(faseId);
-      const externosExistentes = new Set(
-        jogosExistentes.filter((j: any) => j.externoId).map((j: any) => j.externoId),
-      );
-
-      let importados = 0;
-
-      for (const fixture of fixtures) {
-        const externoId = String(fixture.fixture.id);
-        if (externosExistentes.has(externoId)) continue;
-
-        const statusMapeado = this.mapearStatusApiFootball(
-          fixture.fixture.status.short,
-        );
-
-        const timeCasaId = String(fixture.teams.home.id);
-        const timeForaId = String(fixture.teams.away.id);
-
-        const golsCasa =
-          statusMapeado === 'FINALIZADO' ? (fixture.goals.home ?? null) : null;
-        const golsFora =
-          statusMapeado === 'FINALIZADO' ? (fixture.goals.away ?? null) : null;
-
-        const vencedorId =
-          statusMapeado === 'FINALIZADO' && golsCasa != null && golsFora != null
-            ? this.determinarVencedorPorPlacar(golsCasa, golsFora, timeCasaId, timeForaId)
-            : null;
-
-        await this.jogoRepo.criar({
-          faseId,
-          timeCasaId,
-          timeForaId,
-          dataHora: new Date(fixture.fixture.date),
-          status: statusMapeado,
-          golsCasa,
-          golsFora,
-          temProrrogacao: false,
-          golsProrrogacaoCasa: null,
-          golsProrrogacaoFora: null,
-          temPenaltis: false,
-          penaltisCasa: null,
-          penaltisFora: null,
-          vencedorId,
-          ehJogoVolta: false,
-          grupoIdaVolta: null,
-          fonteResultado: 'API_FOOTBALL',
-          externoId,
-          criadoPor: userId,
-        });
-
-        importados++;
-      }
-
-      return { importados };
+    season: number,
+    rodada: number,
+    faseId: string,
+    userId: string,
+  ) {
+    const fase = await this.faseRepo.buscarPorId(faseId);
+    if (!fase) {
+      throw new FaseNaoEncontradaError();
     }
 
+    const jogosApi = await this.futebolApiService.buscarJogosPorRodada(
+      season,
+      rodada,
+    );
 
-  // --- Task 16.3: Sincronização de placares ---
+    // Buscar todos os externoIds existentes de uma vez (evita N+1)
+    const jogosExistentes = await this.jogoRepo.buscarPorFase(faseId);
+    const externosExistentes = new Set(
+      jogosExistentes.filter((j: any) => j.externoId).map((j: any) => j.externoId),
+    );
+
+    let importados = 0;
+
+    for (const jogoApi of jogosApi) {
+      const normalizado = this.futebolApiService.normalizarJogo(jogoApi);
+
+      if (externosExistentes.has(normalizado.externoId)) continue;
+
+      const vencedorId =
+        normalizado.status === 'FINALIZADO' && normalizado.golsCasa != null && normalizado.golsFora != null
+          ? this.determinarVencedorPorPlacar(normalizado.golsCasa, normalizado.golsFora, normalizado.timeCasaId, normalizado.timeForaId)
+          : null;
+
+      await this.jogoRepo.criar({
+        faseId,
+        timeCasaId: normalizado.timeCasaId,
+        timeForaId: normalizado.timeForaId,
+        dataHora: new Date(normalizado.dataHora),
+        status: normalizado.status,
+        golsCasa: normalizado.golsCasa,
+        golsFora: normalizado.golsFora,
+        temProrrogacao: false,
+        golsProrrogacaoCasa: null,
+        golsProrrogacaoFora: null,
+        temPenaltis: false,
+        penaltisCasa: null,
+        penaltisFora: null,
+        vencedorId,
+        ehJogoVolta: false,
+        grupoIdaVolta: null,
+        fonteResultado: 'API_FOOTBALL',
+        externoId: normalizado.externoId,
+        criadoPor: userId,
+      });
+
+      importados++;
+    }
+
+    return { importados };
+  }
+
+  // --- Sincronização de placares ---
 
   async sincronizarPlacares(faseId: string) {
-      const fase = await this.faseRepo.buscarPorId(faseId);
-      if (!fase) {
-        throw new FaseNaoEncontradaError();
-      }
-
-      const jogos = await this.jogoRepo.buscarPorFase(faseId);
-      const jogosComExterno = jogos.filter(
-        (j: any) => j.externoId != null && j.fonteResultado === 'API_FOOTBALL',
-      );
-
-      if (jogosComExterno.length === 0) {
-        return { sincronizados: 0 };
-      }
-
-      const { fixtureMap, apiDisponivel } = await this.buscarFixturesParaSync(
-        jogosComExterno,
-      );
-
-      let sincronizados = 0;
-
-      for (const jogo of jogosComExterno) {
-        const atualizado = await this.processarJogoSync(
-          jogo,
-          fixtureMap,
-          apiDisponivel,
-        );
-        if (atualizado) sincronizados++;
-      }
-
-      return { sincronizados };
+    const fase = await this.faseRepo.buscarPorId(faseId);
+    if (!fase) {
+      throw new FaseNaoEncontradaError();
     }
 
-    private async buscarFixturesParaSync(jogos: any[]) {
-      const externoIds = jogos.map((j: any) => Number(j.externoId));
-      let fixtures: any[] = [];
-      let apiDisponivel = true;
+    const jogos = await this.jogoRepo.buscarPorFase(faseId);
+    const jogosComExterno = jogos.filter(
+      (j: any) => j.externoId != null && j.fonteResultado === 'API_FOOTBALL',
+    );
 
-      try {
-        fixtures = await this.apiFootballService.buscarFixturesPorIds(externoIds);
-      } catch (error) {
-        if (error instanceof ApiFootballIndisponivelError) {
-          this.logger.warn(
-            'API-Football indisponível durante sincronização, usando fallback interno',
-          );
-          apiDisponivel = false;
-        } else {
-          throw error;
-        }
-      }
-
-      const fixtureMap = new Map<string, any>();
-      for (const f of fixtures) {
-        fixtureMap.set(String(f.fixture.id), f);
-      }
-
-      return { fixtureMap, apiDisponivel };
+    if (jogosComExterno.length === 0) {
+      return { sincronizados: 0 };
     }
 
-    private async processarJogoSync(
-      jogo: any,
-      fixtureMap: Map<string, any>,
-      apiDisponivel: boolean,
-    ): Promise<boolean> {
-      const fixture = fixtureMap.get(jogo.externoId);
-      const statusApi = fixture ? fixture.fixture.status.short : undefined;
+    const { jogoApiMap, apiDisponivel } = await this.buscarJogosParaSync(
+      jogosComExterno,
+    );
 
-      if (!fixture) {
+    let sincronizados = 0;
+
+    for (const jogo of jogosComExterno) {
+      const atualizado = await this.processarJogoSync(
+        jogo,
+        jogoApiMap,
+        apiDisponivel,
+      );
+      if (atualizado) sincronizados++;
+    }
+
+    return { sincronizados };
+  }
+
+  private async buscarJogosParaSync(jogos: any[]) {
+    const externoIds = jogos.map((j: any) => Number(j.externoId));
+    let jogosApi: any[] = [];
+    let apiDisponivel = true;
+
+    try {
+      jogosApi = await this.futebolApiService.buscarJogosPorIds(externoIds);
+    } catch (error) {
+      if (error instanceof ApiExternaIndisponivelError) {
         this.logger.warn(
-          apiDisponivel
-            ? `Fixture ${jogo.externoId} não encontrado na API-Football`
-            : `Usando fallback interno para jogo ${jogo.id} (externoId: ${jogo.externoId})`,
+          'API externa indisponível durante sincronização, usando fallback interno',
         );
+        apiDisponivel = false;
+      } else {
+        throw error;
       }
-
-      const novoStatus = this.definirStatusFinal(jogo, statusApi);
-      const updateData: any = { status: novoStatus };
-
-      if (fixture && novoStatus === 'FINALIZADO') {
-        this.preencherPlacarSync(updateData, fixture, jogo);
-      }
-
-      if (novoStatus !== jogo.status || fixture) {
-        await this.jogoRepo.atualizar(jogo.id, updateData);
-        return true;
-      }
-
-      return false;
     }
 
-    private preencherPlacarSync(updateData: any, fixture: any, jogo: any) {
-      updateData.golsCasa = fixture.goals.home ?? null;
-      updateData.golsFora = fixture.goals.away ?? null;
-
-      let vencedorId: string | null = null;
-      if (updateData.golsCasa != null && updateData.golsFora != null) {
-        if (updateData.golsCasa > updateData.golsFora) {
-          vencedorId = jogo.timeCasaId;
-        } else if (updateData.golsFora > updateData.golsCasa) {
-          vencedorId = jogo.timeForaId;
-        }
-      }
-      updateData.vencedorId = vencedorId;
+    const jogoApiMap = new Map<string, any>();
+    for (const j of jogosApi) {
+      const normalizado = this.futebolApiService.normalizarJogo(j);
+      jogoApiMap.set(normalizado.externoId, normalizado);
     }
 
-  // --- Task 16.4: Reset de fonteResultado ---
+    return { jogoApiMap, apiDisponivel };
+  }
+
+  private async processarJogoSync(
+    jogo: any,
+    jogoApiMap: Map<string, any>,
+    apiDisponivel: boolean,
+  ): Promise<boolean> {
+    const jogoApi = jogoApiMap.get(jogo.externoId);
+
+    if (!jogoApi) {
+      this.logger.warn(
+        apiDisponivel
+          ? `Jogo externo ${jogo.externoId} não encontrado na API`
+          : `Usando fallback interno para jogo ${jogo.id} (externoId: ${jogo.externoId})`,
+      );
+    }
+
+    const novoStatus = this.definirStatusFinal(jogo, jogoApi?.status);
+    const updateData: any = { status: novoStatus };
+
+    if (jogoApi && novoStatus === 'FINALIZADO') {
+      this.preencherPlacarSync(updateData, jogoApi, jogo);
+    }
+
+    if (novoStatus !== jogo.status || jogoApi) {
+      await this.jogoRepo.atualizar(jogo.id, updateData);
+      return true;
+    }
+
+    return false;
+  }
+
+  private preencherPlacarSync(updateData: any, jogoApi: any, jogo: any) {
+    updateData.golsCasa = jogoApi.golsCasa ?? null;
+    updateData.golsFora = jogoApi.golsFora ?? null;
+
+    let vencedorId: string | null = null;
+    if (updateData.golsCasa != null && updateData.golsFora != null) {
+      if (updateData.golsCasa > updateData.golsFora) {
+        vencedorId = jogo.timeCasaId;
+      } else if (updateData.golsFora > updateData.golsCasa) {
+        vencedorId = jogo.timeForaId;
+      }
+    }
+    updateData.vencedorId = vencedorId;
+  }
+
+  // --- Reset de fonteResultado ---
 
   async resetarFonte(id: string) {
-      const jogo = await this.jogoRepo.buscarPorId(id);
-      if (!jogo) {
-        throw new JogoNaoEncontradoError();
-      }
-
-      if (!jogo.externoId) {
-        throw ErrorFactory.badRequest('Jogo não possui externoId para resetar fonte');
-      }
-
-      return this.jogoRepo.atualizar(id, { fonteResultado: 'API_FOOTBALL' });
+    const jogo = await this.jogoRepo.buscarPorId(id);
+    if (!jogo) {
+      throw new JogoNaoEncontradoError();
     }
 
-  // --- Task 16b.1: Status híbrido ---
+    if (!jogo.externoId) {
+      throw ErrorFactory.badRequest('Jogo não possui externoId para resetar fonte');
+    }
+
+    return this.jogoRepo.atualizar(id, { fonteResultado: 'API_FOOTBALL' });
+  }
+
+  // --- Status híbrido ---
 
   definirStatusFinal(jogo: any, statusApi?: string): string {
     if (jogo.status === 'FINALIZADO') {
@@ -655,7 +644,7 @@ export class JogoService {
     }
 
     if (statusApi) {
-      return this.mapearStatusApiFootball(statusApi);
+      return this.mapearStatusExterno(statusApi);
     }
 
     return this.calcularStatusInterno(jogo);
@@ -677,22 +666,15 @@ export class JogoService {
     return 'FINALIZADO';
   }
 
-  mapearStatusApiFootball(statusShort: string): string {
-    switch (statusShort) {
-      case 'NS':
-        return 'AGENDADO';
-      case '1H':
-      case '2H':
-      case 'HT':
-        return 'EM_ANDAMENTO';
-      case 'FT':
-      case 'AET':
-      case 'PEN':
+  mapearStatusExterno(status: string): string {
+    switch (status) {
+      case 'FINALIZADO':
         return 'FINALIZADO';
-      case 'CANC':
+      case 'EM_ANDAMENTO':
+        return 'EM_ANDAMENTO';
+      case 'CANCELADO':
         return 'CANCELADO';
-      case 'PST':
-        return 'AGENDADO';
+      case 'AGENDADO':
       default:
         return 'AGENDADO';
     }

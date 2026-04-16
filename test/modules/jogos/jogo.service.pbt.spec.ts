@@ -58,11 +58,13 @@ describe('JogoService — Property-Based Tests', () => {
       { ...faseMataMata },
       { ...faseMataMataIdaVolta },
     ];
-    const apiFootballService = {
-      buscarFixtures: vi.fn(),
-      buscarFixturesPorIds: vi.fn(),
+    const futebolApiService = {
+      buscarJogosPorRodada: vi.fn(),
+      buscarJogosPorIds: vi.fn(),
+      normalizarJogo: vi.fn(),
+      mapearStatus: vi.fn(),
     } as any;
-    service = new JogoService(jogoRepo, faseRepo, apiFootballService);
+    service = new JogoService(jogoRepo, faseRepo, futebolApiService);
   });
 
   // Generators reutilizáveis
@@ -271,13 +273,12 @@ describe('JogoService — Property-Based Tests', () => {
   // Feature: modulo-jogos, Property 11: Cascata de vencedor em mata-mata
   // Valida: Requisitos 5.1, 5.6, 7.2
   it('Propriedade 11: vencedor em mata-mata segue cascata TN → prorrogação → pênaltis', async () => {
-    // Gera cenários de mata-mata com vencedor no tempo normal
     await fc.assert(
       fc.asyncProperty(
         arbPlacar,
         arbPlacar,
         async (golsCasa, golsFora) => {
-          fc.pre(golsCasa !== golsFora); // sem empate no TN
+          fc.pre(golsCasa !== golsFora);
 
           jogoRepo.items = [];
 
@@ -317,7 +318,6 @@ describe('JogoService — Property-Based Tests', () => {
         }, userId);
         await jogoRepo.atualizar(jogo.id, { status: 'EM_ANDAMENTO' });
 
-        // Empate no TN sem prorrogação
         await expect(
           service.finalizar(jogo.id, { golsCasa: gols, golsFora: gols }),
         ).rejects.toThrow(VencedorObrigatorioError);
@@ -335,7 +335,7 @@ describe('JogoService — Property-Based Tests', () => {
         arbPlacar,
         arbPlacar,
         async (golsCasa, golsFora) => {
-          fc.pre(golsCasa !== golsFora); // sem empate no TN
+          fc.pre(golsCasa !== golsFora);
 
           jogoRepo.items = [];
 
@@ -347,7 +347,6 @@ describe('JogoService — Property-Based Tests', () => {
           }, userId);
           await jogoRepo.atualizar(jogo.id, { status: 'EM_ANDAMENTO' });
 
-          // Prorrogação sem empate no TN → erro
           await expect(
             service.finalizar(jogo.id, {
               golsCasa,
@@ -429,7 +428,6 @@ describe('JogoService — Property-Based Tests', () => {
 
         const result = await service.finalizar(jogo.id, { golsCasa, golsFora });
 
-        // Em pontos corridos, temProrrogacao e temPenaltis são sempre false
         expect(result.temProrrogacao).toBe(false);
         expect(result.golsProrrogacaoCasa).toBeNull();
         expect(result.golsProrrogacaoFora).toBeNull();
@@ -472,26 +470,21 @@ describe('JogoService — Property-Based Tests', () => {
   });
 
   // ==================== Propriedade 22 ====================
-  // Feature: modulo-jogos, Property 22: Mapeamento de status API-Football
+  // Feature: modulo-jogos, Property 22: Mapeamento de status externo
   // Valida: Requisitos 12.3, 12.4, 12.5, 12.6
-  it('Propriedade 22: mapeamento de status API-Football é correto', () => {
+  it('Propriedade 22: mapeamento de status externo é correto', () => {
     const mapeamento: Record<string, string> = {
-      NS: 'AGENDADO',
-      '1H': 'EM_ANDAMENTO',
-      '2H': 'EM_ANDAMENTO',
-      HT: 'EM_ANDAMENTO',
-      FT: 'FINALIZADO',
-      AET: 'FINALIZADO',
-      PEN: 'FINALIZADO',
-      CANC: 'CANCELADO',
-      PST: 'AGENDADO',
+      AGENDADO: 'AGENDADO',
+      EM_ANDAMENTO: 'EM_ANDAMENTO',
+      FINALIZADO: 'FINALIZADO',
+      CANCELADO: 'CANCELADO',
     };
 
     const arbStatusApi = fc.constantFrom(...Object.keys(mapeamento));
 
     fc.assert(
       fc.property(arbStatusApi, (statusApi) => {
-        const result = service.mapearStatusApiFootball(statusApi);
+        const result = service.mapearStatusExterno(statusApi);
         expect(result).toBe(mapeamento[statusApi]);
       }),
       { numRuns: 100 },
@@ -503,7 +496,7 @@ describe('JogoService — Property-Based Tests', () => {
   // Valida: Requisitos 15.2, 15.10
   it('Propriedade 28: jogo FINALIZADO nunca regride de status', () => {
     const arbStatusApi = fc.option(
-      fc.constantFrom('NS', '1H', '2H', 'HT', 'FT', 'AET', 'PEN', 'CANC', 'PST'),
+      fc.constantFrom('AGENDADO', 'EM_ANDAMENTO', 'FINALIZADO', 'CANCELADO'),
     );
 
     fc.assert(
@@ -521,13 +514,13 @@ describe('JogoService — Property-Based Tests', () => {
   // Valida: Requisito 15.3
   it('Propriedade 29: com statusApi fornecido, usa mapearStatus em vez de fallback', () => {
     const arbStatusNaoFinal = fc.constantFrom('AGENDADO', 'EM_ANDAMENTO');
-    const arbStatusApi = fc.constantFrom('NS', '1H', '2H', 'HT', 'FT', 'AET', 'PEN', 'CANC', 'PST');
+    const arbStatusApi = fc.constantFrom('AGENDADO', 'EM_ANDAMENTO', 'FINALIZADO', 'CANCELADO');
 
     fc.assert(
       fc.property(arbStatusNaoFinal, arbStatusApi, (statusAtual, statusApi) => {
         const jogo = { status: statusAtual, dataHora: new Date('2026-06-15T16:00:00Z') };
         const result = service.definirStatusFinal(jogo, statusApi);
-        const esperado = service.mapearStatusApiFootball(statusApi);
+        const esperado = service.mapearStatusExterno(statusApi);
         expect(result).toBe(esperado);
       }),
       { numRuns: 100 },
@@ -629,22 +622,47 @@ describe('JogoService — Property-Based Tests', () => {
   // ==================== Propriedade 23 ====================
   // Feature: modulo-jogos, Property 23: Idempotência de importação
   // Valida: Requisitos 12.7, 11.5
-  it('Propriedade 23: importar mesmos fixtures duas vezes não duplica', async () => {
-    const mockApi = { buscarFixtures: vi.fn(), buscarFixturesPorIds: vi.fn() } as any;
+  it('Propriedade 23: importar mesmos jogos duas vezes não duplica', async () => {
+    const mockApi = {
+      buscarJogosPorRodada: vi.fn(),
+      buscarJogosPorIds: vi.fn(),
+      normalizarJogo: vi.fn(),
+      mapearStatus: vi.fn(),
+    } as any;
     const svc = new JogoService(jogoRepo, faseRepo, mockApi);
 
     await fc.assert(
       fc.asyncProperty(fc.integer({ min: 1, max: 5 }), async (n) => {
         jogoRepo.items = [];
-        const fixtures = Array.from({ length: n }, (_, i) => ({
-          fixture: { id: 1000 + i, date: '2026-06-15T16:00:00Z', status: { short: 'NS' } },
-          teams: { home: { id: 100 + i }, away: { id: 200 + i } },
-          goals: { home: null, away: null },
+        const jogosApi = Array.from({ length: n }, (_, i) => ({
+          id: 1000 + i,
+          data_realizacao: '2026-06-15T16:00:00Z',
+          placar_oficial_mandante: null,
+          placar_oficial_visitante: null,
+          placar_penaltis_mandante: null,
+          placar_penaltis_visitante: null,
+          equipes: {
+            mandante: { id: 100 + i, nome_popular: `Time ${100 + i}` },
+            visitante: { id: 200 + i, nome_popular: `Time ${200 + i}` },
+          },
+          transmissao: { broadcast: { id: 'PRE_JOGO' } },
+          jogo_ja_comecou: false,
         }));
-        mockApi.buscarFixtures.mockResolvedValue(fixtures);
+        mockApi.buscarJogosPorRodada.mockResolvedValue(jogosApi);
+        mockApi.normalizarJogo.mockImplementation((jogo: any) => ({
+          externoId: String(jogo.id),
+          dataHora: jogo.data_realizacao,
+          timeCasaId: String(jogo.equipes.mandante.id),
+          timeForaId: String(jogo.equipes.visitante.id),
+          golsCasa: null,
+          golsFora: null,
+          status: 'AGENDADO',
+          penaltisCasa: null,
+          penaltisFora: null,
+        }));
 
-        const r1 = await svc.importarJogos(71, 2026, 'fase-pc', userId);
-        const r2 = await svc.importarJogos(71, 2026, 'fase-pc', userId);
+        const r1 = await svc.importarJogos(2026, 1, 'fase-pc', userId);
+        const r2 = await svc.importarJogos(2026, 1, 'fase-pc', userId);
 
         expect(r1.importados).toBe(n);
         expect(r2.importados).toBe(0);
@@ -658,7 +676,12 @@ describe('JogoService — Property-Based Tests', () => {
   // Feature: modulo-jogos, Property 24: Sincronização respeita fonteResultado
   // Valida: Requisitos 13.2, 13.3
   it('Propriedade 24: sync não altera jogos com fonteResultado MANUAL', async () => {
-    const mockApi = { buscarFixtures: vi.fn(), buscarFixturesPorIds: vi.fn() } as any;
+    const mockApi = {
+      buscarJogosPorRodada: vi.fn(),
+      buscarJogosPorIds: vi.fn(),
+      normalizarJogo: vi.fn(),
+      mapearStatus: vi.fn(),
+    } as any;
     const svc = new JogoService(jogoRepo, faseRepo, mockApi);
 
     jogoRepo.items = [];
@@ -669,10 +692,26 @@ describe('JogoService — Property-Based Tests', () => {
       ehJogoVolta: false, grupoIdaVolta: null, temProrrogacao: false, temPenaltis: false,
     });
 
-    mockApi.buscarFixturesPorIds.mockResolvedValue([{
-      fixture: { id: 9999, status: { short: 'FT' } },
-      goals: { home: 3, away: 1 },
+    mockApi.buscarJogosPorIds.mockResolvedValue([{
+      id: 9999,
+      data_realizacao: '2026-06-15T16:00:00Z',
+      placar_oficial_mandante: 3,
+      placar_oficial_visitante: 1,
+      equipes: { mandante: { id: 1 }, visitante: { id: 2 } },
+      transmissao: { broadcast: { id: 'ENCERRADA' } },
+      jogo_ja_comecou: true,
     }]);
+    mockApi.normalizarJogo.mockReturnValue({
+      externoId: '9999',
+      dataHora: '2026-06-15T16:00:00Z',
+      timeCasaId: '1',
+      timeForaId: '2',
+      golsCasa: 3,
+      golsFora: 1,
+      status: 'FINALIZADO',
+      penaltisCasa: null,
+      penaltisFora: null,
+    });
 
     await svc.sincronizarPlacares('fase-pc');
     expect(jogoRepo.items[0].fonteResultado).toBe('MANUAL');

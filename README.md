@@ -24,7 +24,7 @@ src/
 │   ├── temporadas/         # Temporadas dos campeonatos
 │   ├── grupos/             # Grupos de bolão
 │   ├── grupo-usuario/      # Membros dos grupos (adicionar, remover, convite)
-│   ├── jogos/              # Fases, jogos, integração API-Football
+│   ├── jogos/              # Fases, jogos, integração API de futebol
 │   ├── palpites/           # Palpites universais, palpite dobrado, token dobro
 │   └── ranking/            # Pontuação, ranking por fase/geral, detalhamento
 ├── common/
@@ -215,27 +215,22 @@ sh dev start-prod      # Build e inicia em modo produção
 | PATCH  | `/jogos/:id/finalizar`                        | Finalizar jogo com placar    | JWT                |
 | GET    | `/fases/:faseId/jogos`                        | Listar jogos da fase         | JWT                |
 | GET    | `/jogos/:id`                                  | Buscar jogo por ID           | JWT                |
-| POST   | `/jogos/importar`                             | Importar jogos (API-Football)| JWT + SUPER_ADMIN  |
+| POST   | `/jogos/importar`                             | Importar jogos (API externa) | JWT + SUPER_ADMIN  |
 | POST   | `/fases/:faseId/jogos/sincronizar`            | Sincronizar placares         | JWT + SUPER_ADMIN  |
 | PATCH  | `/jogos/:id/resetar-fonte`                    | Resetar fonte resultado      | JWT                |
 
-## Integração API-Football
+## Integração com API de Futebol
 
-O módulo de Jogos suporta importação e sincronização de jogos via [API-Football](https://www.api-football.com/) (RapidAPI).
+O módulo de Jogos suporta importação e sincronização de jogos via API do ge.globo.com (Globo Esporte).
 
-Ligas suportadas:
-- Brasileirão Série A (leagueId: 71)
-- Copa do Mundo (leagueId: 1)
+Liga suportada:
+- Brasileirão Série A
 
-Para usar a integração, adicione a variável de ambiente:
-
-```env
-RAPIDAPI_KEY=sua_chave_rapidapi
-```
+A API não requer autenticação. A integração usa o endpoint público da tabela do Brasileirão.
 
 Funcionalidades:
-- Importar jogos de uma liga/temporada para uma fase
-- Sincronizar placares automaticamente via API-Football
+- Importar jogos de uma rodada específica (1-38) para uma fase
+- Sincronizar placares automaticamente via API externa
 - Modo híbrido: jogos podem ter `fonteResultado` MANUAL ou API_FOOTBALL
 - Edições manuais em jogos importados alteram `fonteResultado` para MANUAL, protegendo contra sobrescrita na sincronização
 - Endpoint de reset permite reverter `fonteResultado` para API_FOOTBALL

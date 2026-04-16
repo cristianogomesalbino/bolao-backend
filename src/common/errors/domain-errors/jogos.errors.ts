@@ -92,9 +92,9 @@ export class JogoIdaNaoEncontradoError extends DomainError {
   }
 }
 
-export class ApiFootballIndisponivelError extends DomainError {
+export class ApiExternaIndisponivelError extends DomainError {
   readonly statusCode = 502;
-  constructor(mensagem = JOGOS.MENSAGENS.API_FOOTBALL_INDISPONIVEL) {
+  constructor(mensagem = JOGOS.MENSAGENS.API_EXTERNA_INDISPONIVEL) {
     super(mensagem);
   }
 }

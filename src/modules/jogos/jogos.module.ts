@@ -3,7 +3,7 @@ import { FaseController } from './controllers/fase.controller';
 import { JogoController } from './controllers/jogo.controller';
 import { FaseService } from './services/fase.service';
 import { JogoService } from './services/jogo.service';
-import { ApiFootballService } from './services/api-football.service';
+import { FutebolApiService } from './services/futebol-api.service';
 import { JOGOS } from './jogos.constants';
 import { PrismaFaseRepository } from './repositories/prisma-fase.repository';
 import { PrismaJogoRepository } from './repositories/prisma-jogo.repository';
@@ -15,7 +15,7 @@ import { TemporadasModule } from '../temporadas/temporadas.module';
   providers: [
     FaseService,
     JogoService,
-    ApiFootballService,
+    FutebolApiService,
     {
       provide: JOGOS.FASE_REPOSITORY_TOKEN,
       useClass: PrismaFaseRepository,

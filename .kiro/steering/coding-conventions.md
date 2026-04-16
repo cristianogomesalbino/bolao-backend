@@ -6,7 +6,7 @@ inclusion: always
 
 ## Regras Críticas (NUNCA violar)
 
-- **NUNCA duplicar funções com propósito similar** — se duas funções fazem mapeamento parecido (ex: `mapearStatus` e `mapearStatusApiFootball`), unificar em uma só ou deixar claro qual é a canônica
+- **NUNCA duplicar funções com propósito similar** — se duas funções fazem mapeamento parecido (ex: `mapearStatus` e `mapearStatusExterno`), unificar em uma só ou deixar claro qual é a canônica
 - **NUNCA colocar lógica de autorização no controller** — sempre via Guards (`SuperAdminGuard`, `GroupRoleGuard`, etc.)
 - **NUNCA duplicar dados entre URL param e body do DTO** — se o dado vem do `@Param`, não incluir no DTO
 - **NUNCA operar sobre dados dependentes sem validar estado** — ex: calcular placar agregado sem verificar se o jogo de ida está FINALIZADO

@@ -116,11 +116,11 @@ describe('JogoController', () => {
     it('deve chamar jogoService.importarJogos e retornar resultado', async () => {
       mockJogoService.importarJogos.mockResolvedValue({ importados: 5 });
 
-      const dto = { leagueId: 71, season: 2026, faseId: 'fase-1' };
+      const dto = { season: 2026, rodada: 1, faseId: 'fase-1' };
       const user = { id: 'user-1' };
       const result = await controller.importar(dto as any, user);
 
-      expect(mockJogoService.importarJogos).toHaveBeenCalledWith(71, 2026, 'fase-1', 'user-1');
+      expect(mockJogoService.importarJogos).toHaveBeenCalledWith(2026, 1, 'fase-1', 'user-1');
       expect(result).toEqual({ importados: 5 });
     });
   });

@@ -80,7 +80,7 @@ export class JogoController {
     return JogoPresenter.toHttp(await this.jogoService.buscarPorId(id));
   }
 
-  @ApiOperation({ summary: 'Importar jogos da API-Football (SUPER_ADMIN)' })
+  @ApiOperation({ summary: 'Importar jogos da API externa (SUPER_ADMIN)' })
   @ApiResponse({ status: 201, description: 'Jogos importados com sucesso' })
   @UseGuards(SuperAdminGuard)
   @Post('jogos/importar')
@@ -89,14 +89,14 @@ export class JogoController {
     @CurrentUser() user: { id: string },
   ) {
     return this.jogoService.importarJogos(
-      dto.leagueId,
       dto.season,
+      dto.rodada,
       dto.faseId,
       user.id,
     );
   }
 
-  @ApiOperation({ summary: 'Sincronizar placares via API-Football (SUPER_ADMIN)' })
+  @ApiOperation({ summary: 'Sincronizar placares via API externa (SUPER_ADMIN)' })
   @ApiResponse({ status: 200, description: 'Placares sincronizados com sucesso' })
   @UseGuards(SuperAdminGuard)
   @Post('fases/:faseId/jogos/sincronizar')
