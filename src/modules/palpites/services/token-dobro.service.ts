@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { PALPITES } from './palpites.constants';
-import type { TokenDobroRepository } from './repositories/token-dobro.repository.interface';
+import { PALPITES } from '../palpites.constants';
+import type { TokenDobroRepository } from '../repositories/token-dobro.repository.interface';
 
 @Injectable()
 export class TokenDobroService {

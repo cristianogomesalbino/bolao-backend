@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { RankingService } from '@src/modules/ranking/ranking.service';
-import { PontuacaoService } from '@src/modules/ranking/pontuacao.service';
-import { TokenDobroService } from '@src/modules/palpites/token-dobro.service';
+import { RankingService } from '@src/modules/ranking/services/ranking.service';
+import { PontuacaoService } from '@src/modules/ranking/services/pontuacao.service';
+import { TokenDobroService } from '@src/modules/palpites/services/token-dobro.service';
 import { InMemoryJogoRepository } from '@src/modules/jogos/repositories/in-memory-jogo.repository';
 import { InMemoryFaseRepository } from '@src/modules/jogos/repositories/in-memory-fase.repository';
 import { InMemoryPalpiteRepository } from '@src/modules/palpites/repositories/in-memory-palpite.repository';

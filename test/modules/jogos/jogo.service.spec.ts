@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { BadRequestException } from '@nestjs/common';
-import { JogoService } from '@src/modules/jogos/jogo.service';
+import { JogoService } from '@src/modules/jogos/services/jogo.service';
 import { InMemoryJogoRepository } from '@src/modules/jogos/repositories/in-memory-jogo.repository';
 import { InMemoryFaseRepository } from '@src/modules/jogos/repositories/in-memory-fase.repository';
-import { ApiFootballService } from '@src/modules/jogos/api-football.service';
+import { ApiFootballService } from '@src/modules/jogos/services/api-football.service';
 import {
   FaseNaoEncontradaError,
   JogoNaoEncontradoError,

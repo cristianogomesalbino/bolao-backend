@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { JogoController } from '@src/modules/jogos/jogo.controller';
+import { JogoController } from '@src/modules/jogos/controllers/jogo.controller';
 import { JogoPresenter } from '@src/common/presenters';
 
 describe('JogoController', () => {

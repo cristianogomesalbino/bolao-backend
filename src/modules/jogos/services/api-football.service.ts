@@ -1,5 +1,5 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { ApiFootballIndisponivelError } from '../../common/errors/domain-errors';
+import { ApiFootballIndisponivelError } from '../../../common/errors/domain-errors';
 
 const API_FOOTBALL_HOST = 'api-football-v1.p.rapidapi.com';
 const API_FOOTBALL_BASE_URL = `https://${API_FOOTBALL_HOST}/v3`;

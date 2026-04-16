@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { RankingController } from '@src/modules/ranking/ranking.controller';
+import { RankingController } from '@src/modules/ranking/controllers/ranking.controller';
 import { RankingPresenter } from '@src/common/presenters/ranking.presenter';
 import { PontuacaoJogoPresenter } from '@src/common/presenters/pontuacao-jogo.presenter';
 import { RANKING } from '@src/modules/ranking/ranking.constants';

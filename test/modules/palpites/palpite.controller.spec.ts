@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { PalpiteController } from '@src/modules/palpites/palpite.controller';
+import { PalpiteController } from '@src/modules/palpites/controllers/palpite.controller';
 import { PalpitePresenter } from '@src/common/presenters';
 
 describe('PalpiteController', () => {

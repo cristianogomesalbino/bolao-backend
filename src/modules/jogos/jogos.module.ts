@@ -1,9 +1,9 @@
 import { Module } from '@nestjs/common';
-import { FaseController } from './fase.controller';
-import { JogoController } from './jogo.controller';
-import { FaseService } from './fase.service';
-import { JogoService } from './jogo.service';
-import { ApiFootballService } from './api-football.service';
+import { FaseController } from './controllers/fase.controller';
+import { JogoController } from './controllers/jogo.controller';
+import { FaseService } from './services/fase.service';
+import { JogoService } from './services/jogo.service';
+import { ApiFootballService } from './services/api-football.service';
 import { JOGOS } from './jogos.constants';
 import { PrismaFaseRepository } from './repositories/prisma-fase.repository';
 import { PrismaJogoRepository } from './repositories/prisma-jogo.repository';

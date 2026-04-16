@@ -10,11 +10,11 @@ import {
   ApiOperation,
   ApiResponse,
 } from '@nestjs/swagger';
-import { FaseService } from './fase.service';
-import { CriarFaseDto } from './dto/criar-fase.dto';
-import { ParseUUIDCustomPipe } from '../../common/pipes/parse-uuid-custom.pipe';
-import { JOGOS } from './jogos.constants';
-import { FasePresenter } from '../../common/presenters';
+import { FaseService } from '../services/fase.service';
+import { CriarFaseDto } from '../dto/criar-fase.dto';
+import { ParseUUIDCustomPipe } from '../../../common/pipes/parse-uuid-custom.pipe';
+import { JOGOS } from '../jogos.constants';
+import { FasePresenter } from '../../../common/presenters';
 
 @ApiTags(JOGOS.TAG)
 @Controller('temporadas/:temporadaId/fases')

@@ -16,16 +16,16 @@ import {
   ApiNotFoundResponse,
   ApiConflictResponse,
 } from '@nestjs/swagger';
-import { PalpiteDobradoService } from './palpite-dobrado.service';
-import { TokenDobroService } from './token-dobro.service';
-import { ConfigurarDobroDto } from './dto/configurar-dobro.dto';
-import { ParseUUIDCustomPipe } from '../../common/pipes/parse-uuid-custom.pipe';
-import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { GroupRoleGuard } from '../../common/guards/group-role.guard';
-import { GroupRoles } from '../../common/decorators/group-roles.decorator';
-import { PALPITES } from './palpites.constants';
-import { GRUPO_ROLE } from '../../common/constants/roles.constants';
-import { PalpiteDobradoPresenter, TokenDobroPresenter } from '../../common/presenters';
+import { PalpiteDobradoService } from '../services/palpite-dobrado.service';
+import { TokenDobroService } from '../services/token-dobro.service';
+import { ConfigurarDobroDto } from '../dto/configurar-dobro.dto';
+import { ParseUUIDCustomPipe } from '../../../common/pipes/parse-uuid-custom.pipe';
+import { CurrentUser } from '../../../common/decorators/current-user.decorator';
+import { GroupRoleGuard } from '../../../common/guards/group-role.guard';
+import { GroupRoles } from '../../../common/decorators/group-roles.decorator';
+import { PALPITES } from '../palpites.constants';
+import { GRUPO_ROLE } from '../../../common/constants/roles.constants';
+import { PalpiteDobradoPresenter, TokenDobroPresenter } from '../../../common/presenters';
 
 @ApiTags(PALPITES.TAG)
 @Controller('grupos')

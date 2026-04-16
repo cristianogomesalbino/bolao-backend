@@ -1,20 +1,20 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { PALPITES } from './palpites.constants';
-import { JOGOS } from '../jogos/jogos.constants';
-import { GRUPOS } from '../grupos/grupos.constants';
-import type { PalpiteDobradoRepository } from './repositories/palpite-dobrado.repository.interface';
-import type { JogoRepository } from '../jogos/repositories/jogo.repository.interface';
-import type { GrupoRepository } from '../grupos/repositories/grupo.repository.interface';
+import { PALPITES } from '../palpites.constants';
+import { JOGOS } from '../../jogos/jogos.constants';
+import { GRUPOS } from '../../grupos/grupos.constants';
+import type { PalpiteDobradoRepository } from '../repositories/palpite-dobrado.repository.interface';
+import type { JogoRepository } from '../../jogos/repositories/jogo.repository.interface';
+import type { GrupoRepository } from '../../grupos/repositories/grupo.repository.interface';
 import { TokenDobroService } from './token-dobro.service';
-import { JogoNaoEncontradoError } from '../../common/errors/domain-errors/jogos.errors';
-import { GrupoNaoEncontradoError } from '../../common/errors/domain-errors/grupos.errors';
+import { JogoNaoEncontradoError } from '../../../common/errors/domain-errors/jogos.errors';
+import { GrupoNaoEncontradoError } from '../../../common/errors/domain-errors/grupos.errors';
 import {
   GrupoNaoPermiteDobroError,
   SemFichasDobroError,
   DobroJaAtivoError,
   DobroNaoEncontradoError,
   JogoNaoAceitaDobroError,
-} from '../../common/errors/domain-errors/palpites.errors';
+} from '../../../common/errors/domain-errors/palpites.errors';
 
 @Injectable()
 export class PalpiteDobradoService {

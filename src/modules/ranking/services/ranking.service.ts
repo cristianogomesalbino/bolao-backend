@@ -1,24 +1,24 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { PontuacaoService } from './pontuacao.service';
-import { TokenDobroService } from '../palpites/token-dobro.service';
-import { JOGOS } from '../jogos/jogos.constants';
-import { PALPITES } from '../palpites/palpites.constants';
-import { GRUPOS } from '../grupos/grupos.constants';
-import { GRUPO_USUARIO } from '../grupo-usuario/grupo-usuario.constants';
-import { RANKING } from './ranking.constants';
-import type { JogoRepository } from '../jogos/repositories/jogo.repository.interface';
-import type { FaseRepository } from '../jogos/repositories/fase.repository.interface';
-import type { PalpiteRepository } from '../palpites/repositories/palpite.repository.interface';
-import type { PalpiteDobradoRepository } from '../palpites/repositories/palpite-dobrado.repository.interface';
-import type { GrupoUsuarioRepository } from '../grupo-usuario/repositories/grupo-usuario.repository.interface';
-import type { GrupoRepository } from '../grupos/repositories/grupo.repository.interface';
-import type { TokenDobroRepository } from '../palpites/repositories/token-dobro.repository.interface';
+import { TokenDobroService } from '../../palpites/services/token-dobro.service';
+import { JOGOS } from '../../jogos/jogos.constants';
+import { PALPITES } from '../../palpites/palpites.constants';
+import { GRUPOS } from '../../grupos/grupos.constants';
+import { GRUPO_USUARIO } from '../../grupo-usuario/grupo-usuario.constants';
+import { RANKING } from '../ranking.constants';
+import type { JogoRepository } from '../../jogos/repositories/jogo.repository.interface';
+import type { FaseRepository } from '../../jogos/repositories/fase.repository.interface';
+import type { PalpiteRepository } from '../../palpites/repositories/palpite.repository.interface';
+import type { PalpiteDobradoRepository } from '../../palpites/repositories/palpite-dobrado.repository.interface';
+import type { GrupoUsuarioRepository } from '../../grupo-usuario/repositories/grupo-usuario.repository.interface';
+import type { GrupoRepository } from '../../grupos/repositories/grupo.repository.interface';
+import type { TokenDobroRepository } from '../../palpites/repositories/token-dobro.repository.interface';
 import {
   GrupoNaoEncontradoError,
   FaseNaoEncontradaError,
   JogoNaoEncontradoError,
   JogoNaoFinalizadoError,
-} from '../../common/errors/domain-errors';
+} from '../../../common/errors/domain-errors';
 
 interface RankingEntry {
   posicao: number;

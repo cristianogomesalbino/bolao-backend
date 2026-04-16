@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { RANKING } from './ranking.constants';
+import { RANKING } from '../ranking.constants';
 
 type CategoriaAcerto =
   | 'ACERTO_EM_CHEIO'

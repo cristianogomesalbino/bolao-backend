@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { PalpiteService } from '@src/modules/palpites/palpite.service';
+import { PalpiteService } from '@src/modules/palpites/services/palpite.service';
 import { InMemoryPalpiteRepository } from '@src/modules/palpites/repositories/in-memory-palpite.repository';
 import { InMemoryJogoRepository } from '@src/modules/jogos/repositories/in-memory-jogo.repository';
 import { JogoNaoEncontradoError } from '@src/common/errors/domain-errors/jogos.errors';

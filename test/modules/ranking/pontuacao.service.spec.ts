@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { PontuacaoService } from '@src/modules/ranking/pontuacao.service';
+import { PontuacaoService } from '@src/modules/ranking/services/pontuacao.service';
 
 describe('PontuacaoService', () => {
   let service: PontuacaoService;

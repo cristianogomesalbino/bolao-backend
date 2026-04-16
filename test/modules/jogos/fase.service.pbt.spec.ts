@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import fc from 'fast-check';
-import { FaseService } from '@src/modules/jogos/fase.service';
+import { FaseService } from '@src/modules/jogos/services/fase.service';
 import { InMemoryFaseRepository } from '@src/modules/jogos/repositories/in-memory-fase.repository';
 import { InMemoryTemporadaRepository } from '@src/modules/temporadas/repositories/in-memory-temporada.repository';
 import { IdaVoltaNaoPermitidaError } from '@src/common/errors/domain-errors';

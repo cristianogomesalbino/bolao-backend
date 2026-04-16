@@ -1,17 +1,17 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { PALPITES } from './palpites.constants';
-import { JOGOS } from '../jogos/jogos.constants';
-import type { PalpiteRepository } from './repositories/palpite.repository.interface';
-import type { JogoRepository } from '../jogos/repositories/jogo.repository.interface';
-import { JogoNaoEncontradoError } from '../../common/errors/domain-errors/jogos.errors';
+import { PALPITES } from '../palpites.constants';
+import { JOGOS } from '../../jogos/jogos.constants';
+import type { PalpiteRepository } from '../repositories/palpite.repository.interface';
+import type { JogoRepository } from '../../jogos/repositories/jogo.repository.interface';
+import { JogoNaoEncontradoError } from '../../../common/errors/domain-errors/jogos.errors';
 import {
   PalpiteNaoEncontradoError,
   JogoNaoAceitaPalpitesError,
   PalpiteJaExisteError,
   PalpiteNaoPertenceAoUsuarioError,
-} from '../../common/errors/domain-errors/palpites.errors';
-import { CriarPalpiteDto } from './dto/criar-palpite.dto';
-import { AtualizarPalpiteDto } from './dto/atualizar-palpite.dto';
+} from '../../../common/errors/domain-errors/palpites.errors';
+import { CriarPalpiteDto } from '../dto/criar-palpite.dto';
+import { AtualizarPalpiteDto } from '../dto/atualizar-palpite.dto';
 
 @Injectable()
 export class PalpiteService {

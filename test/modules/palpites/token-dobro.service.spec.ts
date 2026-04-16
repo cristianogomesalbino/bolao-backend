@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { TokenDobroService } from '@src/modules/palpites/token-dobro.service';
+import { TokenDobroService } from '@src/modules/palpites/services/token-dobro.service';
 import { InMemoryTokenDobroRepository } from '@src/modules/palpites/repositories/in-memory-token-dobro.repository';
 
 describe('TokenDobroService', () => {

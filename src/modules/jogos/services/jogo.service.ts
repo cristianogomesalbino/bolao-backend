@@ -1,12 +1,12 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import { JOGOS } from './jogos.constants';
-import type { JogoRepository } from './repositories/jogo.repository.interface';
-import type { FaseRepository } from './repositories/fase.repository.interface';
+import { JOGOS } from '../jogos.constants';
+import type { JogoRepository } from '../repositories/jogo.repository.interface';
+import type { FaseRepository } from '../repositories/fase.repository.interface';
 import { ApiFootballService } from './api-football.service';
-import { ErrorFactory } from '../../common/errors/error.factory';
-import { CriarJogoDto } from './dto/criar-jogo.dto';
-import { AtualizarJogoDto } from './dto/atualizar-jogo.dto';
-import { FinalizarJogoDto } from './dto/finalizar-jogo.dto';
+import { ErrorFactory } from '../../../common/errors/error.factory';
+import { CriarJogoDto } from '../dto/criar-jogo.dto';
+import { AtualizarJogoDto } from '../dto/atualizar-jogo.dto';
+import { FinalizarJogoDto } from '../dto/finalizar-jogo.dto';
 import {
   FaseNaoEncontradaError,
   JogoNaoEncontradoError,
@@ -22,7 +22,7 @@ import {
   IdaVoltaNaoPermitidaError,
   JogoIdaNaoEncontradoError,
   ApiFootballIndisponivelError,
-} from '../../common/errors/domain-errors';
+} from '../../../common/errors/domain-errors';
 
 const TRANSICOES_VALIDAS: Record<string, string[]> = {
   AGENDADO: ['EM_ANDAMENTO', 'CANCELADO'],
