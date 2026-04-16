@@ -64,7 +64,7 @@ describe('PalpiteDobradoService — Property-Based Tests', () => {
         nome: 'Grupo Teste',
         temporadaId: 'temp-1',
         privado: false,
-        palpiteDobradoHabilitado: true,
+        permitirPalpiteDobrado: true,
         ativo: true,
       },
       {
@@ -72,7 +72,7 @@ describe('PalpiteDobradoService — Property-Based Tests', () => {
         nome: 'Grupo Sem Dobro',
         temporadaId: 'temp-1',
         privado: false,
-        palpiteDobradoHabilitado: false,
+        permitirPalpiteDobrado: false,
         ativo: true,
       },
     ];

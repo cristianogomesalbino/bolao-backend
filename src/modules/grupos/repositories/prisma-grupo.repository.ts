@@ -21,6 +21,7 @@ export class PrismaGrupoRepository implements GrupoRepository {
     codigoConvite: string | null;
     permitirPalpiteAutomatico: boolean;
     maxParticipantes: number;
+    permitirPalpiteDobrado: boolean;
     createdById: string;
   }) {
     return this.prisma.grupo.create({ data, include: includeGrupo });

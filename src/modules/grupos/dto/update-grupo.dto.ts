@@ -17,4 +17,9 @@ export class UpdateGrupoDto {
   @IsOptional()
   @IsBoolean({ message: 'Deve ser verdadeiro ou falso.' })
   permitirPalpiteAutomatico?: boolean;
+
+  @ApiPropertyOptional({ description: 'Habilitar palpite dobrado no grupo', example: false })
+  @IsOptional()
+  @IsBoolean({ message: 'Deve ser verdadeiro ou falso.' })
+  permitirPalpiteDobrado?: boolean;
 }

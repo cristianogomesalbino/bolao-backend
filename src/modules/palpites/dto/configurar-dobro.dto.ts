@@ -4,6 +4,6 @@ import { ApiProperty } from '@nestjs/swagger';
 export class ConfigurarDobroDto {
   @ApiProperty({ description: 'Habilitar ou desabilitar palpite dobrado no grupo', example: true })
   @IsDefined({ message: 'O campo é obrigatório' })
-  @IsBoolean({ message: 'palpiteDobradoHabilitado deve ser verdadeiro ou falso' })
-  palpiteDobradoHabilitado: boolean;
+  @IsBoolean({ message: 'permitirPalpiteDobrado deve ser verdadeiro ou falso' })
+  permitirPalpiteDobrado: boolean;
 }

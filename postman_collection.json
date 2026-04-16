@@ -851,7 +851,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"palpiteDobradoHabilitado\": true\n}"
+              "raw": "{\n  \"permitirPalpiteDobrado\": true\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/grupos/{{grupoId}}/configuracao-dobro",

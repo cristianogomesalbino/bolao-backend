@@ -248,7 +248,7 @@ Regras de domínio:
 - Palpite é universal: um por usuário por jogo, vale para todos os grupos
 - Palpites só podem ser criados, editados ou excluídos enquanto o jogo estiver AGENDADO
 - Visibilidade no grupo: palpites de outros membros só são visíveis após o jogo ser FINALIZADO
-- Palpite Dobrado é opcional por grupo (campo `palpiteDobradoHabilitado`)
+- Palpite Dobrado é opcional por grupo (campo `permitirPalpiteDobrado`)
 - Token Dobro: fichas acumuladas por conquistas (palpites completos na fase, acerto em cheio, primeiro/último no ranking)
 - Ativar dobro consome 1 ficha; desativar antes do jogo começar devolve a ficha
 - Multiplicador 2x aplicado apenas no contexto do grupo onde o dobro foi ativado

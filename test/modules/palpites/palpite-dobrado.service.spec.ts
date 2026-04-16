@@ -29,13 +29,13 @@ describe('PalpiteDobradoService', () => {
   const grupoComDobro = {
     id: grupoId,
     nome: 'Bolão',
-    palpiteDobradoHabilitado: true,
+    permitirPalpiteDobrado: true,
   };
 
   const grupoSemDobro = {
     id: 'grupo-2',
     nome: 'Bolão 2',
-    palpiteDobradoHabilitado: false,
+    permitirPalpiteDobrado: false,
   };
 
   const jogoAgendado = {
@@ -181,7 +181,7 @@ describe('PalpiteDobradoService', () => {
     it('deve atualizar configuração com sucesso', async () => {
       const result = await service.atualizarConfiguracaoDobro(grupoId, false);
 
-      expect(result.palpiteDobradoHabilitado).toBe(false);
+      expect(result.permitirPalpiteDobrado).toBe(false);
     });
 
     it('deve lançar GrupoNaoEncontradoError se grupo inexistente', async () => {

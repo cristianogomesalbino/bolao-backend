@@ -104,7 +104,7 @@ export class PalpiteDobradoController {
     @Param('grupoId', new ParseUUIDCustomPipe('grupoId')) grupoId: string,
     @Body() dto: ConfigurarDobroDto,
   ) {
-    await this.palpiteDobradoService.atualizarConfiguracaoDobro(grupoId, dto.palpiteDobradoHabilitado);
+    await this.palpiteDobradoService.atualizarConfiguracaoDobro(grupoId, dto.permitirPalpiteDobrado);
     return { mensagem: PALPITES.MENSAGENS.CONFIGURACAO_ATUALIZADA };
   }
 }

@@ -134,7 +134,7 @@ export class RankingService {
       );
 
       const multiplicador =
-        grupo.palpiteDobradoHabilitado && dobrado
+        grupo.permitirPalpiteDobrado && dobrado
           ? RANKING.MULTIPLICADOR_DOBRO
           : 1;
 
@@ -178,7 +178,7 @@ export class RankingService {
 
   async verificarPalpitesCompletos(faseId: string, grupoId: string): Promise<void> {
     const grupo = await this.grupoRepo.buscarPorId(grupoId);
-    if (!grupo?.palpiteDobradoHabilitado) return;
+    if (!grupo?.permitirPalpiteDobrado) return;
 
     const jogos = await this.jogoRepo.buscarPorFase(faseId);
     const jogosNaoCancelados = jogos.filter((j: any) => j.status !== 'CANCELADO');
@@ -243,7 +243,7 @@ export class RankingService {
     const palpiteMap = new Map(palpites.map((p: any) => [p.usuarioId, p]));
 
     // Conceder TokenDobro por acerto em cheio
-    if (grupo.palpiteDobradoHabilitado) {
+    if (grupo.permitirPalpiteDobrado) {
       await this.concederTokensPorAcertoEmCheio(membros, palpiteMap, jogo, grupo.id);
     }
 
@@ -254,7 +254,7 @@ export class RankingService {
     );
     const temJogoFinalizado = jogosDaFase.some((j: any) => j.status === 'FINALIZADO');
 
-    if (faseEncerrada && temJogoFinalizado && grupo.palpiteDobradoHabilitado) {
+    if (faseEncerrada && temJogoFinalizado && grupo.permitirPalpiteDobrado) {
       await this.concederTokensPorPosicaoRanking(grupo, fase.id);
     }
   }
@@ -356,7 +356,7 @@ export class RankingService {
       ? await this.palpiteRepo.listarPorJogosEUsuarios(jogoIds, usuarioIds)
       : [];
 
-    const dobrados = jogoIds.length > 0 && grupo.palpiteDobradoHabilitado
+    const dobrados = jogoIds.length > 0 && grupo.permitirPalpiteDobrado
       ? await this.palpiteDobradoRepo.listarPorJogosEGrupo(jogoIds, grupo.id)
       : [];
 
@@ -378,7 +378,7 @@ export class RankingService {
         );
 
         const multiplicador =
-          grupo.palpiteDobradoHabilitado && dobradoSet.has(`${membro.usuarioId}:${jogo.id}`)
+          grupo.permitirPalpiteDobrado && dobradoSet.has(`${membro.usuarioId}:${jogo.id}`)
             ? RANKING.MULTIPLICADOR_DOBRO
             : 1;
 

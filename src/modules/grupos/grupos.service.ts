@@ -43,6 +43,7 @@ export class GruposService {
       codigoConvite,
       permitirPalpiteAutomatico: dto.permitirPalpiteAutomatico ?? false,
       maxParticipantes: dto.maxParticipantes ?? 50,
+      permitirPalpiteDobrado: dto.permitirPalpiteDobrado ?? false,
       createdById: userId,
     });
 
@@ -81,6 +82,8 @@ export class GruposService {
       privado: dto.privado ?? grupo.privado,
       permitirPalpiteAutomatico:
         dto.permitirPalpiteAutomatico ?? grupo.permitirPalpiteAutomatico,
+      permitirPalpiteDobrado:
+        dto.permitirPalpiteDobrado ?? grupo.permitirPalpiteDobrado,
     });
   }
 

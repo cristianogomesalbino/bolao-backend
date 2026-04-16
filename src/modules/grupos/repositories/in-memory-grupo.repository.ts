@@ -11,6 +11,7 @@ export class InMemoryGrupoRepository implements GrupoRepository {
     codigoConvite: string | null;
     permitirPalpiteAutomatico: boolean;
     maxParticipantes: number;
+    permitirPalpiteDobrado: boolean;
     createdById: string;
   }) {
     const grupo = {
@@ -21,6 +22,7 @@ export class InMemoryGrupoRepository implements GrupoRepository {
       codigoConvite: data.codigoConvite,
       permitirPalpiteAutomatico: data.permitirPalpiteAutomatico,
       maxParticipantes: data.maxParticipantes,
+      permitirPalpiteDobrado: data.permitirPalpiteDobrado,
       createdById: data.createdById,
       ativo: true,
       dataCriacao: new Date(),

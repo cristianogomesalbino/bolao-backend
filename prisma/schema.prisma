@@ -60,7 +60,7 @@ model Grupo {
   ativo       Boolean  @default(true)
   dataCriacao DateTime @default(now())
 
-  palpiteDobradoHabilitado Boolean @default(false)
+  permitirPalpiteDobrado Boolean @default(false)
 
   createdById String
   createdBy   Usuario @relation("GrupoCriador", fields: [createdById], references: [id])

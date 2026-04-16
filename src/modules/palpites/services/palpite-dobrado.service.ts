@@ -31,7 +31,7 @@ export class PalpiteDobradoService {
   async ativarDobro(grupoId: string, jogoId: string, usuarioId: string) {
     const grupo = await this.grupoRepo.buscarPorId(grupoId);
     if (!grupo) throw new GrupoNaoEncontradoError();
-    if (!grupo.palpiteDobradoHabilitado) throw new GrupoNaoPermiteDobroError();
+    if (!grupo.permitirPalpiteDobrado) throw new GrupoNaoPermiteDobroError();
 
     const jogo = await this.jogoRepo.buscarPorId(jogoId);
     if (!jogo) throw new JogoNaoEncontradoError();
@@ -63,6 +63,6 @@ export class PalpiteDobradoService {
     const grupo = await this.grupoRepo.buscarPorId(grupoId);
     if (!grupo) throw new GrupoNaoEncontradoError();
 
-    return this.grupoRepo.atualizar(grupoId, { palpiteDobradoHabilitado: habilitado });
+    return this.grupoRepo.atualizar(grupoId, { permitirPalpiteDobrado: habilitado });
   }
 }
