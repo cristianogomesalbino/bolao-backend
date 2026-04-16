@@ -55,4 +55,10 @@ export class PrismaGrupoRepository implements GrupoRepository {
   async remover(id: string) {
     await this.prisma.grupo.delete({ where: { id } });
   }
+
+  buscarPorTemporadaId(temporadaId: string) {
+    return this.prisma.grupo.findMany({
+      where: { temporadaId },
+    });
+  }
 }

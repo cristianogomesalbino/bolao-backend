@@ -25,7 +25,8 @@ src/
 │   ├── grupos/             # Grupos de bolão
 │   ├── grupo-usuario/      # Membros dos grupos (adicionar, remover, convite)
 │   ├── jogos/              # Fases, jogos, integração API-Football
-│   └── palpites/           # Palpites universais, palpite dobrado, token dobro
+│   ├── palpites/           # Palpites universais, palpite dobrado, token dobro
+│   └── ranking/            # Pontuação, ranking por fase/geral, detalhamento
 ├── common/
 │   ├── constants/          # Constantes globais (roles)
 │   ├── decorators/         # @Public(), @CurrentUser(), @GroupRoles()
@@ -169,6 +170,34 @@ sh dev start-prod      # Build e inicia em modo produção
 | GET    | `/grupos/:grupoId/tokens-dobro/historico`          | Consultar histórico de fichas      | JWT + Membro  |
 | PATCH  | `/grupos/:grupoId/configuracao-dobro`             | Habilitar/desabilitar dobro        | JWT + Admin   |
 
+### Ranking (`/grupos/:grupoId/ranking`)
+
+| Método | Rota                                                      | Descrição                          | Auth          |
+|--------|-----------------------------------------------------------|------------------------------------|---------------|
+| GET    | `/grupos/:grupoId/ranking/geral`                          | Ranking geral da temporada         | JWT + Membro  |
+| GET    | `/grupos/:grupoId/ranking/fases/:faseId`                  | Ranking por fase                   | JWT + Membro  |
+| GET    | `/grupos/:grupoId/ranking/jogos/:jogoId`                  | Detalhamento de pontuação por jogo | JWT + Membro  |
+| POST   | `/grupos/:grupoId/ranking/processar-jogo/:jogoId`         | Processar pontuação de jogo        | JWT + Admin   |
+
+**Regras de pontuação:**
+
+| Categoria              | Pontos | Descrição                                                    |
+|------------------------|--------|--------------------------------------------------------------|
+| Acerto em cheio        | 10     | Placar exato (golsCasa e golsFora iguais)                    |
+| Acerto de resultado    | 5      | Resultado correto (vitória/empate/derrota) com placar errado |
+| Acerto de gols um time | 3      | Acertou gols de um time, mas errou o resultado               |
+| Erro total             | 0      | Nenhum acerto                                                |
+
+- Apenas jogos com status FINALIZADO contam para o ranking
+- Considera apenas tempo normal (ignora prorrogação e pênaltis)
+- Palpite Dobrado (quando habilitado no grupo) aplica multiplicador 2x nos pontos
+
+**Critérios de desempate (em ordem):**
+1. Pontuação total (maior primeiro)
+2. Acertos em cheio (maior primeiro)
+3. Acertos de resultado (maior primeiro)
+4. Nome do usuário (ordem alfabética)
+
 ### Fases (`/temporadas/:temporadaId/fases`)
 
 | Método | Rota                                          | Descrição              | Auth |
@@ -243,7 +272,7 @@ docker exec bolao-backend-dev npx vitest run --coverage  # cobertura
 6. ~~GrupoUsuario~~ ✅
 7. ~~Jogos~~ ✅
 8. ~~Palpites~~ ✅
-9. Ranking
+9. ~~Ranking~~ ✅
 
 ## Licença
 

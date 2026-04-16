@@ -31,4 +31,10 @@ export class InMemoryTokenDobroRepository implements TokenDobroRepository {
       .filter((t) => t.usuarioId === usuarioId && t.grupoId === grupoId)
       .sort((a, b) => b.dataCriacao.getTime() - a.dataCriacao.getTime());
   }
+
+  async buscarPorChave(usuarioId: string, grupoId: string, motivo: string, referenciaId: string) {
+    return this.items.find(
+      (t) => t.usuarioId === usuarioId && t.grupoId === grupoId && t.motivo === motivo && t.referenciaId === referenciaId,
+    ) ?? null;
+  }
 }

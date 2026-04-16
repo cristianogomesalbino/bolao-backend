@@ -44,4 +44,8 @@ export class InMemoryPalpiteRepository implements PalpiteRepository {
   async listarPorFaseEUsuario(faseId: string, usuarioId: string) {
     return this.items.filter((p) => p.usuarioId === usuarioId && p.jogo?.faseId === faseId);
   }
+
+  async listarPorJogosEUsuarios(jogoIds: string[], usuarioIds: string[]) {
+    return this.items.filter((p) => jogoIds.includes(p.jogoId) && usuarioIds.includes(p.usuarioId));
+  }
 }

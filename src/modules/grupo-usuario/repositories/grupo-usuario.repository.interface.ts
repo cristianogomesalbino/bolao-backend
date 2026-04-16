@@ -5,4 +5,5 @@ export interface GrupoUsuarioRepository {
   contarPorGrupo(grupoId: string): Promise<number>;
   contarAdminsPorGrupo(grupoId: string): Promise<number>;
   remover(usuarioId: string, grupoId: string): Promise<void>;
+  listarPorGrupoComUsuario(grupoId: string): Promise<any[]>;
 }

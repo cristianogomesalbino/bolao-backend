@@ -484,7 +484,7 @@ describe('JogoService — Property-Based Tests', () => {
       AET: 'FINALIZADO',
       PEN: 'FINALIZADO',
       CANC: 'CANCELADO',
-      PST: 'CANCELADO',
+      PST: 'AGENDADO',
     };
 
     const arbStatusApi = fc.constantFrom(...Object.keys(mapeamento));

@@ -8,4 +8,5 @@ export interface TokenDobroRepository {
   }): Promise<any>;
   calcularSaldo(usuarioId: string, grupoId: string): Promise<number>;
   listarPorUsuarioEGrupo(usuarioId: string, grupoId: string): Promise<any[]>;
+  buscarPorChave(usuarioId: string, grupoId: string, motivo: string, referenciaId: string): Promise<any>;
 }

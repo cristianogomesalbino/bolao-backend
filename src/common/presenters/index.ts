@@ -8,3 +8,5 @@ export { JogoPresenter } from './jogo.presenter';
 export { PalpitePresenter } from './palpite.presenter';
 export { PalpiteDobradoPresenter } from './palpite-dobrado.presenter';
 export { TokenDobroPresenter } from './token-dobro.presenter';
+export { RankingPresenter } from './ranking.presenter';
+export { PontuacaoJogoPresenter } from './pontuacao-jogo.presenter';

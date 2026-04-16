@@ -52,4 +52,10 @@ export class PrismaPalpiteRepository implements PalpiteRepository {
       where: { usuarioId, jogo: { faseId } },
     });
   }
+
+  listarPorJogosEUsuarios(jogoIds: string[], usuarioIds: string[]) {
+    return this.prisma.palpite.findMany({
+      where: { jogoId: { in: jogoIds }, usuarioId: { in: usuarioIds } },
+    });
+  }
 }

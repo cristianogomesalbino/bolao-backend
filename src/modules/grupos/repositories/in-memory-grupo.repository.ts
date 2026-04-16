@@ -63,6 +63,10 @@ export class InMemoryGrupoRepository implements GrupoRepository {
     }
   }
 
+  async buscarPorTemporadaId(temporadaId: string) {
+    return this.items.filter((g) => g.temporadaId === temporadaId);
+  }
+
   private comTemporada(grupo: any) {
     const temporada = this.temporadas.find((t) => t.id === grupo.temporadaId);
     return {

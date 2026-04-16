@@ -32,6 +32,12 @@ import { GrupoUsuarioModule } from '../grupo-usuario/grupo-usuario.module';
       useClass: PrismaTokenDobroRepository,
     },
   ],
-  exports: [PalpiteService, TokenDobroService],
+  exports: [
+    PalpiteService,
+    TokenDobroService,
+    PALPITES.PALPITE_REPOSITORY_TOKEN,
+    PALPITES.PALPITE_DOBRADO_REPOSITORY_TOKEN,
+    PALPITES.TOKEN_DOBRO_REPOSITORY_TOKEN,
+  ],
 })
 export class PalpitesModule {}

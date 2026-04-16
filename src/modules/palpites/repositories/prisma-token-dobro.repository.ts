@@ -36,4 +36,10 @@ export class PrismaTokenDobroRepository implements TokenDobroRepository {
       orderBy: { dataCriacao: 'desc' },
     });
   }
+
+  buscarPorChave(usuarioId: string, grupoId: string, motivo: string, referenciaId: string) {
+    return this.prisma.tokenDobro.findFirst({
+      where: { usuarioId, grupoId, motivo: motivo as any, referenciaId },
+    });
+  }
 }

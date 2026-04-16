@@ -690,8 +690,9 @@ export class JogoService {
       case 'PEN':
         return 'FINALIZADO';
       case 'CANC':
-      case 'PST':
         return 'CANCELADO';
+      case 'PST':
+        return 'AGENDADO';
       default:
         return 'AGENDADO';
     }

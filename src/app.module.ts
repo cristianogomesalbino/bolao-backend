@@ -11,6 +11,7 @@ import { UsuariosModule } from './modules/usuarios/usuarios.module';
 import { GrupoUsuarioModule } from './modules/grupo-usuario/grupo-usuario.module';
 import { JogosModule } from './modules/jogos/jogos.module';
 import { PalpitesModule } from './modules/palpites/palpites.module';
+import { RankingModule } from './modules/ranking/ranking.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 
 @Module({
@@ -24,6 +25,7 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
     UsuariosModule,
     JogosModule,
     PalpitesModule,
+    RankingModule,
   ],
   controllers: [AppController],
   providers: [

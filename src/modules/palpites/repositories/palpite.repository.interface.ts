@@ -7,4 +7,5 @@ export interface PalpiteRepository {
   listarPorUsuario(usuarioId: string, filtros?: { temporadaId?: string }): Promise<any[]>;
   listarPorJogoEUsuarios(jogoId: string, usuarioIds: string[]): Promise<any[]>;
   listarPorFaseEUsuario(faseId: string, usuarioId: string): Promise<any[]>;
+  listarPorJogosEUsuarios(jogoIds: string[], usuarioIds: string[]): Promise<any[]>;
 }

@@ -49,4 +49,11 @@ export class PrismaGrupoUsuarioRepository implements GrupoUsuarioRepository {
       where: { usuarioId_grupoId: { usuarioId, grupoId } },
     });
   }
+
+  listarPorGrupoComUsuario(grupoId: string) {
+    return this.prisma.grupoUsuario.findMany({
+      where: { grupoId },
+      include: { usuario: { select: { id: true, nome: true } } },
+    });
+  }
 }

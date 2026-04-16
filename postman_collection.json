@@ -861,6 +861,59 @@
           }
         }
       ]
+    },
+    {
+      "name": "Ranking",
+      "item": [
+        {
+          "name": "Ranking Geral",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/grupos/{{grupoId}}/ranking/geral",
+              "host": ["{{baseUrl}}"],
+              "path": ["grupos", "{{grupoId}}", "ranking", "geral"]
+            }
+          }
+        },
+        {
+          "name": "Ranking por Fase",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/grupos/{{grupoId}}/ranking/fases/{{faseId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["grupos", "{{grupoId}}", "ranking", "fases", "{{faseId}}"]
+            }
+          }
+        },
+        {
+          "name": "Detalhamento por Jogo",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/grupos/{{grupoId}}/ranking/jogos/{{jogoId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["grupos", "{{grupoId}}", "ranking", "jogos", "{{jogoId}}"]
+            }
+          }
+        },
+        {
+          "name": "Processar Pontuação (ADMIN)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/grupos/{{grupoId}}/ranking/processar-jogo/{{jogoId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["grupos", "{{grupoId}}", "ranking", "processar-jogo", "{{jogoId}}"]
+            }
+          }
+        }
+      ]
     }
   ]
 }

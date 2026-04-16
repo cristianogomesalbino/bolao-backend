@@ -67,4 +67,16 @@ export class InMemoryGrupoUsuarioRepository implements GrupoUsuarioRepository {
       this.items.splice(index, 1);
     }
   }
+
+  async listarPorGrupoComUsuario(grupoId: string) {
+    return this.items
+      .filter((gu) => gu.grupoId === grupoId)
+      .map((gu) => {
+        const usuario = this.usuarios.find((u) => u.id === gu.usuarioId);
+        return {
+          ...gu,
+          usuario: { id: gu.usuarioId, nome: usuario?.nome ?? 'Usuário' },
+        };
+      });
+  }
 }

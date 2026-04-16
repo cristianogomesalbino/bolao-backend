@@ -14,4 +14,5 @@ export interface GrupoRepository {
   buscarPorCodigoConvite(codigo: string): Promise<any>;
   atualizar(id: string, data: Partial<{ nome: string; privado: boolean; permitirPalpiteAutomatico: boolean; ativo: boolean; palpiteDobradoHabilitado: boolean }>): Promise<any>;
   remover(id: string): Promise<void>;
+  buscarPorTemporadaId(temporadaId: string): Promise<any[]>;
 }
