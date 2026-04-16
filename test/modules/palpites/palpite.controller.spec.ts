@@ -5,7 +5,6 @@ import { PalpitePresenter } from '@src/common/presenters';
 describe('PalpiteController', () => {
   let controller: PalpiteController;
   let mockService: any;
-  let mockGrupoUsuarioRepo: any;
 
   const userId = 'user-1';
   const user = { id: userId };
@@ -17,6 +16,7 @@ describe('PalpiteController', () => {
     jogoId: 'jogo-1',
     usuarioId: userId,
     dataCriacao: new Date(),
+    atualizadoEm: new Date(),
   };
 
   beforeEach(() => {
@@ -29,11 +29,7 @@ describe('PalpiteController', () => {
       listarPorJogoNoGrupo: vi.fn().mockResolvedValue([palpiteMock]),
     };
 
-    mockGrupoUsuarioRepo = {
-      listarPorGrupo: vi.fn().mockResolvedValue([{ usuarioId: userId }]),
-    };
-
-    controller = new PalpiteController(mockService, mockGrupoUsuarioRepo);
+    controller = new PalpiteController(mockService);
   });
 
   it('criar deve chamar service e retornar via presenter', async () => {
@@ -71,11 +67,10 @@ describe('PalpiteController', () => {
     expect(result[0]).toEqual(PalpitePresenter.toHttp(palpiteMock));
   });
 
-  it('listarPorJogoNoGrupo deve buscar membros e chamar service', async () => {
+  it('listarPorJogoNoGrupo deve chamar service sem buscar membros', async () => {
     const result = await controller.listarPorJogoNoGrupo('grupo-1', 'jogo-1', user);
 
-    expect(mockGrupoUsuarioRepo.listarPorGrupo).toHaveBeenCalledWith('grupo-1');
-    expect(mockService.listarPorJogoNoGrupo).toHaveBeenCalledWith('jogo-1', 'grupo-1', userId, [userId]);
+    expect(mockService.listarPorJogoNoGrupo).toHaveBeenCalledWith('jogo-1', 'grupo-1', userId);
     expect(result).toHaveLength(1);
   });
 });

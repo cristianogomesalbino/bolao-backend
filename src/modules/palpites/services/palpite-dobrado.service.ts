@@ -43,8 +43,9 @@ export class PalpiteDobradoService {
     const saldo = await this.tokenDobroService.calcularSaldo(usuarioId, grupoId);
     if (saldo <= 0) throw new SemFichasDobroError();
 
+    const palpiteDobrado = await this.palpiteDobradoRepo.criar({ usuarioId, jogoId, grupoId });
     await this.tokenDobroService.registrarUtilizacao(usuarioId, grupoId, jogoId);
-    return this.palpiteDobradoRepo.criar({ usuarioId, jogoId, grupoId });
+    return palpiteDobrado;
   }
 
   async desativarDobro(grupoId: string, jogoId: string, usuarioId: string) {

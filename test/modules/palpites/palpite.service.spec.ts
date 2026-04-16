@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { PalpiteService } from '@src/modules/palpites/services/palpite.service';
 import { InMemoryPalpiteRepository } from '@src/modules/palpites/repositories/in-memory-palpite.repository';
 import { InMemoryJogoRepository } from '@src/modules/jogos/repositories/in-memory-jogo.repository';
+import { InMemoryGrupoUsuarioRepository } from '@src/modules/grupo-usuario/repositories/in-memory-grupo-usuario.repository';
 import { JogoNaoEncontradoError } from '@src/common/errors/domain-errors/jogos.errors';
 import {
   PalpiteNaoEncontradoError,
@@ -14,6 +15,7 @@ describe('PalpiteService', () => {
   let service: PalpiteService;
   let palpiteRepo: InMemoryPalpiteRepository;
   let jogoRepo: InMemoryJogoRepository;
+  let grupoUsuarioRepo: InMemoryGrupoUsuarioRepository;
 
   const userId = 'user-1';
   const outroUserId = 'user-2';
@@ -50,12 +52,23 @@ describe('PalpiteService', () => {
   beforeEach(() => {
     palpiteRepo = new InMemoryPalpiteRepository();
     jogoRepo = new InMemoryJogoRepository();
+    grupoUsuarioRepo = new InMemoryGrupoUsuarioRepository();
     jogoRepo.items = [
       { ...jogoAgendado },
       { ...jogoEmAndamento },
       { ...jogoFinalizado },
     ];
-    service = new PalpiteService(palpiteRepo, jogoRepo);
+
+    grupoUsuarioRepo.usuarios = [
+      { id: userId, nome: 'User 1' },
+      { id: outroUserId, nome: 'User 2' },
+    ];
+    grupoUsuarioRepo.items = [
+      { usuarioId: userId, grupoId: 'grupo-1', role: 'MEMBER' },
+      { usuarioId: outroUserId, grupoId: 'grupo-1', role: 'MEMBER' },
+    ];
+
+    service = new PalpiteService(palpiteRepo, jogoRepo, grupoUsuarioRepo);
   });
 
   // ==================== criar ====================
@@ -229,7 +242,7 @@ describe('PalpiteService', () => {
       await palpiteRepo.criar({ usuarioId: userId, jogoId: 'jogo-3', golsCasa: 2, golsFora: 1 });
       await palpiteRepo.criar({ usuarioId: outroUserId, jogoId: 'jogo-3', golsCasa: 1, golsFora: 0 });
 
-      const result = await service.listarPorJogoNoGrupo('jogo-3', 'grupo-1', userId, [userId, outroUserId]);
+      const result = await service.listarPorJogoNoGrupo('jogo-3', 'grupo-1', userId);
 
       expect(result).toHaveLength(2);
     });
@@ -238,21 +251,21 @@ describe('PalpiteService', () => {
       await palpiteRepo.criar({ usuarioId: userId, jogoId: 'jogo-1', golsCasa: 2, golsFora: 1 });
       await palpiteRepo.criar({ usuarioId: outroUserId, jogoId: 'jogo-1', golsCasa: 1, golsFora: 0 });
 
-      const result = await service.listarPorJogoNoGrupo('jogo-1', 'grupo-1', userId, [userId, outroUserId]);
+      const result = await service.listarPorJogoNoGrupo('jogo-1', 'grupo-1', userId);
 
       expect(result).toHaveLength(1);
       expect(result[0].usuarioId).toBe(userId);
     });
 
     it('jogo AGENDADO sem palpite próprio deve retornar lista vazia', async () => {
-      const result = await service.listarPorJogoNoGrupo('jogo-1', 'grupo-1', userId, [userId, outroUserId]);
+      const result = await service.listarPorJogoNoGrupo('jogo-1', 'grupo-1', userId);
 
       expect(result).toHaveLength(0);
     });
 
     it('deve lançar JogoNaoEncontradoError se jogo inexistente', async () => {
       await expect(
-        service.listarPorJogoNoGrupo('inexistente', 'grupo-1', userId, [userId]),
+        service.listarPorJogoNoGrupo('inexistente', 'grupo-1', userId),
       ).rejects.toThrow(JogoNaoEncontradoError);
     });
   });

@@ -7,6 +7,7 @@ export class PalpitePresenter {
       jogoId: palpite.jogoId,
       usuarioId: palpite.usuarioId,
       dataCriacao: palpite.dataCriacao,
+      atualizadoEm: palpite.atualizadoEm,
     };
   }
 }
