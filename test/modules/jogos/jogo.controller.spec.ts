@@ -138,7 +138,7 @@ describe('JogoController', () => {
 
   describe('resetarFonte', () => {
     it('deve chamar jogoService.resetarFonte e retornar via JogoPresenter', async () => {
-      const jogoResetado = { ...jogoData, fonteResultado: 'API_FOOTBALL', externoId: '12345' };
+      const jogoResetado = { ...jogoData, fonteResultado: 'API_EXTERNA', externoId: '12345' };
       mockJogoService.resetarFonte.mockResolvedValue(jogoResetado);
 
       const result = await controller.resetarFonte('jogo-1');

@@ -7,7 +7,7 @@ export interface GrupoRepository {
     permitirPalpiteAutomatico: boolean;
     maxParticipantes: number;
     permitirPalpiteDobrado: boolean;
-    createdById: string;
+    criadoPor: string;
   }): Promise<any>;
   buscarTodos(filtros: { ativo: boolean }): Promise<any[]>;
   buscarPorId(id: string): Promise<any>;

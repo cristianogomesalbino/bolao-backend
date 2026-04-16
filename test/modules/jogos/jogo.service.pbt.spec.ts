@@ -736,7 +736,7 @@ describe('JogoService — Property-Based Tests', () => {
   // ==================== Propriedade 25 ====================
   // Feature: modulo-jogos, Property 25: Edição manual altera fonteResultado
   // Valida: Requisito 14.1
-  it('Propriedade 25: editar jogo API_FOOTBALL muda para MANUAL', async () => {
+  it('Propriedade 25: editar jogo API_EXTERNA muda para MANUAL', async () => {
     await fc.assert(
       fc.asyncProperty(arbDataHora, async (novaData) => {
         jogoRepo.items = [];
@@ -744,7 +744,7 @@ describe('JogoService — Property-Based Tests', () => {
           faseId: 'fase-pc', timeCasaId: 'time-a', timeForaId: 'time-b',
           dataHora: '2026-03-15T16:00:00.000Z',
         }, userId);
-        await jogoRepo.atualizar(jogo.id, { fonteResultado: 'API_FOOTBALL', externoId: '123' });
+        await jogoRepo.atualizar(jogo.id, { fonteResultado: 'API_EXTERNA', externoId: '123' });
 
         const result = await service.atualizar(jogo.id, { dataHora: novaData.toISOString() });
         expect(result.fonteResultado).toBe('MANUAL');
@@ -763,7 +763,7 @@ describe('JogoService — Property-Based Tests', () => {
         await jogoRepo.criar({
           faseId: 'fase-pc', timeCasaId: 'imp-a', timeForaId: 'imp-b',
           dataHora: new Date('2026-06-15T16:00:00Z'), status: 'AGENDADO',
-          fonteResultado: 'API_FOOTBALL', externoId: '5555', criadoPor: userId,
+          fonteResultado: 'API_EXTERNA', externoId: '5555', criadoPor: userId,
           ehJogoVolta: false, grupoIdaVolta: null, temProrrogacao: false, temPenaltis: false,
         });
         const antes = { ...jogoRepo.items[0] };
@@ -780,7 +780,7 @@ describe('JogoService — Property-Based Tests', () => {
   // ==================== Propriedade 27 ====================
   // Feature: modulo-jogos, Property 27: Reset de fonteResultado
   // Valida: Requisito 14.5
-  it('Propriedade 27: resetarFonte muda MANUAL para API_FOOTBALL', async () => {
+  it('Propriedade 27: resetarFonte muda MANUAL para API_EXTERNA', async () => {
     jogoRepo.items = [];
     const jogo = await service.criar({
       faseId: 'fase-pc', timeCasaId: 'time-a', timeForaId: 'time-b',
@@ -789,6 +789,6 @@ describe('JogoService — Property-Based Tests', () => {
     await jogoRepo.atualizar(jogo.id, { fonteResultado: 'MANUAL', externoId: '12345' });
 
     const result = await service.resetarFonte(jogo.id);
-    expect(result.fonteResultado).toBe('API_FOOTBALL');
+    expect(result.fonteResultado).toBe('API_EXTERNA');
   });
 });

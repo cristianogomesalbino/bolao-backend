@@ -228,14 +228,14 @@ describe('JogoService', () => {
       ).rejects.toThrow(JogoNaoEncontradoError);
     });
 
-    it('deve mudar fonteResultado para MANUAL ao atualizar jogo API_FOOTBALL', async () => {
+    it('deve mudar fonteResultado para MANUAL ao atualizar jogo API_EXTERNA', async () => {
       const jogo = await service.criar({
         faseId: 'fase-pc',
         timeCasaId: 'time-a',
         timeForaId: 'time-b',
         dataHora: '2026-03-15T16:00:00.000Z',
       }, userId);
-      await jogoRepo.atualizar(jogo.id, { fonteResultado: 'API_FOOTBALL' });
+      await jogoRepo.atualizar(jogo.id, { fonteResultado: 'API_EXTERNA' });
 
       const result = await service.atualizar(jogo.id, {
         dataHora: '2026-04-01T20:00:00.000Z',
@@ -707,7 +707,7 @@ describe('JogoService', () => {
 
       const result = await service.resetarFonte(jogo.id);
 
-      expect(result.fonteResultado).toBe('API_FOOTBALL');
+      expect(result.fonteResultado).toBe('API_EXTERNA');
     });
 
     it('jogo sem externoId → erro BadRequestException', async () => {

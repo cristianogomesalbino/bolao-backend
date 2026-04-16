@@ -8,9 +8,11 @@ datasource db {
 }
 
 model Campeonato {
-  id         String      @id @default(uuid())
-  nome       String
-  temporadas Temporada[]
+  id           String      @id @default(uuid())
+  nome         String
+  dataCriacao  DateTime    @default(now())
+  atualizadoEm DateTime   @updatedAt
+  temporadas   Temporada[]
 }
 
 model Temporada {
@@ -22,7 +24,8 @@ model Temporada {
   grupos Grupo[]
   fases  Fase[]
 
-  dataCriacao DateTime @default(now())
+  dataCriacao  DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
 }
 
 model Usuario {
@@ -47,40 +50,38 @@ model Usuario {
 }
 
 model Grupo {
-  id          String @id @default(uuid())
-  nome        String @unique @db.VarChar(100)
-  temporadaId String
+  id            String  @id @default(uuid())
+  nome          String  @unique @db.VarChar(100)
+  temporadaId   String
+  criadoPor     String
 
-  privado       Boolean
-  codigoConvite String? @unique @db.VarChar(8)
+  privado                   Boolean
+  codigoConvite             String?  @unique @db.VarChar(8)
+  permitirPalpiteAutomatico Boolean  @default(false)
+  permitirPalpiteDobrado    Boolean  @default(false)
+  maxParticipantes          Int      @default(50)
 
-  permitirPalpiteAutomatico Boolean @default(false)
-  maxParticipantes          Int     @default(50)
+  ativo        Boolean  @default(true)
+  dataCriacao  DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
 
-  ativo       Boolean  @default(true)
-  dataCriacao DateTime @default(now())
-
-  permitirPalpiteDobrado Boolean @default(false)
-
-  createdById String
-  createdBy   Usuario @relation("GrupoCriador", fields: [createdById], references: [id])
-
-  temporada Temporada      @relation(fields: [temporadaId], references: [id])
-  usuarios  GrupoUsuario[]
+  criador    Usuario        @relation("GrupoCriador", fields: [criadoPor], references: [id])
+  temporada  Temporada      @relation(fields: [temporadaId], references: [id])
+  usuarios   GrupoUsuario[]
   palpitesDobrados PalpiteDobrado[]
   tokensDobro      TokenDobro[]
 }
 
 model GrupoUsuario {
-  id String @id @default(uuid())
-
-  usuario   Usuario @relation(fields: [usuarioId], references: [id])
+  id        String    @id @default(uuid())
   usuarioId String
+  grupoId   String
+  role        GrupoRole @default(MEMBER)
+  dataCriacao DateTime  @default(now())
+  atualizadoEm DateTime @updatedAt
 
-  grupo   Grupo  @relation(fields: [grupoId], references: [id])
-  grupoId String
-
-  role GrupoRole @default(MEMBER)
+  usuario Usuario @relation(fields: [usuarioId], references: [id])
+  grupo   Grupo   @relation(fields: [grupoId], references: [id])
 
   @@unique([usuarioId, grupoId])
 }
@@ -96,12 +97,12 @@ enum GrupoRole {
 }
 
 model RefreshToken {
-  id        String   @id @default(uuid())
-  token     String   @unique
-  usuarioId String
-  usuario   Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
-  expiresAt DateTime
-  createdAt DateTime @default(now())
+  id          String   @id @default(uuid())
+  token       String   @unique
+  usuarioId   String
+  usuario     Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  expiraEm    DateTime
+  dataCriacao DateTime @default(now())
 }
 
 enum TipoFase {
@@ -118,7 +119,7 @@ enum StatusJogo {
 
 enum FonteResultado {
   MANUAL
-  API_FOOTBALL
+  API_EXTERNA
 }
 
 model Fase {
@@ -131,6 +132,7 @@ model Fase {
   temporada    Temporada @relation(fields: [temporadaId], references: [id])
   jogos        Jogo[]
   dataCriacao  DateTime  @default(now())
+  atualizadoEm DateTime  @updatedAt
 
   @@index([temporadaId])
 }
@@ -142,7 +144,8 @@ model Time {
   escudo    String?
   externoId String? @unique
 
-  dataCriacao DateTime @default(now())
+  dataCriacao  DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
 }
 
 model Jogo {

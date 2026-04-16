@@ -13,7 +13,7 @@ export class GrupoPresenter {
       permitirPalpiteDobrado: grupo.permitirPalpiteDobrado,
       ativo: grupo.ativo,
       dataCriacao: grupo.dataCriacao,
-      createdById: grupo.createdById,
+      criadoPor: grupo.criadoPor,
       ...(grupo.temporada && {
         temporada: TemporadaPresenter.toHttp(grupo.temporada),
       }),

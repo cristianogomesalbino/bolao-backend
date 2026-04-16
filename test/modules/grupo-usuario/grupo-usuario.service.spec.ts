@@ -32,7 +32,7 @@ describe('GrupoUsuarioService', () => {
     codigoConvite: 'ABC12345',
     privado: true,
     temporadaId: 'temp-1',
-    createdById: userId,
+    criadoPor: userId,
     permitirPalpiteAutomatico: false,
     dataCriacao: new Date(),
   };

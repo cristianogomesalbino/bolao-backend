@@ -22,7 +22,7 @@ export class PrismaGrupoRepository implements GrupoRepository {
     permitirPalpiteAutomatico: boolean;
     maxParticipantes: number;
     permitirPalpiteDobrado: boolean;
-    createdById: string;
+    criadoPor: string;
   }) {
     return this.prisma.grupo.create({ data, include: includeGrupo });
   }

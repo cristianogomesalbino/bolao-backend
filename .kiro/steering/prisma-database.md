@@ -21,7 +21,7 @@ O schema fica em `prisma/schema.prisma`. Provider: PostgreSQL (Supabase).
 
 - Campeonato 1:N Temporada
 - Temporada 1:N Grupo
-- Usuario 1:N Grupo (criador, via `createdById`)
+- Usuario 1:N Grupo (criador, via `criadoPor`)
 - Usuario N:N Grupo (membros, via GrupoUsuario com role)
 - Usuario 1:N RefreshToken (cascade delete)
 

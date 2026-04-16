@@ -44,7 +44,7 @@ export class GruposService {
       permitirPalpiteAutomatico: dto.permitirPalpiteAutomatico ?? false,
       maxParticipantes: dto.maxParticipantes ?? 50,
       permitirPalpiteDobrado: dto.permitirPalpiteDobrado ?? false,
-      createdById: userId,
+      criadoPor: userId,
     });
 
     await this.grupoUsuarioRepo.criar({

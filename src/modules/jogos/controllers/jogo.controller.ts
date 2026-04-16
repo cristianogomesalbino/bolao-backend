@@ -106,7 +106,7 @@ export class JogoController {
     return this.jogoService.sincronizarPlacares(faseId);
   }
 
-  @ApiOperation({ summary: 'Resetar fonte de resultado para API_FOOTBALL' })
+  @ApiOperation({ summary: 'Resetar fonte de resultado para API_EXTERNA' })
   @ApiResponse({ status: 200, description: 'Fonte resetada com sucesso' })
   @Patch('jogos/:id/resetar-fonte')
   async resetarFonte(

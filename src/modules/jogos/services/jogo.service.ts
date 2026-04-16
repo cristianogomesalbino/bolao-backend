@@ -117,9 +117,9 @@ export class JogoService {
       this.validarTransicaoStatus(jogo.status, dto.status);
     }
 
-    // Modo híbrido — qualquer edição manual em jogo API_FOOTBALL flip para MANUAL
+    // Modo híbrido — qualquer edição manual em jogo API_EXTERNA flip para MANUAL
     const updateData: any = { ...dto };
-    if (jogo.fonteResultado === 'API_FOOTBALL') {
+    if (jogo.fonteResultado === 'API_EXTERNA') {
       updateData.fonteResultado = 'MANUAL';
     }
 
@@ -512,7 +512,7 @@ export class JogoService {
         vencedorId,
         ehJogoVolta: false,
         grupoIdaVolta: null,
-        fonteResultado: 'API_FOOTBALL',
+        fonteResultado: 'API_EXTERNA',
         externoId: normalizado.externoId,
         criadoPor: userId,
       });
@@ -563,7 +563,7 @@ export class JogoService {
 
     const jogos = await this.jogoRepo.buscarPorFase(faseId);
     const jogosComExterno = jogos.filter(
-      (j: any) => j.externoId != null && j.fonteResultado === 'API_FOOTBALL',
+      (j: any) => j.externoId != null && j.fonteResultado === 'API_EXTERNA',
     );
 
     if (jogosComExterno.length === 0) {
@@ -672,7 +672,7 @@ export class JogoService {
       throw ErrorFactory.badRequest('Jogo não possui externoId para resetar fonte');
     }
 
-    return this.jogoRepo.atualizar(id, { fonteResultado: 'API_FOOTBALL' });
+    return this.jogoRepo.atualizar(id, { fonteResultado: 'API_EXTERNA' });
   }
 
   // --- Status híbrido ---

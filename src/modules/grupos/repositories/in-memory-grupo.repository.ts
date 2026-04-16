@@ -12,7 +12,7 @@ export class InMemoryGrupoRepository implements GrupoRepository {
     permitirPalpiteAutomatico: boolean;
     maxParticipantes: number;
     permitirPalpiteDobrado: boolean;
-    createdById: string;
+    criadoPor: string;
   }) {
     const grupo = {
       id: crypto.randomUUID(),
@@ -23,7 +23,7 @@ export class InMemoryGrupoRepository implements GrupoRepository {
       permitirPalpiteAutomatico: data.permitirPalpiteAutomatico,
       maxParticipantes: data.maxParticipantes,
       permitirPalpiteDobrado: data.permitirPalpiteDobrado,
-      createdById: data.createdById,
+      criadoPor: data.criadoPor,
       ativo: true,
       dataCriacao: new Date(),
     };
