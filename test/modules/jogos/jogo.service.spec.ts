@@ -3,6 +3,7 @@ import { BadRequestException } from '@nestjs/common';
 import { JogoService } from '@src/modules/jogos/services/jogo.service';
 import { InMemoryJogoRepository } from '@src/modules/jogos/repositories/in-memory-jogo.repository';
 import { InMemoryFaseRepository } from '@src/modules/jogos/repositories/in-memory-fase.repository';
+import { InMemoryTimeRepository } from '@src/modules/times/repositories/in-memory-time.repository';
 import { FutebolApiService } from '@src/modules/jogos/services/futebol-api.service';
 import {
   FaseNaoEncontradaError,
@@ -24,6 +25,7 @@ describe('JogoService', () => {
   let service: JogoService;
   let jogoRepo: InMemoryJogoRepository;
   let faseRepo: InMemoryFaseRepository;
+  let timeRepo: InMemoryTimeRepository;
   let futebolApiService: FutebolApiService;
 
   const userId = 'user-1';
@@ -61,6 +63,7 @@ describe('JogoService', () => {
   beforeEach(() => {
     jogoRepo = new InMemoryJogoRepository();
     faseRepo = new InMemoryFaseRepository();
+    timeRepo = new InMemoryTimeRepository();
     faseRepo.items = [
       { ...fasePontosCorridos },
       { ...faseMataMata },
@@ -74,7 +77,7 @@ describe('JogoService', () => {
       mapearStatus: vi.fn(),
     } as any;
 
-    service = new JogoService(jogoRepo, faseRepo, futebolApiService);
+    service = new JogoService(jogoRepo, faseRepo, futebolApiService, timeRepo);
   });
 
   // ==================== criar ====================

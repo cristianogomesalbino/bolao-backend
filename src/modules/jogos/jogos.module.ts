@@ -8,9 +8,10 @@ import { JOGOS } from './jogos.constants';
 import { PrismaFaseRepository } from './repositories/prisma-fase.repository';
 import { PrismaJogoRepository } from './repositories/prisma-jogo.repository';
 import { TemporadasModule } from '../temporadas/temporadas.module';
+import { TimesModule } from '../times/times.module';
 
 @Module({
-  imports: [TemporadasModule],
+  imports: [TemporadasModule, TimesModule],
   controllers: [FaseController, JogoController],
   providers: [
     FaseService,

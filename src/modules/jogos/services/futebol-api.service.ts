@@ -80,6 +80,18 @@ export class FutebolApiService implements OnModuleInit {
       status,
       penaltisCasa: jogo.placar_penaltis_mandante ?? null,
       penaltisFora: jogo.placar_penaltis_visitante ?? null,
+      timeCasa: {
+        externoId: String(jogo.equipes.mandante.id),
+        nome: jogo.equipes.mandante.nome_popular,
+        sigla: jogo.equipes.mandante.sigla,
+        escudo: jogo.equipes.mandante.escudo,
+      },
+      timeFora: {
+        externoId: String(jogo.equipes.visitante.id),
+        nome: jogo.equipes.visitante.nome_popular,
+        sigla: jogo.equipes.visitante.sigla,
+        escudo: jogo.equipes.visitante.escudo,
+      },
     };
   }
 

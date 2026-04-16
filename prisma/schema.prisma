@@ -135,6 +135,16 @@ model Fase {
   @@index([temporadaId])
 }
 
+model Time {
+  id        String  @id @default(uuid())
+  nome      String
+  sigla     String  @unique
+  escudo    String?
+  externoId String? @unique
+
+  dataCriacao DateTime @default(now())
+}
+
 model Jogo {
   id                     String         @id @default(uuid())
   faseId                 String
@@ -164,6 +174,8 @@ model Jogo {
   palpitesDobrados PalpiteDobrado[]
 
   @@index([faseId])
+  @@index([timeCasaId])
+  @@index([timeForaId])
 }
 
 model Palpite {

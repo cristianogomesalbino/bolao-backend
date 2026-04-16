@@ -3,6 +3,7 @@ import fc from 'fast-check';
 import { JogoService } from '@src/modules/jogos/services/jogo.service';
 import { InMemoryJogoRepository } from '@src/modules/jogos/repositories/in-memory-jogo.repository';
 import { InMemoryFaseRepository } from '@src/modules/jogos/repositories/in-memory-fase.repository';
+import { InMemoryTimeRepository } from '@src/modules/times/repositories/in-memory-time.repository';
 import {
   TimesIguaisError,
   JogoFinalizadoError,
@@ -17,6 +18,7 @@ describe('JogoService — Property-Based Tests', () => {
   let service: JogoService;
   let jogoRepo: InMemoryJogoRepository;
   let faseRepo: InMemoryFaseRepository;
+  let timeRepo: InMemoryTimeRepository;
 
   const userId = 'user-pbt';
 
@@ -53,6 +55,7 @@ describe('JogoService — Property-Based Tests', () => {
   beforeEach(() => {
     jogoRepo = new InMemoryJogoRepository();
     faseRepo = new InMemoryFaseRepository();
+    timeRepo = new InMemoryTimeRepository();
     faseRepo.items = [
       { ...fasePontosCorridos },
       { ...faseMataMata },
@@ -64,7 +67,7 @@ describe('JogoService — Property-Based Tests', () => {
       normalizarJogo: vi.fn(),
       mapearStatus: vi.fn(),
     } as any;
-    service = new JogoService(jogoRepo, faseRepo, futebolApiService);
+    service = new JogoService(jogoRepo, faseRepo, futebolApiService, timeRepo);
   });
 
   // Generators reutilizáveis
@@ -629,11 +632,12 @@ describe('JogoService — Property-Based Tests', () => {
       normalizarJogo: vi.fn(),
       mapearStatus: vi.fn(),
     } as any;
-    const svc = new JogoService(jogoRepo, faseRepo, mockApi);
+    const svc = new JogoService(jogoRepo, faseRepo, mockApi, timeRepo);
 
     await fc.assert(
       fc.asyncProperty(fc.integer({ min: 1, max: 5 }), async (n) => {
         jogoRepo.items = [];
+        timeRepo.items = [];
         const jogosApi = Array.from({ length: n }, (_, i) => ({
           id: 1000 + i,
           data_realizacao: '2026-06-15T16:00:00Z',
@@ -642,8 +646,8 @@ describe('JogoService — Property-Based Tests', () => {
           placar_penaltis_mandante: null,
           placar_penaltis_visitante: null,
           equipes: {
-            mandante: { id: 100 + i, nome_popular: `Time ${100 + i}` },
-            visitante: { id: 200 + i, nome_popular: `Time ${200 + i}` },
+            mandante: { id: 100 + i, nome_popular: `Time ${100 + i}`, sigla: `T${100 + i}`, escudo: null },
+            visitante: { id: 200 + i, nome_popular: `Time ${200 + i}`, sigla: `T${200 + i}`, escudo: null },
           },
           transmissao: { broadcast: { id: 'PRE_JOGO' } },
           jogo_ja_comecou: false,
@@ -659,6 +663,18 @@ describe('JogoService — Property-Based Tests', () => {
           status: 'AGENDADO',
           penaltisCasa: null,
           penaltisFora: null,
+          timeCasa: {
+            externoId: String(jogo.equipes.mandante.id),
+            nome: jogo.equipes.mandante.nome_popular,
+            sigla: `S${jogo.equipes.mandante.id}`,
+            escudo: null,
+          },
+          timeFora: {
+            externoId: String(jogo.equipes.visitante.id),
+            nome: jogo.equipes.visitante.nome_popular,
+            sigla: `S${jogo.equipes.visitante.id}`,
+            escudo: null,
+          },
         }));
 
         const r1 = await svc.importarJogos(2026, 1, 'fase-pc', userId);
@@ -682,7 +698,7 @@ describe('JogoService — Property-Based Tests', () => {
       normalizarJogo: vi.fn(),
       mapearStatus: vi.fn(),
     } as any;
-    const svc = new JogoService(jogoRepo, faseRepo, mockApi);
+    const svc = new JogoService(jogoRepo, faseRepo, mockApi, timeRepo);
 
     jogoRepo.items = [];
     await jogoRepo.criar({

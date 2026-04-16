@@ -1,7 +1,9 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { JOGOS } from '../jogos.constants';
+import { TIMES } from '../../times/time.constants';
 import type { JogoRepository } from '../repositories/jogo.repository.interface';
 import type { FaseRepository } from '../repositories/fase.repository.interface';
+import type { TimeRepository } from '../../times/repositories/time.repository.interface';
 import { FutebolApiService } from './futebol-api.service';
 import { ErrorFactory } from '../../../common/errors/error.factory';
 import { CriarJogoDto } from '../dto/criar-jogo.dto';
@@ -39,6 +41,8 @@ export class JogoService {
     @Inject(JOGOS.FASE_REPOSITORY_TOKEN)
     private readonly faseRepo: FaseRepository,
     private readonly futebolApiService: FutebolApiService,
+    @Inject(TIMES.REPOSITORY_TOKEN)
+    private readonly timeRepo: TimeRepository,
   ) {}
 
   async criar(dto: CriarJogoDto & { faseId: string }, userId: string) {
@@ -474,22 +478,27 @@ export class JogoService {
       jogosExistentes.filter((j: any) => j.externoId).map((j: any) => j.externoId),
     );
 
+    // Normalizar todos os jogos e resolver times em batch (evita N+1)
+    const normalizados = jogosApi.map((j: any) => this.futebolApiService.normalizarJogo(j));
+    const timesCache = await this.carregarCacheTimes(normalizados);
+
     let importados = 0;
 
-    for (const jogoApi of jogosApi) {
-      const normalizado = this.futebolApiService.normalizarJogo(jogoApi);
-
+    for (const normalizado of normalizados) {
       if (externosExistentes.has(normalizado.externoId)) continue;
+
+      const timeCasa = await this.resolverOuCriarTime(normalizado.timeCasa, timesCache);
+      const timeFora = await this.resolverOuCriarTime(normalizado.timeFora, timesCache);
 
       const vencedorId =
         normalizado.status === 'FINALIZADO' && normalizado.golsCasa != null && normalizado.golsFora != null
-          ? this.determinarVencedorPorPlacar(normalizado.golsCasa, normalizado.golsFora, normalizado.timeCasaId, normalizado.timeForaId)
+          ? this.determinarVencedorPorPlacar(normalizado.golsCasa, normalizado.golsFora, timeCasa.id, timeFora.id)
           : null;
 
       await this.jogoRepo.criar({
         faseId,
-        timeCasaId: normalizado.timeCasaId,
-        timeForaId: normalizado.timeForaId,
+        timeCasaId: timeCasa.id,
+        timeForaId: timeFora.id,
         dataHora: new Date(normalizado.dataHora),
         status: normalizado.status,
         golsCasa: normalizado.golsCasa,
@@ -512,6 +521,36 @@ export class JogoService {
     }
 
     return { importados };
+  }
+
+  private async carregarCacheTimes(normalizados: any[]): Promise<Map<string, any>> {
+    const externoIds = new Set<string>();
+    for (const n of normalizados) {
+      if (n.timeCasa?.externoId) externoIds.add(n.timeCasa.externoId);
+      if (n.timeFora?.externoId) externoIds.add(n.timeFora.externoId);
+    }
+
+    const timesExistentes = await this.timeRepo.buscarPorExternoIds([...externoIds]);
+    const cache = new Map<string, any>();
+    for (const time of timesExistentes) {
+      cache.set(time.externoId, time);
+    }
+    return cache;
+  }
+
+  private async resolverOuCriarTime(
+    timeData: { externoId: string; nome: string; sigla: string; escudo: string },
+    cache: Map<string, any>,
+  ): Promise<any> {
+    const cached = cache.get(timeData.externoId);
+    if (cached) return cached;
+
+    let time = await this.timeRepo.buscarPorExternoId(timeData.externoId);
+    if (!time) {
+      time = await this.timeRepo.criar(timeData);
+    }
+    cache.set(timeData.externoId, time);
+    return time;
   }
 
   // --- Sincronização de placares ---

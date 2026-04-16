@@ -10,6 +10,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { UsuariosModule } from './modules/usuarios/usuarios.module';
 import { GrupoUsuarioModule } from './modules/grupo-usuario/grupo-usuario.module';
 import { JogosModule } from './modules/jogos/jogos.module';
+import { TimesModule } from './modules/times/times.module';
 import { PalpitesModule } from './modules/palpites/palpites.module';
 import { RankingModule } from './modules/ranking/ranking.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
@@ -24,6 +25,7 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
     AuthModule,
     UsuariosModule,
     JogosModule,
+    TimesModule,
     PalpitesModule,
     RankingModule,
   ],
