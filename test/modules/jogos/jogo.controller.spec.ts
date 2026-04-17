@@ -9,6 +9,7 @@ describe('JogoController', () => {
     atualizar: vi.fn(),
     finalizar: vi.fn(),
     buscarPorFase: vi.fn(),
+    buscarPorFaseComDetalhes: vi.fn(),
     buscarPorId: vi.fn(),
     importarJogos: vi.fn(),
     sincronizarPlacares: vi.fn(),
@@ -91,24 +92,32 @@ describe('JogoController', () => {
   });
 
   describe('listar', () => {
-    it('deve chamar jogoService.buscarPorFase e retornar array via JogoPresenter', async () => {
-      mockJogoService.buscarPorFase.mockResolvedValue([jogoData]);
+    it('deve chamar jogoService.buscarPorFaseComDetalhes e retornar fase + jogos', async () => {
+      const faseData = { id: 'fase-1', nome: 'Rodada 1', tipo: 'PONTOS_CORRIDOS', ordem: 1 };
+      mockJogoService.buscarPorFaseComDetalhes.mockResolvedValue({
+        fase: faseData,
+        jogos: [jogoData],
+      });
 
       const result = await controller.listar('fase-1');
 
-      expect(mockJogoService.buscarPorFase).toHaveBeenCalledWith('fase-1');
-      expect(result).toEqual([JogoPresenter.toHttp(jogoData)]);
+      expect(mockJogoService.buscarPorFaseComDetalhes).toHaveBeenCalledWith('fase-1');
+      expect(result).toEqual({
+        fase: { id: 'fase-1', nome: 'Rodada 1', tipo: 'PONTOS_CORRIDOS', ordem: 1 },
+        jogos: [JogoPresenter.toHttp(jogoData, 'PONTOS_CORRIDOS')],
+      });
     });
   });
 
   describe('buscarPorId', () => {
     it('deve chamar jogoService.buscarPorId e retornar via JogoPresenter', async () => {
-      mockJogoService.buscarPorId.mockResolvedValue(jogoData);
+      const jogoComFase = { ...jogoData, fase: { tipo: 'PONTOS_CORRIDOS' } };
+      mockJogoService.buscarPorId.mockResolvedValue(jogoComFase);
 
       const result = await controller.buscarPorId('jogo-1');
 
       expect(mockJogoService.buscarPorId).toHaveBeenCalledWith('jogo-1');
-      expect(result).toEqual(JogoPresenter.toHttp(jogoData));
+      expect(result).toEqual(JogoPresenter.toHttp(jogoComFase, 'PONTOS_CORRIDOS'));
     });
   });
 

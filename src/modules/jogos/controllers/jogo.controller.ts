@@ -67,8 +67,11 @@ export class JogoController {
   async listar(
     @Param('faseId', new ParseUUIDCustomPipe('faseId')) faseId: string,
   ) {
-    const jogos = await this.jogoService.buscarPorFase(faseId);
-    return jogos.map((j) => JogoPresenter.toHttp(j));
+    const { fase, jogos } = await this.jogoService.buscarPorFaseComDetalhes(faseId);
+    return {
+      fase: { id: fase.id, nome: fase.nome, tipo: fase.tipo, ordem: fase.ordem },
+      jogos: jogos.map((j) => JogoPresenter.toHttp(j, fase.tipo)),
+    };
   }
 
   @ApiOperation({ summary: 'Buscar jogo por ID' })
@@ -77,7 +80,8 @@ export class JogoController {
   async buscarPorId(
     @Param('id', new ParseUUIDCustomPipe('id')) id: string,
   ) {
-    return JogoPresenter.toHttp(await this.jogoService.buscarPorId(id));
+    const jogo = await this.jogoService.buscarPorId(id);
+    return JogoPresenter.toHttp(jogo, jogo.fase?.tipo);
   }
 
   @ApiOperation({ summary: 'Importar jogos da API externa (SUPER_ADMIN)' })

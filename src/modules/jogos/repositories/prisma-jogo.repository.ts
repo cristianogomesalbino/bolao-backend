@@ -15,7 +15,7 @@ export class PrismaJogoRepository implements JogoRepository {
   }
 
   buscarPorId(id: string) {
-    return this.prisma.jogo.findUnique({ where: { id } });
+    return this.prisma.jogo.findUnique({ where: { id }, include: { fase: true } });
   }
 
   buscarPorFase(faseId: string) {

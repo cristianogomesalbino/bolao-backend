@@ -446,6 +446,15 @@ export class JogoService {
     return this.jogoRepo.buscarPorFase(faseId);
   }
 
+  async buscarPorFaseComDetalhes(faseId: string) {
+    const fase = await this.faseRepo.buscarPorId(faseId);
+    if (!fase) {
+      throw new FaseNaoEncontradaError();
+    }
+    const jogos = await this.jogoRepo.buscarPorFase(faseId);
+    return { fase, jogos };
+  }
+
   async buscarPorId(id: string) {
     const jogo = await this.jogoRepo.buscarPorId(id);
     if (!jogo) {
