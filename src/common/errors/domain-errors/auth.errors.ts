@@ -28,3 +28,17 @@ export class RefreshExpiradoError extends DomainError {
     super(mensagem);
   }
 }
+
+export class TokenRecuperacaoInvalidoError extends DomainError {
+  readonly statusCode = 400;
+  constructor(mensagem = AUTH.MENSAGENS.TOKEN_RECUPERACAO_INVALIDO) {
+    super(mensagem);
+  }
+}
+
+export class TokenRecuperacaoExpiradoError extends DomainError {
+  readonly statusCode = 400;
+  constructor(mensagem = AUTH.MENSAGENS.TOKEN_RECUPERACAO_EXPIRADO) {
+    super(mensagem);
+  }
+}

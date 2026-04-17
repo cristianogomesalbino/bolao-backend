@@ -126,6 +126,40 @@
               "path": ["auth", "logout"]
             }
           }
+        },
+        {
+          "name": "Esqueci Senha",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"usuario@email.com\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/esqueci-senha",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "esqueci-senha"]
+            }
+          }
+        },
+        {
+          "name": "Resetar Senha",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"token-recebido-por-email\",\n  \"novaSenha\": \"novaSenha123\",\n  \"confirmarSenha\": \"novaSenha123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/resetar-senha",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "resetar-senha"]
+            }
+          }
         }
       ]
     },

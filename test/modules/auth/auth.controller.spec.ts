@@ -5,6 +5,8 @@ const mockAuthService = {
   login: vi.fn(),
   refresh: vi.fn(),
   logout: vi.fn(),
+  solicitarRecuperacao: vi.fn(),
+  resetarSenha: vi.fn(),
 };
 
 describe('AuthController', () => {
@@ -48,6 +50,38 @@ describe('AuthController', () => {
       mockAuthService.logout.mockResolvedValue({ mensagem: 'Logout realizado com sucesso' });
       const result = await controller.logout({ refreshToken: 'valid' });
       expect(result.mensagem).toBe('Logout realizado com sucesso');
+    });
+  });
+
+  describe('esqueciSenha', () => {
+    it('deve chamar authService.solicitarRecuperacao com o email', async () => {
+      mockAuthService.solicitarRecuperacao.mockResolvedValue({
+        mensagem: 'Se o email estiver cadastrado, você receberá as instruções de recuperação',
+      });
+
+      const result = await controller.esqueciSenha({ email: 'joao@example.com' });
+
+      expect(result.mensagem).toBe(
+        'Se o email estiver cadastrado, você receberá as instruções de recuperação',
+      );
+      expect(mockAuthService.solicitarRecuperacao).toHaveBeenCalledWith('joao@example.com');
+    });
+  });
+
+  describe('resetarSenha', () => {
+    it('deve chamar authService.resetarSenha com token e nova senha', async () => {
+      mockAuthService.resetarSenha.mockResolvedValue({
+        mensagem: 'Senha alterada com sucesso',
+      });
+
+      const result = await controller.resetarSenha({
+        token: 'valid-token',
+        novaSenha: 'novaSenha123',
+        confirmarSenha: 'novaSenha123',
+      });
+
+      expect(result.mensagem).toBe('Senha alterada com sucesso');
+      expect(mockAuthService.resetarSenha).toHaveBeenCalledWith('valid-token', 'novaSenha123');
     });
   });
 });

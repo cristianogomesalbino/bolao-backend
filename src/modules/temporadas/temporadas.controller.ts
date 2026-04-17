@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Body } from '@nestjs/common';
 import { TemporadasService } from './temporadas.service';
 import { CreateTemporadaDto } from './dto/create-temporada.dto';
-import { ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiNotFoundResponse } from '@nestjs/swagger';
 import { TEMPORADAS } from './temporadas.constants';
 import { TemporadaPresenter } from '../../common/presenters';
 
@@ -14,6 +14,7 @@ export class TemporadasController {
   @ApiBody({ type: CreateTemporadaDto })
   @ApiResponse({ status: 201, description: 'Temporada criada com sucesso' })
   @ApiResponse({ status: 400, description: 'Dados inválidos (ano ou campeonatoId)' })
+  @ApiNotFoundResponse({ description: 'Campeonato não encontrado' })
   @Post()
   async criarTemporada(@Body() createTemporadaDto: CreateTemporadaDto) {
     return TemporadaPresenter.toHttp(await this.temporadasService.criar(createTemporadaDto));
