@@ -7,3 +7,10 @@ export class CampeonatoNaoEncontradoError extends DomainError {
     super(mensagem);
   }
 }
+
+export class TemporadaOrigemNaoEncontradaError extends DomainError {
+  readonly statusCode = 404;
+  constructor(mensagem = TEMPORADAS.MENSAGENS.TEMPORADA_ORIGEM_NAO_ENCONTRADA) {
+    super(mensagem);
+  }
+}

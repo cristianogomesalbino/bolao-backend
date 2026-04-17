@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { FaseController } from './controllers/fase.controller';
 import { JogoController } from './controllers/jogo.controller';
 import { FaseService } from './services/fase.service';
@@ -11,7 +11,7 @@ import { TemporadasModule } from '../temporadas/temporadas.module';
 import { TimesModule } from '../times/times.module';
 
 @Module({
-  imports: [TemporadasModule, TimesModule],
+  imports: [forwardRef(() => TemporadasModule), TimesModule],
   controllers: [FaseController, JogoController],
   providers: [
     FaseService,
