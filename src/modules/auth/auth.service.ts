@@ -43,7 +43,7 @@ export class AuthService {
     });
 
     const payload = { sub: usuario.id, email: usuario.email, perfil: usuario.perfil };
-    const accessToken = this.jwtService.sign(payload, { expiresIn: '15m' });
+    const accessToken = this.jwtService.sign(payload, { expiresIn: '7d' });
     const refreshToken = this.jwtService.sign(payload, { expiresIn: '7d' });
 
     await this.prisma.refreshToken.create({
@@ -85,7 +85,7 @@ export class AuthService {
     }
 
     const payload = { sub: usuario.id, email: usuario.email, perfil: usuario.perfil };
-    const accessToken = this.jwtService.sign(payload, { expiresIn: '15m' });
+    const accessToken = this.jwtService.sign(payload, { expiresIn: '7d' });
 
     return { accessToken };
   }

@@ -14,7 +14,7 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @ApiOperation({ summary: 'Fazer login' })
-  @ApiResponse({ status: 200, description: 'Login realizado com sucesso.' })
+  @ApiResponse({ status: 201, description: 'Login realizado com sucesso.' })
   @ApiBadRequestResponse({ description: 'Credenciais inválidas.' })
   @Public()
   @Post('login')
