@@ -5,6 +5,8 @@ import { AuthService } from './auth.service';
 import { JwtStrategy } from './jwt.strategy';
 import { GroupRoleGuard } from '../../common/guards/group-role.guard';
 import { SelfOrAdminGuard } from '../../common/guards/self-or-admin.guard';
+import { ResendEmailService } from './email/resend-email.service';
+import { AUTH } from './auth.constants';
 
 @Module({
   imports: [
@@ -19,6 +21,7 @@ import { SelfOrAdminGuard } from '../../common/guards/self-or-admin.guard';
     JwtStrategy,
     GroupRoleGuard,
     SelfOrAdminGuard,
+    { provide: AUTH.EMAIL_SERVICE_TOKEN, useClass: ResendEmailService },
   ],
 })
 export class AuthModule {}

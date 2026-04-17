@@ -18,7 +18,7 @@ API REST para gerenciamento de bolões de campeonatos de futebol.
 ```
 src/
 ├── modules/
-│   ├── auth/               # Autenticação (login, refresh, logout)
+│   ├── auth/               # Autenticação (login, refresh, logout, recuperação de senha)
 │   ├── usuarios/           # Cadastro e gerenciamento de usuários
 │   ├── campeonatos/        # Gerenciamento de campeonatos
 │   ├── temporadas/         # Temporadas dos campeonatos
@@ -97,11 +97,13 @@ sh dev start-prod      # Build e inicia em modo produção
 
 ### Autenticação (`/auth`)
 
-| Método | Rota             | Descrição              | Auth |
-|--------|------------------|------------------------|------|
-| POST   | `/auth/login`    | Login                  | Não  |
-| POST   | `/auth/refresh`  | Renovar token          | Não  |
-| POST   | `/auth/logout`   | Logout                 | JWT  |
+| Método | Rota                    | Descrição                    | Auth |
+|--------|-------------------------|------------------------------|------|
+| POST   | `/auth/login`           | Login                        | Não  |
+| POST   | `/auth/refresh`         | Renovar token                | Não  |
+| POST   | `/auth/logout`          | Logout                       | JWT  |
+| POST   | `/auth/esqueci-senha`   | Solicitar recuperação de senha | Não  |
+| POST   | `/auth/resetar-senha`   | Resetar senha com token      | Não  |
 
 ### Usuários (`/usuarios`)
 

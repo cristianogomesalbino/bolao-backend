@@ -3,6 +3,8 @@ import { ApiTags, ApiOperation, ApiResponse, ApiBadRequestResponse } from '@nest
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RefreshDto } from './dto/refresh.dto';
+import { SolicitarRecuperacaoDto } from './dto/solicitar-recuperacao.dto';
+import { ResetarSenhaDto } from './dto/resetar-senha.dto';
 import { AUTH } from './auth.constants';
 import { Public } from '../../common/decorators/public.decorator';
 
@@ -30,9 +32,27 @@ export class AuthController {
   }
 
   @ApiOperation({ summary: 'Fazer logout' })
-  @ApiResponse({ status: 200, description: 'Logout realizado com sucesso.' })
+  @ApiResponse({ status: 201, description: 'Logout realizado com sucesso.' })
   @Post('logout')
   async logout(@Body() refreshDto: RefreshDto) {
     return this.authService.logout(refreshDto.refreshToken);
+  }
+
+  @ApiOperation({ summary: 'Solicitar recuperação de senha' })
+  @ApiResponse({ status: 201, description: 'Instruções enviadas se o email existir.' })
+  @ApiBadRequestResponse({ description: 'Erro de validação.' })
+  @Public()
+  @Post('esqueci-senha')
+  async esqueciSenha(@Body() dto: SolicitarRecuperacaoDto) {
+    return this.authService.solicitarRecuperacao(dto.email);
+  }
+
+  @ApiOperation({ summary: 'Resetar senha com token de recuperação' })
+  @ApiResponse({ status: 201, description: 'Senha alterada com sucesso.' })
+  @ApiBadRequestResponse({ description: 'Token inválido ou expirado.' })
+  @Public()
+  @Post('resetar-senha')
+  async resetarSenha(@Body() dto: ResetarSenhaDto) {
+    return this.authService.resetarSenha(dto.token, dto.novaSenha);
   }
 }

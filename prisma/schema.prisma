@@ -11,79 +11,192 @@ model Campeonato {
   id           String      @id @default(uuid())
   nome         String
   dataCriacao  DateTime    @default(now())
-  atualizadoEm DateTime   @updatedAt
+  atualizadoEm DateTime    @updatedAt
   temporadas   Temporada[]
 }
 
 model Temporada {
   id           String     @id @default(uuid())
   ano          Int
+  dataCriacao  DateTime   @default(now())
+  atualizadoEm DateTime   @updatedAt
   campeonatoId String
+  fases        Fase[]
+  grupos       Grupo[]
   campeonato   Campeonato @relation(fields: [campeonatoId], references: [id])
-
-  grupos Grupo[]
-  fases  Fase[]
-
-  dataCriacao  DateTime @default(now())
-  atualizadoEm DateTime @updatedAt
 }
 
 model Usuario {
-  id     String  @id @default(uuid())
-  nome   String
-  email  String  @unique
-  senha  String
-  perfil Perfil  @default(USER)
-  ativo  Boolean @default(true)
-
-  gruposCriados Grupo[]        @relation("GrupoCriador")
-  grupos        GrupoUsuario[]
-
-  refreshTokens RefreshToken[]
-
-  palpites       Palpite[]
-  palpitesDobrados PalpiteDobrado[]
-  tokensDobro    TokenDobro[]
-
-  dataCriacao  DateTime @default(now())
-  atualizadoEm DateTime @updatedAt
+  id                String             @id @default(uuid())
+  nome              String
+  email             String             @unique
+  senha             String
+  dataCriacao       DateTime           @default(now())
+  atualizadoEm      DateTime           @updatedAt
+  perfil            Perfil             @default(USER)
+  ativo             Boolean            @default(true)
+  gruposCriados     Grupo[]            @relation("GrupoCriador")
+  grupos            GrupoUsuario[]
+  palpites          Palpite[]
+  palpitesDobrados  PalpiteDobrado[]
+  recuperacoesSenha RecuperacaoSenha[]
+  refreshTokens     RefreshToken[]
+  tokensDobro       TokenDobro[]
 }
 
 model Grupo {
-  id            String  @id @default(uuid())
-  nome          String  @unique @db.VarChar(100)
-  temporadaId   String
-  criadoPor     String
-
+  id                        String           @id @default(uuid())
+  nome                      String           @unique @db.VarChar(100)
+  temporadaId               String
+  criadoPor                 String
   privado                   Boolean
-  codigoConvite             String?  @unique @db.VarChar(8)
-  permitirPalpiteAutomatico Boolean  @default(false)
-  permitirPalpiteDobrado    Boolean  @default(false)
-  maxParticipantes          Int      @default(50)
-
-  ativo        Boolean  @default(true)
-  dataCriacao  DateTime @default(now())
-  atualizadoEm DateTime @updatedAt
-
-  criador    Usuario        @relation("GrupoCriador", fields: [criadoPor], references: [id])
-  temporada  Temporada      @relation(fields: [temporadaId], references: [id])
-  usuarios   GrupoUsuario[]
-  palpitesDobrados PalpiteDobrado[]
-  tokensDobro      TokenDobro[]
+  codigoConvite             String?          @unique @db.VarChar(8)
+  permitirPalpiteAutomatico Boolean          @default(false)
+  maxParticipantes          Int              @default(50)
+  ativo                     Boolean          @default(true)
+  permitirPalpiteDobrado    Boolean          @default(false)
+  dataCriacao               DateTime         @default(now())
+  atualizadoEm              DateTime         @updatedAt
+  criador                   Usuario          @relation("GrupoCriador", fields: [criadoPor], references: [id])
+  temporada                 Temporada        @relation(fields: [temporadaId], references: [id])
+  usuarios                  GrupoUsuario[]
+  palpitesDobrados          PalpiteDobrado[]
+  tokensDobro               TokenDobro[]
 }
 
 model GrupoUsuario {
-  id        String    @id @default(uuid())
-  usuarioId String
-  grupoId   String
-  role        GrupoRole @default(MEMBER)
-  dataCriacao DateTime  @default(now())
-  atualizadoEm DateTime @updatedAt
-
-  usuario Usuario @relation(fields: [usuarioId], references: [id])
-  grupo   Grupo   @relation(fields: [grupoId], references: [id])
+  id           String    @id @default(uuid())
+  usuarioId    String
+  grupoId      String
+  role         GrupoRole @default(MEMBER)
+  dataCriacao  DateTime  @default(now())
+  atualizadoEm DateTime  @updatedAt
+  grupo        Grupo     @relation(fields: [grupoId], references: [id])
+  usuario      Usuario   @relation(fields: [usuarioId], references: [id])
 
   @@unique([usuarioId, grupoId])
+}
+
+model RefreshToken {
+  id          String   @id @default(uuid())
+  token       String   @unique
+  usuarioId   String
+  expiraEm    DateTime
+  dataCriacao DateTime @default(now())
+  usuario     Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+}
+
+model RecuperacaoSenha {
+  id          String   @id @default(uuid())
+  token       String   @unique
+  usuarioId   String
+  expiraEm    DateTime
+  usado       Boolean  @default(false)
+  dataCriacao DateTime @default(now())
+  usuario     Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([usuarioId])
+}
+
+model Fase {
+  id           String    @id @default(uuid())
+  nome         String
+  tipo         TipoFase
+  ordem        Int
+  idaVolta     Boolean   @default(false)
+  temporadaId  String
+  dataCriacao  DateTime  @default(now())
+  atualizadoEm DateTime  @updatedAt
+  temporada    Temporada @relation(fields: [temporadaId], references: [id])
+  jogos        Jogo[]
+
+  @@index([temporadaId])
+}
+
+model Time {
+  id           String   @id @default(uuid())
+  nome         String
+  sigla        String   @unique
+  escudo       String?
+  externoId    String?  @unique
+  dataCriacao  DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+}
+
+model Jogo {
+  id                  String           @id @default(uuid())
+  faseId              String
+  timeCasaId          String
+  timeForaId          String
+  dataHora            DateTime
+  status              StatusJogo       @default(AGENDADO)
+  golsCasa            Int?
+  golsFora            Int?
+  temProrrogacao      Boolean          @default(false)
+  golsProrrogacaoCasa Int?
+  golsProrrogacaoFora Int?
+  temPenaltis         Boolean          @default(false)
+  penaltisCasa        Int?
+  penaltisFora        Int?
+  vencedorId          String?
+  ehJogoVolta         Boolean          @default(false)
+  grupoIdaVolta       String?
+  fonteResultado      FonteResultado   @default(MANUAL)
+  externoId           String?          @unique
+  criadoPor           String
+  dataCriacao         DateTime         @default(now())
+  atualizadoEm        DateTime         @updatedAt
+  fase                Fase             @relation(fields: [faseId], references: [id])
+  palpites            Palpite[]
+  palpitesDobrados    PalpiteDobrado[]
+
+  @@index([faseId])
+  @@index([timeCasaId])
+  @@index([timeForaId])
+}
+
+model Palpite {
+  id           String   @id @default(uuid())
+  usuarioId    String
+  jogoId       String
+  golsCasa     Int
+  golsFora     Int
+  dataCriacao  DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+  jogo         Jogo     @relation(fields: [jogoId], references: [id])
+  usuario      Usuario  @relation(fields: [usuarioId], references: [id])
+
+  @@unique([usuarioId, jogoId])
+  @@index([jogoId])
+  @@index([usuarioId])
+}
+
+model PalpiteDobrado {
+  id          String   @id @default(uuid())
+  usuarioId   String
+  jogoId      String
+  grupoId     String
+  dataCriacao DateTime @default(now())
+  grupo       Grupo    @relation(fields: [grupoId], references: [id])
+  jogo        Jogo     @relation(fields: [jogoId], references: [id])
+  usuario     Usuario  @relation(fields: [usuarioId], references: [id])
+
+  @@unique([usuarioId, jogoId, grupoId])
+  @@index([jogoId, grupoId])
+}
+
+model TokenDobro {
+  id           String           @id @default(uuid())
+  usuarioId    String
+  grupoId      String
+  tipo         TipoTokenDobro
+  motivo       MotivoTokenDobro
+  referenciaId String
+  dataCriacao  DateTime         @default(now())
+  grupo        Grupo            @relation(fields: [grupoId], references: [id])
+  usuario      Usuario          @relation(fields: [usuarioId], references: [id])
+
+  @@index([usuarioId, grupoId])
 }
 
 enum Perfil {
@@ -94,15 +207,6 @@ enum Perfil {
 enum GrupoRole {
   ADMIN
   MEMBER
-}
-
-model RefreshToken {
-  id          String   @id @default(uuid())
-  token       String   @unique
-  usuarioId   String
-  usuario     Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
-  expiraEm    DateTime
-  dataCriacao DateTime @default(now())
 }
 
 enum TipoFase {
@@ -122,97 +226,6 @@ enum FonteResultado {
   API_EXTERNA
 }
 
-model Fase {
-  id           String    @id @default(uuid())
-  nome         String
-  tipo         TipoFase
-  ordem        Int
-  idaVolta     Boolean   @default(false)
-  temporadaId  String
-  temporada    Temporada @relation(fields: [temporadaId], references: [id])
-  jogos        Jogo[]
-  dataCriacao  DateTime  @default(now())
-  atualizadoEm DateTime  @updatedAt
-
-  @@index([temporadaId])
-}
-
-model Time {
-  id        String  @id @default(uuid())
-  nome      String
-  sigla     String  @unique
-  escudo    String?
-  externoId String? @unique
-
-  dataCriacao  DateTime @default(now())
-  atualizadoEm DateTime @updatedAt
-}
-
-model Jogo {
-  id                     String         @id @default(uuid())
-  faseId                 String
-  fase                   Fase           @relation(fields: [faseId], references: [id])
-  timeCasaId             String
-  timeForaId             String
-  dataHora               DateTime
-  status                 StatusJogo     @default(AGENDADO)
-  golsCasa               Int?
-  golsFora               Int?
-  temProrrogacao         Boolean        @default(false)
-  golsProrrogacaoCasa    Int?
-  golsProrrogacaoFora    Int?
-  temPenaltis            Boolean        @default(false)
-  penaltisCasa           Int?
-  penaltisFora           Int?
-  vencedorId             String?
-  ehJogoVolta            Boolean        @default(false)
-  grupoIdaVolta          String?
-  fonteResultado         FonteResultado @default(MANUAL)
-  externoId              String?        @unique
-  criadoPor              String
-  dataCriacao            DateTime       @default(now())
-  atualizadoEm           DateTime       @updatedAt
-
-  palpites       Palpite[]
-  palpitesDobrados PalpiteDobrado[]
-
-  @@index([faseId])
-  @@index([timeCasaId])
-  @@index([timeForaId])
-}
-
-model Palpite {
-  id           String   @id @default(uuid())
-  usuarioId    String
-  jogoId       String
-  golsCasa     Int
-  golsFora     Int
-  dataCriacao  DateTime @default(now())
-  atualizadoEm DateTime @updatedAt
-
-  usuario Usuario @relation(fields: [usuarioId], references: [id])
-  jogo    Jogo    @relation(fields: [jogoId], references: [id])
-
-  @@unique([usuarioId, jogoId])
-  @@index([jogoId])
-  @@index([usuarioId])
-}
-
-model PalpiteDobrado {
-  id          String   @id @default(uuid())
-  usuarioId   String
-  jogoId      String
-  grupoId     String
-  dataCriacao DateTime @default(now())
-
-  usuario Usuario @relation(fields: [usuarioId], references: [id])
-  jogo    Jogo    @relation(fields: [jogoId], references: [id])
-  grupo   Grupo   @relation(fields: [grupoId], references: [id])
-
-  @@unique([usuarioId, jogoId, grupoId])
-  @@index([jogoId, grupoId])
-}
-
 enum TipoTokenDobro {
   CONCESSAO
   UTILIZACAO
@@ -225,19 +238,4 @@ enum MotivoTokenDobro {
   PRIMEIRO_RANKING
   ATIVACAO_DOBRO
   CANCELAMENTO_DOBRO
-}
-
-model TokenDobro {
-  id           String           @id @default(uuid())
-  usuarioId    String
-  grupoId      String
-  tipo         TipoTokenDobro
-  motivo       MotivoTokenDobro
-  referenciaId String
-  dataCriacao  DateTime         @default(now())
-
-  usuario Usuario @relation(fields: [usuarioId], references: [id])
-  grupo   Grupo   @relation(fields: [grupoId], references: [id])
-
-  @@index([usuarioId, grupoId])
 }

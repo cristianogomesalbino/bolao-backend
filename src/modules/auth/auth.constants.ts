@@ -1,5 +1,6 @@
 export const AUTH = {
   TAG: 'Autenticação',
+  EMAIL_SERVICE_TOKEN: 'EMAIL_SERVICE',
   MENSAGENS: {
     CREDENCIAIS_INVALIDAS: 'Credenciais inválidas',
     REFRESH_NAO_FORNECIDO: 'Refresh token não fornecido',
@@ -12,5 +13,10 @@ export const AUTH = {
     SEM_PERMISSAO_GRUPO: 'Sem permissão neste grupo',
     USUARIO_NAO_AUTENTICADO: 'Usuário não autenticado',
     SEM_PERMISSAO_RECURSO: 'Sem permissão para acessar este recurso',
+    RECUPERACAO_EMAIL_ENVIADO:
+      'Se o email estiver cadastrado, você receberá as instruções de recuperação',
+    TOKEN_RECUPERACAO_INVALIDO: 'Token de recuperação inválido',
+    TOKEN_RECUPERACAO_EXPIRADO: 'Token de recuperação expirado',
+    SENHA_RESETADA: 'Senha alterada com sucesso',
   },
 } as const;
