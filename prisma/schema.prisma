@@ -129,6 +129,7 @@ model Jogo {
   timeCasaId          String
   timeForaId          String
   dataHora            DateTime
+  rodada              Int?
   status              StatusJogo       @default(AGENDADO)
   golsCasa            Int?
   golsFora            Int?

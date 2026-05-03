@@ -81,6 +81,7 @@ export class JogoService {
       timeCasaId: dto.timeCasaId,
       timeForaId: dto.timeForaId,
       dataHora: new Date(dto.dataHora),
+      rodada: dto.rodada ?? null,
       status: 'AGENDADO',
       temProrrogacao: false,
       temPenaltis: false,
@@ -506,6 +507,7 @@ export class JogoService {
 
       await this.jogoRepo.criar({
         faseId,
+        rodada,
         timeCasaId: timeCasa.id,
         timeForaId: timeFora.id,
         dataHora: new Date(normalizado.dataHora),

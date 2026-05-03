@@ -3,6 +3,7 @@ export class JogoPresenter {
     const base = {
       id: jogo.id,
       faseId: jogo.faseId,
+      rodada: jogo.rodada,
       timeCasaId: jogo.timeCasaId,
       timeForaId: jogo.timeForaId,
       dataHora: jogo.dataHora,
