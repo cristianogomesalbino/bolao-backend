@@ -20,6 +20,14 @@ lerna-debug.log*
 /.nyc_output
 **/.vite/
 
+# Playwright Integration Tests — resultados gerados no Docker
+/results/allure-report/
+/results/allure-results/
+/results/html/
+/results/index.html
+/tests/Integration/node_modules/
+/tests/Integration/test-results/
+
 # IDEs and editors
 /.idea
 .project

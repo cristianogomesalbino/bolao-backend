@@ -1,0 +1,28 @@
+services:
+  web:
+    image: httpd:2.4
+    volumes:
+      - ../../results:/usr/local/apache2/htdocs/
+    ports:
+      - "2601:80"
+  testes:
+    container_name: bolao-testes-playwright
+    build:
+      dockerfile: docker/playwright/Dockerfile
+      context: ../../
+    env_file:
+      - .env
+    network_mode: host
+    volumes:
+      # Código fonte (read-only) — só o que precisa para rodar os testes
+      - ../../tests/Integration/specs:/opt/tests/specs:ro
+      - ../../tests/Integration/resources:/opt/tests/resources:ro
+      - ../../tests/Integration/playwright.config.ts:/opt/tests/playwright.config.ts:ro
+      - ../../tests/Integration/global-setup.ts:/opt/tests/global-setup.ts:ro
+      - ../../tests/Integration/global-teardown.ts:/opt/tests/global-teardown.ts:ro
+      - ../../tests/Integration/clean-reporter.js:/opt/tests/clean-reporter.js:ro
+      - ../../tests/Integration/allure-suite-fixer.js:/opt/tests/allure-suite-fixer.js:ro
+      # Output (read-write) — só o diretório de relatórios sai do container
+      - ../../results:/opt/tests/results
+    environment:
+      - CI=true

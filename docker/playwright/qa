@@ -1,0 +1,68 @@
+#!/usr/bin/env bash
+set -e
+
+ENV_FILE='.env'
+ENV_FILE_EXAMPLE='.env.example'
+
+create_dotenv() {
+  if [ ! -f "$ENV_FILE" ]; then
+    echo "Criando arquivo de configuração $ENV_FILE..."
+    cp $ENV_FILE_EXAMPLE $ENV_FILE
+  fi
+}
+
+build() {
+  docker compose build
+}
+
+start_server_apache() {
+  docker compose up -d web
+  echo "Relatórios disponíveis em localhost:2601"
+}
+
+stop_server_apache() {
+  docker compose down -v web
+}
+
+setup() {
+  create_dotenv
+  docker compose build
+}
+
+run_tests() {
+  docker compose run --rm testes sh -c \
+    "rm -rf ./results/allure-results/*; npx playwright test; node allure-suite-fixer.js; npx allure-commandline generate ./results/allure-results -o ./results/allure-report --clean || true"
+}
+
+run_specific() {
+  local spec="$*"
+  docker compose run --rm testes sh -c \
+    "rm -rf ./results/allure-results/*; npx playwright test ${spec}; node allure-suite-fixer.js; npx allure-commandline generate ./results/allure-results -o ./results/allure-report --clean || true"
+}
+
+show_commands() {
+  echo
+  echo "Comandos disponíveis:"
+  echo
+  echo "  sh qa build          - (Re)Builda as imagens dos containers"
+  echo "  sh qa setup          - Configura o ambiente para execução dos testes"
+  echo "  sh qa test           - Executa todos os testes e gera relatório Allure"
+  echo "  sh qa test:spec X    - Executa um spec específico e gera relatório"
+  echo "  sh qa server-start   - Inicia servidor web para relatórios (localhost:2601)"
+  echo "  sh qa server-stop    - Para o servidor web"
+  echo
+}
+
+if [ $# -gt 0 ]; then
+  case "$1" in
+    "build") build ;;
+    "server-start") start_server_apache ;;
+    "setup") setup ;;
+    "server-stop") stop_server_apache ;;
+    "test") run_tests ;;
+    "test:spec") shift; run_specific "$@" ;;
+    *) show_commands ;;
+  esac
+else
+  show_commands
+fi
