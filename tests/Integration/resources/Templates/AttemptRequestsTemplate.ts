@@ -24,6 +24,8 @@ export interface AttemptScenario {
   perfil: string;
   method: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
   statusEsperado: number;
+  /** Se definido, o teste é pulado com este motivo */
+  skip?: string;
 }
 
 export interface AttemptMockData {
@@ -402,7 +404,8 @@ export function describeAttemptSuite(
     for (const [i, scenario] of params.scenarios.entries()) {
       const name = `Attempt ${String(i + 1).padStart(2, '0')} - ${scenario.perfil} deve receber ${scenario.statusEsperado}`;
 
-      t(name, async ({ request }) => {
+      const testFn = scenario.skip ? t.skip : t;
+      testFn(name, async ({ request }) => {
         const route = params.routeResolver
           ? params.routeResolver(setupData)
           : params.mockData!.route;
@@ -420,4 +423,93 @@ export function describeAttemptSuite(
       });
     }
   });
+}
+
+// ---- Orquestrador de suite de campos inválidos ----
+
+/**
+ * Tupla de cenário: [campo, valor, statusEsperado, mensagem, skip?]
+ */
+export type InvalidFieldTuple = [string, any, number, string, string?];
+
+export interface InvalidFieldSuiteParams {
+  descricao: string;
+  /** Cenários como tuplas: [campo, valor, status, mensagem, skip?] */
+  scenarios: InvalidFieldTuple[];
+  usuario: { email: string; senha: string };
+  route: string;
+  basePayload: Record<string, any>;
+  seed?: () => Promise<void>;
+  /** Gera campos únicos por cenário para evitar conflitos */
+  uniqueFieldResolver?: (
+    index: number,
+    campo: string,
+  ) => Record<string, any>;
+}
+
+/**
+ * Registra uma suite de testes de campos inválidos.
+ * Equivalente ao "Attempt Requests With Invalid Values In Fields Of The Payload" do Robot.
+ *
+ * Cada cenário é uma tupla: [campo, valor, statusEsperado, mensagem, skip?]
+ *
+ * Uso:
+ * ```ts
+ * describeInvalidFieldSuite(test, {
+ *   descricao: 'Attempt POST /usuarios - Campos Inválidos',
+ *   route: 'usuarios',
+ *   usuario: USUARIO_ATTEMPT_USUARIOS.user,
+ *   basePayload: { nome: 'QA', email: 'qa@teste.qa', senha: 'Teste123!' },
+ *   seed: seedUsuarioAttempt,
+ *   scenarios: [
+ *     ['nome',  EMPTY,          422, 'Nome é obrigatório'],
+ *     ['nome',  CHAR_256,       422, 'Nome deve ter no máximo 255 caracteres', 'Backend não valida'],
+ *     ['email', INVALID_EMAIL,  422, 'Email inválido'],
+ *   ],
+ *   uniqueFieldResolver: (i) => ({ email: `invalid.${i}.${Date.now()}@teste.qa` }),
+ * });
+ * ```
+ */
+export function describeInvalidFieldSuite(
+  t: typeof test,
+  params: InvalidFieldSuiteParams,
+): void {
+  t.describe(params.descricao, () => {
+    if (params.seed) {
+      t.beforeAll(async () => {
+        await params.seed!();
+      });
+    }
+
+    for (const [index, tuple] of params.scenarios.entries()) {
+      const [campo, valor, statusEsperado, mensagem, skip] = tuple;
+      const label = formatFieldLabel(valor);
+      const name = `Attempt ${String(index + 1).padStart(2, '0')} - ${campo} ${label} deve retornar ${statusEsperado}`;
+
+      const testFn = skip ? t.skip : t;
+      testFn(name, async ({ request }) => {
+        const payloadOverrides = params.uniqueFieldResolver
+          ? params.uniqueFieldResolver(index, campo)
+          : {};
+
+        await attemptWithInvalidField(request, {
+          usuario: params.usuario,
+          method: 'POST',
+          route: params.route,
+          basePayload: { ...params.basePayload, ...payloadOverrides },
+          key: campo,
+          inputField: valor,
+          statusEsperado,
+          expectedMessage: mensagem,
+        });
+      });
+    }
+  });
+}
+
+function formatFieldLabel(valor: any): string {
+  if (valor === null) return 'null';
+  if (valor === '') return 'vazio';
+  if (typeof valor === 'number') return 'MAX_INT';
+  return `"${String(valor).substring(0, 20)}"`;
 }

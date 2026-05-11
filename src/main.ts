@@ -1,6 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { ValidationPipe, BadRequestException } from '@nestjs/common';
+import { ValidationPipe, UnprocessableEntityException } from '@nestjs/common';
 import { PrismaExceptionFilter } from './common/filters/prisma-exception.filter';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { DomainExceptionFilter } from './common/filters/domain-exception.filter';
@@ -31,7 +31,7 @@ async function bootstrap() {
       stopAtFirstError: true,
 
       exceptionFactory: (errors) => {
-        const formatErrors = (validationErrors) => {
+        const formatErrors = (validationErrors: any[]): any[] => {
           return validationErrors.flatMap((error) => {
             if (error.children?.length) {
               return formatErrors(error.children);
@@ -44,7 +44,7 @@ async function bootstrap() {
           });
         };
 
-        return new BadRequestException({
+        return new UnprocessableEntityException({
           erros: formatErrors(errors),
         });
       },

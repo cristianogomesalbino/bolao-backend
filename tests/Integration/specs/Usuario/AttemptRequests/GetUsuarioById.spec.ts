@@ -1,11 +1,12 @@
-import { test } from '../../../resources/Base/test-base';
-import { HTTP_UNAUTHORIZED, HTTP_OK } from '../../../resources/Base/constants';
-import { describeAttemptSuite } from '../../../resources/Templates/AttemptRequestsTemplate';
-import * as API from '../../../resources';
 import {
+  test,
+  HTTP_UNAUTHORIZED,
+  HTTP_OK,
+  describeAttemptSuite,
   USUARIO_ATTEMPT_USUARIOS,
   seedUsuarioAttempt,
-} from '../../../resources/Fixtures/SeedBuilders/UsuarioSuiteSeedBuilder';
+  UsuarioRoute,
+} from '../../../resources';
 
 describeAttemptSuite(test, {
   descricao: 'Attempt GET /usuarios/:id',
@@ -18,7 +19,7 @@ describeAttemptSuite(test, {
   seed: seedUsuarioAttempt,
   setup: async (request) => {
     const user = USUARIO_ATTEMPT_USUARIOS.user;
-    const response = await API.UsuarioRoute.getUsuarioMe(request, user);
+    const response = await UsuarioRoute.getUsuarioMe(request, user);
     const body = await response.json();
     return { userId: body.id };
   },

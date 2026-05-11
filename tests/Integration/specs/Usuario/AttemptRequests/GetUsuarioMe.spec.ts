@@ -1,11 +1,12 @@
-import { test } from '../../../resources/Base/test-base';
-import { HTTP_UNAUTHORIZED, HTTP_OK } from '../../../resources/Base/constants';
-import { describeAttemptSuite } from '../../../resources/Templates/AttemptRequestsTemplate';
-import { buildUsuarioMock } from '../../../resources/Fixtures/MockDataBuilders/UsuarioMockDataBuilder';
 import {
+  test,
+  HTTP_UNAUTHORIZED,
+  HTTP_OK,
+  describeAttemptSuite,
+  buildUsuarioMock,
   USUARIO_ATTEMPT_USUARIOS,
   seedUsuarioAttempt,
-} from '../../../resources/Fixtures/SeedBuilders/UsuarioSuiteSeedBuilder';
+} from '../../../resources';
 
 describeAttemptSuite(test, {
   descricao: 'Attempt GET /usuarios/me',

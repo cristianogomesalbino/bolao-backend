@@ -42,8 +42,18 @@ export const MSG_DESATIVE_ANTES_EXCLUIR = 'Desative o grupo antes de excluí-lo'
 
 // Constantes de teste
 export const MINIMUM_RECORD = 1;
-export const CHAR_256 =
-  'Longo preenchimento textual para validação dos limites de caracteres nos campos do payload e dos formulários de cadastro e edição. Utilizando teste automatizado com Playwright com estratégia de templates em fluxos repetidos. Temos aqui 256 caracteres aqui.';
 export const EMAIL_UNAUTHORIZED = 'unauthorized@qa.bolao';
 export const UUID_INEXISTENTE = 'a0000000-0000-4000-a000-000000000000';
 export const UUID_INVALIDO = 'nao-e-um-uuid';
+
+// Valores inválidos para testes de campo
+export const EMPTY = '';
+export const MAX_INT = Number.MAX_SAFE_INTEGER;
+export const INVALID_STRING = 'aaaa';
+export const INVALID_EMAIL = 'nao-e-email';
+export const SHORT_PASSWORD = '123';
+export const SPECIAL_CHARS = '@#$%&*123';
+export const NULL_VALUE = null;
+export const MIN_CHAR = 'aa'
+export const CHAR_256 =
+  'Longo preenchimento textual para validação dos limites de caracteres nos campos do payload e dos formulários de cadastro e edição. Utilizando teste automatizado com Playwright com estratégia de templates em fluxos repetidos. Temos aqui 256 caracteres aqui.';
