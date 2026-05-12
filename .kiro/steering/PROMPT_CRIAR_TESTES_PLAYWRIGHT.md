@@ -14,6 +14,7 @@ A estrutura é organizada em camadas: Base, Database, Routes, Fixtures (DataFact
 docker/playwright/
 ├── .env.example
 ├── .gitignore
+├── .run-counter                # Contador de execuções (gerado automaticamente, gitignored)
 ├── docker-compose.yml
 ├── Dockerfile
 └── qa                          # Script CLI para build/run/relatórios
@@ -25,7 +26,7 @@ tests/Integration/
 ├── global-setup.ts
 ├── global-teardown.ts
 ├── clean-reporter.js           # Reporter customizado (terminal limpo)
-├── allure-suite-fixer.js       # Pós-processador de labels Allure
+├── allure-suite-fixer.js       # Pós-processador de labels Allure (suites + behaviors)
 ├── resources/
 │   ├── index.ts                # 🔑 Barrel file — centraliza TODOS os exports
 │   ├── Base/
@@ -54,7 +55,7 @@ tests/Integration/
 │   ├── Seeds/
 │   │   └── [Entidade]Seed.ts
 │   ├── Templates/
-│   │   ├── AttemptRequestsTemplate.ts  # describeAttemptSuite + attemptRequest + helpers
+│   │   ├── AttemptRequestsTemplate.ts  # describeAttemptSuite + describeInvalidFieldSuite
 │   │   └── ResponseEvaluator.ts        # Avaliação inteligente de resposta
 │   └── Docs/
 │       └── AttemptRequests.ts
@@ -72,11 +73,13 @@ tests/Integration/
     │   └── AttemptRequests/
     │       ├── Get[Entidade].spec.ts
     │       ├── Post[Entidade].spec.ts
+    │       ├── Post[Entidade]InvalidFields.spec.ts
     │       ├── Patch[Entidade].spec.ts
     │       └── Delete[Entidade].spec.ts
     └── ...
 
-results/                        # Relatórios (bind mount do Docker)
+results/                        # Relatórios (bind mount do Docker, gitignored)
+├── .history/                   # Histórico persistente para gráfico de tendência
 ├── allure-results/             # JSONs intermediários
 ├── allure-report/              # Relatório Allure HTML
 └── html/                       # Relatório Playwright HTML
@@ -188,6 +191,11 @@ RESOURCES_URL=http://localhost:3000/
 
 ### 2.4 Script CLI (`docker/playwright/qa`)
 
+O script inclui:
+- **Histórico de tendência** — preserva `results/.history/` entre execuções para o gráfico de tendência do Allure
+- **Contador de execuções** — `docker/playwright/.run-counter` incrementa a cada run
+- **executor.json** — gerado dentro do container com `buildOrder` e `buildName` para labels no gráfico
+
 ```bash
 #!/usr/bin/env bash
 set -e
@@ -216,37 +224,72 @@ setup() {
   docker compose build
 }
 
+generate_executor() {
+  local counter_file=".run-counter"
+  local count=1
+
+  if [ -f "$counter_file" ]; then
+    count=$(( $(cat "$counter_file") + 1 ))
+  fi
+
+  echo "$count" > "$counter_file"
+  echo "${count}"
+}
+
 run_tests() {
+  local count=$(generate_executor)
+  local build_name="Run #${count}"
+  local build_date=$(date '+%d/%m/%Y %H:%M')
   docker compose run --rm testes sh -c \
-    "rm -rf ./results/allure-results/*; npx playwright test; node allure-suite-fixer.js; npx allure-commandline generate ./results/allure-results -o ./results/allure-report --clean || true"
+    "mkdir -p ./results/allure-results ./results/.history; \
+     cp -r ./results/.history/. ./results/allure-results/history 2>/dev/null || true; \
+     rm -f ./results/allure-results/*-result.json ./results/allure-results/*-attachment.* ./results/allure-results/executor.json ./results/allure-results/environment.properties; \
+     npx playwright test; \
+     node allure-suite-fixer.js; \
+     printf '{\"name\":\"QA Local\",\"type\":\"local\",\"buildOrder\":${count},\"buildName\":\"${build_name}\",\"reportName\":\"${build_name} - ${build_date}\"}' > ./results/allure-results/executor.json; \
+     npx allure-commandline generate ./results/allure-results -o ./results/allure-report --clean || true; \
+     rm -rf ./results/.history; \
+     cp -r ./results/allure-report/history ./results/.history 2>/dev/null || true"
 }
 
 run_specific() {
   local spec="$*"
+  local count=$(generate_executor)
+  local build_name="Run #${count}"
+  local build_date=$(date '+%d/%m/%Y %H:%M')
   docker compose run --rm testes sh -c \
-    "rm -rf ./results/allure-results/*; npx playwright test ${spec}; node allure-suite-fixer.js; npx allure-commandline generate ./results/allure-results -o ./results/allure-report --clean || true"
+    "mkdir -p ./results/allure-results ./results/.history; \
+     cp -r ./results/.history/. ./results/allure-results/history 2>/dev/null || true; \
+     rm -f ./results/allure-results/*-result.json ./results/allure-results/*-attachment.* ./results/allure-results/executor.json ./results/allure-results/environment.properties; \
+     npx playwright test ${spec}; \
+     node allure-suite-fixer.js; \
+     printf '{\"name\":\"QA Local\",\"type\":\"local\",\"buildOrder\":${count},\"buildName\":\"${build_name}\",\"reportName\":\"${build_name} - ${build_date}\"}' > ./results/allure-results/executor.json; \
+     npx allure-commandline generate ./results/allure-results -o ./results/allure-report --clean || true; \
+     rm -rf ./results/.history; \
+     cp -r ./results/allure-report/history ./results/.history 2>/dev/null || true"
 }
 
 show_commands() {
   echo
   echo "Comandos disponíveis:"
-  echo "  sh qa build          - (Re)Builda as imagens"
-  echo "  sh qa setup          - Configura ambiente (cria .env + build)"
-  echo "  sh qa test           - Executa todos os testes e gera relatório"
-  echo "  sh qa test:spec X    - Executa spec específico e gera relatório"
-  echo "  sh qa server-start   - Inicia servidor de relatórios (localhost:2601)"
-  echo "  sh qa server-stop    - Para o servidor"
+  echo
+  echo "  sh qa build          - (Re)Builda as imagens dos containers"
+  echo "  sh qa setup          - Configura o ambiente para execução dos testes"
+  echo "  sh qa test           - Executa todos os testes e gera relatório Allure"
+  echo "  sh qa test:spec X    - Executa um spec específico e gera relatório"
+  echo "  sh qa server-start   - Inicia servidor web para relatórios (localhost:2601)"
+  echo "  sh qa server-stop    - Para o servidor web"
   echo
 }
 
 if [ $# -gt 0 ]; then
   case "$1" in
     "build") build ;;
+    "server-start") start_server_apache ;;
     "setup") setup ;;
+    "server-stop") stop_server_apache ;;
     "test") run_tests ;;
     "test:spec") shift; run_specific "$@" ;;
-    "server-start") start_server_apache ;;
-    "server-stop") stop_server_apache ;;
     *) show_commands ;;
   esac
 else
@@ -254,10 +297,30 @@ else
 fi
 ```
 
+#### Fluxo de execução detalhado:
+
+1. `generate_executor` — incrementa `.run-counter` no host (tem permissão de escrita)
+2. Dentro do container:
+   - Copia `results/.history/` → `allure-results/history/` (histórico acumulado)
+   - Limpa apenas JSONs de resultado antigos (preserva `history/`)
+   - Roda Playwright
+   - Roda `allure-suite-fixer.js` (corrige labels)
+   - Gera `executor.json` com número da run e data
+   - `allure generate --clean` (gera relatório com histórico)
+   - Copia `allure-report/history/` → `.history/` (persiste para próxima run)
+
+#### Resetar histórico:
+
+```bash
+rm -f docker/playwright/.run-counter
+rm -rf results/.history
+```
+
 ### 2.5 .gitignore (`docker/playwright/.gitignore`)
 
 ```
 .env
+.run-counter
 ```
 
 ---
@@ -371,56 +434,182 @@ class CleanReporter {
 module.exports = CleanReporter;
 ```
 
-### 3.4 allure-suite-fixer.js (agrupamento por módulo na view Suites)
+### 3.4 allure-suite-fixer.js (agrupamento por módulo + behaviors)
+
+O fixer pós-processa os JSONs de resultado para organizar o relatório em:
+- **Suites:** `parentSuite` (módulo) > `suite` (Permissão | Campos Inválidos | Requests) > `subSuite` (describe)
+- **Behaviors:** `feature` (módulo) > `story` (describe)
 
 ```javascript
+/**
+ * Pós-processador que corrige os labels de suite nos allure-results
+ * para agrupar por módulo na view Suites e Behaviors do Allure.
+ *
+ * Resultado esperado (Suites):
+ *   parentSuite: Usuario
+ *   suite: Permissão | Campos Inválidos | Requests
+ *   subSuite: Attempt POST /usuarios | Attempt POST /usuarios - Campos Inválidos | ...
+ *
+ * Resultado esperado (Behaviors):
+ *   feature: Usuario
+ *   story: Attempt POST /usuarios | Attempt POST /usuarios - Campos Inválidos | ...
+ */
 const fs = require('fs');
 const path = require('path');
 
-const resultsDir = path.resolve(__dirname, 'results/allure-results');
-if (!fs.existsSync(resultsDir)) { process.exit(0); }
+// Quando roda dentro do container, results/ fica em __dirname/results/
+// Quando roda no host, results/ fica na raiz do projeto
+const localResults = path.resolve(__dirname, 'results/allure-results');
+const rootResults = path.resolve(__dirname, '../../results/allure-results');
+const resultsDir = fs.existsSync(localResults) ? localResults : rootResults;
 
-const files = fs.readdirSync(resultsDir).filter(f => f.endsWith('-result.json'));
+if (!fs.existsSync(resultsDir)) {
+  console.log('[allure-suite-fixer] Nenhum resultado encontrado.');
+  process.exit(0);
+}
+
+const files = fs
+  .readdirSync(resultsDir)
+  .filter((f) => f.endsWith('-result.json'));
+
+let count = 0;
 
 for (const file of files) {
   const filePath = path.join(resultsDir, file);
   const data = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+
   const fullName = data.fullName || '';
   const titlePath = data.titlePath || [];
 
-  let modulo = '', isAttempt = false;
+  // Extrai módulo e tipo do spec
+  let modulo = '';
+  let isAttempt = false;
+  let isInvalidFields = false;
+
   const fnMatch = fullName.match(/^([A-Za-z]+)\/(AttemptRequests\/)?/);
+
   if (fnMatch) {
     modulo = fnMatch[1];
     isAttempt = !!fnMatch[2];
   } else {
+    // Attempt specs: fullName aponta pro template
+    // titlePath contém o path do spec real
     for (const part of titlePath) {
       const match = part.match(/^([A-Za-z]+)\/(AttemptRequests\/)?/);
-      if (match) { modulo = match[1]; isAttempt = !!match[2]; break; }
+      if (match) {
+        modulo = match[1];
+        isAttempt = !!match[2];
+        break;
+      }
     }
   }
+
   if (!modulo) continue;
 
-  const suite = isAttempt ? 'Attempt Requests' : 'Requests';
-  let subSuite = '';
-  const describes = titlePath.filter(p =>
-    !p.includes('.spec.ts') && !p.includes('.ts:') &&
-    p !== '..' && p !== 'resources' && p !== 'Templates' &&
-    p !== modulo && p.length > 0
-  );
-  subSuite = describes.length > 0 ? describes[describes.length - 1] : 'Unknown';
+  // Detecta se é InvalidFields pelo nome do spec no titlePath
+  for (const part of titlePath) {
+    if (part.includes('InvalidFields')) {
+      isInvalidFields = true;
+      break;
+    }
+  }
 
-  data.labels = (data.labels || []).filter(l =>
-    !['parentSuite', 'suite', 'subSuite'].includes(l.name)
+  // Define suite baseado no tipo
+  let suite;
+  if (isInvalidFields) {
+    suite = 'Campos Inválidos';
+  } else if (isAttempt) {
+    suite = 'Permissão';
+  } else {
+    suite = 'Requests';
+  }
+
+  // subSuite = o describe do teste (último elemento não-arquivo do titlePath)
+  let subSuite = '';
+  const describes = titlePath.filter(
+    (p) =>
+      !p.includes('.spec.ts') &&
+      !p.includes('.ts:') &&
+      !p.includes('.ts') &&
+      p !== '..' &&
+      p !== 'resources' &&
+      p !== 'Templates' &&
+      p !== modulo &&
+      p.length > 0,
   );
+
+  if (describes.length > 0) {
+    subSuite = describes[describes.length - 1];
+  }
+
+  // Fallback: se não encontrou, usa o nome do arquivo
+  if (!subSuite) {
+    const fileMatch = fullName.match(/([^/]+)\.spec\.ts/);
+    subSuite = fileMatch ? fileMatch[1] : 'Unknown';
+  }
+
+  // Remove labels existentes que vamos sobrescrever
+  data.labels = (data.labels || []).filter(
+    (l) =>
+      !['parentSuite', 'suite', 'subSuite', 'feature', 'story'].includes(
+        l.name,
+      ),
+  );
+
+  // Adiciona labels de Suites (hierarquia na view Suites)
   data.labels.push(
     { name: 'parentSuite', value: modulo },
     { name: 'suite', value: suite },
     { name: 'subSuite', value: subSuite },
   );
+
+  // Adiciona labels de Behaviors (hierarquia na view Behaviors)
+  data.labels.push(
+    { name: 'feature', value: modulo },
+    { name: 'story', value: subSuite },
+  );
+
   fs.writeFileSync(filePath, JSON.stringify(data));
+  count++;
 }
-console.log(`[allure-suite-fixer] ${files.length} resultado(s) processado(s).`);
+
+console.log(
+  `[allure-suite-fixer] ${count} resultado(s) processado(s).`,
+);
+```
+
+#### Hierarquia resultante no Allure:
+
+**View Suites:**
+```
+├── Auth
+│   ├── Permissão
+│   │   ├── Attempt POST /auth/login
+│   │   └── Attempt POST /auth/logout
+│   ├── Campos Inválidos
+│   │   └── Attempt POST /auth/login - Campos Inválidos
+│   └── Requests
+│       └── Auth Suite
+├── Usuario
+│   ├── Permissão
+│   │   ├── Attempt POST /usuarios
+│   │   └── Attempt GET /usuarios/me
+│   ├── Campos Inválidos
+│   │   └── Attempt POST /usuarios - Campos Inválidos
+│   └── Requests
+│       └── Usuario Suite
+```
+
+**View Behaviors:**
+```
+├── Feature: Auth
+│   ├── Story: Attempt POST /auth/login
+│   ├── Story: Attempt POST /auth/logout
+│   └── Story: Auth Suite
+├── Feature: Usuario
+│   ├── Story: Attempt POST /usuarios
+│   ├── Story: Attempt POST /usuarios - Campos Inválidos
+│   └── Story: Usuario Suite
 ```
 
 ### 3.5 tsconfig.json (isolado dos testes)
@@ -936,3 +1125,264 @@ describeAttemptSuite(test, {
 ---
 
 ## 10. BARREL FILE (resources/index.ts)
+
+O barrel file DEVE exportar tudo. Toda vez que criar um novo arquivo, adicionar o export aqui.
+
+```typescript
+// ---- Playwright ----
+export { test, expect } from './Base/test-base';
+
+// ---- Base ----
+export * from './Base/constants';
+export * from './Base/helpers';
+export * from './Base/auth';
+export * from './Base/api';
+export * from './Base/request-logger';
+
+// ---- Database ----
+export * from './Database/connection';
+export * from './Database/database';
+export * as UsuarioDB from './Database/[Entidade]Database';
+
+// ---- DataFactories ----
+export { factoryUsuario } from './Fixtures/DataFactories/UsuarioFactory';
+export { factoryRoute, buildPublicRoutes } from './Fixtures/DataFactories/RouteFactory';
+
+// ---- MockDataBuilders ----
+export { buildAuthMock } from './Fixtures/MockDataBuilders/AuthMockDataBuilder';
+
+// ---- SeedBuilders ----
+export { AUTH_ATTEMPT_USUARIOS, seedAuthAttempt } from './Fixtures/SeedBuilders/AuthSuiteSeedBuilder';
+export { setupGrupoComMembros } from './Fixtures/SeedBuilders/GrupoAttemptSetup';
+
+// ---- Routes ----
+export * as AuthRoute from './Routes/AuthRoute';
+export * as UsuarioRoute from './Routes/UsuarioRoute';
+
+// ---- Seeds ----
+export * from './Seeds/AuthSeed';
+
+// ---- Templates ----
+export * from './Templates/AttemptRequestsTemplate';
+export * from './Templates/ResponseEvaluator';
+```
+
+---
+
+## 11. CONSTANTES DE VALORES INVÁLIDOS
+
+O arquivo `constants.ts` DEVE conter constantes reutilizáveis para testes de campos inválidos. Usar estas constantes em vez de valores literais nos cenários:
+
+```typescript
+// Valores inválidos para testes de campo
+export const EMPTY = '';
+export const NULL_VALUE = null;
+export const MAX_INT = Number.MAX_SAFE_INTEGER;
+export const CHAR_256 = 'Longo preenchimento textual...'; // 256 chars
+export const MIN_CHAR = 'aa';
+export const INVALID_STRING = 'aaaa';
+export const INVALID_EMAIL = 'nao-e-email';
+export const SHORT_PASSWORD = '123';
+export const SPECIAL_CHARS = '@#$%&*123';
+export const UUID_INEXISTENTE = 'a0000000-0000-4000-a000-000000000000';
+export const UUID_INVALIDO = 'nao-e-um-uuid';
+```
+
+---
+
+## 12. TESTES DE CAMPOS INVÁLIDOS (describeInvalidFieldSuite)
+
+### 12.1 Padrão de cenários com tuplas
+
+Cada cenário é uma tupla: `[campo, valor, statusEsperado, mensagem, skip?]`
+
+Usar `// prettier-ignore` antes do array para preservar formato tabular (uma linha por cenário).
+
+Usar alias no import para encurtar: `HTTP_UNPROCESSABLE_ENTITY as HTTP_422`
+
+```typescript
+import {
+  test,
+  HTTP_UNPROCESSABLE_ENTITY as HTTP_422,
+  EMPTY, NULL_VALUE, MAX_INT, CHAR_256,
+  INVALID_EMAIL, SHORT_PASSWORD, SPECIAL_CHARS,
+  describeInvalidFieldSuite,
+  USUARIO_ATTEMPT_USUARIOS,
+  seedUsuarioAttempt,
+} from '../../../resources';
+
+describeInvalidFieldSuite(test, {
+  descricao: 'Attempt POST /usuarios - Campos Inválidos',
+  route: 'usuarios',
+  usuario: USUARIO_ATTEMPT_USUARIOS.user,
+  basePayload: { nome: 'User QA', email: 'qa@teste.qa', senha: 'Teste123!' },
+  seed: seedUsuarioAttempt,
+  uniqueFieldResolver: (i) => ({ email: `invalid.${i}.${Date.now()}@teste.qa` }),
+  // prettier-ignore
+  scenarios: [
+    // [campo,   valor,           status,   mensagem,                                   skip?]
+    ['nome',     EMPTY,           HTTP_422, 'Nome é obrigatório'],
+    ['nome',     NULL_VALUE,      HTTP_422, 'Nome é obrigatório'],
+    ['nome',     CHAR_256,        HTTP_422, 'Nome deve ter no máximo 255 caracteres',   'Backend não valida @MaxLength'],
+    ['nome',     SPECIAL_CHARS,   HTTP_422, 'Nome deve conter apenas letras',           'Backend não valida caracteres'],
+    ['email',    EMPTY,           HTTP_422, 'Email inválido'],
+    ['email',    INVALID_EMAIL,   HTTP_422, 'Email inválido'],
+    ['email',    MAX_INT,         HTTP_422, 'Email inválido'],
+    ['senha',    SHORT_PASSWORD,  HTTP_422, 'Senha deve ter no mínimo 6 caracteres'],
+    ['senha',    EMPTY,           HTTP_422, 'Senha deve ter no mínimo 6 caracteres'],
+  ],
+});
+```
+
+### 12.2 Campo `skip` — Mapeamento de bugs/melhorias
+
+Quando um cenário falha porque o **backend não implementou a validação**, NÃO remover o cenário. Adicionar `skip` com o motivo:
+
+```typescript
+['nome', CHAR_256, HTTP_422, 'Nome deve ter no máximo 255 caracteres', 'Backend não valida @MaxLength'],
+```
+
+O teste aparece como **skipped** no relatório. Quando o backend corrigir, basta remover o `skip`.
+
+### 12.3 Campo `skip` nos AttemptRequests de permissão
+
+O mesmo padrão se aplica ao `describeAttemptSuite`:
+
+```typescript
+scenarios: [
+  { perfil: 'sem_token', method: 'POST', statusEsperado: HTTP_CREATED },
+  { perfil: 'user', method: 'GET', statusEsperado: HTTP_METHOD_NOT_ALLOWED, skip: 'Backend retorna 404 em vez de 405' },
+],
+```
+
+---
+
+## 13. ISOLAMENTO DO TYPESCRIPT (OBRIGATÓRIO)
+
+Após criar a estrutura, SEMPRE verificar e ajustar os arquivos do projeto host:
+
+**tsconfig.json do host** — adicionar `"tests/Integration"` no exclude:
+```json
+{ "exclude": ["node_modules", "dist", "tests/Integration"] }
+```
+
+**tsconfig.build.json do host** — adicionar `"tests"` no exclude:
+```json
+{ "exclude": ["node_modules", "test", "tests", "dist", "**/*spec.ts"] }
+```
+
+**ESLint do host** — adicionar `tests/Integration/**` no ignores:
+```javascript
+{ ignores: ['eslint.config.mjs', 'tests/Integration/**'] }
+```
+
+**Instalar dependências localmente** (para IDE) — opcional, só para resolver tipos:
+```bash
+npm install --prefix=tests/Integration
+```
+
+---
+
+## 14. RELATÓRIO ALLURE — TENDÊNCIA E HISTÓRICO
+
+### 14.1 Gráfico de Tendência
+
+O Allure exibe um gráfico de tendência (stacked area) na Overview mostrando a evolução de passed/failed/skipped ao longo das execuções.
+
+**Como funciona:**
+- `results/.history/` persiste o histórico entre execuções (não é apagado pelo `--clean`)
+- Antes de cada run, o script copia `.history/` → `allure-results/history/`
+- Depois de gerar o relatório, copia `allure-report/history/` → `.history/`
+- O `executor.json` adiciona labels ("Run #1", "Run #2") no eixo X do gráfico
+
+**Resetar histórico:**
+```bash
+rm -f docker/playwright/.run-counter
+rm -rf results/.history
+```
+
+### 14.2 executor.json
+
+Gerado dentro do container a cada execução:
+```json
+{
+  "name": "QA Local",
+  "type": "local",
+  "buildOrder": 1,
+  "buildName": "Run #1",
+  "reportName": "Run #1 - 11/05/2026 20:35"
+}
+```
+
+O `buildOrder` é o número sequencial da run. O `buildName` aparece como label no gráfico de tendência e na seção "Executors" da Overview.
+
+### 14.3 .gitignore do host
+
+Adicionar ao `.gitignore` do projeto host:
+```gitignore
+# Playwright Integration Tests — resultados gerados no Docker
+/results/allure-report/
+/results/allure-results/
+/results/html/
+/results/index.html
+/results/.history/
+/results/.run-counter
+/tests/Integration/node_modules/
+/tests/Integration/test-results/
+```
+
+---
+
+## 15. INSTRUÇÕES PARA O AGENTE
+
+1. Inspecionar o `docker-compose.yml` do projeto host para definir estratégia de rede.
+2. Inspecionar o banco (Prisma schema, migrations) para montar `SCHEMA` e `cleanTestsData`.
+3. Inspecionar controllers para mapear todas as rotas, guards e decorators.
+4. Verificar qual status code o backend retorna para validação de campos (400 ou 422).
+5. Criar TODA a estrutura de pastas conforme seção 1.
+6. Implementar camadas na ordem: Docker → Config → Base → Database → Fixtures → Routes → Seeds → Templates → Specs.
+7. Para cada endpoint, criar: AttemptRequests (permissão) + InvalidFields (validação de payload).
+8. Manter 1 arquivo = 1 endpoint nos AttemptRequests.
+9. Usar `describeAttemptSuite` para permissão e `describeInvalidFieldSuite` para campos inválidos.
+10. Usar constantes de `constants.ts` para valores inválidos — NUNCA valores literais nos cenários.
+11. Usar `// prettier-ignore` antes de arrays de cenários para preservar formato tabular.
+12. Cenários que mapeiam bugs do backend usam `skip` com motivo — NUNCA remover o cenário.
+13. Toda vez que criar um arquivo novo, adicionar export no `resources/index.ts`.
+14. Após criar a estrutura, ajustar `tsconfig.json`, `tsconfig.build.json` e ESLint do host.
+15. Gerar `README.md` dentro de `tests/Integration/` documentando a estrutura.
+16. Rodar Prettier em todos os arquivos antes de finalizar.
+
+---
+
+## 16. README (tests/Integration/README.md)
+
+Gerar README documentando: arquitetura, setup, comandos, padrão de imports, como adicionar novos testes, convenções, templates, debug, e isolamento TypeScript. Adaptar ao projeto real.
+
+---
+
+## 17. CHECKLIST FINAL
+
+- [ ] `docker/playwright/` — Dockerfile, docker-compose.yml, .env.example, qa, .gitignore (com `.run-counter`)
+- [ ] `docker/playwright/qa` — Com histórico de tendência, executor.json e contador
+- [ ] `tests/Integration/playwright.config.ts`, `package.json`, `tsconfig.json`
+- [ ] `tests/Integration/global-setup.ts`, `global-teardown.ts`
+- [ ] `tests/Integration/clean-reporter.js`, `allure-suite-fixer.js` (com labels de Suites + Behaviors)
+- [ ] `resources/index.ts` — Barrel file com TODOS os exports
+- [ ] `resources/Base/` — test-base, constants, helpers, auth, api, request-logger
+- [ ] `resources/Database/` — connection (com SSL), database, [Entidade]Database
+- [ ] `resources/Fixtures/DataFactories/` — Uma factory por entidade + RouteFactory
+- [ ] `resources/Fixtures/MockDataBuilders/` — Um builder por entidade
+- [ ] `resources/Fixtures/SeedBuilders/` — Um por módulo (com ATTEMPT_USUARIOS + seedAttempt)
+- [ ] `resources/Routes/` — Uma por entidade (com logRequestResponse)
+- [ ] `resources/Seeds/` — Um por entidade
+- [ ] `resources/Templates/` — AttemptRequestsTemplate (com `describeInvalidFieldSuite`) + ResponseEvaluator
+- [ ] `specs/Healthcheck/` — Spec mais simples
+- [ ] `specs/[Modulo]/[entidade].spec.ts` — CRUD
+- [ ] `specs/[Modulo]/AttemptRequests/[Metodo][Entidade].spec.ts` — Permissão (1 por endpoint)
+- [ ] `specs/[Modulo]/AttemptRequests/[Metodo][Entidade]InvalidFields.spec.ts` — Campos inválidos
+- [ ] `results/` — Diretório para relatórios (com `.history/` para tendência)
+- [ ] `tsconfig.json` do host — Excluir `tests/Integration`
+- [ ] `tsconfig.build.json` do host — Excluir `tests`
+- [ ] ESLint do host — Ignorar `tests/Integration/**`
+- [ ] `.gitignore` do host — Incluir `results/.history/`, `results/.run-counter`
+- [ ] `README.md` — Documentação completa

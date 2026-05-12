@@ -1,16 +1,24 @@
 /**
  * Pós-processador que corrige os labels de suite nos allure-results
- * para agrupar por módulo na view Suites do Allure.
+ * para agrupar por módulo na view Suites e Behaviors do Allure.
  *
- * Resultado esperado:
- *   parentSuite: Auth
- *   suite: Requests | Attempt Requests
- *   subSuite: Auth Suite | Attempt POST /auth/login | ...
+ * Resultado esperado (Suites):
+ *   parentSuite: Usuario
+ *   suite: Permissão | Campos Inválidos | Requests
+ *   subSuite: Attempt POST /usuarios | Attempt POST /usuarios - Campos Inválidos | ...
+ *
+ * Resultado esperado (Behaviors):
+ *   feature: Usuario
+ *   story: Attempt POST /usuarios | Attempt POST /usuarios - Campos Inválidos | ...
  */
 const fs = require('fs');
 const path = require('path');
 
-const resultsDir = path.resolve(__dirname, 'results/allure-results');
+// Quando roda dentro do container, results/ fica em __dirname/results/
+// Quando roda no host, results/ fica na raiz do projeto
+const localResults = path.resolve(__dirname, 'results/allure-results');
+const rootResults = path.resolve(__dirname, '../../results/allure-results');
+const resultsDir = fs.existsSync(localResults) ? localResults : rootResults;
 
 if (!fs.existsSync(resultsDir)) {
   console.log('[allure-suite-fixer] Nenhum resultado encontrado.');
@@ -30,26 +38,21 @@ for (const file of files) {
   const fullName = data.fullName || '';
   const titlePath = data.titlePath || [];
 
-  // Extrai módulo do fullName
-  // "Auth/login.spec.ts:12:7" → Auth
-  // "../resources/Templates/AttemptRequestsTemplate.ts:408:9" → usa titlePath
+  // Extrai módulo e tipo do spec
   let modulo = '';
   let isAttempt = false;
+  let isInvalidFields = false;
 
-  const fnMatch = fullName.match(
-    /^([A-Za-z]+)\/(AttemptRequests\/)?/,
-  );
+  const fnMatch = fullName.match(/^([A-Za-z]+)\/(AttemptRequests\/)?/);
 
   if (fnMatch) {
     modulo = fnMatch[1];
     isAttempt = !!fnMatch[2];
   } else {
     // Attempt specs: fullName aponta pro template
-    // titlePath: ["..", "resources", ..., "Auth/AttemptRequests/PostLogin.spec.ts", "Attempt POST /auth/login"]
+    // titlePath contém o path do spec real
     for (const part of titlePath) {
-      const match = part.match(
-        /^([A-Za-z]+)\/(AttemptRequests\/)?/,
-      );
+      const match = part.match(/^([A-Za-z]+)\/(AttemptRequests\/)?/);
       if (match) {
         modulo = match[1];
         isAttempt = !!match[2];
@@ -60,20 +63,31 @@ for (const file of files) {
 
   if (!modulo) continue;
 
-  const suite = isAttempt ? 'Attempt Requests' : 'Requests';
+  // Detecta se é InvalidFields pelo nome do spec no titlePath
+  for (const part of titlePath) {
+    if (part.includes('InvalidFields')) {
+      isInvalidFields = true;
+      break;
+    }
+  }
 
-  // subSuite = o describe do teste
-  // titlePath para login.spec: ["Auth", "login.spec.ts", "Auth Suite"]
-  // titlePath para attempt: ["..", "resources", ..., "Auth/.../PostLogin.spec.ts", "Attempt POST /auth/login"]
-  // O último elemento do titlePath é o nome do teste, o penúltimo é o describe
-  // Mas precisamos do describe, não do arquivo
+  // Define suite baseado no tipo
+  let suite;
+  if (isInvalidFields) {
+    suite = 'Campos Inválidos';
+  } else if (isAttempt) {
+    suite = 'Permissão';
+  } else {
+    suite = 'Requests';
+  }
+
+  // subSuite = o describe do teste (último elemento não-arquivo do titlePath)
   let subSuite = '';
-
-  // Filtra titlePath: pega elementos que não são paths de arquivo
   const describes = titlePath.filter(
     (p) =>
       !p.includes('.spec.ts') &&
       !p.includes('.ts:') &&
+      !p.includes('.ts') &&
       p !== '..' &&
       p !== 'resources' &&
       p !== 'Templates' &&
@@ -82,7 +96,6 @@ for (const file of files) {
   );
 
   if (describes.length > 0) {
-    // O último describe é o subSuite
     subSuite = describes[describes.length - 1];
   }
 
@@ -92,17 +105,25 @@ for (const file of files) {
     subSuite = fileMatch ? fileMatch[1] : 'Unknown';
   }
 
-  // Remove labels existentes de suite
+  // Remove labels existentes que vamos sobrescrever
   data.labels = (data.labels || []).filter(
     (l) =>
-      !['parentSuite', 'suite', 'subSuite'].includes(l.name),
+      !['parentSuite', 'suite', 'subSuite', 'feature', 'story'].includes(
+        l.name,
+      ),
   );
 
-  // Adiciona labels corretos
+  // Adiciona labels de Suites (hierarquia na view Suites)
   data.labels.push(
     { name: 'parentSuite', value: modulo },
     { name: 'suite', value: suite },
     { name: 'subSuite', value: subSuite },
+  );
+
+  // Adiciona labels de Behaviors (hierarquia na view Behaviors)
+  data.labels.push(
+    { name: 'feature', value: modulo },
+    { name: 'story', value: subSuite },
   );
 
   fs.writeFileSync(filePath, JSON.stringify(data));

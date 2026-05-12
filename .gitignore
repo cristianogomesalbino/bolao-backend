@@ -25,6 +25,8 @@ lerna-debug.log*
 /results/allure-results/
 /results/html/
 /results/index.html
+/results/.run-counter
+/results/.history/
 /tests/Integration/node_modules/
 /tests/Integration/test-results/
 

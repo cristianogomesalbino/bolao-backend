@@ -29,15 +29,49 @@ setup() {
   docker compose build
 }
 
+generate_executor() {
+  local counter_file=".run-counter"
+  local count=1
+
+  if [ -f "$counter_file" ]; then
+    count=$(( $(cat "$counter_file") + 1 ))
+  fi
+
+  echo "$count" > "$counter_file"
+  echo "${count}"
+}
+
 run_tests() {
+  local count=$(generate_executor)
+  local build_name="Run #${count}"
+  local build_date=$(date '+%d/%m/%Y %H:%M')
   docker compose run --rm testes sh -c \
-    "rm -rf ./results/allure-results/*; npx playwright test; node allure-suite-fixer.js; npx allure-commandline generate ./results/allure-results -o ./results/allure-report --clean || true"
+    "mkdir -p ./results/allure-results ./results/.history; \
+     cp -r ./results/.history/. ./results/allure-results/history 2>/dev/null || true; \
+     rm -f ./results/allure-results/*-result.json ./results/allure-results/*-attachment.* ./results/allure-results/executor.json ./results/allure-results/environment.properties; \
+     npx playwright test; \
+     node allure-suite-fixer.js; \
+     printf '{\"name\":\"QA Local\",\"type\":\"local\",\"buildOrder\":${count},\"buildName\":\"${build_name}\",\"reportName\":\"${build_name} - ${build_date}\"}' > ./results/allure-results/executor.json; \
+     npx allure-commandline generate ./results/allure-results -o ./results/allure-report --clean || true; \
+     rm -rf ./results/.history; \
+     cp -r ./results/allure-report/history ./results/.history 2>/dev/null || true"
 }
 
 run_specific() {
   local spec="$*"
+  local count=$(generate_executor)
+  local build_name="Run #${count}"
+  local build_date=$(date '+%d/%m/%Y %H:%M')
   docker compose run --rm testes sh -c \
-    "rm -rf ./results/allure-results/*; npx playwright test ${spec}; node allure-suite-fixer.js; npx allure-commandline generate ./results/allure-results -o ./results/allure-report --clean || true"
+    "mkdir -p ./results/allure-results ./results/.history; \
+     cp -r ./results/.history/. ./results/allure-results/history 2>/dev/null || true; \
+     rm -f ./results/allure-results/*-result.json ./results/allure-results/*-attachment.* ./results/allure-results/executor.json ./results/allure-results/environment.properties; \
+     npx playwright test ${spec}; \
+     node allure-suite-fixer.js; \
+     printf '{\"name\":\"QA Local\",\"type\":\"local\",\"buildOrder\":${count},\"buildName\":\"${build_name}\",\"reportName\":\"${build_name} - ${build_date}\"}' > ./results/allure-results/executor.json; \
+     npx allure-commandline generate ./results/allure-results -o ./results/allure-report --clean || true; \
+     rm -rf ./results/.history; \
+     cp -r ./results/allure-report/history ./results/.history 2>/dev/null || true"
 }
 
 show_commands() {
