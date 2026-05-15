@@ -1,6 +1,6 @@
 import { test } from '../../../resources/Base/test-base';
 import { HTTP_UNAUTHORIZED, HTTP_OK } from '../../../resources/Base/constants';
-import { describeAttemptSuite } from '../../../resources/Templates/AttemptRequestsTemplate';
+import { describeAttemptSuite } from '../../../resources/Templates/PermissionTemplate';
 import {
   GRUPO_SIMPLE_ATTEMPT_USUARIOS,
   seedGrupoSimpleAttempt,

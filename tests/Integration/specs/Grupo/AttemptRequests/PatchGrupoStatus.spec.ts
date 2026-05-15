@@ -4,7 +4,7 @@ import {
   HTTP_OK,
   HTTP_FORBIDDEN,
 } from '../../../resources/Base/constants';
-import { describeAttemptSuite } from '../../../resources/Templates/AttemptRequestsTemplate';
+import { describeAttemptSuite } from '../../../resources/Templates/PermissionTemplate';
 import { setupGrupoComMembros } from '../../../resources/Fixtures/SeedBuilders/GrupoAttemptSetup';
 import {
   GRUPO_ATTEMPT_USUARIOS,

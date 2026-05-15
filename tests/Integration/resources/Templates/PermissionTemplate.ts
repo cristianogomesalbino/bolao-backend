@@ -1,11 +1,11 @@
 // ============================================================
-// TEMPLATE — Attempt Requests (equivalente ao AttemptRequestsTemplate.robot)
+// TEMPLATE — Permissão (controle de acesso por perfil)
 //
-// 4 keywords principais:
-// 1. attemptRequest           — Testa permissão por perfil (status code)
-// 2. attemptRequestForRules   — Testa regras de acesso com avaliação de comportamento
-// 3. attemptRequestForRulesAuthorized — Testa que perfil autorizado tem acesso
-// 4. attemptWithInvalidField  — Testa payload inválido com validação de mensagem por campo
+// Testa quem pode acessar cada endpoint:
+// 1. attemptRequest                  — Valida status code por perfil
+// 2. attemptRequestForRules          — Valida com avaliação de comportamento
+// 3. attemptRequestForRulesAuthorized — Valida que perfil TEM acesso
+// 4. describeAttemptSuite            — Orquestrador de suite completa
 // ============================================================
 
 import { test, APIRequestContext, expect } from '@playwright/test';
@@ -48,13 +48,13 @@ export type AttemptPayloadResolver = (
   setupData: Record<string, any>,
 ) => Record<string, any>;
 
-export interface AttemptSuiteConfig {
+export interface AttemptSuiteParams {
   descricao: string;
   scenarios: AttemptScenario[];
   usuarios: Record<string, { email: string; senha: string }>;
   mockData?: AttemptMockData;
-  setup?: AttemptSetupFn;
   seed?: () => Promise<void>;
+  setup?: AttemptSetupFn;
   routeResolver?: AttemptRouteResolver;
   payloadResolver?: AttemptPayloadResolver;
 }
@@ -119,7 +119,7 @@ export async function attemptRequest(
   expect(response.status()).toBe(scenario.statusEsperado);
 }
 
-// ---- 2. Attempt Request For Rules Test (com avaliação de comportamento) ----
+// ---- 2. Attempt Request For Rules (com avaliação de comportamento) ----
 
 export async function attemptRequestForRules(
   request: APIRequestContext,
@@ -221,97 +221,6 @@ export async function attemptRequestForRulesAuthorized(
   evaluateResponseForRulesAuthorized(response.status());
 }
 
-// ---- 4. Attempt With Invalid Field (validação de payload por campo) ----
-
-export async function attemptWithInvalidField(
-  request: APIRequestContext,
-  params: {
-    usuario: { email: string; senha: string };
-    method: 'POST' | 'PUT' | 'PATCH';
-    route: string;
-    basePayload: Record<string, any>;
-    key: string;
-    inputField: any;
-    statusEsperado: number;
-    expectedMessage: string;
-    arrayKey?: string;
-  },
-): Promise<void> {
-  const method = params.method.toLowerCase() as 'post' | 'put' | 'patch';
-  const url = `${BASE_URL}${params.route}`;
-
-  const headers = await setHeaders(request, params.usuario);
-
-  // Clona payload e substitui o campo com valor inválido
-  const payload = { ...params.basePayload };
-  payload[params.key] = params.inputField;
-
-  const response = await request[method](url, { headers, data: payload });
-
-  try {
-    await logRequestResponse(params.method, url, payload, headers, response);
-  } catch {
-    /* ignora */
-  }
-
-  expect(response.status()).toBe(params.statusEsperado);
-
-  // Validação de mensagem de erro por campo (busca inteligente de chaves)
-  const body = await response.json();
-  const errors = body.erros || body.errors || body;
-
-  // Monta lista de chaves possíveis para buscar o erro
-  const keysToTry: string[] = [];
-  const basicKey = params.arrayKey
-    ? `${params.key}.${params.arrayKey}`
-    : params.key;
-  keysToTry.push(basicKey);
-
-  // Chave com índice 0 (comum para arrays)
-  if (params.arrayKey) {
-    keysToTry.push(`${params.key}.0.${params.arrayKey}`);
-  } else {
-    keysToTry.push(`${params.key}.0`);
-  }
-
-  // Tenta encontrar o campo de erro
-  let fieldErrors: any = null;
-  if (Array.isArray(errors)) {
-    // Formato padrão do projeto: { erros: [{ campo, mensagens }] }
-    const found = errors.find(
-      (e: any) => e.campo === params.key || e.campo === basicKey,
-    );
-    if (found) {
-      fieldErrors = found.mensagens || found;
-    }
-  } else if (typeof errors === 'object') {
-    for (const tryKey of keysToTry) {
-      if (tryKey in errors) {
-        fieldErrors = errors[tryKey];
-        break;
-      }
-    }
-
-    // Busca parcial: chaves que começam com key. (ex: endereco.0.cep)
-    if (!fieldErrors) {
-      for (const errorKey of Object.keys(errors)) {
-        const startsWith = errorKey.startsWith(`${params.key}.`);
-        const endsWith = params.arrayKey
-          ? errorKey.endsWith(`.${params.arrayKey}`)
-          : true;
-        if (startsWith && endsWith) {
-          fieldErrors = errors[errorKey];
-          break;
-        }
-      }
-    }
-  }
-
-  // Se não encontrou campo específico, busca na string completa
-  const errorsAsString = JSON.stringify(fieldErrors || errors);
-  expect(errorsAsString).toContain(params.expectedMessage);
-}
-
 // ---- Orquestrador: helper para beforeAll ----
 
 export async function runAttemptSetup(
@@ -361,29 +270,10 @@ export function attemptName(index: number, scenario: AttemptScenario): string {
 
 // ---- Orquestrador de suite completa ----
 
-export interface AttemptSuiteParams {
-  descricao: string;
-  scenarios: AttemptScenario[];
-  usuarios: Record<string, { email: string; senha: string }>;
-  mockData?: AttemptMockData;
-  seed?: () => Promise<void>;
-  setup?: AttemptSetupFn;
-  routeResolver?: AttemptRouteResolver;
-  payloadResolver?: AttemptPayloadResolver;
-}
-
 /**
  * Registra uma suite completa de AttemptRequests.
  * O spec passa o `test` importado do @playwright/test para
  * que o path no terminal aponte para o spec, não para o template.
- *
- * Uso:
- * ```ts
- * import { test } from '@playwright/test';
- * import { describeAttemptSuite } from '...Template';
- *
- * describeAttemptSuite(test, { descricao, scenarios, ... });
- * ```
  */
 export function describeAttemptSuite(
   t: typeof test,
@@ -423,93 +313,4 @@ export function describeAttemptSuite(
       });
     }
   });
-}
-
-// ---- Orquestrador de suite de campos inválidos ----
-
-/**
- * Tupla de cenário: [campo, valor, statusEsperado, mensagem, skip?]
- */
-export type InvalidFieldTuple = [string, any, number, string, string?];
-
-export interface InvalidFieldSuiteParams {
-  descricao: string;
-  /** Cenários como tuplas: [campo, valor, status, mensagem, skip?] */
-  scenarios: InvalidFieldTuple[];
-  usuario: { email: string; senha: string };
-  route: string;
-  basePayload: Record<string, any>;
-  seed?: () => Promise<void>;
-  /** Gera campos únicos por cenário para evitar conflitos */
-  uniqueFieldResolver?: (
-    index: number,
-    campo: string,
-  ) => Record<string, any>;
-}
-
-/**
- * Registra uma suite de testes de campos inválidos.
- * Equivalente ao "Attempt Requests With Invalid Values In Fields Of The Payload" do Robot.
- *
- * Cada cenário é uma tupla: [campo, valor, statusEsperado, mensagem, skip?]
- *
- * Uso:
- * ```ts
- * describeInvalidFieldSuite(test, {
- *   descricao: 'Attempt POST /usuarios - Campos Inválidos',
- *   route: 'usuarios',
- *   usuario: USUARIO_ATTEMPT_USUARIOS.user,
- *   basePayload: { nome: 'QA', email: 'qa@teste.qa', senha: 'Teste123!' },
- *   seed: seedUsuarioAttempt,
- *   scenarios: [
- *     ['nome',  EMPTY,          422, 'Nome é obrigatório'],
- *     ['nome',  CHAR_256,       422, 'Nome deve ter no máximo 255 caracteres', 'Backend não valida'],
- *     ['email', INVALID_EMAIL,  422, 'Email inválido'],
- *   ],
- *   uniqueFieldResolver: (i) => ({ email: `invalid.${i}.${Date.now()}@teste.qa` }),
- * });
- * ```
- */
-export function describeInvalidFieldSuite(
-  t: typeof test,
-  params: InvalidFieldSuiteParams,
-): void {
-  t.describe(params.descricao, () => {
-    if (params.seed) {
-      t.beforeAll(async () => {
-        await params.seed!();
-      });
-    }
-
-    for (const [index, tuple] of params.scenarios.entries()) {
-      const [campo, valor, statusEsperado, mensagem, skip] = tuple;
-      const label = formatFieldLabel(valor);
-      const name = `Attempt ${String(index + 1).padStart(2, '0')} - ${campo} ${label} deve retornar ${statusEsperado}`;
-
-      const testFn = skip ? t.skip : t;
-      testFn(name, async ({ request }) => {
-        const payloadOverrides = params.uniqueFieldResolver
-          ? params.uniqueFieldResolver(index, campo)
-          : {};
-
-        await attemptWithInvalidField(request, {
-          usuario: params.usuario,
-          method: 'POST',
-          route: params.route,
-          basePayload: { ...params.basePayload, ...payloadOverrides },
-          key: campo,
-          inputField: valor,
-          statusEsperado,
-          expectedMessage: mensagem,
-        });
-      });
-    }
-  });
-}
-
-function formatFieldLabel(valor: any): string {
-  if (valor === null) return 'null';
-  if (valor === '') return 'vazio';
-  if (typeof valor === 'number') return 'MAX_INT';
-  return `"${String(valor).substring(0, 20)}"`;
 }

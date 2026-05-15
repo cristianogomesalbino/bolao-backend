@@ -1,6 +1,6 @@
 import { test } from '../../../resources/Base/test-base';
 import { HTTP_UNAUTHORIZED, HTTP_OK } from '../../../resources/Base/constants';
-import { describeAttemptSuite } from '../../../resources/Templates/AttemptRequestsTemplate';
+import { describeAttemptSuite } from '../../../resources/Templates/PermissionTemplate';
 import { buildCampeonatoMock } from '../../../resources/Fixtures/MockDataBuilders/CampeonatoMockDataBuilder';
 import {
   CAMPEONATO_ATTEMPT_USUARIOS,

@@ -42,20 +42,23 @@ for (const file of files) {
   let modulo = '';
   let isAttempt = false;
   let isInvalidFields = false;
+  let isSecurity = false;
 
-  const fnMatch = fullName.match(/^([A-Za-z]+)\/(AttemptRequests\/)?/);
+  const fnMatch = fullName.match(/^([A-Za-z]+)\/(AttemptRequests\/|Security\/)?/);
 
   if (fnMatch) {
     modulo = fnMatch[1];
-    isAttempt = !!fnMatch[2];
+    isAttempt = !!fnMatch[2] && fnMatch[2] === 'AttemptRequests/';
+    isSecurity = !!fnMatch[2] && fnMatch[2] === 'Security/';
   } else {
     // Attempt specs: fullName aponta pro template
     // titlePath contém o path do spec real
     for (const part of titlePath) {
-      const match = part.match(/^([A-Za-z]+)\/(AttemptRequests\/)?/);
+      const match = part.match(/^([A-Za-z]+)\/(AttemptRequests\/|Security\/)?/);
       if (match) {
         modulo = match[1];
-        isAttempt = !!match[2];
+        isAttempt = !!match[2] && match[2] === 'AttemptRequests/';
+        isSecurity = !!match[2] && match[2] === 'Security/';
         break;
       }
     }
@@ -63,17 +66,23 @@ for (const file of files) {
 
   if (!modulo) continue;
 
-  // Detecta se é InvalidFields pelo nome do spec no titlePath
+  // Detecta se é InvalidFields ou Security pelo nome do spec no titlePath
   for (const part of titlePath) {
     if (part.includes('InvalidFields')) {
       isInvalidFields = true;
+      break;
+    }
+    if (part.includes('Security')) {
+      isSecurity = true;
       break;
     }
   }
 
   // Define suite baseado no tipo
   let suite;
-  if (isInvalidFields) {
+  if (isSecurity) {
+    suite = 'Segurança';
+  } else if (isInvalidFields) {
     suite = 'Campos Inválidos';
   } else if (isAttempt) {
     suite = 'Permissão';

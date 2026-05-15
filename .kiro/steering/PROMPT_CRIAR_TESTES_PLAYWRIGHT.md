@@ -55,7 +55,9 @@ tests/Integration/
 │   ├── Seeds/
 │   │   └── [Entidade]Seed.ts
 │   ├── Templates/
-│   │   ├── AttemptRequestsTemplate.ts  # describeAttemptSuite + describeInvalidFieldSuite
+│   │   ├── PermissionTemplate.ts       # describeAttemptSuite (controle de acesso)
+│   │   ├── InvalidFieldsTemplate.ts    # describeInvalidFieldSuite (validação de payload)
+│   │   ├── SecurityTemplate.ts         # describeSecuritySuite (SQL Injection, XSS, Mass Assignment, Concorrência, Stacktrace)
 │   │   └── ResponseEvaluator.ts        # Avaliação inteligente de resposta
 │   └── Docs/
 │       └── AttemptRequests.ts
@@ -70,12 +72,15 @@ tests/Integration/
     │       └── PostRefresh.spec.ts
     ├── [Modulo]/
     │   ├── [entidade].spec.ts
-    │   └── AttemptRequests/
-    │       ├── Get[Entidade].spec.ts
-    │       ├── Post[Entidade].spec.ts
-    │       ├── Post[Entidade]InvalidFields.spec.ts
-    │       ├── Patch[Entidade].spec.ts
-    │       └── Delete[Entidade].spec.ts
+    │   ├── AttemptRequests/
+    │   │   ├── Get[Entidade].spec.ts
+    │   │   ├── Post[Entidade].spec.ts
+    │   │   ├── Post[Entidade]InvalidFields.spec.ts
+    │   │   ├── Patch[Entidade].spec.ts
+    │   │   └── Delete[Entidade].spec.ts
+    │   └── Security/
+    │       ├── Post[Entidade]Security.spec.ts
+    │       └── Patch[Entidade]Security.spec.ts
     └── ...
 
 results/                        # Relatórios (bind mount do Docker, gitignored)
@@ -596,6 +601,9 @@ console.log(
 │   │   └── Attempt GET /usuarios/me
 │   ├── Campos Inválidos
 │   │   └── Attempt POST /usuarios - Campos Inválidos
+│   ├── Segurança
+│   │   ├── Segurança POST /usuarios
+│   │   └── Segurança PATCH /usuarios/:id
 │   └── Requests
 │       └── Usuario Suite
 ```
@@ -609,6 +617,7 @@ console.log(
 ├── Feature: Usuario
 │   ├── Story: Attempt POST /usuarios
 │   ├── Story: Attempt POST /usuarios - Campos Inválidos
+│   ├── Story: Segurança POST /usuarios
 │   └── Story: Usuario Suite
 ```
 
@@ -954,22 +963,32 @@ export async function setupGrupoComMembros(
 
 ## 8. CAMADA TEMPLATES (resources/Templates/)
 
-### 8.1 AttemptRequestsTemplate.ts — O coração dos testes de permissão
+Cada template tem uma **única responsabilidade**. Nunca misturar lógicas de domínios diferentes no mesmo arquivo.
 
-O template exporta:
+```
+Templates/
+├── PermissionTemplate.ts       → Controle de acesso (quem pode acessar)
+├── InvalidFieldsTemplate.ts    → Validação de payload (input malformado)
+├── SecurityTemplate.ts         → Ataques e edge cases (SQL Injection, XSS, Mass Assignment, Concorrência, Stacktrace)
+└── ResponseEvaluator.ts        → Avaliação de comportamento de resposta
+```
 
-1. **`describeAttemptSuite(test, params)`** — Orquestrador. O spec chama uma vez e pronto.
-2. **`attemptRequest(request, scenario, config)`** — Executa uma requisição e valida status.
+### 8.1 PermissionTemplate.ts — Controle de acesso por perfil
+
+Exporta:
+
+1. **`describeAttemptSuite(test, params)`** — Orquestrador de suite de permissão.
+2. **`attemptRequest(request, scenario, config)`** — Executa requisição e valida status por perfil.
 3. **`attemptRequestForRules(request, params)`** — Testa regras com avaliação de comportamento.
 4. **`attemptRequestForRulesAuthorized(request, params)`** — Valida que perfil TEM acesso.
-5. **`attemptWithInvalidField(request, params)`** — Testa payload inválido por campo.
-6. **`runAttemptSetup(config, request?)`** — Helper para beforeAll.
+5. **`runAttemptSetup(config, request?)`** — Helper para beforeAll.
 
 ```typescript
 export interface AttemptScenario {
   perfil: string;
   method: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
   statusEsperado: number;
+  skip?: string; // Motivo para pular o cenário
 }
 
 export interface AttemptSuiteParams {
@@ -984,27 +1003,105 @@ export interface AttemptSuiteParams {
 }
 
 export function describeAttemptSuite(t: typeof test, params: AttemptSuiteParams): void {
-  let setupData: Record<string, any> = {};
-
-  t.describe(params.descricao, () => {
-    t.beforeAll(async ({ request }) => {
-      if (params.seed) await params.seed();
-      if (params.setup) setupData = await params.setup(request);
-    });
-
-    for (const [i, scenario] of params.scenarios.entries()) {
-      const name = `Attempt ${String(i + 1).padStart(2, '0')} - ${scenario.perfil} deve receber ${scenario.statusEsperado}`;
-      t(name, async ({ request }) => {
-        const route = params.routeResolver ? params.routeResolver(setupData) : params.mockData!.route;
-        const payload = params.payloadResolver ? params.payloadResolver(setupData) : params.mockData?.payload;
-        await attemptRequest(request, scenario, { mockData: { route, payload }, usuarios: params.usuarios });
-      });
-    }
-  });
+  // ...
 }
 ```
 
-### 8.2 ResponseEvaluator.ts
+### 8.2 InvalidFieldsTemplate.ts — Validação de payload
+
+Exporta:
+
+1. **`describeInvalidFieldSuite(test, params)`** — Orquestrador de suite de campos inválidos.
+2. **`attemptWithInvalidField(request, params)`** — Testa um campo inválido com validação de mensagem.
+
+```typescript
+export type InvalidFieldTuple = [string, any, number, string, string?];
+// [campo, valor, statusEsperado, mensagem, skip?]
+
+export interface InvalidFieldSuiteParams {
+  descricao: string;
+  scenarios: InvalidFieldTuple[];
+  usuario: { email: string; senha: string };
+  route: string;
+  basePayload: Record<string, any>;
+  seed?: () => Promise<void>;
+  uniqueFieldResolver?: (index: number, campo: string) => Record<string, any>;
+}
+
+export function describeInvalidFieldSuite(t: typeof test, params: InvalidFieldSuiteParams): void {
+  // ...
+}
+```
+
+### 8.3 SecurityTemplate.ts — Testes de segurança
+
+Template reutilizável para qualquer endpoint/projeto. Testa a API via HTTP — **agnóstico de linguagem do backend**.
+
+Exporta:
+
+1. **`describeSecuritySuite(test, params)`** — Orquestrador que gera testes de:
+   - **SQL Injection** — N payloads × N campos. Valida que nunca retorna 500 e nunca expõe SQL/stacktrace.
+   - **XSS** — Payloads com `<script>`, `onerror`, event handlers. Valida Content-Type JSON.
+   - **Mass Assignment** — Campos sensíveis (perfil, ativo, role). Valida que não são aplicados.
+   - **Concorrência** — N requests simultâneas com mesmo valor único. Valida que apenas 1 é criada.
+   - **Stacktrace Leak** — Payload que força erro. Valida que não expõe internals.
+
+```typescript
+export interface SecuritySuiteParams {
+  descricao: string;
+  route: string;
+  method: HttpMethod;
+  basePayload: Record<string, any>;
+  usuario?: { email: string; senha: string }; // undefined = rota pública
+  seed?: () => Promise<void>;
+  cleanup?: () => Promise<void>;
+
+  sqlInjection?: {
+    campos: string[];
+    statusEsperado: number | number[];
+  };
+  xss?: {
+    campos: string[];
+    statusEsperado: number | number[];
+  };
+  massAssignment?: {
+    camposSensiveis: Record<string, any>;
+    statusEsperado: number | number[];
+    validar: (body: any) => void | Promise<void>;
+  };
+  concorrencia?: {
+    campoUnico: string;
+    valorUnico: () => string;
+    statusConflito: number;
+    requests?: number; // default: 5
+    cleanup?: (valor: string) => Promise<void>;
+  };
+  stacktrace?: {
+    payloadQueForcaErro: Record<string, any>;
+  };
+}
+
+export function describeSecuritySuite(t: typeof test, params: SecuritySuiteParams): void {
+  // ...
+}
+```
+
+**Constantes de payloads de ataque** (em `constants.ts`):
+
+```typescript
+// SQL Injection
+export const SQL_OR_1_1 = "' OR 1=1 --";
+export const SQL_DROP_TABLE = "'; DROP TABLE \"Usuario\"; --";
+export const SQL_UNION_SELECT = "' UNION SELECT * FROM \"Usuario\" --";
+export const SQL_COMMENT = "admin'--";
+
+// XSS
+export const XSS_SCRIPT_ALERT = '<script>alert(1)</script>';
+export const XSS_IMG_ONERROR = '<img src=x onerror=alert(1)>';
+export const XSS_EVENT_HANDLER = '" onmouseover="alert(1)"';
+```
+
+### 8.4 ResponseEvaluator.ts
 
 ```typescript
 export function evaluateResponseBehavior(status: number, body: any, isPublicRoute: boolean): void {
@@ -1095,8 +1192,41 @@ describeAttemptSuite(test, {
 
 ### 9.4 Spec de AttemptRequests com setup dinâmico (exemplo)
 
+**Regra: quando o setup precisa de um ID, buscar direto no banco — NUNCA chamar outro endpoint.**
+
 ```typescript
-// specs/Grupo/AttemptRequests/PatchGrupo.spec.ts
+// specs/Usuario/AttemptRequests/PatchUsuario.spec.ts — setup simples (busca ID no banco)
+import {
+  test,
+  HTTP_UNAUTHORIZED, HTTP_OK,
+  describeAttemptSuite,
+  buildUsuarioMock,
+  USUARIO_ATTEMPT_USUARIOS,
+  seedUsuarioAttempt,
+  UsuarioDB,
+} from '../../../resources';
+
+describeAttemptSuite(test, {
+  descricao: 'Attempt PATCH /usuarios/:id',
+  scenarios: [
+    { perfil: 'sem_token', method: 'PATCH', statusEsperado: HTTP_UNAUTHORIZED },
+    { perfil: 'usuario_comum', method: 'PATCH', statusEsperado: HTTP_OK },
+    { perfil: 'super_admin', method: 'PATCH', statusEsperado: HTTP_OK },
+  ],
+  usuarios: USUARIO_ATTEMPT_USUARIOS,
+  seed: seedUsuarioAttempt,
+  setup: async () => {
+    const usuario = USUARIO_ATTEMPT_USUARIOS.usuario_comum;
+    const userId = await UsuarioDB.selectUsuarioByEmail(usuario.email);
+    return { userId };
+  },
+  routeResolver: (data) => `usuarios/${data.userId}`,
+  payloadResolver: () => ({ nome: `Attempt Patch ${Date.now()}` }),
+});
+```
+
+```typescript
+// specs/Grupo/AttemptRequests/PatchGrupo.spec.ts — setup complexo (múltiplas entidades)
 import {
   test,
   HTTP_UNAUTHORIZED, HTTP_OK, HTTP_FORBIDDEN,
@@ -1120,6 +1250,125 @@ describeAttemptSuite(test, {
   routeResolver: (data) => `grupos/${data.grupoId}`,
   payloadResolver: () => ({ nome: `Attempt Patch ${Date.now()}` }),
 });
+```
+
+### 9.5 Spec de Security (exemplo)
+
+**1 arquivo = 1 endpoint. Pasta `Security/` dentro do módulo.**
+
+```typescript
+// specs/Usuario/Security/PostUsuarioSecurity.spec.ts
+import { test, expect } from '../../../resources';
+import * as API from '../../../resources';
+import { describeSecuritySuite } from '../../../resources';
+
+describeSecuritySuite(test, {
+  descricao: 'Segurança POST /usuarios',
+  route: 'usuarios',
+  method: 'POST',
+  basePayload: {
+    nome: 'Security QA',
+    email: `security.${Date.now()}@teste.qa`,
+    senha: 'Teste123!',
+  },
+  // Rota pública — sem usuario (não envia token)
+
+  sqlInjection: {
+    campos: ['email', 'nome'],
+    statusEsperado: [API.HTTP_UNPROCESSABLE_ENTITY, API.HTTP_BAD_REQUEST, API.HTTP_CREATED],
+  },
+  xss: {
+    campos: ['nome'],
+    statusEsperado: [API.HTTP_UNPROCESSABLE_ENTITY, API.HTTP_CREATED],
+  },
+  massAssignment: {
+    camposSensiveis: { perfil: 'SUPER_ADMIN', ativo: false },
+    statusEsperado: [API.HTTP_CREATED, API.HTTP_UNPROCESSABLE_ENTITY],
+    validar: (body) => {
+      if (body.perfil) expect(body.perfil).not.toBe('SUPER_ADMIN');
+      if (body.ativo !== undefined) expect(body.ativo).not.toBe(false);
+    },
+  },
+  concorrencia: {
+    campoUnico: 'email',
+    valorUnico: () => `race.${Date.now()}@concorrencia.qa`,
+    statusConflito: API.HTTP_CONFLICT,
+    requests: 5,
+    cleanup: async (email) => { await API.UsuarioDB.deleteUsuarioByEmail(email); },
+  },
+  stacktrace: {
+    payloadQueForcaErro: { email: null, senha: null, nome: null },
+  },
+});
+```
+
+### 9.6 Isolamento de testes (OBRIGATÓRIO)
+
+Cada teste DEVE ser independente e paralelizável:
+
+- **Setup próprio** — cada teste cria seus dados com identificador único (`Date.now()`)
+- **Cleanup próprio** — cada teste deleta o que criou no final
+- **Sem estado compartilhado** — NUNCA usar variáveis entre testes
+- **Sem `mode: 'serial'`** — testes não devem depender de ordem de execução
+- **Prefixo `qa.`** — emails de teste usam `qa.caso01.${Date.now()}@dominio.qa`
+
+```typescript
+test('Caso 01 - Criar usuário', async ({ request }) => {
+  // Setup — dados únicos para este teste
+  const email = `qa.caso01.${Date.now()}@post.qa`;
+  const payload = { nome: 'QA', email, senha: 'Teste123!' };
+
+  const response = await API.UsuarioRoute.postUsuario(request, payload);
+  expect(response.status()).toBe(API.HTTP_CREATED);
+
+  // Cleanup — remove o que criou
+  await API.UsuarioDB.deleteUsuarioByEmail(email);
+});
+```
+
+### 9.7 test.step para legibilidade no Allure (OBRIGATÓRIO)
+
+Usar `test.step()` para agrupar asserções com nomes descritivos. Sem isso, o Allure mostra apenas `Expect "toBe"` genérico.
+
+```typescript
+test('Caso 03 - Buscar perfil', async ({ request }) => {
+  const response = await API.UsuarioRoute.getUsuarioMe(request, usuario);
+  const body = await response.json();
+
+  await test.step('Deve retornar 200 OK', async () => {
+    expect(response.status()).toBe(API.HTTP_OK);
+  });
+
+  await test.step('Deve conter todos os campos do presenter', async () => {
+    expect(body).toHaveProperty('id');
+    expect(body).toHaveProperty('nome');
+    expect(body).toHaveProperty('email');
+  });
+
+  await test.step('Não deve expor campos sensíveis', async () => {
+    expect(body).not.toHaveProperty('senha');
+  });
+});
+```
+
+### 9.8 Validação com banco de dados
+
+Quando relevante, validar que a operação persistiu corretamente no banco:
+
+```typescript
+await test.step('Deve persistir o novo nome no banco de dados', async () => {
+  const usuarioDB = await API.UsuarioDB.selectUsuarioById(me.id);
+  expect(usuarioDB).not.toBeNull();
+  expect(usuarioDB!.nome).toBe(novoNome);
+});
+```
+
+### 9.9 auth.ts — opção `silent` para rotas públicas
+
+O `setHeaders` aceita `{ silent: true }` para não logar "Usuário autenticado" no Allure quando a informação não agrega valor (ex: testes de campos inválidos, testes de segurança):
+
+```typescript
+const headers = await setHeaders(request, usuario, { silent: true });
 ```
 
 ---
@@ -1163,7 +1412,9 @@ export * as UsuarioRoute from './Routes/UsuarioRoute';
 export * from './Seeds/AuthSeed';
 
 // ---- Templates ----
-export * from './Templates/AttemptRequestsTemplate';
+export * from './Templates/PermissionTemplate';
+export * from './Templates/InvalidFieldsTemplate';
+export * from './Templates/SecurityTemplate';
 export * from './Templates/ResponseEvaluator';
 ```
 
@@ -1335,22 +1586,29 @@ Adicionar ao `.gitignore` do projeto host:
 
 ## 15. INSTRUÇÕES PARA O AGENTE
 
-1. Inspecionar o `docker-compose.yml` do projeto host para definir estratégia de rede.
+1. **Se já existirem specs em `tests/Integration/specs/`, inspecionar os existentes para manter consistência de estilo, nomes e padrões de implementação.** Se não existirem, criar do zero seguindo este prompt.
+2. Inspecionar o `docker-compose.yml` do projeto host para definir estratégia de rede.
 2. Inspecionar o banco (Prisma schema, migrations) para montar `SCHEMA` e `cleanTestsData`.
 3. Inspecionar controllers para mapear todas as rotas, guards e decorators.
 4. Verificar qual status code o backend retorna para validação de campos (400 ou 422).
 5. Criar TODA a estrutura de pastas conforme seção 1.
 6. Implementar camadas na ordem: Docker → Config → Base → Database → Fixtures → Routes → Seeds → Templates → Specs.
-7. Para cada endpoint, criar: AttemptRequests (permissão) + InvalidFields (validação de payload).
-8. Manter 1 arquivo = 1 endpoint nos AttemptRequests.
-9. Usar `describeAttemptSuite` para permissão e `describeInvalidFieldSuite` para campos inválidos.
-10. Usar constantes de `constants.ts` para valores inválidos — NUNCA valores literais nos cenários.
+7. Para cada endpoint, criar: AttemptRequests (permissão) + InvalidFields (validação de payload) + Security (segurança).
+8. Manter 1 arquivo = 1 endpoint nos AttemptRequests e Security.
+9. Usar `describeAttemptSuite` para permissão, `describeInvalidFieldSuite` para campos inválidos e `describeSecuritySuite` para segurança.
+10. Usar constantes de `constants.ts` para valores inválidos e payloads de ataque — NUNCA valores literais nos cenários.
 11. Usar `// prettier-ignore` antes de arrays de cenários para preservar formato tabular.
 12. Cenários que mapeiam bugs do backend usam `skip` com motivo — NUNCA remover o cenário.
 13. Toda vez que criar um arquivo novo, adicionar export no `resources/index.ts`.
 14. Após criar a estrutura, ajustar `tsconfig.json`, `tsconfig.build.json` e ESLint do host.
 15. Gerar `README.md` dentro de `tests/Integration/` documentando a estrutura.
 16. Rodar Prettier em todos os arquivos antes de finalizar.
+17. Cada teste DEVE ser independente — setup e cleanup próprios, sem estado compartilhado, paralelizável.
+18. Usar `test.step()` para agrupar asserções com nomes descritivos no Allure.
+19. Usar `{ silent: true }` no `setHeaders` quando o log "Usuário autenticado" não agrega valor.
+20. Templates separados por responsabilidade: `PermissionTemplate`, `InvalidFieldsTemplate`, `SecurityTemplate`.
+21. NUNCA usar `mode: 'serial'` — testes devem rodar em qualquer ordem.
+22. Quando o setup precisa de um ID (ex: rota com `:id`), buscar direto no banco via `Database` — NUNCA chamar outro endpoint para obter o ID.
 
 ---
 
@@ -1375,11 +1633,12 @@ Gerar README documentando: arquitetura, setup, comandos, padrão de imports, com
 - [ ] `resources/Fixtures/SeedBuilders/` — Um por módulo (com ATTEMPT_USUARIOS + seedAttempt)
 - [ ] `resources/Routes/` — Uma por entidade (com logRequestResponse)
 - [ ] `resources/Seeds/` — Um por entidade
-- [ ] `resources/Templates/` — AttemptRequestsTemplate (com `describeInvalidFieldSuite`) + ResponseEvaluator
+- [ ] `resources/Templates/` — PermissionTemplate + InvalidFieldsTemplate + SecurityTemplate + ResponseEvaluator
 - [ ] `specs/Healthcheck/` — Spec mais simples
-- [ ] `specs/[Modulo]/[entidade].spec.ts` — CRUD
+- [ ] `specs/[Modulo]/[entidade].spec.ts` — CRUD (isolado, com test.step)
 - [ ] `specs/[Modulo]/AttemptRequests/[Metodo][Entidade].spec.ts` — Permissão (1 por endpoint)
 - [ ] `specs/[Modulo]/AttemptRequests/[Metodo][Entidade]InvalidFields.spec.ts` — Campos inválidos
+- [ ] `specs/[Modulo]/Security/[Metodo][Entidade]Security.spec.ts` — Segurança (1 por endpoint)
 - [ ] `results/` — Diretório para relatórios (com `.history/` para tendência)
 - [ ] `tsconfig.json` do host — Excluir `tests/Integration`
 - [ ] `tsconfig.build.json` do host — Excluir `tests`

@@ -4,7 +4,7 @@ import {
   HTTP_BAD_REQUEST,
   UUID_INEXISTENTE,
 } from '../../../resources/Base/constants';
-import { describeAttemptSuite } from '../../../resources/Templates/AttemptRequestsTemplate';
+import { describeAttemptSuite } from '../../../resources/Templates/PermissionTemplate';
 import {
   TEMPORADA_ATTEMPT_USUARIOS,
   seedTemporadaAttempt,

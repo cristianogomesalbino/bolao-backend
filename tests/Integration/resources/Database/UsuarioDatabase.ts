@@ -20,6 +20,16 @@ export async function selectUsuarioByEmail(
   return getQueryResultValue(result);
 }
 
+export async function selectUsuarioById(
+  id: string,
+): Promise<{ nome: string; email: string; perfil: string; ativo: boolean } | null> {
+  const result = await executeDatabaseQuery(
+    `SELECT "nome", "email", "perfil", "ativo" FROM ${SCHEMA.USUARIO} WHERE id = $1`,
+    [id],
+  );
+  return result && result.length > 0 ? result[0] : null;
+}
+
 export async function insertUsuario(usuario: {
   nome: string;
   email: string;

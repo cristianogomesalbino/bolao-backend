@@ -13,7 +13,9 @@ export const HTTP_NOT_FOUND = 404;
 export const HTTP_METHOD_NOT_ALLOWED = 405;
 export const HTTP_CONFLICT = 409;
 export const HTTP_UNPROCESSABLE_ENTITY = 422;
+export const HTTP_422 = HTTP_UNPROCESSABLE_ENTITY;
 export const HTTP_INTERNAL_SERVER_ERROR = 500;
+export const HTTP_500 = HTTP_INTERNAL_SERVER_ERROR;
 
 // URLs
 export const RESOURCES_URL =
@@ -57,3 +59,20 @@ export const NULL_VALUE = null;
 export const MIN_CHAR = 'aa'
 export const CHAR_256 =
   'Longo preenchimento textual para validação dos limites de caracteres nos campos do payload e dos formulários de cadastro e edição. Utilizando teste automatizado com Playwright com estratégia de templates em fluxos repetidos. Temos aqui 256 caracteres aqui.';
+
+// ---- Payloads de ataque (segurança) ----
+
+// SQL Injection
+export const SQL_OR_1_1 = "' OR 1=1 --";
+export const SQL_DROP_TABLE = "'; DROP TABLE \"Usuario\"; --";
+export const SQL_UNION_SELECT = "' UNION SELECT * FROM \"Usuario\" --";
+export const SQL_COMMENT = "admin'--";
+
+// XSS
+export const XSS_SCRIPT_ALERT = '<script>alert(1)</script>';
+export const XSS_IMG_ONERROR = '<img src=x onerror=alert(1)>';
+export const XSS_EVENT_HANDLER = '" onmouseover="alert(1)"';
+
+// Mass Assignment
+export const MASS_ASSIGNMENT_ADMIN = 'SUPER_ADMIN';
+export const MASS_ASSIGNMENT_INACTIVE = false;

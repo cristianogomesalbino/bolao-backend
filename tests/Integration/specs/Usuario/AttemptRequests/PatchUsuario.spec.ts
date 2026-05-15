@@ -2,18 +2,20 @@ import {
   test,
   HTTP_UNAUTHORIZED,
   HTTP_OK,
+  HTTP_FORBIDDEN,
   describeAttemptSuite,
+  buildUsuarioMock,
   USUARIO_ATTEMPT_USUARIOS,
   seedUsuarioAttempt,
   UsuarioDB,
 } from '../../../resources';
 
 describeAttemptSuite(test, {
-  descricao: 'Attempt GET /usuarios/:id',
+  descricao: 'Attempt PATCH /usuarios/:id',
   scenarios: [
-    { perfil: 'sem_token', method: 'GET', statusEsperado: HTTP_UNAUTHORIZED },
-    { perfil: 'usuario_comum', method: 'GET', statusEsperado: HTTP_OK },
-    { perfil: 'super_admin', method: 'GET', statusEsperado: HTTP_OK },
+    { perfil: 'sem_token', method: 'PATCH', statusEsperado: HTTP_UNAUTHORIZED },
+    { perfil: 'usuario_comum', method: 'PATCH', statusEsperado: HTTP_OK },
+    { perfil: 'super_admin', method: 'PATCH', statusEsperado: HTTP_OK },
   ],
   usuarios: USUARIO_ATTEMPT_USUARIOS,
   seed: seedUsuarioAttempt,
@@ -23,4 +25,8 @@ describeAttemptSuite(test, {
     return { userId };
   },
   routeResolver: (data) => `usuarios/${data.userId}`,
+  payloadResolver: () => ({
+    ...buildUsuarioMock('patch_usuario').payload,
+    nome: `Attempt Patch ${Date.now()}`,
+  }),
 });

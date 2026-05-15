@@ -1,5 +1,7 @@
-import { factoryUsuario } from '../DataFactories/UsuarioFactory';
+import { factoryUsuario, factoryUsuarioAttemptRequests } from '../DataFactories/UsuarioFactory';
 import { createUsuarios } from '../../Database/UsuarioDatabase';
+
+const attemptUsuarios = factoryUsuarioAttemptRequests();
 
 export function seedUsuariosForUsuarioSuite() {
   return [
@@ -9,10 +11,10 @@ export function seedUsuariosForUsuarioSuite() {
 }
 
 export const USUARIO_ATTEMPT_USUARIOS = {
-  user: factoryUsuario('user_to_manage_usuario_suite'),
-  super_admin: factoryUsuario('super_admin_to_manage_suite'),
+  usuario_comum: attemptUsuarios.user,
+  super_admin: attemptUsuarios.super_admin,
 };
 
 export async function seedUsuarioAttempt(): Promise<void> {
-  await createUsuarios(seedUsuariosForUsuarioSuite());
+  await createUsuarios(Object.values(USUARIO_ATTEMPT_USUARIOS));
 }

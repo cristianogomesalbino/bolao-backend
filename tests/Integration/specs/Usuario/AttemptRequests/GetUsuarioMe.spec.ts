@@ -12,7 +12,7 @@ describeAttemptSuite(test, {
   descricao: 'Attempt GET /usuarios/me',
   scenarios: [
     { perfil: 'sem_token', method: 'GET', statusEsperado: HTTP_UNAUTHORIZED },
-    { perfil: 'user', method: 'GET', statusEsperado: HTTP_OK },
+    { perfil: 'usuario_comum', method: 'GET', statusEsperado: HTTP_OK },
     { perfil: 'super_admin', method: 'GET', statusEsperado: HTTP_OK },
   ],
   usuarios: USUARIO_ATTEMPT_USUARIOS,

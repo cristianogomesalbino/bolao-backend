@@ -86,5 +86,7 @@ export * from './Seeds/CampeonatoSeed';
 export * from './Seeds/GrupoSeed';
 
 // ---- Templates ----
-export * from './Templates/AttemptRequestsTemplate';
+export * from './Templates/PermissionTemplate';
+export * from './Templates/InvalidFieldsTemplate';
+export * from './Templates/SecurityTemplate';
 export * from './Templates/ResponseEvaluator';

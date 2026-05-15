@@ -3,7 +3,7 @@ import {
   HTTP_UNAUTHORIZED,
   HTTP_CREATED,
 } from '../../../resources/Base/constants';
-import { describeAttemptSuite } from '../../../resources/Templates/AttemptRequestsTemplate';
+import { describeAttemptSuite } from '../../../resources/Templates/PermissionTemplate';
 import {
   CAMPEONATO_ATTEMPT_USUARIOS,
   seedCampeonatoAttempt,
