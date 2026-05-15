@@ -3,15 +3,7 @@
 // (equivalente ao Evaluate Response Behavior do Robot)
 // ============================================================
 
-import {
-  HTTP_OK,
-  HTTP_FORBIDDEN,
-  HTTP_NOT_FOUND,
-  HTTP_UNPROCESSABLE_ENTITY,
-  HTTP_INTERNAL_SERVER_ERROR,
-  HTTP_UNAUTHORIZED,
-  HTTP_METHOD_NOT_ALLOWED,
-} from '../Base/constants';
+import { HTTP } from '../Base/constants';
 
 /**
  * Avalia se o comportamento da resposta é consistente.
@@ -28,24 +20,24 @@ export function evaluateResponseBehavior(
   body: any,
   isPublicRoute: boolean,
 ): void {
-  if (status === HTTP_INTERNAL_SERVER_ERROR) {
+  if (status === HTTP.SERVER_ERROR) {
     throw new Error(
       `QA: ${status} - ALTA PRIORIDADE! Avaliar incidente. Body: ${JSON.stringify(body)}`,
     );
   }
 
   if (!isPublicRoute) {
-    if (status === HTTP_OK) {
+    if (status === HTTP.OK) {
       throw new Error(
         `QA: ${status} - Oops! Avaliar se este usuário deveria ter acesso mesmo sem regras de perfil específica.`,
       );
     }
-    if (status === HTTP_UNPROCESSABLE_ENTITY) {
+    if (status === HTTP.UNPROCESSABLE) {
       throw new Error(
         `QA: ${status} - Deveria validar os dados da requisição somente após verificar se o usuário tem acesso.`,
       );
     }
-    if (status === HTTP_NOT_FOUND) {
+    if (status === HTTP.NOT_FOUND) {
       throw new Error(
         `QA: ${status} - Deveria validar os dados da requisição somente após verificar se o usuário tem acesso.`,
       );
@@ -65,23 +57,23 @@ export function evaluateResponseBehavior(
  * - Qualquer outro → usuário autorizado (passa)
  */
 export function evaluateResponseForRulesAuthorized(status: number): void {
-  if (status === HTTP_INTERNAL_SERVER_ERROR) {
+  if (status === HTTP.SERVER_ERROR) {
     throw new Error(`QA: ${status} - ALTA PRIORIDADE! Avaliar incidente.`);
   }
-  if (status === HTTP_FORBIDDEN) {
+  if (status === HTTP.FORBIDDEN) {
     throw new Error(
       `QA: ${status} - Oops! Avaliar, aparentemente este usuário deveria ter acesso.`,
     );
   }
-  if (status === HTTP_UNAUTHORIZED) {
+  if (status === HTTP.UNAUTHORIZED) {
     throw new Error(
       `QA: ${status} - Oops! Avaliar, aparentemente este usuário deveria ter acesso.`,
     );
   }
-  if (status === HTTP_METHOD_NOT_ALLOWED) {
+  if (status === HTTP.METHOD_NOT_ALLOWED) {
     throw new Error(`QA: ${status} - Oops! Avaliar comportamento desta rota.`);
   }
-  if (status === HTTP_NOT_FOUND) {
+  if (status === HTTP.NOT_FOUND) {
     console.warn(
       `QA: ${status} - Quando o registro não existe está correto, porém deve-se verificar se está retornando em casos indevidos.`,
     );

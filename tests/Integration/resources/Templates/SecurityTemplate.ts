@@ -9,16 +9,7 @@ import { test, APIRequestContext, expect } from '@playwright/test';
 import { BASE_URL } from '../Base/constants';
 import { setHeaders } from '../Base/auth';
 import { logRequestResponse } from '../Base/request-logger';
-import {
-  SQL_OR_1_1,
-  SQL_DROP_TABLE,
-  SQL_UNION_SELECT,
-  SQL_COMMENT,
-  XSS_SCRIPT_ALERT,
-  XSS_IMG_ONERROR,
-  XSS_EVENT_HANDLER,
-  HTTP_INTERNAL_SERVER_ERROR,
-} from '../Base/constants';
+import { ATTACK, HTTP } from '../Base/constants';
 
 // ---- Tipos ----
 
@@ -122,10 +113,10 @@ export function describeSecuritySuite(
     if (params.sqlInjection) {
       t.describe('SQL Injection', () => {
         const payloads = [
-          { label: "' OR 1=1 --", value: SQL_OR_1_1 },
-          { label: "DROP TABLE", value: SQL_DROP_TABLE },
-          { label: "UNION SELECT", value: SQL_UNION_SELECT },
-          { label: "comment injection", value: SQL_COMMENT },
+          { label: "' OR 1=1 --", value: ATTACK.SQL_OR },
+          { label: "DROP TABLE", value: ATTACK.SQL_DROP },
+          { label: "UNION SELECT", value: ATTACK.SQL_UNION },
+          { label: "comment injection", value: ATTACK.SQL_COMMENT },
         ];
 
         for (const campo of params.sqlInjection!.campos) {
@@ -144,7 +135,7 @@ export function describeSecuritySuite(
               const response = await makeRequest(request, params.method, url, data, headers);
 
               await test.step('Não deve retornar 500 (erro interno)', async () => {
-                expect(response.status()).not.toBe(HTTP_INTERNAL_SERVER_ERROR);
+                expect(response.status()).not.toBe(HTTP.SERVER_ERROR);
               });
 
               await test.step('Deve retornar status de erro controlado', async () => {
@@ -174,9 +165,9 @@ export function describeSecuritySuite(
     if (params.xss) {
       t.describe('XSS', () => {
         const payloads = [
-          { label: '<script>alert(1)</script>', value: XSS_SCRIPT_ALERT },
-          { label: '<img onerror>', value: XSS_IMG_ONERROR },
-          { label: 'event handler injection', value: XSS_EVENT_HANDLER },
+          { label: '<script>alert(1)</script>', value: ATTACK.XSS_SCRIPT },
+          { label: '<img onerror>', value: ATTACK.XSS_IMG },
+          { label: 'event handler injection', value: ATTACK.XSS_EVENT },
         ];
 
         for (const campo of params.xss!.campos) {
@@ -195,7 +186,7 @@ export function describeSecuritySuite(
               const response = await makeRequest(request, params.method, url, data, headers);
 
               await test.step('Não deve retornar 500', async () => {
-                expect(response.status()).not.toBe(HTTP_INTERNAL_SERVER_ERROR);
+                expect(response.status()).not.toBe(HTTP.SERVER_ERROR);
               });
 
               await test.step('Se aceito, deve sanitizar ou armazenar como texto puro', async () => {
@@ -331,7 +322,7 @@ export function describeSecuritySuite(
           const bodyStr = JSON.stringify(body);
 
           await test.step('Não deve retornar 500', async () => {
-            expect(response.status()).not.toBe(HTTP_INTERNAL_SERVER_ERROR);
+            expect(response.status()).not.toBe(HTTP.SERVER_ERROR);
           });
 
           await test.step('Não deve conter stacktrace', async () => {

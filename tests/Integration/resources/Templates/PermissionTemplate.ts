@@ -26,6 +26,8 @@ export interface AttemptScenario {
   statusEsperado: number;
   /** Se definido, o teste é pulado com este motivo */
   skip?: string;
+  /** Sobrescreve a rota para este cenário (ex: UUID inválido, rota inexistente) */
+  routeOverride?: string;
 }
 
 export interface AttemptMockData {
@@ -116,7 +118,17 @@ export async function attemptRequest(
     /* ignora fora de contexto de teste */
   }
 
-  expect(response.status()).toBe(scenario.statusEsperado);
+  // Mensagem de erro contextualizada para facilitar debug
+  const usuario = scenario.perfil !== 'sem_token' ? config.usuarios[scenario.perfil] : null;
+  const contexto = [
+    `Perfil: ${scenario.perfil}`,
+    usuario ? `Email: ${usuario.email}` : 'Sem token',
+    `Rota: ${scenario.method} ${url}`,
+    response.status() === 401 ? '⚠️  401 = Login falhou. Verificar se o usuário existe no banco.' : '',
+    response.status() === 404 ? '⚠️  404 = Recurso não encontrado. Verificar se o setup criou o registro.' : '',
+  ].filter(Boolean).join(' | ');
+
+  expect(response.status(), contexto).toBe(scenario.statusEsperado);
 }
 
 // ---- 2. Attempt Request For Rules (com avaliação de comportamento) ----
@@ -296,9 +308,14 @@ export function describeAttemptSuite(
 
       const testFn = scenario.skip ? t.skip : t;
       testFn(name, async ({ request }) => {
-        const route = params.routeResolver
-          ? params.routeResolver(setupData)
-          : params.mockData!.route;
+        let route: string;
+        if (scenario.routeOverride) {
+          route = scenario.routeOverride;
+        } else if (params.routeResolver) {
+          route = params.routeResolver(setupData);
+        } else {
+          route = params.mockData!.route;
+        }
 
         const payload = params.payloadResolver
           ? params.payloadResolver(setupData)

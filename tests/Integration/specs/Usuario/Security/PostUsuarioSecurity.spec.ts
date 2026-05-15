@@ -1,31 +1,29 @@
-import { test, expect } from '../../../resources';
-import * as API from '../../../resources';
+import {
+  test, expect, HTTP,
+  describeSecuritySuite, buildUsuarioMock, UsuarioDB,
+} from '../../../resources';
 
-const { route, payload: basePayload } = API.buildUsuarioMock('post_usuario');
+const { route, payload: basePayload } = buildUsuarioMock('post_usuario');
 
-API.describeSecuritySuite(test, {
+describeSecuritySuite(test, {
   descricao: 'Segurança POST /usuarios',
   route,
   method: 'POST',
   basePayload: basePayload!,
-  // Rota pública — sem usuario (não envia token)
 
   sqlInjection: {
     campos: ['email', 'nome'],
-    statusEsperado: [API.HTTP_422, API.HTTP_BAD_REQUEST, API.HTTP_CREATED, API.HTTP_CONFLICT],
+    statusEsperado: [HTTP.UNPROCESSABLE, HTTP.BAD_REQUEST, HTTP.CREATED, HTTP.CONFLICT],
   },
 
   xss: {
     campos: ['nome'],
-    statusEsperado: [API.HTTP_422, API.HTTP_CREATED, API.HTTP_BAD_REQUEST],
+    statusEsperado: [HTTP.UNPROCESSABLE, HTTP.CREATED, HTTP.BAD_REQUEST],
   },
 
   massAssignment: {
-    camposSensiveis: {
-      perfil: 'SUPER_ADMIN',
-      ativo: false,
-    },
-    statusEsperado: [API.HTTP_CREATED, API.HTTP_422],
+    camposSensiveis: { perfil: 'SUPER_ADMIN', ativo: false },
+    statusEsperado: [HTTP.CREATED, HTTP.UNPROCESSABLE],
     validar: (body) => {
       if (body.perfil) expect(body.perfil).not.toBe('SUPER_ADMIN');
       if (body.ativo !== undefined) expect(body.ativo).not.toBe(false);
@@ -35,10 +33,10 @@ API.describeSecuritySuite(test, {
   concorrencia: {
     campoUnico: 'email',
     valorUnico: () => `race.${Date.now()}@concorrencia.qa`,
-    statusConflito: API.HTTP_CONFLICT,
+    statusConflito: HTTP.CONFLICT,
     requests: 5,
     cleanup: async (email: string) => {
-      await API.UsuarioDB.deleteUsuarioByEmail(email);
+      await UsuarioDB.deleteUsuarioByEmail(email);
     },
   },
 

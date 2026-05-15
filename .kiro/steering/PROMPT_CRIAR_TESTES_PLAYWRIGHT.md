@@ -654,30 +654,39 @@ export { test, expect } from '@playwright/test';
 
 ### 4.2 constants.ts
 
+Usar **objetos agrupados** como fonte única. Ver seção 11 para detalhes completos.
+
 ```typescript
-export const HTTP_OK = 200;
-export const HTTP_CREATED = 201;
-export const HTTP_NO_CONTENT = 204;
-export const HTTP_BAD_REQUEST = 400;
-export const HTTP_UNAUTHORIZED = 401;
-export const HTTP_FORBIDDEN = 403;
-export const HTTP_NOT_FOUND = 404;
-export const HTTP_METHOD_NOT_ALLOWED = 405;
-export const HTTP_CONFLICT = 409;
-export const HTTP_UNPROCESSABLE_ENTITY = 422;
-export const HTTP_INTERNAL_SERVER_ERROR = 500;
+export const HTTP = {
+  OK: 200, CREATED: 201, NO_CONTENT: 204,
+  BAD_REQUEST: 400, UNAUTHORIZED: 401, FORBIDDEN: 403,
+  NOT_FOUND: 404, METHOD_NOT_ALLOWED: 405, CONFLICT: 409,
+  UNPROCESSABLE: 422, SERVER_ERROR: 500,
+} as const;
 
 export const RESOURCES_URL = process.env.RESOURCES_URL || 'http://localhost:3000/';
 export const BASE_URL = RESOURCES_URL;
 
-// Adaptar mensagens ao projeto
-export const MSG_CREDENCIAIS_INVALIDAS = 'Credenciais inválidas';
-export const MSG_USUARIO_NAO_ENCONTRADO = 'Usuário não encontrado';
-// ... adicionar todas as mensagens de erro do backend
+export const MSG = {
+  CREDENCIAIS_INVALIDAS: 'Credenciais inválidas',
+  USUARIO_NAO_ENCONTRADO: 'Usuário não encontrado',
+  // ... todas as mensagens de erro do backend
+} as const;
+
+export const INVALID = {
+  EMPTY: '', NULL: null as any, MAX_INT: Number.MAX_SAFE_INTEGER,
+  EMAIL: 'nao-e-email', SHORT_PASSWORD: '123', SPECIAL_CHARS: '@#$%&*123',
+  MIN_CHAR: 'aa', CHAR_256: '...', UUID: 'nao-e-um-uuid',
+  UUID_INEXISTENTE: 'a0000000-0000-4000-a000-000000000000',
+} as const;
+
+export const ATTACK = {
+  SQL_OR: "' OR 1=1 --", SQL_DROP: "'; DROP TABLE ...; --",
+  XSS_SCRIPT: '<script>alert(1)</script>',
+  MASS_ADMIN: 'SUPER_ADMIN', MASS_INACTIVE: false,
+} as const;
 
 export const MINIMUM_RECORD = 1;
-export const UUID_INEXISTENTE = 'a0000000-0000-4000-a000-000000000000'; // UUID v4 válido inexistente
-export const UUID_INVALIDO = 'nao-e-um-uuid';
 export const EMAIL_UNAUTHORIZED = 'unauthorized@qa.test';
 ```
 
@@ -1124,22 +1133,25 @@ export function evaluateResponseForRulesAuthorized(status: number): void {
 
 ### 9.1 Padrão de imports (OBRIGATÓRIO)
 
-Todo spec importa do barrel file `resources/index.ts`:
+Todo spec importa do barrel file `resources/index.ts`. Usar objetos agrupados (`HTTP`, `INVALID`, `ATTACK`).
 
 ```typescript
-// Specs de CRUD:
+// Specs de CRUD (usam test.step, setup/cleanup próprios):
 import { test, expect } from '../../resources';
 import * as API from '../../resources';
 
-// Specs de AttemptRequests:
+// Specs de AttemptRequests (named imports agrupados por contexto):
 import {
-  test,
-  HTTP_CREATED,
-  HTTP_UNAUTHORIZED,
-  describeAttemptSuite,
-  buildAuthMock,
-  AUTH_ATTEMPT_USUARIOS,
-  seedAuthAttempt,
+  test, HTTP, INVALID,
+  describeAttemptSuite, buildUsuarioMock,
+  USUARIO_ATTEMPT_USUARIOS, seedUsuarioAttempt, UsuarioDB,
+} from '../../../resources';
+
+// Specs de Security (named imports + expect):
+import {
+  test, expect, HTTP, ATTACK,
+  USUARIO_ATTEMPT_USUARIOS, seedUsuarioAttempt,
+  UsuarioDB, UsuarioRoute,
 } from '../../../resources';
 ```
 
@@ -1420,89 +1432,168 @@ export * from './Templates/ResponseEvaluator';
 
 ---
 
-## 11. CONSTANTES DE VALORES INVÁLIDOS
+## 11. CONSTANTES — OBJETOS AGRUPADOS (OBRIGATÓRIO)
 
-O arquivo `constants.ts` DEVE conter constantes reutilizáveis para testes de campos inválidos. Usar estas constantes em vez de valores literais nos cenários:
+O arquivo `constants.ts` usa **objetos agrupados** como fonte única de verdade. NUNCA duplicar valores.
 
 ```typescript
-// Valores inválidos para testes de campo
-export const EMPTY = '';
-export const NULL_VALUE = null;
-export const MAX_INT = Number.MAX_SAFE_INTEGER;
-export const CHAR_256 = 'Longo preenchimento textual...'; // 256 chars
-export const MIN_CHAR = 'aa';
-export const INVALID_STRING = 'aaaa';
-export const INVALID_EMAIL = 'nao-e-email';
-export const SHORT_PASSWORD = '123';
-export const SPECIAL_CHARS = '@#$%&*123';
-export const UUID_INEXISTENTE = 'a0000000-0000-4000-a000-000000000000';
-export const UUID_INVALIDO = 'nao-e-um-uuid';
+// ---- HTTP Status Codes ----
+export const HTTP = {
+  OK: 200,
+  CREATED: 201,
+  NO_CONTENT: 204,
+  BAD_REQUEST: 400,
+  UNAUTHORIZED: 401,
+  FORBIDDEN: 403,
+  NOT_FOUND: 404,
+  METHOD_NOT_ALLOWED: 405,
+  CONFLICT: 409,
+  UNPROCESSABLE: 422,
+  SERVER_ERROR: 500,
+} as const;
+
+// ---- Valores inválidos para testes de campo ----
+export const INVALID = {
+  EMPTY: '',
+  NULL: null as any,
+  MAX_INT: Number.MAX_SAFE_INTEGER,
+  STRING: 'aaaa',
+  EMAIL: 'nao-e-email',
+  SHORT_PASSWORD: '123',
+  SPECIAL_CHARS: '@#$%&*123',
+  MIN_CHAR: 'aa',
+  CHAR_256: '...',  // 256 chars
+  UUID: 'nao-e-um-uuid',
+  UUID_INEXISTENTE: 'a0000000-0000-4000-a000-000000000000',
+} as const;
+
+// ---- Payloads de ataque (segurança) ----
+export const ATTACK = {
+  SQL_OR: "' OR 1=1 --",
+  SQL_DROP: "'; DROP TABLE \"Usuario\"; --",
+  SQL_UNION: "' UNION SELECT * FROM \"Usuario\" --",
+  SQL_COMMENT: "admin'--",
+  XSS_SCRIPT: '<script>alert(1)</script>',
+  XSS_IMG: '<img src=x onerror=alert(1)>',
+  XSS_EVENT: '" onmouseover="alert(1)"',
+  MASS_ADMIN: 'SUPER_ADMIN',
+  MASS_INACTIVE: false,
+} as const;
+
+// ---- Mensagens de erro da API ----
+export const MSG = {
+  CREDENCIAIS_INVALIDAS: 'Credenciais inválidas',
+  USUARIO_NAO_ENCONTRADO: 'Usuário não encontrado',
+  // ... todas as mensagens do backend
+} as const;
 ```
+
+**Regras:**
+- Specs usam `HTTP.OK`, `INVALID.EMPTY`, `ATTACK.SQL_OR` — NUNCA constantes individuais
+- Templates internos também usam os objetos agrupados
+- Aliases individuais (`HTTP_OK`, `UUID_INEXISTENTE`) existem apenas para compatibilidade com specs não migrados — remover quando padronizar
 
 ---
 
-## 12. TESTES DE CAMPOS INVÁLIDOS (describeInvalidFieldSuite)
+## 12. PADRÃO DE IMPORTS NOS SPECS (OBRIGATÓRIO)
 
-### 12.1 Padrão de cenários com tuplas
-
-Cada cenário é uma tupla: `[campo, valor, statusEsperado, mensagem, skip?]`
-
-Usar `// prettier-ignore` antes do array para preservar formato tabular (uma linha por cenário).
-
-Usar alias no import para encurtar: `HTTP_UNPROCESSABLE_ENTITY as HTTP_422`
+### 12.1 Import padrão — named imports agrupados por contexto
 
 ```typescript
 import {
-  test,
-  HTTP_UNPROCESSABLE_ENTITY as HTTP_422,
-  EMPTY, NULL_VALUE, MAX_INT, CHAR_256,
-  INVALID_EMAIL, SHORT_PASSWORD, SPECIAL_CHARS,
-  describeInvalidFieldSuite,
-  USUARIO_ATTEMPT_USUARIOS,
-  seedUsuarioAttempt,
+  test, HTTP, INVALID,
+  describeAttemptSuite, buildUsuarioMock,
+  USUARIO_ATTEMPT_USUARIOS, seedUsuarioAttempt, UsuarioDB,
 } from '../../../resources';
+```
+
+**Regras:**
+- Linha 1: `test` + objetos de constantes (`HTTP`, `INVALID`, `ATTACK`)
+- Linha 2: templates e builders
+- Linha 3: fixtures e database
+- NUNCA usar `import * as API` nos AttemptRequests
+- NUNCA usar named imports gigantes (15+ itens)
+
+### 12.2 Padrão de cenários com tuplas (InvalidFields)
+
+```typescript
+import {
+  test, HTTP, INVALID,
+  describeInvalidFieldSuite, buildUsuarioMock,
+  USUARIO_ATTEMPT_USUARIOS, seedUsuarioAttempt,
+} from '../../../resources';
+
+const { route, payload } = buildUsuarioMock('post_usuario');
 
 describeInvalidFieldSuite(test, {
   descricao: 'Attempt POST /usuarios - Campos Inválidos',
-  route: 'usuarios',
-  usuario: USUARIO_ATTEMPT_USUARIOS.user,
-  basePayload: { nome: 'User QA', email: 'qa@teste.qa', senha: 'Teste123!' },
+  route,
+  usuario: USUARIO_ATTEMPT_USUARIOS.usuario_comum,
+  basePayload: payload!,
   seed: seedUsuarioAttempt,
   uniqueFieldResolver: (i) => ({ email: `invalid.${i}.${Date.now()}@teste.qa` }),
   // prettier-ignore
   scenarios: [
-    // [campo,   valor,           status,   mensagem,                                   skip?]
-    ['nome',     EMPTY,           HTTP_422, 'Nome é obrigatório'],
-    ['nome',     NULL_VALUE,      HTTP_422, 'Nome é obrigatório'],
-    ['nome',     CHAR_256,        HTTP_422, 'Nome deve ter no máximo 255 caracteres',   'Backend não valida @MaxLength'],
-    ['nome',     SPECIAL_CHARS,   HTTP_422, 'Nome deve conter apenas letras',           'Backend não valida caracteres'],
-    ['email',    EMPTY,           HTTP_422, 'Email inválido'],
-    ['email',    INVALID_EMAIL,   HTTP_422, 'Email inválido'],
-    ['email',    MAX_INT,         HTTP_422, 'Email inválido'],
-    ['senha',    SHORT_PASSWORD,  HTTP_422, 'Senha deve ter no mínimo 6 caracteres'],
-    ['senha',    EMPTY,           HTTP_422, 'Senha deve ter no mínimo 6 caracteres'],
+    // [campo,   valor,                  status,           mensagem]
+    ['nome',     INVALID.EMPTY,          HTTP.UNPROCESSABLE, 'Nome é obrigatório'],
+    ['nome',     INVALID.NULL,           HTTP.UNPROCESSABLE, 'Nome é obrigatório'],
+    ['nome',     INVALID.CHAR_256,       HTTP.UNPROCESSABLE, 'Nome deve ter no máximo 255 caracteres', 'Backend não valida'],
+    ['email',    INVALID.EMAIL,          HTTP.UNPROCESSABLE, 'Email inválido'],
+    ['senha',    INVALID.SHORT_PASSWORD, HTTP.UNPROCESSABLE, 'Senha deve ter no mínimo 6 caracteres'],
   ],
 });
 ```
 
-### 12.2 Campo `skip` — Mapeamento de bugs/melhorias
+### 12.3 Padrão de cenários com routeOverride (Permissão + Params inválidos)
+
+Tudo num único arquivo por endpoint — permissão E params inválidos juntos:
+
+```typescript
+import {
+  test, HTTP, INVALID,
+  describeAttemptSuite,
+  USUARIO_ATTEMPT_USUARIOS, seedUsuarioAttempt, UsuarioDB,
+} from '../../../resources';
+
+describeAttemptSuite(test, {
+  descricao: 'Attempt GET /usuarios/:id',
+  scenarios: [
+    // Permissão
+    { perfil: 'sem_token', method: 'GET', statusEsperado: HTTP.UNAUTHORIZED },
+    { perfil: 'usuario_comum', method: 'GET', statusEsperado: HTTP.OK },
+    { perfil: 'super_admin', method: 'GET', statusEsperado: HTTP.OK },
+    // Params inválidos
+    { perfil: 'usuario_comum', method: 'GET', statusEsperado: HTTP.BAD_REQUEST, routeOverride: `usuarios/${INVALID.UUID}` },
+    { perfil: 'usuario_comum', method: 'GET', statusEsperado: HTTP.FORBIDDEN, routeOverride: `usuarios/${INVALID.UUID_INEXISTENTE}` },
+  ],
+  usuarios: USUARIO_ATTEMPT_USUARIOS,
+  seed: seedUsuarioAttempt,
+  setup: async () => {
+    const userId = await UsuarioDB.selectUsuarioByEmail(USUARIO_ATTEMPT_USUARIOS.usuario_comum.email);
+    return { userId };
+  },
+  routeResolver: (data) => `usuarios/${data.userId}`,
+});
+```
+
+### 12.4 Campo `skip` — Mapeamento de bugs/melhorias
 
 Quando um cenário falha porque o **backend não implementou a validação**, NÃO remover o cenário. Adicionar `skip` com o motivo:
 
 ```typescript
-['nome', CHAR_256, HTTP_422, 'Nome deve ter no máximo 255 caracteres', 'Backend não valida @MaxLength'],
+['nome', INVALID.CHAR_256, HTTP.UNPROCESSABLE, 'Nome deve ter no máximo 255 caracteres', 'Backend não valida @MaxLength'],
 ```
 
 O teste aparece como **skipped** no relatório. Quando o backend corrigir, basta remover o `skip`.
 
-### 12.3 Campo `skip` nos AttemptRequests de permissão
+### 12.5 Campo `skip` nos AttemptRequests de permissão
 
 O mesmo padrão se aplica ao `describeAttemptSuite`:
 
 ```typescript
 scenarios: [
-  { perfil: 'sem_token', method: 'POST', statusEsperado: HTTP_CREATED },
-  { perfil: 'user', method: 'GET', statusEsperado: HTTP_METHOD_NOT_ALLOWED, skip: 'Backend retorna 404 em vez de 405' },
+  { perfil: 'sem_token', method: 'POST', statusEsperado: HTTP.CREATED },
+  { perfil: 'usuario_comum', method: 'GET', statusEsperado: HTTP.METHOD_NOT_ALLOWED, skip: 'Backend retorna 404 em vez de 405' },
 ],
 ```
 
