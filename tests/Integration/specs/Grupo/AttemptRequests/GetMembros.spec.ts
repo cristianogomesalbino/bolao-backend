@@ -1,23 +1,16 @@
-import { test } from '../../../resources/Base/test-base';
 import {
-  HTTP_UNAUTHORIZED,
-  HTTP_OK,
-  HTTP_FORBIDDEN,
-} from '../../../resources/Base/constants';
-import { describeAttemptSuite } from '../../../resources/Templates/PermissionTemplate';
-import { setupGrupoComMembros } from '../../../resources/Fixtures/SeedBuilders/GrupoAttemptSetup';
-import {
-  GRUPO_ATTEMPT_USUARIOS,
-  seedGrupoAttempt,
-} from '../../../resources/Fixtures/SeedBuilders/GrupoSuiteSeedBuilder';
+  test, HTTP,
+  describeAttemptSuite, setupGrupoComMembros,
+  GRUPO_ATTEMPT_USUARIOS, seedGrupoAttempt,
+} from '../../../resources';
 
 describeAttemptSuite(test, {
   descricao: 'Attempt GET /grupos/:id/membros',
   scenarios: [
-    { perfil: 'sem_token', method: 'GET', statusEsperado: HTTP_UNAUTHORIZED },
-    { perfil: 'admin_grupo', method: 'GET', statusEsperado: HTTP_OK },
-    { perfil: 'membro_grupo', method: 'GET', statusEsperado: HTTP_OK },
-    { perfil: 'user_fora', method: 'GET', statusEsperado: HTTP_FORBIDDEN },
+    { perfil: 'sem_token', method: 'GET', statusEsperado: HTTP.UNAUTHORIZED },
+    { perfil: 'admin_grupo', method: 'GET', statusEsperado: HTTP.OK },
+    { perfil: 'membro_grupo', method: 'GET', statusEsperado: HTTP.OK },
+    { perfil: 'user_fora', method: 'GET', statusEsperado: HTTP.FORBIDDEN },
   ],
   usuarios: GRUPO_ATTEMPT_USUARIOS,
   seed: seedGrupoAttempt,

@@ -94,18 +94,14 @@ export const MENSAGENS_NAO_TRATADAS = [
 export const MINIMUM_RECORD = 1;
 export const EMAIL_UNAUTHORIZED = 'unauthorized@qa.bolao';
 
-// ---- Aliases individuais (compatibilidade com specs não migrados — remover quando padronizar) ----
+// ---- Aliases (usados por specs de CRUD via `import * as API`) ----
 
 export const HTTP_OK = HTTP.OK;
 export const HTTP_CREATED = HTTP.CREATED;
-export const HTTP_NO_CONTENT = HTTP.NO_CONTENT;
 export const HTTP_BAD_REQUEST = HTTP.BAD_REQUEST;
 export const HTTP_UNAUTHORIZED = HTTP.UNAUTHORIZED;
 export const HTTP_FORBIDDEN = HTTP.FORBIDDEN;
 export const HTTP_NOT_FOUND = HTTP.NOT_FOUND;
-export const HTTP_METHOD_NOT_ALLOWED = HTTP.METHOD_NOT_ALLOWED;
 export const HTTP_CONFLICT = HTTP.CONFLICT;
 export const HTTP_UNPROCESSABLE_ENTITY = HTTP.UNPROCESSABLE;
-export const HTTP_INTERNAL_SERVER_ERROR = HTTP.SERVER_ERROR;
 export const UUID_INEXISTENTE = INVALID.UUID_INEXISTENTE;
-export const UUID_INVALIDO = INVALID.UUID;

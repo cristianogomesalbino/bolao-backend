@@ -1,35 +1,16 @@
-import { test } from '../../../resources/Base/test-base';
 import {
-  HTTP_UNAUTHORIZED,
-  HTTP_FORBIDDEN,
-  HTTP_BAD_REQUEST,
-} from '../../../resources/Base/constants';
-import { describeAttemptSuite } from '../../../resources/Templates/PermissionTemplate';
-import { setupGrupoComMembros } from '../../../resources/Fixtures/SeedBuilders/GrupoAttemptSetup';
-import {
-  GRUPO_ATTEMPT_USUARIOS,
-  seedGrupoAttempt,
-} from '../../../resources/Fixtures/SeedBuilders/GrupoSuiteSeedBuilder';
+  test, HTTP,
+  describeAttemptSuite, setupGrupoComMembros,
+  GRUPO_ATTEMPT_USUARIOS, seedGrupoAttempt,
+} from '../../../resources';
 
 describeAttemptSuite(test, {
   descricao: 'Attempt DELETE /grupos/:id',
   scenarios: [
-    {
-      perfil: 'sem_token',
-      method: 'DELETE',
-      statusEsperado: HTTP_UNAUTHORIZED,
-    },
-    {
-      perfil: 'membro_grupo',
-      method: 'DELETE',
-      statusEsperado: HTTP_FORBIDDEN,
-    },
-    { perfil: 'user_fora', method: 'DELETE', statusEsperado: HTTP_FORBIDDEN },
-    {
-      perfil: 'admin_grupo',
-      method: 'DELETE',
-      statusEsperado: HTTP_BAD_REQUEST,
-    },
+    { perfil: 'sem_token', method: 'DELETE', statusEsperado: HTTP.UNAUTHORIZED },
+    { perfil: 'membro_grupo', method: 'DELETE', statusEsperado: HTTP.FORBIDDEN },
+    { perfil: 'user_fora', method: 'DELETE', statusEsperado: HTTP.FORBIDDEN },
+    { perfil: 'admin_grupo', method: 'DELETE', statusEsperado: HTTP.BAD_REQUEST },
   ],
   usuarios: GRUPO_ATTEMPT_USUARIOS,
   seed: seedGrupoAttempt,

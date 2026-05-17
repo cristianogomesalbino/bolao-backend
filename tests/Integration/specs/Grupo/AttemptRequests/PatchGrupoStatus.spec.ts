@@ -1,23 +1,16 @@
-import { test } from '../../../resources/Base/test-base';
 import {
-  HTTP_UNAUTHORIZED,
-  HTTP_OK,
-  HTTP_FORBIDDEN,
-} from '../../../resources/Base/constants';
-import { describeAttemptSuite } from '../../../resources/Templates/PermissionTemplate';
-import { setupGrupoComMembros } from '../../../resources/Fixtures/SeedBuilders/GrupoAttemptSetup';
-import {
-  GRUPO_ATTEMPT_USUARIOS,
-  seedGrupoAttempt,
-} from '../../../resources/Fixtures/SeedBuilders/GrupoSuiteSeedBuilder';
+  test, HTTP,
+  describeAttemptSuite, setupGrupoComMembros,
+  GRUPO_ATTEMPT_USUARIOS, seedGrupoAttempt,
+} from '../../../resources';
 
 describeAttemptSuite(test, {
   descricao: 'Attempt PATCH /grupos/:id/status',
   scenarios: [
-    { perfil: 'sem_token', method: 'PATCH', statusEsperado: HTTP_UNAUTHORIZED },
-    { perfil: 'admin_grupo', method: 'PATCH', statusEsperado: HTTP_OK },
-    { perfil: 'membro_grupo', method: 'PATCH', statusEsperado: HTTP_FORBIDDEN },
-    { perfil: 'user_fora', method: 'PATCH', statusEsperado: HTTP_FORBIDDEN },
+    { perfil: 'sem_token', method: 'PATCH', statusEsperado: HTTP.UNAUTHORIZED },
+    { perfil: 'admin_grupo', method: 'PATCH', statusEsperado: HTTP.OK },
+    { perfil: 'membro_grupo', method: 'PATCH', statusEsperado: HTTP.FORBIDDEN },
+    { perfil: 'user_fora', method: 'PATCH', statusEsperado: HTTP.FORBIDDEN },
   ],
   usuarios: GRUPO_ATTEMPT_USUARIOS,
   seed: seedGrupoAttempt,

@@ -1,20 +1,15 @@
-import { test } from '../../../resources/Base/test-base';
 import {
-  HTTP_UNAUTHORIZED,
-  HTTP_CREATED,
-} from '../../../resources/Base/constants';
-import { describeAttemptSuite } from '../../../resources/Templates/PermissionTemplate';
-import {
-  CAMPEONATO_ATTEMPT_USUARIOS,
-  seedCampeonatoAttempt,
-} from '../../../resources/Fixtures/SeedBuilders/CampeonatoSuiteSeedBuilder';
+  test, HTTP,
+  describeAttemptSuite,
+  CAMPEONATO_ATTEMPT_USUARIOS, seedCampeonatoAttempt,
+} from '../../../resources';
 
 describeAttemptSuite(test, {
   descricao: 'Attempt POST /campeonatos',
   scenarios: [
-    { perfil: 'sem_token', method: 'POST', statusEsperado: HTTP_UNAUTHORIZED },
-    { perfil: 'user', method: 'POST', statusEsperado: HTTP_CREATED },
-    { perfil: 'super_admin', method: 'POST', statusEsperado: HTTP_CREATED },
+    { perfil: 'sem_token', method: 'POST', statusEsperado: HTTP.UNAUTHORIZED },
+    { perfil: 'user', method: 'POST', statusEsperado: HTTP.CREATED },
+    { perfil: 'super_admin', method: 'POST', statusEsperado: HTTP.CREATED },
   ],
   usuarios: CAMPEONATO_ATTEMPT_USUARIOS,
   mockData: { route: 'campeonatos' },

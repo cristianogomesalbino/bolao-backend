@@ -1,23 +1,16 @@
-import { test } from '../../../resources/Base/test-base';
 import {
-  HTTP_UNAUTHORIZED,
-  HTTP_FORBIDDEN,
-  HTTP_NOT_FOUND,
-} from '../../../resources/Base/constants';
-import { describeAttemptSuite } from '../../../resources/Templates/PermissionTemplate';
-import { setupGrupoComMembros } from '../../../resources/Fixtures/SeedBuilders/GrupoAttemptSetup';
-import {
-  GRUPO_ATTEMPT_USUARIOS,
-  seedGrupoAttempt,
-} from '../../../resources/Fixtures/SeedBuilders/GrupoSuiteSeedBuilder';
+  test, HTTP,
+  describeAttemptSuite, setupGrupoComMembros,
+  GRUPO_ATTEMPT_USUARIOS, seedGrupoAttempt,
+} from '../../../resources';
 
 describeAttemptSuite(test, {
   descricao: 'Attempt POST /grupos/:id/adicionar',
   scenarios: [
-    { perfil: 'sem_token', method: 'POST', statusEsperado: HTTP_UNAUTHORIZED },
-    { perfil: 'membro_grupo', method: 'POST', statusEsperado: HTTP_FORBIDDEN },
-    { perfil: 'user_fora', method: 'POST', statusEsperado: HTTP_FORBIDDEN },
-    { perfil: 'admin_grupo', method: 'POST', statusEsperado: HTTP_NOT_FOUND },
+    { perfil: 'sem_token', method: 'POST', statusEsperado: HTTP.UNAUTHORIZED },
+    { perfil: 'membro_grupo', method: 'POST', statusEsperado: HTTP.FORBIDDEN },
+    { perfil: 'user_fora', method: 'POST', statusEsperado: HTTP.FORBIDDEN },
+    { perfil: 'admin_grupo', method: 'POST', statusEsperado: HTTP.NOT_FOUND },
   ],
   usuarios: GRUPO_ATTEMPT_USUARIOS,
   seed: seedGrupoAttempt,
