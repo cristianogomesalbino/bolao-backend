@@ -109,6 +109,12 @@ export function factoryUsuarioAttemptRequests(): Record<string, UsuarioData> {
       senha: 'Teste123!',
       perfil: 'USER',
     },
+    para_deletar: {
+      nome: 'Teste Exclusao QA',
+      email: 'teste-exclusao@attempt.qa',
+      senha: 'Teste123!',
+      perfil: 'USER',
+    },
     unauthorized: {
       nome: 'Unauthorized Attempt QA',
       email: 'unauthorized@qa.bolao',

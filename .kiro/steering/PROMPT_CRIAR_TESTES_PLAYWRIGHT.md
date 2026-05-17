@@ -1700,6 +1700,16 @@ Adicionar ao `.gitignore` do projeto host:
 20. Templates separados por responsabilidade: `PermissionTemplate`, `InvalidFieldsTemplate`, `SecurityTemplate`.
 21. NUNCA usar `mode: 'serial'` — testes devem rodar em qualquer ordem.
 22. Quando o setup precisa de um ID (ex: rota com `:id`), buscar direto no banco via `Database` — NUNCA chamar outro endpoint para obter o ID.
+23. NUNCA hardcodar dados de usuário nos specs — sempre usar `factoryUsuario()` ou `factoryUsuarioAttemptRequests()`. Dados de teste ficam centralizados nas factories.
+24. DELETE specs DEVEM usar usuário dedicado (`para_deletar` na factory) — NUNCA deletar o usuário compartilhado dos outros specs.
+25. `basePayload` dos specs DEVE vir do `MockDataBuilder` (`buildUsuarioMock('post_usuario').payload`) — NUNCA hardcodar payloads nos specs.
+26. Cenários de params inválidos (UUID inválido, inexistente) ficam no MESMO spec de permissão via `routeOverride` — NUNCA criar arquivo separado para poucos cenários.
+27. Testes de segurança (SQL Injection, XSS, Mass Assignment, Concorrência, Stacktrace) são testes de integração — ficam na pasta `Security/` dentro do módulo, usando a mesma infra Docker/Playwright.
+28. Todo cenário DEVE ter campo `descricao` explicando o contexto. Formato no relatório: `[perfil] deve receber [status] quando [descricao]`.
+29. Todo spec de permissão DEVE incluir cenários de método HTTP não suportado (ex: GET numa rota que só aceita POST). Status esperado: `HTTP.METHOD_NOT_ALLOWED` (405). Se o backend retorna 404, usar `skip` com motivo.
+30. Lógica de seed/setup NUNCA inline no spec — extrair para o SeedBuilder como função nomeada (ex: `seedUsuarioAttemptWithId`, `seedUsuarioDelete`). O spec só referencia: `seed: seedUsuarioAttemptWithId`.
+31. Cenários usam tuplas: `[perfil, method, status, descricao, skip?, routeOverride?]` — NUNCA objetos com chaves nomeadas.
+32. Ordem das propriedades no `describeAttemptSuite`: config primeiro (`descricao`, `usuarios`, `seed`, `setup`, `routeResolver`, `payloadResolver`), `scenarios` por último.
 
 ---
 

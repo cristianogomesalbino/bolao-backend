@@ -24,6 +24,8 @@ export interface AttemptScenario {
   perfil: string;
   method: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
   statusEsperado: number;
+  /** Descrição do motivo/contexto (ex: 'sem autenticação', 'UUID inválido') */
+  descricao?: string;
   /** Se definido, o teste é pulado com este motivo */
   skip?: string;
   /** Sobrescreve a rota para este cenário (ex: UUID inválido, rota inexistente) */
@@ -49,17 +51,6 @@ export type AttemptRouteResolver = (setupData: Record<string, any>) => string;
 export type AttemptPayloadResolver = (
   setupData: Record<string, any>,
 ) => Record<string, any>;
-
-export interface AttemptSuiteParams {
-  descricao: string;
-  scenarios: AttemptScenario[];
-  usuarios: Record<string, { email: string; senha: string }>;
-  mockData?: AttemptMockData;
-  seed?: () => Promise<void>;
-  setup?: AttemptSetupFn;
-  routeResolver?: AttemptRouteResolver;
-  payloadResolver?: AttemptPayloadResolver;
-}
 
 // ---- 1. Attempt Request (permissão por perfil) ----
 
@@ -237,7 +228,7 @@ export async function attemptRequestForRulesAuthorized(
 
 export async function runAttemptSetup(
   config: {
-    seed?: () => Promise<void>;
+    seed?: () => Promise<void | Record<string, any>>;
     setup?: AttemptSetupFn;
   },
   request?: APIRequestContext,
@@ -283,6 +274,34 @@ export function attemptName(index: number, scenario: AttemptScenario): string {
 // ---- Orquestrador de suite completa ----
 
 /**
+ * Tupla de cenário de permissão: [perfil, method, statusEsperado, descricao, skip?, routeOverride?]
+ */
+export type AttemptTuple = [string, string, number, string, string?, string?];
+
+export interface AttemptSuiteParams {
+  descricao: string;
+  scenarios: AttemptTuple[];
+  usuarios: Record<string, { email: string; senha: string }>;
+  mockData?: AttemptMockData;
+  seed?: () => Promise<void | Record<string, any>>;
+  setup?: AttemptSetupFn;
+  routeResolver?: AttemptRouteResolver;
+  payloadResolver?: AttemptPayloadResolver;
+}
+
+function tupleToScenario(tuple: AttemptTuple): AttemptScenario {
+  const [perfil, method, statusEsperado, descricao, skip, routeOverride] = tuple;
+  return {
+    perfil,
+    method: method as AttemptScenario['method'],
+    statusEsperado,
+    descricao,
+    skip,
+    routeOverride,
+  };
+}
+
+/**
  * Registra uma suite completa de AttemptRequests.
  * O spec passa o `test` importado do @playwright/test para
  * que o path no terminal aponte para o spec, não para o template.
@@ -296,15 +315,20 @@ export function describeAttemptSuite(
   t.describe(params.descricao, () => {
     t.beforeAll(async ({ request }) => {
       if (params.seed) {
-        await params.seed();
+        const seedResult = await params.seed();
+        if (seedResult && typeof seedResult === 'object') {
+          setupData = seedResult;
+        }
       }
       if (params.setup) {
-        setupData = await params.setup(request);
+        setupData = { ...setupData, ...(await params.setup(request)) };
       }
     });
 
-    for (const [i, scenario] of params.scenarios.entries()) {
-      const name = `Attempt ${String(i + 1).padStart(2, '0')} - ${scenario.perfil} deve receber ${scenario.statusEsperado}`;
+    for (const [i, tuple] of params.scenarios.entries()) {
+      const scenario = tupleToScenario(tuple);
+      const detalhe = scenario.descricao ? ` quando ${scenario.descricao}` : '';
+      const name = `Attempt ${String(i + 1).padStart(2, '0')} - ${scenario.perfil} deve receber ${scenario.statusEsperado}${detalhe}`;
 
       const testFn = scenario.skip ? t.skip : t;
       testFn(name, async ({ request }) => {

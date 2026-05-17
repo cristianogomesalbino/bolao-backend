@@ -43,7 +43,7 @@ export async function insertUsuario(usuario: {
   await executeDatabaseSqlString(
     `INSERT INTO ${SCHEMA.USUARIO}("id", "nome", "email", "senha", "perfil", "ativo", "dataCriacao", "atualizadoEm")
      VALUES (gen_random_uuid(), $1, $2, $3, $4::"Perfil", $5, NOW(), NOW())
-     ON CONFLICT ("email") DO NOTHING`,
+     ON CONFLICT ("email") DO UPDATE SET "senha" = $3, "perfil" = $4::"Perfil", "ativo" = $5, "atualizadoEm" = NOW()`,
     [usuario.nome, usuario.email, hashedPass, perfil, ativo],
   );
 }
@@ -78,10 +78,7 @@ export async function createUsuario(data: {
   perfil?: string;
   ativo?: boolean;
 }): Promise<void> {
-  let id = await selectUsuarioByEmail(data.email);
-  if (!id) {
-    await insertUsuario(data);
-  }
+  await insertUsuario(data);
 }
 
 export async function createUsuarios(

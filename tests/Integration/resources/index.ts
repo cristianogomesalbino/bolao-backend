@@ -49,6 +49,8 @@ export {
   seedUsuariosForUsuarioSuite,
   USUARIO_ATTEMPT_USUARIOS,
   seedUsuarioAttempt,
+  seedUsuarioAttemptWithId,
+  seedUsuarioDelete,
 } from './Fixtures/SeedBuilders/UsuarioSuiteSeedBuilder';
 export {
   seedUsuariosForCampeonatoSuite,
