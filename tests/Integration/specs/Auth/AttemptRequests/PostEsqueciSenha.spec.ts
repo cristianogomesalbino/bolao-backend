@@ -5,16 +5,16 @@ import {
 } from '../../../resources';
 
 describeAttemptSuite(test, {
-  descricao: 'Attempt POST /auth/refresh',
+  descricao: 'Attempt POST /auth/esqueci-senha',
   usuarios: AUTH_ATTEMPT_USUARIOS,
-  mockData: buildAuthMock('post_refresh'),
+  mockData: buildAuthMock('post_esqueci_senha'),
   seed: seedAuthAttempt,
   // prettier-ignore
   scenarios: [
     // [perfil,       method,   status,                  descricao,                          skip?]
-    ['sem_token',     'POST',   HTTP.UNAUTHORIZED,       'refresh token inválido sem auth'],
-    ['user',          'POST',   HTTP.UNAUTHORIZED,       'refresh token inválido com auth'],
-    ['super_admin',   'POST',   HTTP.UNAUTHORIZED,       'refresh token inválido com admin'],
+    ['sem_token',     'POST',   HTTP.CREATED,            'rota pública aceita sem token'],
+    ['user',          'POST',   HTTP.CREATED,            'rota pública aceita autenticado'],
+    ['super_admin',   'POST',   HTTP.CREATED,            'rota pública aceita admin'],
     // Método não suportado
     ['user',          'GET',    HTTP.METHOD_NOT_ALLOWED, 'método GET não suportado',         'Backend retorna 404 em vez de 405'],
     ['user',          'PATCH',  HTTP.METHOD_NOT_ALLOWED, 'método PATCH não suportado',       'Backend retorna 404 em vez de 405'],

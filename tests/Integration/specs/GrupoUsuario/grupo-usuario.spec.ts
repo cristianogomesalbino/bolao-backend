@@ -1,8 +1,6 @@
 import { test, expect } from '../../resources';
 import * as API from '../../resources';
 
-let executionTime: string;
-
 test.describe('Grupo Membros Requests Suite', () => {
   test.describe.configure({ mode: 'serial' });
 
@@ -17,11 +15,6 @@ test.describe('Grupo Membros Requests Suite', () => {
 
   test.beforeAll(async () => {
     await API.seedingForGrupoSuite();
-    executionTime = API.setCurrentTestExecutionTime();
-  });
-
-  test.afterAll(async () => {
-    await API.cleanTestsData(executionTime);
   });
 
   test('Caso 01 - Setup: Criar campeonato, temporada e grupo', async ({

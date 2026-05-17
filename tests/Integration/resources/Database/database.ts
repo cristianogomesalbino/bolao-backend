@@ -27,7 +27,7 @@ export const SCHEMA = {
  */
 export async function cleanTestsData(executionTime: string): Promise<void> {
   const queries = [
-    // Ordem inversa de dependência
+    // Ordem inversa de dependência — registros criados após o timestamp
     `DELETE FROM ${SCHEMA.TOKEN_DOBRO} WHERE "dataCriacao" >= $1`,
     `DELETE FROM ${SCHEMA.PALPITE_DOBRADO} WHERE "dataCriacao" >= $1`,
     `DELETE FROM ${SCHEMA.PALPITE} WHERE "dataCriacao" >= $1`,
@@ -49,5 +49,23 @@ export async function cleanTestsData(executionTime: string): Promise<void> {
     } catch (error) {
       console.warn(`Aviso ao limpar dados: ${error}`);
     }
+  }
+
+  // Limpa usuários de seed que podem ter sido criados via ON CONFLICT (dataCriacao antiga)
+  try {
+    await db.query(
+      `DELETE FROM ${SCHEMA.REFRESH_TOKEN} WHERE "usuarioId" IN (SELECT id FROM ${SCHEMA.USUARIO} WHERE email LIKE '%.qa' OR email LIKE '%.qa.bolao')`,
+    );
+    await db.query(
+      `DELETE FROM ${SCHEMA.RECUPERACAO_SENHA} WHERE "usuarioId" IN (SELECT id FROM ${SCHEMA.USUARIO} WHERE email LIKE '%.qa' OR email LIKE '%.qa.bolao')`,
+    );
+    await db.query(
+      `DELETE FROM ${SCHEMA.GRUPO_USUARIO} WHERE "usuarioId" IN (SELECT id FROM ${SCHEMA.USUARIO} WHERE email LIKE '%.qa' OR email LIKE '%.qa.bolao')`,
+    );
+    await db.query(
+      `DELETE FROM ${SCHEMA.USUARIO} WHERE email LIKE '%.qa' OR email LIKE '%.qa.bolao'`,
+    );
+  } catch (error) {
+    console.warn(`Aviso ao limpar usuários de seed: ${error}`);
   }
 }

@@ -1,8 +1,6 @@
 import { test, expect } from '../../resources';
 import * as API from '../../resources';
 
-let executionTime: string;
-
 test.describe('Temporadas Requests Suite', () => {
   test.describe.configure({ mode: 'serial' });
 
@@ -10,11 +8,6 @@ test.describe('Temporadas Requests Suite', () => {
 
   test.beforeAll(async () => {
     await API.seedingForCampeonatoSuite();
-    executionTime = API.setCurrentTestExecutionTime();
-  });
-
-  test.afterAll(async () => {
-    await API.cleanTestsData(executionTime);
   });
 
   test('Caso 01 - Criar campeonato para vincular temporada', async ({

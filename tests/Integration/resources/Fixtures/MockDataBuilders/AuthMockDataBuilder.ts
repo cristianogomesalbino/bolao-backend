@@ -28,7 +28,7 @@ export function buildAuthMock(
     },
     post_resetar_senha: {
       route: 'auth/resetar-senha',
-      payload: { token: 'token-invalido', novaSenha: 'Nova123!' },
+      payload: { token: 'token-invalido', novaSenha: 'Nova123!', confirmarSenha: 'Nova123!' },
     },
   };
 

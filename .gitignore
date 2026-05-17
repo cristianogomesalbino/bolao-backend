@@ -29,6 +29,7 @@ lerna-debug.log*
 /results/.history/
 /tests/Integration/node_modules/
 /tests/Integration/test-results/
+/tests/Integration/.execution-time
 
 # IDEs and editors
 /.idea

@@ -49,7 +49,7 @@ export async function postEsqueciSenha(
 
 export async function postResetarSenha(
   request: APIRequestContext,
-  payload: { token: string; novaSenha: string },
+  payload: { token: string; novaSenha: string; confirmarSenha?: string },
 ) {
   const url = `${BASE_URL}auth/resetar-senha`;
   const response = await request.post(url, { data: payload });
