@@ -30,3 +30,12 @@ export async function insertTemporada(
     [ano, campeonatoId],
   );
 }
+
+export async function deleteTemporadaByCampeonatoId(
+  campeonatoId: string,
+): Promise<void> {
+  await executeDatabaseSqlString(
+    `DELETE FROM ${SCHEMA.TEMPORADA} WHERE "campeonatoId" = $1`,
+    [campeonatoId],
+  );
+}

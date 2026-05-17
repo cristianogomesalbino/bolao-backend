@@ -2,35 +2,24 @@ import { test, expect } from '../../resources';
 import * as API from '../../resources';
 
 test.describe('Temporadas Requests Suite', () => {
-  test.describe.configure({ mode: 'serial' });
-
-  let campeonatoId: string;
-
   test.beforeAll(async () => {
     await API.seedingForCampeonatoSuite();
   });
 
-  test('Caso 01 - Criar campeonato para vincular temporada', async ({
-    request,
-  }) => {
+  test('Caso 01 - Criar temporada com sucesso', async ({ request }) => {
     const usuario = API.factoryUsuario('user_to_manage_campeonato_suite');
-    const payload = { nome: `Camp Temporada E2E ${Date.now()}` };
 
-    const response = await API.CampeonatoRoute.postCampeonato(
+    // Setup — cria campeonato para vincular
+    const campPayload = { nome: `Camp Temp E2E ${Date.now()}` };
+    const campResponse = await API.CampeonatoRoute.postCampeonato(
       request,
       usuario,
-      payload,
+      campPayload,
     );
-    const body = await response.json();
+    const campBody = await campResponse.json();
+    const campeonatoId = campBody.id;
 
-    expect(response.status()).toBe(API.HTTP_CREATED);
-    campeonatoId = body.id;
-  });
-
-  test('Caso 02 - Criar temporada', async ({ request }) => {
-    const usuario = API.factoryUsuario('user_to_manage_campeonato_suite');
     const payload = { ano: 2026, campeonatoId };
-
     const response = await API.TemporadaRoute.postTemporada(
       request,
       usuario,
@@ -38,22 +27,40 @@ test.describe('Temporadas Requests Suite', () => {
     );
     const body = await response.json();
 
-    expect(response.status()).toBe(API.HTTP_CREATED);
-    expect(body).toHaveProperty('id');
-    expect(body.ano).toBe(2026);
+    await test.step('Deve retornar 201 Created', async () => {
+      expect(response.status()).toBe(API.HTTP_CREATED);
+    });
+
+    await test.step('Deve retornar id e ano corretos', async () => {
+      expect(body).toHaveProperty('id');
+      expect(body.ano).toBe(2026);
+    });
+
+    await test.step('Deve conter campeonatoId na resposta', async () => {
+      expect(body.campeonatoId).toBe(campeonatoId);
+    });
+
+    // Cleanup
+    await API.TemporadaDB.deleteTemporadaByCampeonatoId(campeonatoId);
+    await API.CampeonatoDB.deleteCampeonatoByNome(campPayload.nome);
   });
 
-  test('Caso 03 - Listar temporadas', async ({ request }) => {
+  test('Caso 02 - Listar temporadas', async ({ request }) => {
     const usuario = API.factoryUsuario('user_to_manage_campeonato_suite');
 
     const response = await API.TemporadaRoute.getTemporadas(request, usuario);
     const body = await response.json();
 
-    expect(response.status()).toBe(API.HTTP_OK);
-    expect(Array.isArray(body)).toBeTruthy();
+    await test.step('Deve retornar 200 OK', async () => {
+      expect(response.status()).toBe(API.HTTP_OK);
+    });
+
+    await test.step('Deve retornar um array', async () => {
+      expect(Array.isArray(body)).toBeTruthy();
+    });
   });
 
-  test('Caso 04 - Criar temporada com campeonato inexistente deve falhar', async ({
+  test('Caso 03 - Criar temporada com campeonato inexistente deve falhar', async ({
     request,
   }) => {
     const usuario = API.factoryUsuario('user_to_manage_campeonato_suite');
@@ -65,14 +72,18 @@ test.describe('Temporadas Requests Suite', () => {
       payload,
     );
 
-    expect(response.status()).toBe(API.HTTP_NOT_FOUND);
+    await test.step('Deve retornar 404 Not Found', async () => {
+      expect(response.status()).toBe(API.HTTP_NOT_FOUND);
+    });
   });
 
-  test('Caso 05 - Requisição sem token deve retornar 401', async ({
+  test('Caso 04 - Requisição sem token deve retornar 401', async ({
     request,
   }) => {
     const response = await request.get(`${API.BASE_URL}temporadas`);
 
-    expect(response.status()).toBe(API.HTTP_UNAUTHORIZED);
+    await test.step('Deve retornar 401 Unauthorized', async () => {
+      expect(response.status()).toBe(API.HTTP_UNAUTHORIZED);
+    });
   });
 });

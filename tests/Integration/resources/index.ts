@@ -33,6 +33,7 @@ export { factoryGrupo } from './Fixtures/DataFactories/GrupoFactory';
 export { buildAuthMock } from './Fixtures/MockDataBuilders/AuthMockDataBuilder';
 export { buildUsuarioMock } from './Fixtures/MockDataBuilders/UsuarioMockDataBuilder';
 export { buildCampeonatoMock } from './Fixtures/MockDataBuilders/CampeonatoMockDataBuilder';
+export { buildTemporadaMock } from './Fixtures/MockDataBuilders/TemporadaMockDataBuilder';
 export { buildGrupoMock } from './Fixtures/MockDataBuilders/GrupoMockDataBuilder';
 
 // ---- SeedBuilders ----
