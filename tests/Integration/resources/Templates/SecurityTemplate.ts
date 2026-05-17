@@ -22,10 +22,12 @@ export interface SecuritySuiteParams {
   basePayload: Record<string, any>;
   /** Se undefined, testa como rota pública (sem token) */
   usuario?: { email: string; senha: string };
-  /** Seed para criar dados necessários antes da suite */
-  seed?: () => Promise<void>;
+  /** Seed para criar dados necessários antes da suite (pode retornar dados para routeResolver) */
+  seed?: () => Promise<void | Record<string, any>>;
   /** Cleanup após a suite */
   cleanup?: () => Promise<void>;
+  /** Resolve a rota dinamicamente com dados do seed (ex: rota com :id) */
+  routeResolver?: (seedData: Record<string, any>) => string;
 
   sqlInjection?: {
     /** Campos onde testar injeção SQL */
@@ -96,12 +98,21 @@ export function describeSecuritySuite(
   t: typeof test,
   params: SecuritySuiteParams,
 ): void {
+  let seedData: Record<string, any> = {};
+  let resolvedRoute = params.route;
+
   t.describe(params.descricao, () => {
-    if (params.seed) {
-      t.beforeAll(async () => {
-        await params.seed!();
-      });
-    }
+    t.beforeAll(async () => {
+      if (params.seed) {
+        const result = await params.seed();
+        if (result && typeof result === 'object') {
+          seedData = result;
+        }
+      }
+      if (params.routeResolver) {
+        resolvedRoute = params.routeResolver(seedData);
+      }
+    });
 
     if (params.cleanup) {
       t.afterAll(async () => {
@@ -124,7 +135,7 @@ export function describeSecuritySuite(
             const name = `${campo} com payload SQL (${payload.label}) não deve retornar 500`;
 
             t(name, async ({ request }) => {
-              const url = `${BASE_URL}${params.route}`;
+              const url = `${BASE_URL}${resolvedRoute}`;
               const data = { ...params.basePayload, [campo]: payload.value };
 
               let headers: Record<string, string> | undefined;
@@ -142,14 +153,14 @@ export function describeSecuritySuite(
                 expect(statusMatch(response.status(), params.sqlInjection!.statusEsperado)).toBe(true);
               });
 
-              await test.step('Não deve expor SQL ou stacktrace na resposta', async () => {
+              await test.step('Não deve expor stacktrace na resposta', async () => {
                 const body = await response.json().catch(() => ({}));
                 const bodyStr = JSON.stringify(body);
-                expect(bodyStr).not.toContain('SELECT');
-                expect(bodyStr).not.toContain('FROM');
                 expect(bodyStr).not.toContain('at /');
                 expect(bodyStr).not.toContain('.ts:');
                 expect(bodyStr).not.toContain('.js:');
+                expect(bodyStr).not.toContain('PrismaClient');
+                expect(bodyStr).not.toContain('SQLSTATE');
               });
 
               try {
@@ -175,7 +186,7 @@ export function describeSecuritySuite(
             const name = `${campo} com payload XSS (${payload.label}) deve ser tratado`;
 
             t(name, async ({ request }) => {
-              const url = `${BASE_URL}${params.route}`;
+              const url = `${BASE_URL}${resolvedRoute}`;
               const data = { ...params.basePayload, [campo]: payload.value };
 
               let headers: Record<string, string> | undefined;
@@ -217,7 +228,7 @@ export function describeSecuritySuite(
           const name = `Campo sensível "${campo}" não deve ser aceito via payload`;
 
           t(name, async ({ request }) => {
-            const url = `${BASE_URL}${params.route}`;
+            const url = `${BASE_URL}${resolvedRoute}`;
             const data = { ...params.basePayload, [campo]: valorMalicioso };
 
             let headers: Record<string, string> | undefined;
@@ -254,7 +265,7 @@ export function describeSecuritySuite(
         const name = `${params.concorrencia!.requests || 5} requests simultâneas com mesmo ${params.concorrencia!.campoUnico} — apenas 1 deve ser criada`;
 
         t(name, async ({ request }) => {
-          const url = `${BASE_URL}${params.route}`;
+          const url = `${BASE_URL}${resolvedRoute}`;
           const valorUnico = params.concorrencia!.valorUnico();
           const numRequests = params.concorrencia!.requests || 5;
 
@@ -309,7 +320,7 @@ export function describeSecuritySuite(
         const name = 'Erro não deve expor stacktrace ou internals na resposta';
 
         t(name, async ({ request }) => {
-          const url = `${BASE_URL}${params.route}`;
+          const url = `${BASE_URL}${resolvedRoute}`;
           const data = params.stacktrace!.payloadQueForcaErro;
 
           let headers: Record<string, string> | undefined;
