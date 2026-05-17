@@ -1,11 +1,8 @@
 // ============================================================
 // TEMPLATE — Permissão (controle de acesso por perfil)
 //
-// Testa quem pode acessar cada endpoint:
-// 1. attemptRequest                  — Valida status code por perfil
-// 2. attemptRequestForRules          — Valida com avaliação de comportamento
-// 3. attemptRequestForRulesAuthorized — Valida que perfil TEM acesso
-// 4. describeAttemptSuite            — Orquestrador de suite completa
+// 1. attemptRequest       — Valida status code por perfil
+// 2. describeAttemptSuite — Orquestrador de suite completa
 // ============================================================
 
 import { test, APIRequestContext, expect } from '@playwright/test';
@@ -13,11 +10,6 @@ import { BASE_URL } from '../Base/constants';
 import { setHeaders } from '../Base/auth';
 import { logRequestResponse } from '../Base/request-logger';
 import { assertSemMensagemNaoTratada } from '../Base/helpers';
-import {
-  evaluateResponseBehavior,
-  evaluateResponseForRulesAuthorized,
-} from './ResponseEvaluator';
-import { buildPublicRoutes } from '../Fixtures/DataFactories/RouteFactory';
 
 // ---- Tipos ----
 
@@ -36,8 +28,6 @@ export interface AttemptScenario {
 export interface AttemptMockData {
   route: string;
   payload?: Record<string, any>;
-  resourceId?: string;
-  inexisticId?: string;
 }
 
 export interface AttemptConfig {
@@ -67,11 +57,8 @@ export async function attemptRequest(
     | 'put'
     | 'delete';
 
-  // Resolve rota: substitui resource_id se presente
-  let route = config.mockData.route;
-  if (config.mockData.resourceId && route.includes('resource_id')) {
-    route = route.replace('resource_id', config.mockData.resourceId);
-  }
+  // Resolve rota
+  const route = config.mockData.route;
   const url = `${BASE_URL}${route}`;
 
   // Headers: sem_token não envia Authorization
@@ -126,155 +113,6 @@ export async function attemptRequest(
   expect(response.status(), contexto).toBe(scenario.statusEsperado);
 }
 
-// ---- 2. Attempt Request For Rules (com avaliação de comportamento) ----
-
-export async function attemptRequestForRules(
-  request: APIRequestContext,
-  params: {
-    usuario: { email: string; senha: string };
-    method: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
-    route: string;
-    routeAlias: string;
-    statusEsperado?: number;
-    payload?: Record<string, any>;
-  },
-): Promise<void> {
-  const method = params.method.toLowerCase() as
-    | 'get'
-    | 'post'
-    | 'patch'
-    | 'put'
-    | 'delete';
-  const statusEsperado = params.statusEsperado ?? 403;
-  const url = `${BASE_URL}${params.route}`;
-
-  const headers = await setHeaders(request, params.usuario);
-
-  const options: any = { headers };
-  if (params.payload && ['post', 'patch', 'put'].includes(method)) {
-    options.data = params.payload;
-  }
-
-  const response = await request[method](url, options);
-
-  let body: any;
-  try {
-    body = await response.json();
-  } catch {
-    body = {};
-  }
-
-  try {
-    await logRequestResponse(
-      params.method,
-      url,
-      params.payload,
-      headers,
-      response,
-    );
-  } catch {
-    /* ignora */
-  }
-
-  // Avalia comportamento da resposta (500 = bug, 200 sem permissão = falha de segurança, etc.)
-  const publicRoutes = buildPublicRoutes();
-  const isPublicRoute = params.routeAlias in publicRoutes;
-  evaluateResponseBehavior(response.status(), body, isPublicRoute);
-
-  expect(response.status()).toBe(statusEsperado);
-}
-
-// ---- 3. Attempt Request For Rules Authorized (valida que perfil TEM acesso) ----
-
-export async function attemptRequestForRulesAuthorized(
-  request: APIRequestContext,
-  params: {
-    usuario: { email: string; senha: string };
-    method: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
-    route: string;
-    payload?: Record<string, any>;
-  },
-): Promise<void> {
-  const method = params.method.toLowerCase() as
-    | 'get'
-    | 'post'
-    | 'patch'
-    | 'put'
-    | 'delete';
-  const url = `${BASE_URL}${params.route}`;
-
-  const headers = await setHeaders(request, params.usuario);
-
-  const options: any = { headers };
-  if (params.payload && ['post', 'patch', 'put'].includes(method)) {
-    options.data = params.payload;
-  }
-
-  const response = await request[method](url, options);
-
-  try {
-    await logRequestResponse(
-      params.method,
-      url,
-      params.payload,
-      headers,
-      response,
-    );
-  } catch {
-    /* ignora */
-  }
-
-  // Avalia: se recebeu 403/401/500 = falha (deveria ter acesso)
-  evaluateResponseForRulesAuthorized(response.status());
-}
-
-// ---- Orquestrador: helper para beforeAll ----
-
-export async function runAttemptSetup(
-  config: {
-    seed?: () => Promise<void | Record<string, any>>;
-    setup?: AttemptSetupFn;
-  },
-  request?: APIRequestContext,
-): Promise<Record<string, any>> {
-  if (config.seed) {
-    await config.seed();
-  }
-  if (config.setup && request) {
-    return config.setup(request);
-  }
-  return {};
-}
-
-// ---- Helper para montar config dinâmica ----
-
-export function buildAttemptConfig(params: {
-  mockData?: AttemptMockData;
-  usuarios: Record<string, { email: string; senha: string }>;
-  setupData?: Record<string, any>;
-  routeResolver?: AttemptRouteResolver;
-  payloadResolver?: AttemptPayloadResolver;
-}): AttemptConfig {
-  const route = params.routeResolver
-    ? params.routeResolver(params.setupData || {})
-    : params.mockData!.route;
-
-  const payload = params.payloadResolver
-    ? params.payloadResolver(params.setupData || {})
-    : params.mockData?.payload;
-
-  return {
-    mockData: { route, payload },
-    usuarios: params.usuarios,
-  };
-}
-
-// ---- Helper para nome do teste ----
-
-export function attemptName(index: number, scenario: AttemptScenario): string {
-  return `Attempt ${String(index + 1).padStart(2, '0')} - ${scenario.perfil} deve receber ${scenario.statusEsperado}`;
-}
-
 // ---- Orquestrador de suite completa ----
 
 /**
@@ -284,7 +122,7 @@ export type AttemptTuple = [string, string, number, string, string?, string?];
 
 export interface AttemptSuiteParams {
   descricao: string;
-  scenarios: AttemptTuple[];
+  scenarios: AttemptTuple[] | AttemptScenario[];
   usuarios: Record<string, { email: string; senha: string }>;
   mockData?: AttemptMockData;
   seed?: () => Promise<void | Record<string, any>>;
@@ -293,16 +131,23 @@ export interface AttemptSuiteParams {
   payloadResolver?: AttemptPayloadResolver;
 }
 
-function tupleToScenario(tuple: AttemptTuple): AttemptScenario {
-  const [perfil, method, statusEsperado, descricao, skip, routeOverride] = tuple;
-  return {
-    perfil,
-    method: method as AttemptScenario['method'],
-    statusEsperado,
-    descricao,
-    skip,
-    routeOverride,
-  };
+function isAttemptTuple(scenario: AttemptTuple | AttemptScenario): scenario is AttemptTuple {
+  return Array.isArray(scenario);
+}
+
+function toScenario(input: AttemptTuple | AttemptScenario): AttemptScenario {
+  if (isAttemptTuple(input)) {
+    const [perfil, method, statusEsperado, descricao, skip, routeOverride] = input;
+    return {
+      perfil,
+      method: method as AttemptScenario['method'],
+      statusEsperado,
+      descricao,
+      skip,
+      routeOverride,
+    };
+  }
+  return input;
 }
 
 /**
@@ -329,8 +174,8 @@ export function describeAttemptSuite(
       }
     });
 
-    for (const [i, tuple] of params.scenarios.entries()) {
-      const scenario = tupleToScenario(tuple);
+    for (const [i, item] of params.scenarios.entries()) {
+      const scenario = toScenario(item);
       const detalhe = scenario.descricao ? ` quando ${scenario.descricao}` : '';
       const name = `Attempt ${String(i + 1).padStart(2, '0')} - ${scenario.perfil} deve receber ${scenario.statusEsperado}${detalhe}`;
 

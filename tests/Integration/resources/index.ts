@@ -28,10 +28,6 @@ export {
 export { factoryCampeonato } from './Fixtures/DataFactories/CampeonatoFactory';
 export { factoryTemporada } from './Fixtures/DataFactories/TemporadaFactory';
 export { factoryGrupo } from './Fixtures/DataFactories/GrupoFactory';
-export {
-  factoryRoute,
-  buildPublicRoutes,
-} from './Fixtures/DataFactories/RouteFactory';
 
 // ---- MockDataBuilders ----
 export { buildAuthMock } from './Fixtures/MockDataBuilders/AuthMockDataBuilder';
@@ -70,9 +66,6 @@ export {
 } from './Fixtures/SeedBuilders/GrupoSuiteSeedBuilder';
 export { setupGrupoComMembros } from './Fixtures/SeedBuilders/GrupoAttemptSetup';
 
-// ---- DataBuilder (orquestrador central) ----
-export { build } from './Fixtures/DataBuilder';
-
 // ---- Routes ----
 export * as AuthRoute from './Routes/AuthRoute';
 export * as UsuarioRoute from './Routes/UsuarioRoute';
@@ -91,4 +84,3 @@ export * from './Seeds/GrupoSeed';
 export * from './Templates/PermissionTemplate';
 export * from './Templates/InvalidFieldsTemplate';
 export * from './Templates/SecurityTemplate';
-export * from './Templates/ResponseEvaluator';

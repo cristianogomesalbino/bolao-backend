@@ -6,11 +6,10 @@
 // ============================================================
 
 import { test, APIRequestContext, expect } from '@playwright/test';
-import { BASE_URL } from '../Base/constants';
+import { BASE_URL, ATTACK, HTTP } from '../Base/constants';
 import { setHeaders } from '../Base/auth';
 import { logRequestResponse } from '../Base/request-logger';
 import { assertSemMensagemNaoTratada } from '../Base/helpers';
-import { ATTACK, HTTP } from '../Base/constants';
 
 // ---- Tipos ----
 
@@ -135,7 +134,7 @@ export function describeSecuritySuite(
         ];
 
         for (const campo of params.sqlInjection!.campos) {
-          for (const [i, payload] of payloads.entries()) {
+          for (const payload of payloads) {
             const name = `#${nextIndex()} ${campo} com payload SQL (${payload.label}) não deve retornar 500`;
 
             t(name, async ({ request }) => {
