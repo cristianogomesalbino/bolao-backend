@@ -1710,6 +1710,7 @@ Adicionar ao `.gitignore` do projeto host:
 30. Lógica de seed/setup NUNCA inline no spec — extrair para o SeedBuilder como função nomeada (ex: `seedUsuarioAttemptWithId`, `seedUsuarioDelete`). O spec só referencia: `seed: seedUsuarioAttemptWithId`.
 31. Cenários usam tuplas: `[perfil, method, status, descricao, skip?, routeOverride?]` — NUNCA objetos com chaves nomeadas.
 32. Ordem das propriedades no `describeAttemptSuite`: config primeiro (`descricao`, `usuarios`, `seed`, `setup`, `routeResolver`, `payloadResolver`), `scenarios` por último.
+33. Todos os templates DEVEM validar mensagens não tratadas do framework via `assertSemMensagemNaoTratada()`. A lista de termos fica em `MENSAGENS_NAO_TRATADAS` no `constants.ts`. Se o projeto for em inglês, esvaziar a lista.
 
 ---
 

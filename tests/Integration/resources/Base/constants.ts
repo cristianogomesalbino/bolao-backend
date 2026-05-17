@@ -75,6 +75,20 @@ export const ATTACK = {
   MASS_INACTIVE: false,
 } as const;
 
+export const MENSAGENS_NAO_TRATADAS = [
+  'Internal server error',
+  'Cannot',
+  'Unexpected token',
+  'is not defined',
+  'TypeError',
+  'ReferenceError',
+  'should not exist',
+  'must be a',
+  'should not be empty',
+  'must be longer than',
+  'must be shorter than',
+] as const;
+
 // ---- Constantes de teste ----
 
 export const MINIMUM_RECORD = 1;

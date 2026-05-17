@@ -9,6 +9,7 @@ import { test, APIRequestContext, expect } from '@playwright/test';
 import { BASE_URL } from '../Base/constants';
 import { setHeaders } from '../Base/auth';
 import { logRequestResponse } from '../Base/request-logger';
+import { assertSemMensagemNaoTratada } from '../Base/helpers';
 import { ATTACK, HTTP } from '../Base/constants';
 
 // ---- Tipos ----
@@ -102,6 +103,9 @@ export function describeSecuritySuite(
   let resolvedRoute = params.route;
 
   t.describe(params.descricao, () => {
+    let testIndex = 0;
+    const nextIndex = () => String(++testIndex).padStart(2, '0');
+
     t.beforeAll(async () => {
       if (params.seed) {
         const result = await params.seed();
@@ -132,7 +136,7 @@ export function describeSecuritySuite(
 
         for (const campo of params.sqlInjection!.campos) {
           for (const [i, payload] of payloads.entries()) {
-            const name = `${campo} com payload SQL (${payload.label}) não deve retornar 500`;
+            const name = `#${nextIndex()} ${campo} com payload SQL (${payload.label}) não deve retornar 500`;
 
             t(name, async ({ request }) => {
               const url = `${BASE_URL}${resolvedRoute}`;
@@ -161,6 +165,7 @@ export function describeSecuritySuite(
                 expect(bodyStr).not.toContain('.js:');
                 expect(bodyStr).not.toContain('PrismaClient');
                 expect(bodyStr).not.toContain('SQLSTATE');
+                assertSemMensagemNaoTratada(bodyStr);
               });
 
               try {
@@ -183,7 +188,7 @@ export function describeSecuritySuite(
 
         for (const campo of params.xss!.campos) {
           for (const payload of payloads) {
-            const name = `${campo} com payload XSS (${payload.label}) deve ser tratado`;
+            const name = `#${nextIndex()} ${campo} com payload XSS (${payload.label}) deve ser tratado`;
 
             t(name, async ({ request }) => {
               const url = `${BASE_URL}${resolvedRoute}`;
@@ -225,7 +230,7 @@ export function describeSecuritySuite(
     if (params.massAssignment) {
       t.describe('Mass Assignment', () => {
         for (const [campo, valorMalicioso] of Object.entries(params.massAssignment!.camposSensiveis)) {
-          const name = `Campo sensível "${campo}" não deve ser aceito via payload`;
+          const name = `#${nextIndex()} Campo sensível "${campo}" não deve ser aceito via payload`;
 
           t(name, async ({ request }) => {
             const url = `${BASE_URL}${resolvedRoute}`;
@@ -242,13 +247,20 @@ export function describeSecuritySuite(
               expect(statusMatch(response.status(), params.massAssignment!.statusEsperado)).toBe(true);
             });
 
+            let responseBody: any = null;
+
             await test.step(`Campo "${campo}" não deve ter valor malicioso aplicado`, async () => {
-              // Só valida o body se a request foi aceita (2xx)
               if (response.status() >= 200 && response.status() < 300) {
-                const body = await response.json().catch(() => ({}));
-                await params.massAssignment!.validar(body);
+                responseBody = await response.json().catch(() => ({}));
+                await params.massAssignment!.validar(responseBody);
               }
-              // Se retornou 422, o backend rejeitou — comportamento seguro
+            });
+
+            await test.step('Não deve conter mensagens não tratadas', async () => {
+              const bodyStr = responseBody
+                ? JSON.stringify(responseBody)
+                : JSON.stringify(await response.json().catch(() => ({})));
+              await assertSemMensagemNaoTratada(bodyStr);
             });
 
             try {
@@ -262,7 +274,7 @@ export function describeSecuritySuite(
     // ---- Concorrência (Race Condition) ----
     if (params.concorrencia) {
       t.describe('Concorrência', () => {
-        const name = `${params.concorrencia!.requests || 5} requests simultâneas com mesmo ${params.concorrencia!.campoUnico} — apenas 1 deve ser criada`;
+        const name = `#${nextIndex()} ${params.concorrencia!.requests || 5} requests simultâneas com mesmo ${params.concorrencia!.campoUnico} — apenas 1 deve ser criada`;
 
         t(name, async ({ request }) => {
           const url = `${BASE_URL}${resolvedRoute}`;
@@ -317,7 +329,7 @@ export function describeSecuritySuite(
     // ---- Stacktrace Leak ----
     if (params.stacktrace) {
       t.describe('Stacktrace Leak', () => {
-        const name = 'Erro não deve expor stacktrace ou internals na resposta';
+        const name = `#${nextIndex()} Erro não deve expor stacktrace ou internals na resposta`;
 
         t(name, async ({ request }) => {
           const url = `${BASE_URL}${resolvedRoute}`;
@@ -346,6 +358,10 @@ export function describeSecuritySuite(
             expect(bodyStr).not.toContain('PrismaClient');
             expect(bodyStr).not.toContain('SQLSTATE');
             expect(bodyStr).not.toContain('relation "');
+          });
+
+          await test.step('Não deve conter mensagens não tratadas do framework', async () => {
+            assertSemMensagemNaoTratada(bodyStr);
           });
 
           try {

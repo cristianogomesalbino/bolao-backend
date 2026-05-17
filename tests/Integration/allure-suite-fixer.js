@@ -90,28 +90,41 @@ for (const file of files) {
     suite = 'Requests';
   }
 
-  // subSuite = o describe do teste (último elemento não-arquivo do titlePath)
+  // subSuite = o describe do teste
   let subSuite = '';
-  const describes = titlePath.filter(
-    (p) =>
-      !p.includes('.spec.ts') &&
-      !p.includes('.ts:') &&
-      !p.includes('.ts') &&
-      p !== '..' &&
-      p !== 'resources' &&
-      p !== 'Templates' &&
-      p !== modulo &&
-      p.length > 0,
-  );
 
-  if (describes.length > 0) {
-    subSuite = describes[describes.length - 1];
-  }
+  if (isSecurity) {
+    // Para Security, usar o descricao do spec (primeiro describe do titlePath que começa com "Segurança")
+    const secDescribe = titlePath.find((p) => p.startsWith('Segurança'));
+    if (secDescribe) {
+      subSuite = secDescribe;
+    } else {
+      // Fallback: nome do arquivo
+      const fileMatch = fullName.match(/([^/]+)\.spec\.ts/);
+      subSuite = fileMatch ? fileMatch[1] : 'Unknown';
+    }
+  } else {
+    const describes = titlePath.filter(
+      (p) =>
+        !p.includes('.spec.ts') &&
+        !p.includes('.ts:') &&
+        !p.includes('.ts') &&
+        p !== '..' &&
+        p !== 'resources' &&
+        p !== 'Templates' &&
+        p !== modulo &&
+        p.length > 0,
+    );
 
-  // Fallback: se não encontrou, usa o nome do arquivo
-  if (!subSuite) {
-    const fileMatch = fullName.match(/([^/]+)\.spec\.ts/);
-    subSuite = fileMatch ? fileMatch[1] : 'Unknown';
+    if (describes.length > 0) {
+      subSuite = describes[describes.length - 1];
+    }
+
+    // Fallback: se não encontrou, usa o nome do arquivo
+    if (!subSuite) {
+      const fileMatch = fullName.match(/([^/]+)\.spec\.ts/);
+      subSuite = fileMatch ? fileMatch[1] : 'Unknown';
+    }
   }
 
   // Remove labels existentes que vamos sobrescrever

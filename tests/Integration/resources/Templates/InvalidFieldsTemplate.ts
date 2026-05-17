@@ -10,6 +10,7 @@ import { test, APIRequestContext, expect } from '@playwright/test';
 import { BASE_URL } from '../Base/constants';
 import { setHeaders } from '../Base/auth';
 import { logRequestResponse } from '../Base/request-logger';
+import { assertSemMensagemNaoTratada } from '../Base/helpers';
 
 // ---- Tipos ----
 
@@ -76,6 +77,7 @@ export async function attemptWithInvalidField(
 
   const errorsAsString = JSON.stringify(fieldErrors || errors);
   expect(errorsAsString).toContain(params.expectedMessage);
+  await assertSemMensagemNaoTratada(errorsAsString);
 }
 
 // ---- Orquestrador de suite ----

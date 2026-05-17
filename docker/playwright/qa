@@ -49,9 +49,12 @@ run_tests() {
     "mkdir -p ./results/allure-results ./results/.history; \
      cp -r ./results/.history/. ./results/allure-results/history 2>/dev/null || true; \
      rm -f ./results/allure-results/*-result.json ./results/allure-results/*-attachment.* ./results/allure-results/executor.json ./results/allure-results/environment.properties; \
+     START_TIME=\$(date +%s); \
      npx playwright test; \
+     END_TIME=\$(date +%s); \
+     DURATION=\$(( END_TIME - START_TIME )); \
      node allure-suite-fixer.js; \
-     printf '{\"name\":\"QA Local\",\"type\":\"local\",\"buildOrder\":${count},\"buildName\":\"${build_name}\",\"reportName\":\"${build_name} - ${build_date}\"}' > ./results/allure-results/executor.json; \
+     printf '{\"name\":\"QA Local\",\"type\":\"local\",\"buildOrder\":${count},\"buildName\":\"${build_name} (${DURATION}s)\",\"reportName\":\"${build_name} - ${build_date} (${DURATION}s)\"}' > ./results/allure-results/executor.json; \
      npx allure-commandline generate ./results/allure-results -o ./results/allure-report --clean || true; \
      rm -rf ./results/.history; \
      cp -r ./results/allure-report/history ./results/.history 2>/dev/null || true"
@@ -66,9 +69,12 @@ run_specific() {
     "mkdir -p ./results/allure-results ./results/.history; \
      cp -r ./results/.history/. ./results/allure-results/history 2>/dev/null || true; \
      rm -f ./results/allure-results/*-result.json ./results/allure-results/*-attachment.* ./results/allure-results/executor.json ./results/allure-results/environment.properties; \
+     START_TIME=\$(date +%s); \
      npx playwright test ${spec}; \
+     END_TIME=\$(date +%s); \
+     DURATION=\$(( END_TIME - START_TIME )); \
      node allure-suite-fixer.js; \
-     printf '{\"name\":\"QA Local\",\"type\":\"local\",\"buildOrder\":${count},\"buildName\":\"${build_name}\",\"reportName\":\"${build_name} - ${build_date}\"}' > ./results/allure-results/executor.json; \
+     printf '{\"name\":\"QA Local\",\"type\":\"local\",\"buildOrder\":${count},\"buildName\":\"${build_name} (${DURATION}s)\",\"reportName\":\"${build_name} - ${build_date} (${DURATION}s)\"}' > ./results/allure-results/executor.json; \
      npx allure-commandline generate ./results/allure-results -o ./results/allure-report --clean || true; \
      rm -rf ./results/.history; \
      cp -r ./results/allure-report/history ./results/.history 2>/dev/null || true"

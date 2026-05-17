@@ -12,6 +12,7 @@ import { test, APIRequestContext, expect } from '@playwright/test';
 import { BASE_URL } from '../Base/constants';
 import { setHeaders } from '../Base/auth';
 import { logRequestResponse } from '../Base/request-logger';
+import { assertSemMensagemNaoTratada } from '../Base/helpers';
 import {
   evaluateResponseBehavior,
   evaluateResponseForRulesAuthorized,
@@ -108,6 +109,9 @@ export async function attemptRequest(
   } catch {
     /* ignora fora de contexto de teste */
   }
+
+  // Valida mensagens não tratadas do framework
+  await assertSemMensagemNaoTratada(response);
 
   // Mensagem de erro contextualizada para facilitar debug
   const usuario = scenario.perfil !== 'sem_token' ? config.usuarios[scenario.perfil] : null;
