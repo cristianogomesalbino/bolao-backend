@@ -8,7 +8,7 @@ test.describe('Campeonatos Requests Suite', () => {
 
   test('Caso 01 - Criar campeonato com sucesso', async ({ request }) => {
     const usuario = API.factoryUsuario('user_to_manage_campeonato_suite');
-    const payload = { nome: `Campeonato E2E ${Date.now()}` };
+    const payload = API.factoryCampeonato('for_post_campeonato');
 
     const response = await API.CampeonatoRoute.postCampeonato(
       request,

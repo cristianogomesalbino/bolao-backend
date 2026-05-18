@@ -9,7 +9,7 @@ export interface CampeonatoData {
 export function factoryCampeonato(target: string): CampeonatoData {
   const campeonatos: Record<string, CampeonatoData> = {
     for_post_campeonato: {
-      nome: 'Campeonato QA Post',
+      nome: `Campeonato QA Post ${Date.now()}`,
     },
     campeonato_to_manage_suite: {
       nome: 'Campeonato Suite QA',

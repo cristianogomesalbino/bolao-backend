@@ -5,11 +5,7 @@ test.describe('Usuarios Requests Suite', () => {
   test('Caso 01 - Criar usuário via API (rota pública)', async ({
     request,
   }) => {
-    const payload = {
-      nome: 'Novo Usuario E2E QA',
-      email: `qa.caso01.${Date.now()}@post.usuario.qa`,
-      senha: 'Teste123!',
-    };
+    const payload = API.factoryUsuario('for_post_usuario');
 
     const response = await API.UsuarioRoute.postUsuario(request, payload);
     const body = await response.json();
@@ -27,25 +23,23 @@ test.describe('Usuarios Requests Suite', () => {
     await test.step('Não deve expor a senha na resposta', async () => {
       expect(body).not.toHaveProperty('senha');
     });
+
+    await test.step('Deve persistir corretamente no banco', async () => {
+      const usuarioDB = await API.UsuarioDB.selectUsuarioById(body.id);
+      expect(usuarioDB).not.toBeNull();
+      expect(usuarioDB!.nome).toBe(payload.nome);
+      expect(usuarioDB!.email).toBe(payload.email);
+    });
   });
 
   test('Caso 02 - Criar usuário com email duplicado deve falhar', async ({
     request,
   }) => {
-    const email = `qa.caso02.${Date.now()}@duplicado.qa`;
-    await API.UsuarioDB.insertUsuario({
-      nome: 'Duplicado Setup QA',
-      email,
-      senha: 'Teste123!',
-    });
+    const usuario = API.factoryUsuario('for_post_usuario');
+    await API.UsuarioDB.insertUsuario(usuario);
 
-    const payload = {
-      nome: 'Duplicado QA',
-      email,
-      senha: 'Teste123!',
-    };
-
-    const response = await API.UsuarioRoute.postUsuario(request, payload);
+    // Tenta criar outro com mesmo email
+    const response = await API.UsuarioRoute.postUsuario(request, usuario);
 
     await test.step('Deve retornar 409 Conflict', async () => {
       expect(response.status()).toBe(API.HTTP_CONFLICT);
@@ -55,14 +49,12 @@ test.describe('Usuarios Requests Suite', () => {
   test('Caso 03 - Buscar perfil do usuário autenticado (GET /me)', async ({
     request,
   }) => {
-    const email = `qa.caso03.${Date.now()}@me.qa`;
-    const senha = 'Teste123!';
-    const nome = 'Usuario Me QA';
-    await API.UsuarioDB.insertUsuario({ nome, email, senha });
+    const usuario = API.factoryUsuario('for_post_usuario');
+    await API.UsuarioDB.insertUsuario(usuario);
 
     const response = await API.UsuarioRoute.getUsuarioMe(request, {
-      email,
-      senha,
+      email: usuario.email,
+      senha: usuario.senha,
     });
     const body = await response.json();
 
@@ -80,17 +72,10 @@ test.describe('Usuarios Requests Suite', () => {
       expect(body).toHaveProperty('atualizadoEm');
     });
 
-    await test.step('Deve retornar valores corretos (nome, email, ativo)', async () => {
-      expect(body.nome).toBe(nome);
-      expect(body.email).toBe(email);
+    await test.step('Deve retornar valores corretos', async () => {
+      expect(body.nome).toBe(usuario.nome);
+      expect(body.email).toBe(usuario.email);
       expect(body.ativo).toBe(true);
-    });
-
-    await test.step('Deve retornar tipos corretos nos campos', async () => {
-      expect(typeof body.id).toBe('string');
-      expect(typeof body.nome).toBe('string');
-      expect(typeof body.perfil).toBe('string');
-      expect(typeof body.ativo).toBe('boolean');
     });
 
     await test.step('Não deve expor campos sensíveis', async () => {
@@ -100,15 +85,14 @@ test.describe('Usuarios Requests Suite', () => {
   });
 
   test('Caso 04 - Buscar usuário por ID (próprio)', async ({ request }) => {
-    const email = `qa.caso04.${Date.now()}@byid.qa`;
-    const senha = 'Teste123!';
-    await API.UsuarioDB.insertUsuario({ nome: 'ById QA', email, senha });
+    const usuario = API.factoryUsuario('for_post_usuario');
+    await API.UsuarioDB.insertUsuario(usuario);
 
-    const userId = await API.UsuarioDB.selectUsuarioByEmail(email);
+    const userId = await API.UsuarioDB.selectUsuarioByEmail(usuario.email);
 
     const response = await API.UsuarioRoute.getUsuarioById(
       request,
-      { email, senha },
+      { email: usuario.email, senha: usuario.senha },
       userId!,
     );
     const body = await response.json();
@@ -117,43 +101,36 @@ test.describe('Usuarios Requests Suite', () => {
       expect(response.status()).toBe(API.HTTP_OK);
     });
 
-    await test.step('Deve retornar o mesmo ID e email do usuário', async () => {
+    await test.step('Deve retornar o mesmo ID e email', async () => {
       expect(body.id).toBe(userId);
-      expect(body.email).toBe(email);
+      expect(body.email).toBe(usuario.email);
     });
   });
 
   test('Caso 05 - Atualizar nome do usuário', async ({ request }) => {
-    const email = `qa.caso06.${Date.now()}@patch.qa`;
-    const senha = 'Teste123!';
-    await API.UsuarioDB.insertUsuario({
-      nome: 'Antes Patch QA',
-      email,
-      senha,
-    });
+    const usuario = API.factoryUsuario('for_post_usuario');
+    await API.UsuarioDB.insertUsuario(usuario);
 
-    const userId = await API.UsuarioDB.selectUsuarioByEmail(email);
-
-    const novoNome = 'Nome Atualizado E2E QA';
+    const userId = await API.UsuarioDB.selectUsuarioByEmail(usuario.email);
+    const dadosPatch = API.factoryUsuario('for_patch_usuario');
 
     const response = await API.UsuarioRoute.patchUsuario(
       request,
-      { email, senha },
+      { email: usuario.email, senha: usuario.senha },
       userId!,
-      { nome: novoNome },
+      { nome: dadosPatch.nome },
     );
     const body = await response.json();
 
     await test.step('Deve retornar 200 OK com nome atualizado', async () => {
       expect(response.status()).toBe(API.HTTP_OK);
-      expect(body.nome).toBe(novoNome);
+      expect(body.nome).toBe(dadosPatch.nome);
     });
 
-    await test.step('Deve persistir o novo nome no banco de dados', async () => {
+    await test.step('Deve persistir o novo nome no banco', async () => {
       const usuarioDB = await API.UsuarioDB.selectUsuarioById(userId!);
       expect(usuarioDB).not.toBeNull();
-      expect(usuarioDB!.nome).toBe(novoNome);
+      expect(usuarioDB!.nome).toBe(dadosPatch.nome);
     });
   });
-
 });

@@ -11,7 +11,8 @@ test.describe('Temporadas Requests Suite', () => {
 
   test('Caso 01 - Criar temporada com sucesso', async ({ request }) => {
     const usuario = API.factoryUsuario('user_to_manage_campeonato_suite');
-    const payload = { ano: 2026, campeonatoId };
+    const temporada = API.factoryTemporada('for_post_temporada');
+    const payload = { ...temporada, campeonatoId };
 
     const response = await API.TemporadaRoute.postTemporada(
       request,
@@ -26,7 +27,7 @@ test.describe('Temporadas Requests Suite', () => {
 
     await test.step('Deve retornar id e ano corretos', async () => {
       expect(body).toHaveProperty('id');
-      expect(body.ano).toBe(2026);
+      expect(body.ano).toBe(temporada.ano);
     });
 
     await test.step('Deve conter campeonatoId na resposta', async () => {
@@ -36,7 +37,7 @@ test.describe('Temporadas Requests Suite', () => {
     await test.step('Deve persistir corretamente no banco', async () => {
       const temporadaDB = await API.TemporadaDB.selectTemporadaById(body.id);
       expect(temporadaDB).not.toBeNull();
-      expect(temporadaDB!.ano).toBe(2026);
+      expect(temporadaDB!.ano).toBe(temporada.ano);
       expect(temporadaDB!.campeonatoId).toBe(campeonatoId);
     });
   });

@@ -78,13 +78,13 @@ export function factoryUsuario(target: string): UsuarioData {
     // Payload para POST /usuarios (criação via API)
     for_post_usuario: {
       nome: 'Novo Usuario QA',
-      email: 'novo@post.usuario.qa',
+      email: `qa.post.${Date.now()}@usuario.qa`,
       senha: 'Teste123!',
     },
     // Payload para PUT/PATCH usuario
     for_patch_usuario: {
-      nome: 'Usuario Atualizado QA',
-      email: 'atualizado@patch.usuario.qa',
+      nome: `Usuario Atualizado QA ${Date.now()}`,
+      email: `qa.patch.${Date.now()}@usuario.qa`,
       senha: 'Teste123!',
     },
   };

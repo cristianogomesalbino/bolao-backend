@@ -883,29 +883,114 @@ export async function getRecurso(request: APIRequestContext, usuario: any) {
 
 ## 7. CAMADA FIXTURES
 
-### 7.1 DataFactories — Dados estáticos por entidade
+A arquitetura de montagem de dados segue o padrão **Object Mother + Builder** em 4 camadas:
+
+```
+Factory (dados brutos) → DataBuilder (composição) → SeedBuilder (seleção) → Seed (execução)
+```
+
+### 7.1 DataFactories — Dados brutos por entidade (camada mais baixa)
+
+Funções que retornam objetos com dados de uma entidade. Cada `target` é um cenário nomeado de forma descritiva. **NUNCA hardcodar dados em Seeds ou SeedBuilders — sempre usar Factories.**
 
 ```typescript
 // DataFactories/UsuarioFactory.ts
-export interface UsuarioData {
-  nome: string;
-  email: string;
-  senha: string;
-  perfil?: string;
-  ativo?: boolean;
-}
-
 export function factoryUsuario(target: string): UsuarioData {
   const usuarios: Record<string, UsuarioData> = {
     adm_to_manage_auth_suite: { nome: 'Admin Auth QA', email: 'adm@authsuite.qa', senha: 'Teste123!' },
     super_admin_to_manage_suite: { nome: 'Super Admin QA', email: 'superadmin@suite.qa', senha: 'Teste123!', perfil: 'SUPER_ADMIN' },
-    // ... cenários por suite
   };
   return usuarios[target];
 }
+
+// DataFactories/CampeonatoFactory.ts
+export function factoryCampeonato(target: string): CampeonatoData {
+  const campeonatos: Record<string, CampeonatoData> = {
+    campeonato_for_temporada_suite: { nome: 'Campeonato Temporada Suite QA' },
+    campeonato_for_grupo_suite: { nome: 'Campeonato Grupo Suite QA' },
+  };
+  return campeonatos[target];
+}
 ```
 
-### 7.2 MockDataBuilders — Payloads e rotas por endpoint
+**Responsabilidade:** Definir os valores fixos de cada cenário. Fonte única de verdade para dados de teste.
+
+### 7.2 DataBuilder — Composição central (orquestrador)
+
+Compõe dados de múltiplas factories em pacotes prontos por suite/cenário. SeedBuilders chamam `build()` para obter dados compostos.
+
+```typescript
+// Fixtures/DataBuilder.ts
+import { factoryUsuario } from './DataFactories/UsuarioFactory';
+import { factoryCampeonato } from './DataFactories/CampeonatoFactory';
+import { factoryTemporada } from './DataFactories/TemporadaFactory';
+
+export function build(target: string, scenario: string, key?: string): any {
+  const data = {
+    for_temporada_suite: {
+      user_manage: {
+        usuario: factoryUsuario('user_to_manage_campeonato_suite'),
+        campeonato: factoryCampeonato('campeonato_for_temporada_suite'),
+        temporada: factoryTemporada('temporada_to_manage_suite'),
+      },
+    },
+    for_grupo_suite: {
+      user_admin: {
+        usuario: factoryUsuario('user_to_manage_grupo_suite'),
+        campeonato: factoryCampeonato('campeonato_for_grupo_suite'),
+        temporada: factoryTemporada('temporada_for_grupo_suite'),
+        grupo: factoryGrupo('grupo_to_manage_suite'),
+      },
+      user_member: {
+        usuario: factoryUsuario('user_member_grupo_suite'),
+      },
+    },
+  };
+  const result = data[target][scenario];
+  return key ? result[key] : result;
+}
+```
+
+**Responsabilidade:** Centralizar a composição. Quando uma relação muda, só altera num lugar.
+
+### 7.3 SeedBuilders — Seleção por suite (o que cada suite precisa)
+
+Cada SeedBuilder define quais cenários a suite precisa, chamando `DataBuilder.build()`. Exporta:
+- `seedUsuariosFor[Modulo]Suite()` — lista de dados para o CRUD spec
+- `[MODULO]_ATTEMPT_USUARIOS` — mapa de usuários para AttemptRequests
+- `seed[Modulo]Attempt()` — seed para AttemptRequests
+
+```typescript
+// SeedBuilders/TemporadaSuiteSeedBuilder.ts
+import { build } from '../DataBuilder';
+import { createUsuario, createUsuarios } from '../../Database/UsuarioDatabase';
+import { insertCampeonato, selectCampeonatoByNome } from '../../Database/CampeonatoDatabase';
+
+export const TEMPORADA_ATTEMPT_USUARIOS = {
+  user: build('for_temporada_suite', 'user_manage', 'usuario'),
+  super_admin: build('for_temporada_suite', 'super_admin', 'usuario'),
+};
+
+export async function seedTemporadaAttempt(): Promise<void> {
+  await createUsuarios([build('for_temporada_suite', 'user_manage', 'usuario')]);
+  await createUsuario(build('for_temporada_suite', 'super_admin', 'usuario'));
+  const campeonato = build('for_temporada_suite', 'user_manage', 'campeonato');
+  await insertCampeonato(campeonato.nome);
+}
+
+export async function seedTemporadaAttemptWithCampeonato(): Promise<{ campeonatoId: string }> {
+  await seedTemporadaAttempt();
+  const campeonato = build('for_temporada_suite', 'user_manage', 'campeonato');
+  const campeonatoId = await selectCampeonatoByNome(campeonato.nome);
+  return { campeonatoId: campeonatoId! };
+}
+```
+
+**Responsabilidade:** Montar a lista de dados que precisa existir no banco antes de uma suite rodar.
+
+### 7.4 MockDataBuilders — Payloads de request (camada paralela)
+
+Diferente das camadas acima (que populam o banco), os MockDataBuilders montam payloads e rotas para chamadas HTTP nos AttemptRequests. **Separam dados de banco (seed) dos dados de request (payload).**
 
 ```typescript
 // MockDataBuilders/AuthMockDataBuilder.ts
@@ -913,7 +998,6 @@ export function buildAuthMock(endpoint: string, overrides?: Record<string, any>)
   const mocks: Record<string, { route: string; payload?: Record<string, any> }> = {
     post_login: { route: 'auth/login', payload: { email: 'adm@authsuite.qa', senha: 'Teste123!' } },
     post_logout: { route: 'auth/logout', payload: { refreshToken: 'qualquer' } },
-    post_refresh: { route: 'auth/refresh', payload: { refreshToken: 'qualquer' } },
   };
   const mock = { ...mocks[endpoint] };
   if (overrides?.payload) mock.payload = { ...mock.payload, ...overrides.payload };
@@ -922,51 +1006,54 @@ export function buildAuthMock(endpoint: string, overrides?: Record<string, any>)
 }
 ```
 
-### 7.3 SeedBuilders — Seeds + config compartilhada por módulo
+**Responsabilidade:** Fornecer dados para requisições HTTP (body, rota, filtros).
 
-**Padrão obrigatório:** Cada módulo tem um SeedBuilder que exporta:
-- `seedUsuariosFor[Modulo]Suite()` — seed para specs de CRUD
-- `[MODULO]_ATTEMPT_USUARIOS` — mapa de usuários para AttemptRequests
-- `seed[Modulo]Attempt()` — seed para AttemptRequests
+### 7.5 Setup compartilhado (para módulos com dependências complexas)
 
-```typescript
-// SeedBuilders/AuthSuiteSeedBuilder.ts
-import { factoryUsuario } from '../DataFactories/UsuarioFactory';
-import { createUsuario, createUsuarios } from '../../Database/UsuarioDatabase';
-
-export function seedUsuariosForAuthSuite() {
-  return [factoryUsuario('adm_to_manage_auth_suite')];
-}
-
-export const AUTH_ATTEMPT_USUARIOS = {
-  user: factoryUsuario('adm_to_manage_auth_suite'),
-  super_admin: factoryUsuario('super_admin_to_manage_suite'),
-};
-
-export async function seedAuthAttempt(): Promise<void> {
-  await createUsuarios(seedUsuariosForAuthSuite());
-  await createUsuario(factoryUsuario('super_admin_to_manage_suite'));
-}
-```
-
-### 7.4 Setup compartilhado (para módulos com dependências)
-
-Quando os AttemptRequests precisam de infraestrutura (ex: criar campeonato → temporada → grupo), extrair em arquivo separado:
+Quando os AttemptRequests precisam de infraestrutura via API (ex: criar grupo com admin + membro):
 
 ```typescript
 // SeedBuilders/GrupoAttemptSetup.ts
-import { APIRequestContext } from '@playwright/test';
-
 export async function setupGrupoComMembros(
   request: APIRequestContext,
   adminUser: { email: string; senha: string },
   membroUser: { email: string; senha: string },
   sufixo: string,
 ): Promise<{ grupoId: string; codigoConvite: string }> {
-  // Cria campeonato → temporada → grupo → membro entra
+  // Cria campeonato → temporada → grupo → membro entra via API
   // Retorna IDs para uso nos cenários
 }
 ```
+
+### 7.6 Fluxo completo (resumo visual)
+
+```
+CRUD Spec (.spec.ts)
+└── beforeAll: seedingForGrupoSuite()
+    └── Seeds/GrupoSeed.ts
+        └── SeedBuilders/GrupoSuiteSeedBuilder.ts
+            └── DataBuilder.build('for_grupo_suite', 'user_admin')
+                ├── factoryUsuario('user_to_manage_grupo_suite')
+                ├── factoryCampeonato('campeonato_for_grupo_suite')
+                └── factoryTemporada('temporada_for_grupo_suite')
+        └── Database/CampeonatoDatabase.insertCampeonato(nome)
+        └── Database/TemporadaDatabase.insertTemporada(campeonatoId, ano)
+
+AttemptRequest Spec (.spec.ts)
+└── describeAttemptSuite(test, { seed: seedGrupoAttempt, ... })
+    └── SeedBuilders/GrupoSuiteSeedBuilder.seedGrupoAttempt()
+        └── DataBuilder.build('for_grupo_suite', 'user_admin', 'usuario')
+        └── Database/UsuarioDatabase.createUsuarios(...)
+```
+
+### 7.7 Regras da camada Fixtures
+
+- **NUNCA hardcodar dados** em Seeds, SeedBuilders ou Specs — sempre usar Factory via DataBuilder
+- **Factory** = dados brutos de uma entidade (usado em CRUD specs via `factoryUsuario('target')`)
+- **DataBuilder** = composição de múltiplas factories (usado em SeedBuilders via `build(target, scenario)`)
+- **SeedBuilder** = seleção por suite (define o que cada suite precisa)
+- **MockDataBuilder** = payloads de request (usado em AttemptRequests)
+- **Seed** = execução (chama SeedBuilder + Database helpers para inserir no banco)
 
 ---
 
@@ -1804,6 +1891,8 @@ Adicionar ao `.gitignore` do projeto host:
 38. Setup de dependências (ex: Temporada precisa de Campeonato) DEVE ser feito via seed no banco (INSERT direto) — NUNCA via chamada à API dentro do teste. O seed cria os registros, uma função auxiliar busca os IDs.
 39. NUNCA usar `test` como setup. Se um caso precisa de dados pré-existentes, isso é responsabilidade do `beforeAll` via seed — não de um "Caso 01 - Setup: criar X".
 40. Limpeza é responsabilidade exclusiva do global-teardown. NUNCA fazer cleanup inline nos specs. O teardown deleta por timestamp na ordem inversa de FK.
+41. SeedBuilders DEVEM usar `DataBuilder.build()` para obter dados — NUNCA importar factories diretamente (exceto `factoryUsuarioAttemptRequests` que é específico de permissão). O DataBuilder é o orquestrador central de composição.
+42. Ao criar um novo módulo, adicionar os cenários no `DataBuilder.ts` ANTES de criar o SeedBuilder. O DataBuilder é a fonte única de composição de dados.
 
 ---
 

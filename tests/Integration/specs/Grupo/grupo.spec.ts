@@ -15,11 +15,8 @@ test.describe('Grupos Requests Suite', () => {
   });
 
   test('Caso 01 - Criar grupo privado', async ({ request }) => {
-    const payload = {
-      nome: `Grupo Privado E2E ${Date.now()}`,
-      temporadaId,
-      privado: true,
-    };
+    const grupo = API.factoryGrupo('for_post_grupo_privado');
+    const payload = { ...grupo, temporadaId };
 
     const response = await API.GrupoRoute.postGrupo(request, adminUser, payload);
     const body = await response.json();
@@ -50,11 +47,8 @@ test.describe('Grupos Requests Suite', () => {
   });
 
   test('Caso 02 - Criar grupo público', async ({ request }) => {
-    const payload = {
-      nome: `Grupo Público E2E ${Date.now()}`,
-      temporadaId,
-      privado: false,
-    };
+    const grupo = API.factoryGrupo('for_post_grupo_publico');
+    const payload = { ...grupo, temporadaId };
 
     const response = await API.GrupoRoute.postGrupo(request, adminUser, payload);
     const body = await response.json();
@@ -107,12 +101,12 @@ test.describe('Grupos Requests Suite', () => {
   });
 
   test('Caso 05 - Atualizar grupo (admin do grupo)', async ({ request }) => {
-    const novoNome = `Grupo Atualizado E2E ${Date.now()}`;
+    const grupoAtualizado = API.factoryGrupo('for_patch_grupo');
     const response = await API.GrupoRoute.patchGrupo(
       request,
       adminUser,
       grupoId,
-      { nome: novoNome },
+      { nome: grupoAtualizado.nome },
     );
     const body = await response.json();
 
@@ -121,12 +115,12 @@ test.describe('Grupos Requests Suite', () => {
     });
 
     await test.step('Deve retornar nome atualizado', async () => {
-      expect(body.nome).toBe(novoNome);
+      expect(body.nome).toBe(grupoAtualizado.nome);
     });
 
     await test.step('Deve persistir o novo nome no banco', async () => {
       const grupoDB = await API.GrupoDB.selectGrupoById(grupoId);
-      expect(grupoDB!.nome).toBe(novoNome);
+      expect(grupoDB!.nome).toBe(grupoAtualizado.nome);
     });
   });
 
