@@ -9,6 +9,7 @@ import { factoryUsuario } from './DataFactories/UsuarioFactory';
 import { factoryCampeonato } from './DataFactories/CampeonatoFactory';
 import { factoryTemporada } from './DataFactories/TemporadaFactory';
 import { factoryGrupo } from './DataFactories/GrupoFactory';
+import { factoryFase } from './DataFactories/FaseFactory';
 
 export function build(target: string, scenario: string, key?: string): any {
   const data: Record<string, Record<string, Record<string, any>>> = {
@@ -87,6 +88,32 @@ export function build(target: string, scenario: string, key?: string): any {
       },
       user_to_add: {
         usuario: factoryUsuario('user_to_add_grupo_suite'),
+      },
+    },
+
+    // ---- Fase Suite ----
+    for_fase_suite: {
+      user_manage: {
+        usuario: factoryUsuario('user_to_manage_campeonato_suite'),
+        campeonato: factoryCampeonato('campeonato_for_temporada_suite'),
+        temporada: factoryTemporada('temporada_to_manage_suite'),
+        fase: factoryFase('fase_to_manage_suite'),
+      },
+      super_admin: {
+        usuario: factoryUsuario('super_admin_to_manage_suite'),
+      },
+    },
+
+    // ---- Palpite Suite ----
+    for_palpite_suite: {
+      user_manage: {
+        usuario: factoryUsuario('user_to_manage_campeonato_suite'),
+        campeonato: factoryCampeonato('campeonato_for_temporada_suite'),
+        temporada: factoryTemporada('temporada_to_manage_suite'),
+        fase: factoryFase('fase_to_manage_suite'),
+      },
+      super_admin: {
+        usuario: factoryUsuario('super_admin_to_manage_suite'),
       },
     },
   };

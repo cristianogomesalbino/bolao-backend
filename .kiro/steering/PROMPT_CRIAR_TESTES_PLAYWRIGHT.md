@@ -1893,6 +1893,7 @@ Adicionar ao `.gitignore` do projeto host:
 40. Limpeza é responsabilidade exclusiva do global-teardown. NUNCA fazer cleanup inline nos specs. O teardown deleta por timestamp na ordem inversa de FK.
 41. SeedBuilders DEVEM usar `DataBuilder.build()` para obter dados — NUNCA importar factories diretamente (exceto `factoryUsuarioAttemptRequests` que é específico de permissão). O DataBuilder é o orquestrador central de composição.
 42. Ao criar um novo módulo, adicionar os cenários no `DataBuilder.ts` ANTES de criar o SeedBuilder. O DataBuilder é a fonte única de composição de dados.
+43. Quando um spec precisa de uma dependência que não existe no SeedBuilder, PARAR e criar a função no SeedBuilder primeiro — NUNCA colocar lógica de seed inline no spec como atalho. O fluxo é sempre: Factory → DataBuilder → SeedBuilder → Spec.
 
 ---
 
