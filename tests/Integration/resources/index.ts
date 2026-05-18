@@ -80,6 +80,7 @@ export * as GrupoUsuarioRoute from './Routes/GrupoUsuarioRoute';
 export * from './Seeds/AuthSeed';
 export * from './Seeds/UsuarioSeed';
 export * from './Seeds/CampeonatoSeed';
+export * from './Seeds/TemporadaSeed';
 export * from './Seeds/GrupoSeed';
 
 // ---- Templates ----

@@ -27,6 +27,16 @@ export async function selectGrupoCodigoConvite(
   return getQueryResultValue(result);
 }
 
+export async function selectGrupoById(
+  grupoId: string,
+): Promise<{ nome: string; privado: boolean; ativo: boolean; codigoConvite: string } | null> {
+  const result = await executeDatabaseQuery(
+    `SELECT "nome", "privado", "ativo", "codigoConvite" FROM ${SCHEMA.GRUPO} WHERE id = $1`,
+    [grupoId],
+  );
+  return result && result.length > 0 ? result[0] : null;
+}
+
 export async function deleteGrupoByNome(nome: string): Promise<void> {
   const id = await selectGrupoByNome(nome);
   if (!id) return;

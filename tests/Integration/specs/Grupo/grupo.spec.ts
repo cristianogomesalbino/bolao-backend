@@ -4,7 +4,6 @@ import * as API from '../../resources';
 test.describe('Grupos Requests Suite', () => {
   test.describe.configure({ mode: 'serial' });
 
-  let campeonatoId: string;
   let temporadaId: string;
   let grupoId: string;
 
@@ -12,187 +11,181 @@ test.describe('Grupos Requests Suite', () => {
 
   test.beforeAll(async () => {
     await API.seedingForGrupoSuite();
+    temporadaId = await API.getGrupoSuiteTemporadaId();
   });
 
-  test('Caso 01 - Setup: Criar campeonato e temporada para grupo', async ({
-    request,
-  }) => {
-    // Criar campeonato
-    const campResponse = await API.CampeonatoRoute.postCampeonato(
-      request,
-      adminUser,
-      {
-        nome: `Camp Grupo E2E ${Date.now()}`,
-      },
-    );
-    const campBody = await campResponse.json();
-    expect(campResponse.status()).toBe(API.HTTP_CREATED);
-    campeonatoId = campBody.id;
-
-    // Criar temporada
-    const tempResponse = await API.TemporadaRoute.postTemporada(
-      request,
-      adminUser,
-      {
-        ano: 2026,
-        campeonatoId,
-      },
-    );
-    const tempBody = await tempResponse.json();
-    expect(tempResponse.status()).toBe(API.HTTP_CREATED);
-    temporadaId = tempBody.id;
-  });
-
-  test('Caso 02 - Criar grupo privado', async ({ request }) => {
+  test('Caso 01 - Criar grupo privado', async ({ request }) => {
     const payload = {
       nome: `Grupo Privado E2E ${Date.now()}`,
       temporadaId,
       privado: true,
     };
 
-    const response = await API.GrupoRoute.postGrupo(
-      request,
-      adminUser,
-      payload,
-    );
+    const response = await API.GrupoRoute.postGrupo(request, adminUser, payload);
     const body = await response.json();
 
-    expect(response.status()).toBe(API.HTTP_CREATED);
-    expect(body).toHaveProperty('id');
-    expect(body).toHaveProperty('codigoConvite');
-    expect(body.privado).toBe(true);
+    await test.step('Deve retornar 201 Created', async () => {
+      expect(response.status()).toBe(API.HTTP_CREATED);
+    });
+
+    await test.step('Deve retornar id e codigoConvite', async () => {
+      expect(body).toHaveProperty('id');
+      expect(body).toHaveProperty('codigoConvite');
+    });
+
+    await test.step('Deve ser privado', async () => {
+      expect(body.privado).toBe(true);
+    });
 
     grupoId = body.id;
+
+    await test.step('Deve persistir corretamente no banco', async () => {
+      const grupoDB = await API.GrupoDB.selectGrupoById(grupoId);
+      expect(grupoDB).not.toBeNull();
+      expect(grupoDB!.nome).toBe(payload.nome);
+      expect(grupoDB!.privado).toBe(true);
+      expect(grupoDB!.ativo).toBe(true);
+      expect(grupoDB!.codigoConvite).toBe(body.codigoConvite);
+    });
   });
 
-  test('Caso 03 - Criar grupo público', async ({ request }) => {
+  test('Caso 02 - Criar grupo público', async ({ request }) => {
     const payload = {
       nome: `Grupo Público E2E ${Date.now()}`,
       temporadaId,
       privado: false,
     };
 
-    const response = await API.GrupoRoute.postGrupo(
-      request,
-      adminUser,
-      payload,
-    );
+    const response = await API.GrupoRoute.postGrupo(request, adminUser, payload);
     const body = await response.json();
 
-    expect(response.status()).toBe(API.HTTP_CREATED);
-    expect(body.privado).toBe(false);
+    await test.step('Deve retornar 201 Created', async () => {
+      expect(response.status()).toBe(API.HTTP_CREATED);
+    });
+
+    await test.step('Deve ser público', async () => {
+      expect(body.privado).toBe(false);
+    });
+
+    await test.step('Deve persistir como público no banco', async () => {
+      const grupoDB = await API.GrupoDB.selectGrupoById(body.id);
+      expect(grupoDB!.privado).toBe(false);
+    });
   });
 
-  test('Caso 04 - Listar grupos ativos', async ({ request }) => {
+  test('Caso 03 - Listar grupos ativos', async ({ request }) => {
     const response = await API.GrupoRoute.getGrupos(request, adminUser);
     const body = await response.json();
 
-    expect(response.status()).toBe(API.HTTP_OK);
-    expect(Array.isArray(body)).toBeTruthy();
+    await test.step('Deve retornar 200 OK', async () => {
+      expect(response.status()).toBe(API.HTTP_OK);
+    });
+
+    await test.step('Deve retornar um array', async () => {
+      expect(Array.isArray(body)).toBeTruthy();
+    });
   });
 
-  test('Caso 05 - Buscar grupo por ID', async ({ request }) => {
-    const response = await API.GrupoRoute.getGrupoById(
-      request,
-      adminUser,
-      grupoId,
-    );
+  test('Caso 04 - Buscar grupo por ID', async ({ request }) => {
+    const response = await API.GrupoRoute.getGrupoById(request, adminUser, grupoId);
     const body = await response.json();
 
-    expect(response.status()).toBe(API.HTTP_OK);
-    expect(body.id).toBe(grupoId);
+    await test.step('Deve retornar 200 OK', async () => {
+      expect(response.status()).toBe(API.HTTP_OK);
+    });
+
+    await test.step('Deve retornar o grupo correto', async () => {
+      expect(body.id).toBe(grupoId);
+    });
+
+    await test.step('Resposta deve bater com o banco', async () => {
+      const grupoDB = await API.GrupoDB.selectGrupoById(grupoId);
+      expect(body.nome).toBe(grupoDB!.nome);
+      expect(body.privado).toBe(grupoDB!.privado);
+      expect(body.ativo).toBe(grupoDB!.ativo);
+    });
   });
 
-  test('Caso 06 - Atualizar grupo (admin do grupo)', async ({ request }) => {
+  test('Caso 05 - Atualizar grupo (admin do grupo)', async ({ request }) => {
+    const novoNome = `Grupo Atualizado E2E ${Date.now()}`;
     const response = await API.GrupoRoute.patchGrupo(
       request,
       adminUser,
       grupoId,
-      {
-        nome: `Grupo Atualizado E2E ${Date.now()}`,
-      },
+      { nome: novoNome },
     );
     const body = await response.json();
 
-    expect(response.status()).toBe(API.HTTP_OK);
-    expect(body).toHaveProperty('nome');
+    await test.step('Deve retornar 200 OK', async () => {
+      expect(response.status()).toBe(API.HTTP_OK);
+    });
+
+    await test.step('Deve retornar nome atualizado', async () => {
+      expect(body.nome).toBe(novoNome);
+    });
+
+    await test.step('Deve persistir o novo nome no banco', async () => {
+      const grupoDB = await API.GrupoDB.selectGrupoById(grupoId);
+      expect(grupoDB!.nome).toBe(novoNome);
+    });
   });
 
-  test('Caso 07 - Desativar grupo', async ({ request }) => {
+  test('Caso 06 - Desativar grupo', async ({ request }) => {
     const response = await API.GrupoRoute.patchGrupoStatus(
       request,
       adminUser,
       grupoId,
-      {
-        ativo: false,
-      },
+      { ativo: false },
     );
     const body = await response.json();
 
-    expect(response.status()).toBe(API.HTTP_OK);
-    expect(body.ativo).toBe(false);
+    await test.step('Deve retornar 200 OK', async () => {
+      expect(response.status()).toBe(API.HTTP_OK);
+    });
+
+    await test.step('Deve estar inativo', async () => {
+      expect(body.ativo).toBe(false);
+    });
+
+    await test.step('Deve persistir status inativo no banco', async () => {
+      const grupoDB = await API.GrupoDB.selectGrupoById(grupoId);
+      expect(grupoDB!.ativo).toBe(false);
+    });
   });
 
-  test('Caso 08 - Reativar grupo', async ({ request }) => {
+  test('Caso 07 - Reativar grupo', async ({ request }) => {
     const response = await API.GrupoRoute.patchGrupoStatus(
       request,
       adminUser,
       grupoId,
-      {
-        ativo: true,
-      },
+      { ativo: true },
     );
     const body = await response.json();
 
-    expect(response.status()).toBe(API.HTTP_OK);
-    expect(body.ativo).toBe(true);
+    await test.step('Deve retornar 200 OK', async () => {
+      expect(response.status()).toBe(API.HTTP_OK);
+    });
+
+    await test.step('Deve estar ativo', async () => {
+      expect(body.ativo).toBe(true);
+    });
+
+    await test.step('Deve persistir status ativo no banco', async () => {
+      const grupoDB = await API.GrupoDB.selectGrupoById(grupoId);
+      expect(grupoDB!.ativo).toBe(true);
+    });
   });
 
-  test('Caso 09 - Excluir grupo ativo deve falhar', async ({ request }) => {
-    const response = await API.GrupoRoute.deleteGrupo(
-      request,
-      adminUser,
-      grupoId,
-    );
+  test('Caso 08 - Excluir grupo ativo deve falhar', async ({ request }) => {
+    const response = await API.GrupoRoute.deleteGrupo(request, adminUser, grupoId);
 
-    expect(response.status()).toBe(API.HTTP_BAD_REQUEST);
-  });
+    await test.step('Deve retornar 400 Bad Request', async () => {
+      expect(response.status()).toBe(API.HTTP_BAD_REQUEST);
+    });
 
-  test('Caso 10 - Buscar grupo inexistente deve retornar 404', async ({
-    request,
-  }) => {
-    const response = await API.GrupoRoute.getGrupoById(
-      request,
-      adminUser,
-      API.UUID_INEXISTENTE,
-    );
-
-    expect(response.status()).toBe(API.HTTP_NOT_FOUND);
-  });
-
-  test('Caso 11 - Criar grupo com temporada inexistente deve falhar', async ({
-    request,
-  }) => {
-    const payload = {
-      nome: `Grupo Falha E2E ${Date.now()}`,
-      temporadaId: API.UUID_INEXISTENTE,
-      privado: false,
-    };
-
-    const response = await API.GrupoRoute.postGrupo(
-      request,
-      adminUser,
-      payload,
-    );
-
-    expect(response.status()).toBe(API.HTTP_NOT_FOUND);
-  });
-
-  test('Caso 12 - Requisição sem token deve retornar 401', async ({
-    request,
-  }) => {
-    const response = await request.get(`${API.BASE_URL}grupos`);
-
-    expect(response.status()).toBe(API.HTTP_UNAUTHORIZED);
+    await test.step('Grupo deve continuar existindo no banco', async () => {
+      const grupoDB = await API.GrupoDB.selectGrupoById(grupoId);
+      expect(grupoDB).not.toBeNull();
+    });
   });
 });

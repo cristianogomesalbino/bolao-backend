@@ -20,6 +20,16 @@ export async function selectTemporadaByCampeonatoIdAndAno(
   return getQueryResultValue(result);
 }
 
+export async function selectTemporadaById(
+  id: string,
+): Promise<{ ano: number; campeonatoId: string } | null> {
+  const result = await executeDatabaseQuery(
+    `SELECT "ano", "campeonatoId" FROM ${SCHEMA.TEMPORADA} WHERE id = $1`,
+    [id],
+  );
+  return result && result.length > 0 ? result[0] : null;
+}
+
 export async function insertTemporada(
   campeonatoId: string,
   ano: number,

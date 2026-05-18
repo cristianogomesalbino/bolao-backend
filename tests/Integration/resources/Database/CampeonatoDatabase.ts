@@ -19,6 +19,16 @@ export async function selectCampeonatoByNome(
   return getQueryResultValue(result);
 }
 
+export async function selectCampeonatoById(
+  id: string,
+): Promise<{ nome: string } | null> {
+  const result = await executeDatabaseQuery(
+    `SELECT "nome" FROM ${SCHEMA.CAMPEONATO} WHERE id = $1`,
+    [id],
+  );
+  return result && result.length > 0 ? result[0] : null;
+}
+
 export async function insertCampeonato(nome: string): Promise<void> {
   await executeDatabaseSqlString(
     `INSERT INTO ${SCHEMA.CAMPEONATO}("id", "nome", "dataCriacao", "atualizadoEm")

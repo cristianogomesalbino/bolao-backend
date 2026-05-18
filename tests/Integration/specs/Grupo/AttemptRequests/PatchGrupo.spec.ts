@@ -6,12 +6,6 @@ import {
 
 describeAttemptSuite(test, {
   descricao: 'Attempt PATCH /grupos/:id',
-  scenarios: [
-    { perfil: 'sem_token', method: 'PATCH', statusEsperado: HTTP.UNAUTHORIZED },
-    { perfil: 'admin_grupo', method: 'PATCH', statusEsperado: HTTP.OK },
-    { perfil: 'membro_grupo', method: 'PATCH', statusEsperado: HTTP.FORBIDDEN },
-    { perfil: 'user_fora', method: 'PATCH', statusEsperado: HTTP.FORBIDDEN },
-  ],
   usuarios: GRUPO_ATTEMPT_USUARIOS,
   seed: seedGrupoAttempt,
   setup: (request) =>
@@ -23,4 +17,12 @@ describeAttemptSuite(test, {
     ),
   routeResolver: (data) => `grupos/${data.grupoId}`,
   payloadResolver: () => ({ nome: `Attempt Patch ${Date.now()}` }),
+  // prettier-ignore
+  scenarios: [
+    // [perfil,        method,   status,             descricao]
+    ['sem_token',      'PATCH',  HTTP.UNAUTHORIZED,  'sem autenticação'],
+    ['admin_grupo',    'PATCH',  HTTP.OK,            'admin atualizando grupo'],
+    ['membro_grupo',   'PATCH',  HTTP.FORBIDDEN,     'membro sem permissão'],
+    ['user_fora',      'PATCH',  HTTP.FORBIDDEN,     'usuário fora do grupo'],
+  ],
 });

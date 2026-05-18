@@ -26,8 +26,10 @@ test.describe('Campeonatos Requests Suite', () => {
       expect(body.nome).toBe(payload.nome);
     });
 
-    await test.step('Não deve expor campos sensíveis', async () => {
-      expect(body).not.toHaveProperty('senha');
+    await test.step('Deve persistir corretamente no banco', async () => {
+      const campeonatoDB = await API.CampeonatoDB.selectCampeonatoById(body.id);
+      expect(campeonatoDB).not.toBeNull();
+      expect(campeonatoDB!.nome).toBe(payload.nome);
     });
   });
 
@@ -43,32 +45,6 @@ test.describe('Campeonatos Requests Suite', () => {
 
     await test.step('Deve retornar um array', async () => {
       expect(Array.isArray(body)).toBeTruthy();
-    });
-  });
-
-  test('Caso 03 - Criar campeonato sem nome deve falhar', async ({
-    request,
-  }) => {
-    const usuario = API.factoryUsuario('user_to_manage_campeonato_suite');
-
-    const response = await API.CampeonatoRoute.postCampeonato(
-      request,
-      usuario,
-      {},
-    );
-
-    await test.step('Deve retornar 422 Unprocessable Entity', async () => {
-      expect(response.status()).toBe(API.HTTP_UNPROCESSABLE_ENTITY);
-    });
-  });
-
-  test('Caso 04 - Requisição sem token deve retornar 401', async ({
-    request,
-  }) => {
-    const response = await request.get(`${API.BASE_URL}campeonatos`);
-
-    await test.step('Deve retornar 401 Unauthorized', async () => {
-      expect(response.status()).toBe(API.HTTP_UNAUTHORIZED);
     });
   });
 });

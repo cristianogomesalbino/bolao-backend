@@ -6,12 +6,6 @@ import {
 
 describeAttemptSuite(test, {
   descricao: 'Attempt GET /grupos/:id/membros',
-  scenarios: [
-    { perfil: 'sem_token', method: 'GET', statusEsperado: HTTP.UNAUTHORIZED },
-    { perfil: 'admin_grupo', method: 'GET', statusEsperado: HTTP.OK },
-    { perfil: 'membro_grupo', method: 'GET', statusEsperado: HTTP.OK },
-    { perfil: 'user_fora', method: 'GET', statusEsperado: HTTP.FORBIDDEN },
-  ],
   usuarios: GRUPO_ATTEMPT_USUARIOS,
   seed: seedGrupoAttempt,
   setup: (request) =>
@@ -22,4 +16,12 @@ describeAttemptSuite(test, {
       'MembrosAttempt',
     ),
   routeResolver: (data) => `grupos/${data.grupoId}/membros`,
+  // prettier-ignore
+  scenarios: [
+    // [perfil,        method, status,             descricao]
+    ['sem_token',      'GET',  HTTP.UNAUTHORIZED,  'sem autenticação'],
+    ['admin_grupo',    'GET',  HTTP.OK,            'admin listando membros'],
+    ['membro_grupo',   'GET',  HTTP.OK,            'membro listando membros'],
+    ['user_fora',      'GET',  HTTP.FORBIDDEN,     'usuário fora do grupo'],
+  ],
 });

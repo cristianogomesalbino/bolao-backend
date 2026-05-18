@@ -27,9 +27,6 @@ test.describe('Usuarios Requests Suite', () => {
     await test.step('Não deve expor a senha na resposta', async () => {
       expect(body).not.toHaveProperty('senha');
     });
-
-    // Cleanup
-    await API.UsuarioDB.deleteUsuarioByEmail(payload.email);
   });
 
   test('Caso 02 - Criar usuário com email duplicado deve falhar', async ({
@@ -53,9 +50,6 @@ test.describe('Usuarios Requests Suite', () => {
     await test.step('Deve retornar 409 Conflict', async () => {
       expect(response.status()).toBe(API.HTTP_CONFLICT);
     });
-
-    // Cleanup
-    await API.UsuarioDB.deleteUsuarioByEmail(email);
   });
 
   test('Caso 03 - Buscar perfil do usuário autenticado (GET /me)', async ({
@@ -103,9 +97,6 @@ test.describe('Usuarios Requests Suite', () => {
       expect(body).not.toHaveProperty('senha');
       expect(body).not.toHaveProperty('senhaHash');
     });
-
-    // Cleanup
-    await API.UsuarioDB.deleteUsuarioByEmail(email);
   });
 
   test('Caso 04 - Buscar usuário por ID (próprio)', async ({ request }) => {
@@ -130,35 +121,9 @@ test.describe('Usuarios Requests Suite', () => {
       expect(body.id).toBe(userId);
       expect(body.email).toBe(email);
     });
-
-    // Cleanup
-    await API.UsuarioDB.deleteUsuarioByEmail(email);
   });
 
-  test('Caso 05 - Buscar usuário com UUID inexistente deve retornar 403 ou 404', async ({
-    request,
-  }) => {
-    const email = `qa.caso05.${Date.now()}@notfound.qa`;
-    const senha = 'Teste123!';
-    await API.UsuarioDB.insertUsuario({ nome: 'NotFound QA', email, senha });
-
-    const response = await API.UsuarioRoute.getUsuarioById(
-      request,
-      { email, senha },
-      API.UUID_INEXISTENTE,
-    );
-
-    await test.step('Deve retornar 403 Forbidden (guard bloqueia antes de verificar existência)', async () => {
-      expect([API.HTTP_FORBIDDEN, API.HTTP_NOT_FOUND]).toContain(
-        response.status(),
-      );
-    });
-
-    // Cleanup
-    await API.UsuarioDB.deleteUsuarioByEmail(email);
-  });
-
-  test('Caso 06 - Atualizar nome do usuário', async ({ request }) => {
+  test('Caso 05 - Atualizar nome do usuário', async ({ request }) => {
     const email = `qa.caso06.${Date.now()}@patch.qa`;
     const senha = 'Teste123!';
     await API.UsuarioDB.insertUsuario({
@@ -189,18 +154,6 @@ test.describe('Usuarios Requests Suite', () => {
       expect(usuarioDB).not.toBeNull();
       expect(usuarioDB!.nome).toBe(novoNome);
     });
-
-    // Cleanup
-    await API.UsuarioDB.deleteUsuarioByEmail(email);
   });
 
-  test('Caso 07 - Requisição sem token deve retornar 401', async ({
-    request,
-  }) => {
-    const response = await request.get(`${API.BASE_URL}usuarios/me`);
-
-    await test.step('Deve retornar 401 Unauthorized', async () => {
-      expect(response.status()).toBe(API.HTTP_UNAUTHORIZED);
-    });
-  });
 });

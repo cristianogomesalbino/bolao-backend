@@ -1797,6 +1797,13 @@ Adicionar ao `.gitignore` do projeto host:
 32. Ordem das propriedades no `describeAttemptSuite`: config primeiro (`descricao`, `usuarios`, `seed`, `setup`, `routeResolver`, `payloadResolver`), `scenarios` por último.
 33. Todos os templates DEVEM validar mensagens não tratadas do framework via `assertSemMensagemNaoTratada()`. A lista de termos fica em `MENSAGENS_NAO_TRATADAS` no `constants.ts`. Se o projeto for em inglês, esvaziar a lista.
 34. Teste de concorrência só faz sentido quando a entidade tem unique constraint no banco. Se não tem (ex: Campeonato.nome), NÃO incluir o bloco `concorrencia` no Security spec.
+35. NUNCA silenciar falhas reais como sucesso. Se o teste detecta um problema do backend (ex: mensagem em inglês, 500 inesperado), ele DEVE falhar. Se é bug conhecido que não será corrigido agora, usar `skip` com motivo — NUNCA alterar o template ou a lógica de validação para mascarar o problema.
+36. NUNCA alterar Templates para contornar falhas. Os templates (`PermissionTemplate`, `InvalidFieldsTemplate`, `SecurityTemplate`) são genéricos e reutilizáveis — se um teste falha por causa do backend, o problema é no backend ou no cenário do spec, NUNCA no template. Se precisar ajustar comportamento para um caso específico, usar `skip` no cenário.
+36. CRUD specs testam apenas o caminho feliz e validam simetria com o banco de dados. Cenários de erro (UUID inexistente, campo inválido, permissão negada) pertencem aos AttemptRequests ou InvalidFields — NUNCA no CRUD spec.
+37. CRUD specs DEVEM validar persistência no banco após operações de escrita (POST, PATCH, DELETE). Usar funções `selectEntidadeById()` do Database helper para comparar resposta da API com dados no banco.
+38. Setup de dependências (ex: Temporada precisa de Campeonato) DEVE ser feito via seed no banco (INSERT direto) — NUNCA via chamada à API dentro do teste. O seed cria os registros, uma função auxiliar busca os IDs.
+39. NUNCA usar `test` como setup. Se um caso precisa de dados pré-existentes, isso é responsabilidade do `beforeAll` via seed — não de um "Caso 01 - Setup: criar X".
+40. Limpeza é responsabilidade exclusiva do global-teardown. NUNCA fazer cleanup inline nos specs. O teardown deleta por timestamp na ordem inversa de FK.
 
 ---
 

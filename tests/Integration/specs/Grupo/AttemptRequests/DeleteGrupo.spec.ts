@@ -6,12 +6,6 @@ import {
 
 describeAttemptSuite(test, {
   descricao: 'Attempt DELETE /grupos/:id',
-  scenarios: [
-    { perfil: 'sem_token', method: 'DELETE', statusEsperado: HTTP.UNAUTHORIZED },
-    { perfil: 'membro_grupo', method: 'DELETE', statusEsperado: HTTP.FORBIDDEN },
-    { perfil: 'user_fora', method: 'DELETE', statusEsperado: HTTP.FORBIDDEN },
-    { perfil: 'admin_grupo', method: 'DELETE', statusEsperado: HTTP.BAD_REQUEST },
-  ],
   usuarios: GRUPO_ATTEMPT_USUARIOS,
   seed: seedGrupoAttempt,
   setup: (request) =>
@@ -22,4 +16,12 @@ describeAttemptSuite(test, {
       'DeleteAttempt',
     ),
   routeResolver: (data) => `grupos/${data.grupoId}`,
+  // prettier-ignore
+  scenarios: [
+    // [perfil,        method,   status,             descricao]
+    ['sem_token',      'DELETE', HTTP.UNAUTHORIZED,  'sem autenticação'],
+    ['membro_grupo',   'DELETE', HTTP.FORBIDDEN,     'membro sem permissão'],
+    ['user_fora',      'DELETE', HTTP.FORBIDDEN,     'usuário fora do grupo'],
+    ['admin_grupo',    'DELETE', HTTP.BAD_REQUEST,   'grupo ativo — deve desativar antes'],
+  ],
 });

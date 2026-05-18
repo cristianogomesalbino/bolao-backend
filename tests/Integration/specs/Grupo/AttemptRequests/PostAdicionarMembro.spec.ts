@@ -6,12 +6,6 @@ import {
 
 describeAttemptSuite(test, {
   descricao: 'Attempt POST /grupos/:id/adicionar',
-  scenarios: [
-    { perfil: 'sem_token', method: 'POST', statusEsperado: HTTP.UNAUTHORIZED },
-    { perfil: 'membro_grupo', method: 'POST', statusEsperado: HTTP.FORBIDDEN },
-    { perfil: 'user_fora', method: 'POST', statusEsperado: HTTP.FORBIDDEN },
-    { perfil: 'admin_grupo', method: 'POST', statusEsperado: HTTP.NOT_FOUND },
-  ],
   usuarios: GRUPO_ATTEMPT_USUARIOS,
   seed: seedGrupoAttempt,
   setup: (request) =>
@@ -23,4 +17,12 @@ describeAttemptSuite(test, {
     ),
   routeResolver: (data) => `grupos/${data.grupoId}/adicionar`,
   payloadResolver: () => ({ email: 'naoexiste@attempt.qa' }),
+  // prettier-ignore
+  scenarios: [
+    // [perfil,        method,  status,             descricao]
+    ['sem_token',      'POST',  HTTP.UNAUTHORIZED,  'sem autenticação'],
+    ['membro_grupo',   'POST',  HTTP.FORBIDDEN,     'membro sem permissão'],
+    ['user_fora',      'POST',  HTTP.FORBIDDEN,     'usuário fora do grupo'],
+    ['admin_grupo',    'POST',  HTTP.NOT_FOUND,     'email inexistente retorna 404'],
+  ],
 });

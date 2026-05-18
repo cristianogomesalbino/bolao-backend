@@ -52,7 +52,7 @@ test.describe('Auth Requests Suite', () => {
     request,
   }) => {
     const response = await API.AuthRoute.postLogin(request, {
-      email: 'naoexiste@teste.qa',
+      email: `qa.caso03.${Date.now()}@inexistente.qa`,
       senha: 'Teste123!',
     });
     const body = await response.json();
@@ -150,9 +150,6 @@ test.describe('Auth Requests Suite', () => {
     await test.step('Deve conter mensagem de credenciais inválidas', async () => {
       expect(JSON.stringify(body)).toContain(API.MSG.CREDENCIAIS_INVALIDAS);
     });
-
-    // Cleanup
-    await API.UsuarioDB.deleteUsuarioByEmail(email);
   });
 
   test('Caso 08 - Solicitar recuperação de senha com email existente', async ({
@@ -177,7 +174,7 @@ test.describe('Auth Requests Suite', () => {
     request,
   }) => {
     const response = await API.AuthRoute.postEsqueciSenha(request, {
-      email: 'naoexiste@recuperacao.qa',
+      email: `qa.caso09.${Date.now()}@recuperacao.qa`,
     });
     const body = await response.json();
 

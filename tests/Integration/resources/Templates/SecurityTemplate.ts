@@ -256,8 +256,6 @@ export function describeSecuritySuite(
             });
 
             await test.step('Não deve conter mensagens não tratadas', async () => {
-              // Se o backend rejeitou com 422 (validação/whitelist), é comportamento correto
-              if (response.status() === 422) return;
               const bodyStr = responseBody
                 ? JSON.stringify(responseBody)
                 : JSON.stringify(await response.json().catch(() => ({})));
