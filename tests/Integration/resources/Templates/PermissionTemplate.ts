@@ -172,6 +172,16 @@ export function describeAttemptSuite(
       if (params.setup) {
         setupData = { ...setupData, ...(await params.setup(request)) };
       }
+
+      // Loga dados do seed no Allure para debug
+      if (Object.keys(setupData).length > 0) {
+        try {
+          test.info().attach('Seed Data', {
+            body: JSON.stringify(setupData, null, 2),
+            contentType: 'application/json',
+          });
+        } catch { /* ignora fora de contexto */ }
+      }
     });
 
     for (const [i, item] of params.scenarios.entries()) {

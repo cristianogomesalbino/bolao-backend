@@ -1,23 +1,23 @@
-import { factoryUsuario } from '../DataFactories/UsuarioFactory';
+import { build } from '../DataBuilder';
 import { createUsuario, createUsuarios } from '../../Database/UsuarioDatabase';
 import { insertCampeonato, selectCampeonatoByNome } from '../../Database/CampeonatoDatabase';
 
-const CAMPEONATO_TEMPORADA_SEED = 'Campeonato Temporada Attempt QA';
-
-// Temporada usa os mesmos usuários de Campeonato
+// Temporada usa os mesmos usuários de Campeonato + precisa de campeonato no banco
 export const TEMPORADA_ATTEMPT_USUARIOS = {
-  user: factoryUsuario('user_to_manage_campeonato_suite'),
-  super_admin: factoryUsuario('super_admin_to_manage_suite'),
+  user: build('for_temporada_suite', 'user_manage', 'usuario'),
+  super_admin: build('for_temporada_suite', 'super_admin', 'usuario'),
 };
 
 export async function seedTemporadaAttempt(): Promise<void> {
-  await createUsuarios([factoryUsuario('user_to_manage_campeonato_suite')]);
-  await createUsuario(factoryUsuario('super_admin_to_manage_suite'));
-  await insertCampeonato(CAMPEONATO_TEMPORADA_SEED);
+  await createUsuarios([build('for_temporada_suite', 'user_manage', 'usuario')]);
+  await createUsuario(build('for_temporada_suite', 'super_admin', 'usuario'));
+  const campeonato = build('for_temporada_suite', 'user_manage', 'campeonato');
+  await insertCampeonato(campeonato.nome);
 }
 
 export async function seedTemporadaAttemptWithCampeonato(): Promise<{ campeonatoId: string }> {
   await seedTemporadaAttempt();
-  const campeonatoId = await selectCampeonatoByNome(CAMPEONATO_TEMPORADA_SEED);
+  const campeonato = build('for_temporada_suite', 'user_manage', 'campeonato');
+  const campeonatoId = await selectCampeonatoByNome(campeonato.nome);
   return { campeonatoId: campeonatoId! };
 }

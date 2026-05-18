@@ -1,12 +1,13 @@
-import { factoryUsuario, factoryUsuarioAttemptRequests } from '../DataFactories/UsuarioFactory';
+import { build } from '../DataBuilder';
+import { factoryUsuarioAttemptRequests } from '../DataFactories/UsuarioFactory';
 import { createUsuarios, insertUsuario, selectUsuarioByEmail } from '../../Database/UsuarioDatabase';
 
 const attemptUsuarios = factoryUsuarioAttemptRequests();
 
 export function seedUsuariosForUsuarioSuite() {
   return [
-    factoryUsuario('user_to_manage_usuario_suite'),
-    factoryUsuario('super_admin_to_manage_suite'),
+    build('for_usuario_suite', 'user_manage', 'usuario'),
+    build('for_usuario_suite', 'super_admin', 'usuario'),
   ];
 }
 

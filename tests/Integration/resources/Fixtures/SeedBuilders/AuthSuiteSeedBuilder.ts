@@ -1,20 +1,20 @@
-import { factoryUsuario } from '../DataFactories/UsuarioFactory';
+import { build } from '../DataBuilder';
 import { createUsuario, createUsuarios } from '../../Database/UsuarioDatabase';
 
-// ---- Seed para specs de CRUD (login.spec.ts) ----
+// ---- Seed para specs de CRUD (auth.spec.ts) ----
 
 export function seedUsuariosForAuthSuite() {
-  return [factoryUsuario('adm_to_manage_auth_suite')];
+  return [build('for_auth_suite', 'adm_manage', 'usuario')];
 }
 
 // ---- Config para AttemptRequests ----
 
 export const AUTH_ATTEMPT_USUARIOS = {
-  user: factoryUsuario('adm_to_manage_auth_suite'),
-  super_admin: factoryUsuario('super_admin_to_manage_suite'),
+  user: build('for_auth_suite', 'adm_manage', 'usuario'),
+  super_admin: build('for_auth_suite', 'super_admin', 'usuario'),
 };
 
 export async function seedAuthAttempt(): Promise<void> {
   await createUsuarios(seedUsuariosForAuthSuite());
-  await createUsuario(factoryUsuario('super_admin_to_manage_suite'));
+  await createUsuario(build('for_auth_suite', 'super_admin', 'usuario'));
 }

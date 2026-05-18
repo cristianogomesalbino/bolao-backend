@@ -26,7 +26,11 @@ export interface InvalidFieldSuiteParams {
   usuario: { email: string; senha: string };
   route: string;
   basePayload: Record<string, any>;
-  seed?: () => Promise<void>;
+  seed?: () => Promise<void | Record<string, any>>;
+  /** Setup com request (para criar dados via API quando necessário) */
+  setup?: (request: APIRequestContext) => Promise<Record<string, any>>;
+  /** Resolve a rota dinamicamente com dados do seed/setup (ex: rota com :grupoId) */
+  routeResolver?: (data: Record<string, any>) => string;
   /** Gera campos únicos por cenário para evitar conflitos */
   uniqueFieldResolver?: (
     index: number,
@@ -108,11 +112,33 @@ export function describeInvalidFieldSuite(
   params: InvalidFieldSuiteParams,
 ): void {
   t.describe(params.descricao, () => {
-    if (params.seed) {
-      t.beforeAll(async () => {
-        await params.seed!();
-      });
-    }
+    let seedData: Record<string, any> = {};
+    let resolvedRoute = params.route;
+
+    t.beforeAll(async ({ request }) => {
+      if (params.seed) {
+        const result = await params.seed();
+        if (result && typeof result === 'object') {
+          seedData = result;
+        }
+      }
+      if (params.setup) {
+        seedData = { ...seedData, ...(await params.setup(request)) };
+      }
+      if (params.routeResolver) {
+        resolvedRoute = params.routeResolver(seedData);
+      }
+
+      // Loga dados do seed no Allure para debug
+      if (Object.keys(seedData).length > 0) {
+        try {
+          test.info().attach('Seed Data', {
+            body: JSON.stringify(seedData, null, 2),
+            contentType: 'application/json',
+          });
+        } catch { /* ignora fora de contexto */ }
+      }
+    });
 
     for (const [index, tuple] of params.scenarios.entries()) {
       const [campo, valor, statusEsperado, mensagem, skip] = tuple;
@@ -128,7 +154,7 @@ export function describeInvalidFieldSuite(
         await attemptWithInvalidField(request, {
           usuario: params.usuario,
           method: 'POST',
-          route: params.route,
+          route: resolvedRoute,
           basePayload: { ...params.basePayload, ...payloadOverrides },
           key: campo,
           inputField: valor,

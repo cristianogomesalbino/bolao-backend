@@ -24,6 +24,8 @@ export interface SecuritySuiteParams {
   usuario?: { email: string; senha: string };
   /** Seed para criar dados necessários antes da suite (pode retornar dados para routeResolver) */
   seed?: () => Promise<void | Record<string, any>>;
+  /** Setup com request (para criar dados via API quando necessário, ex: grupo com guard) */
+  setup?: (request: APIRequestContext) => Promise<Record<string, any>>;
   /** Cleanup após a suite */
   cleanup?: () => Promise<void>;
   /** Resolve a rota dinamicamente com dados do seed (ex: rota com :id) */
@@ -105,15 +107,28 @@ export function describeSecuritySuite(
     let testIndex = 0;
     const nextIndex = () => String(++testIndex).padStart(2, '0');
 
-    t.beforeAll(async () => {
+    t.beforeAll(async ({ request }) => {
       if (params.seed) {
         const result = await params.seed();
         if (result && typeof result === 'object') {
           seedData = result;
         }
       }
+      if (params.setup) {
+        seedData = { ...seedData, ...(await params.setup(request)) };
+      }
       if (params.routeResolver) {
         resolvedRoute = params.routeResolver(seedData);
+      }
+
+      // Loga dados do seed no Allure para debug
+      if (Object.keys(seedData).length > 0) {
+        try {
+          test.info().attach('Seed Data', {
+            body: JSON.stringify(seedData, null, 2),
+            contentType: 'application/json',
+          });
+        } catch { /* ignora fora de contexto */ }
       }
     });
 

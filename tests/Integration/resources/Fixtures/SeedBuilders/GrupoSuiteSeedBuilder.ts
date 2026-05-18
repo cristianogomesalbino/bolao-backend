@@ -1,31 +1,31 @@
-import { factoryUsuario } from '../DataFactories/UsuarioFactory';
+import { build } from '../DataBuilder';
 import { createUsuario, createUsuarios } from '../../Database/UsuarioDatabase';
 
 export function seedUsuariosForGrupoSuite() {
   return [
-    factoryUsuario('user_to_manage_grupo_suite'),
-    factoryUsuario('user_member_grupo_suite'),
-    factoryUsuario('user_to_add_grupo_suite'),
+    build('for_grupo_suite', 'user_admin', 'usuario'),
+    build('for_grupo_suite', 'user_member', 'usuario'),
+    build('for_grupo_suite', 'user_to_add', 'usuario'),
   ];
 }
 
 export const GRUPO_ATTEMPT_USUARIOS = {
-  admin_grupo: factoryUsuario('user_to_manage_grupo_suite'),
-  membro_grupo: factoryUsuario('user_member_grupo_suite'),
-  user_fora: factoryUsuario('user_to_manage_campeonato_suite'),
+  admin_grupo: build('for_grupo_suite', 'user_admin', 'usuario'),
+  membro_grupo: build('for_grupo_suite', 'user_member', 'usuario'),
+  user_fora: build('for_grupo_suite', 'user_fora', 'usuario'),
 };
 
 export const GRUPO_SIMPLE_ATTEMPT_USUARIOS = {
-  user: factoryUsuario('user_to_manage_grupo_suite'),
-  super_admin: factoryUsuario('super_admin_to_manage_suite'),
+  user: build('for_grupo_suite', 'user_admin', 'usuario'),
+  super_admin: build('for_campeonato_suite', 'super_admin', 'usuario'),
 };
 
 export async function seedGrupoAttempt(): Promise<void> {
   await createUsuarios(seedUsuariosForGrupoSuite());
-  await createUsuario(factoryUsuario('user_to_manage_campeonato_suite'));
+  await createUsuario(build('for_grupo_suite', 'user_fora', 'usuario'));
 }
 
 export async function seedGrupoSimpleAttempt(): Promise<void> {
   await createUsuarios(seedUsuariosForGrupoSuite());
-  await createUsuario(factoryUsuario('super_admin_to_manage_suite'));
+  await createUsuario(build('for_campeonato_suite', 'super_admin', 'usuario'));
 }

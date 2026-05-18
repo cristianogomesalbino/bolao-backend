@@ -50,3 +50,24 @@ export async function deleteGrupoByNome(nome: string): Promise<void> {
     [id],
   );
 }
+
+export async function selectMembrosCount(grupoId: string): Promise<number> {
+  const result = await executeDatabaseQuery(
+    `SELECT COUNT(*)::int as count FROM ${SCHEMA.GRUPO_USUARIO} WHERE "grupoId" = $1`,
+    [grupoId],
+  );
+  return result && result.length > 0 ? result[0].count : 0;
+}
+
+export async function selectMembroByGrupoAndUsuario(
+  grupoId: string,
+  usuarioEmail: string,
+): Promise<{ role: string } | null> {
+  const result = await executeDatabaseQuery(
+    `SELECT gu."role" FROM ${SCHEMA.GRUPO_USUARIO} gu
+     JOIN ${SCHEMA.USUARIO} u ON u.id = gu."usuarioId"
+     WHERE gu."grupoId" = $1 AND u.email = $2`,
+    [grupoId, usuarioEmail],
+  );
+  return result && result.length > 0 ? result[0] : null;
+}

@@ -82,6 +82,7 @@ export * from './Seeds/UsuarioSeed';
 export * from './Seeds/CampeonatoSeed';
 export * from './Seeds/TemporadaSeed';
 export * from './Seeds/GrupoSeed';
+export * from './Seeds/GrupoUsuarioSeed';
 
 // ---- Templates ----
 export * from './Templates/PermissionTemplate';
