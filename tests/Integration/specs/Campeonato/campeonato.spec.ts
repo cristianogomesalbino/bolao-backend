@@ -2,13 +2,11 @@ import { test, expect } from '../../resources';
 import * as API from '../../resources';
 
 test.describe('Campeonatos Requests Suite', () => {
-  test.describe.configure({ mode: 'serial' });
-
   test.beforeAll(async () => {
     await API.seedingForCampeonatoSuite();
   });
 
-  test('Caso 01 - Criar campeonato', async ({ request }) => {
+  test('Caso 01 - Criar campeonato com sucesso', async ({ request }) => {
     const usuario = API.factoryUsuario('user_to_manage_campeonato_suite');
     const payload = { nome: `Campeonato E2E ${Date.now()}` };
 
@@ -19,9 +17,18 @@ test.describe('Campeonatos Requests Suite', () => {
     );
     const body = await response.json();
 
-    expect(response.status()).toBe(API.HTTP_CREATED);
-    expect(body).toHaveProperty('id');
-    expect(body.nome).toBe(payload.nome);
+    await test.step('Deve retornar 201 Created', async () => {
+      expect(response.status()).toBe(API.HTTP_CREATED);
+    });
+
+    await test.step('Deve retornar id e nome corretos', async () => {
+      expect(body).toHaveProperty('id');
+      expect(body.nome).toBe(payload.nome);
+    });
+
+    await test.step('Não deve expor campos sensíveis', async () => {
+      expect(body).not.toHaveProperty('senha');
+    });
   });
 
   test('Caso 02 - Listar campeonatos', async ({ request }) => {
@@ -30,8 +37,13 @@ test.describe('Campeonatos Requests Suite', () => {
     const response = await API.CampeonatoRoute.getCampeonatos(request, usuario);
     const body = await response.json();
 
-    expect(response.status()).toBe(API.HTTP_OK);
-    expect(Array.isArray(body)).toBeTruthy();
+    await test.step('Deve retornar 200 OK', async () => {
+      expect(response.status()).toBe(API.HTTP_OK);
+    });
+
+    await test.step('Deve retornar um array', async () => {
+      expect(Array.isArray(body)).toBeTruthy();
+    });
   });
 
   test('Caso 03 - Criar campeonato sem nome deve falhar', async ({
@@ -45,7 +57,9 @@ test.describe('Campeonatos Requests Suite', () => {
       {},
     );
 
-    expect(response.status()).toBe(API.HTTP_BAD_REQUEST);
+    await test.step('Deve retornar 422 Unprocessable Entity', async () => {
+      expect(response.status()).toBe(API.HTTP_UNPROCESSABLE_ENTITY);
+    });
   });
 
   test('Caso 04 - Requisição sem token deve retornar 401', async ({
@@ -53,6 +67,8 @@ test.describe('Campeonatos Requests Suite', () => {
   }) => {
     const response = await request.get(`${API.BASE_URL}campeonatos`);
 
-    expect(response.status()).toBe(API.HTTP_UNAUTHORIZED);
+    await test.step('Deve retornar 401 Unauthorized', async () => {
+      expect(response.status()).toBe(API.HTTP_UNAUTHORIZED);
+    });
   });
 });

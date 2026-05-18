@@ -1,19 +1,20 @@
 import {
   test, HTTP,
-  describeSecuritySuite, buildTemporadaMock,
-  TEMPORADA_ATTEMPT_USUARIOS, seedTemporadaAttempt,
-  CampeonatoDB,
+  describeSecuritySuite,
+  TEMPORADA_ATTEMPT_USUARIOS, seedTemporadaAttemptWithCampeonato,
 } from '../../../resources';
-
-const { payload: basePayload } = buildTemporadaMock('post_temporada');
 
 describeSecuritySuite(test, {
   descricao: 'Segurança POST /temporadas',
   route: 'temporadas',
   method: 'POST',
-  basePayload: basePayload!,
+  basePayload: { ano: 2026, campeonatoId: 'placeholder' },
   usuario: TEMPORADA_ATTEMPT_USUARIOS.user,
-  seed: seedTemporadaAttempt,
+  seed: async () => {
+    const data = await seedTemporadaAttemptWithCampeonato();
+    return data;
+  },
+  routeResolver: () => 'temporadas',
 
   sqlInjection: {
     campos: ['campeonatoId'],
@@ -29,9 +30,8 @@ describeSecuritySuite(test, {
     camposSensiveis: { ativo: false, status: 'FINALIZADA' },
     statusEsperado: [HTTP.NOT_FOUND, HTTP.UNPROCESSABLE, HTTP.CREATED],
     validar: (body) => {
-      // Se aceito, não deve ter campos sensíveis aplicados
       if (body.ativo !== undefined) {
-        // Temporada não tem campo ativo — se retornou, é problema
+        // Temporada não tem campo ativo
       }
     },
   },

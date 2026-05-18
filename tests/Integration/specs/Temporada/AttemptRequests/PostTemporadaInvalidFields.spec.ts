@@ -1,17 +1,26 @@
 import {
   test, HTTP, INVALID,
-  describeInvalidFieldSuite, buildTemporadaMock,
-  TEMPORADA_ATTEMPT_USUARIOS, seedTemporadaAttempt,
+  describeInvalidFieldSuite,
+  TEMPORADA_ATTEMPT_USUARIOS, seedTemporadaAttemptWithCampeonato,
+  CampeonatoDB,
 } from '../../../resources';
 
-const { route, payload } = buildTemporadaMock('post_temporada');
+let campeonatoId: string;
 
 describeInvalidFieldSuite(test, {
   descricao: 'Attempt POST /temporadas - Campos Inválidos',
-  route,
+  route: 'temporadas',
   usuario: TEMPORADA_ATTEMPT_USUARIOS.user,
-  basePayload: payload!,
-  seed: seedTemporadaAttempt,
+  basePayload: { ano: 2026, campeonatoId: INVALID.UUID_INEXISTENTE },
+  seed: async () => {
+    const data = await seedTemporadaAttemptWithCampeonato();
+    campeonatoId = data.campeonatoId;
+  },
+  uniqueFieldResolver: (i, campo) => {
+    // Garante que o basePayload usa campeonatoId real (exceto quando testando o próprio campo)
+    if (campo !== 'campeonatoId') return { campeonatoId };
+    return {};
+  },
   // prettier-ignore
   scenarios: [
     // [campo,          valor,                  status,             mensagem]

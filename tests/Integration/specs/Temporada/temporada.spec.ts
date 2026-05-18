@@ -39,10 +39,6 @@ test.describe('Temporadas Requests Suite', () => {
     await test.step('Deve conter campeonatoId na resposta', async () => {
       expect(body.campeonatoId).toBe(campeonatoId);
     });
-
-    // Cleanup
-    await API.TemporadaDB.deleteTemporadaByCampeonatoId(campeonatoId);
-    await API.CampeonatoDB.deleteCampeonatoByNome(campPayload.nome);
   });
 
   test('Caso 02 - Listar temporadas', async ({ request }) => {

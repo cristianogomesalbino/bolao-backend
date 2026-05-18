@@ -57,6 +57,7 @@ export {
 export {
   TEMPORADA_ATTEMPT_USUARIOS,
   seedTemporadaAttempt,
+  seedTemporadaAttemptWithCampeonato,
 } from './Fixtures/SeedBuilders/TemporadaSuiteSeedBuilder';
 export {
   seedUsuariosForGrupoSuite,

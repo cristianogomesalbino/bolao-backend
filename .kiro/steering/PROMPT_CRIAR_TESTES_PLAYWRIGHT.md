@@ -1206,61 +1206,99 @@ describeAttemptSuite(test, {
 
 **Regra: quando o setup precisa de um ID, buscar direto no banco — NUNCA chamar outro endpoint.**
 
+#### 9.4.1 Setup simples — busca ID da própria entidade no banco
+
 ```typescript
-// specs/Usuario/AttemptRequests/PatchUsuario.spec.ts — setup simples (busca ID no banco)
+// specs/Usuario/AttemptRequests/PatchUsuario.spec.ts
 import {
-  test,
-  HTTP_UNAUTHORIZED, HTTP_OK,
+  test, HTTP,
   describeAttemptSuite,
-  buildUsuarioMock,
-  USUARIO_ATTEMPT_USUARIOS,
-  seedUsuarioAttempt,
-  UsuarioDB,
+  USUARIO_ATTEMPT_USUARIOS, seedUsuarioAttemptWithId,
 } from '../../../resources';
 
 describeAttemptSuite(test, {
   descricao: 'Attempt PATCH /usuarios/:id',
-  scenarios: [
-    { perfil: 'sem_token', method: 'PATCH', statusEsperado: HTTP_UNAUTHORIZED },
-    { perfil: 'usuario_comum', method: 'PATCH', statusEsperado: HTTP_OK },
-    { perfil: 'super_admin', method: 'PATCH', statusEsperado: HTTP_OK },
-  ],
   usuarios: USUARIO_ATTEMPT_USUARIOS,
-  seed: seedUsuarioAttempt,
-  setup: async () => {
-    const usuario = USUARIO_ATTEMPT_USUARIOS.usuario_comum;
-    const userId = await UsuarioDB.selectUsuarioByEmail(usuario.email);
-    return { userId };
-  },
+  seed: seedUsuarioAttemptWithId,
   routeResolver: (data) => `usuarios/${data.userId}`,
   payloadResolver: () => ({ nome: `Attempt Patch ${Date.now()}` }),
+  scenarios: [
+    ['sem_token',     'PATCH', HTTP.UNAUTHORIZED, 'sem autenticação'],
+    ['usuario_comum', 'PATCH', HTTP.OK,           'atualizando próprio perfil'],
+    ['super_admin',   'PATCH', HTTP.OK,           'admin atualizando outro usuário'],
+  ],
 });
 ```
 
+#### 9.4.2 Setup com dependência entre entidades — cria entidade-pai no banco
+
+**Regra: quando o endpoint depende de outra entidade (ex: Temporada depende de Campeonato), o `seed` DEVE criar a entidade-pai via INSERT direto no banco e retornar o ID. O `payloadResolver` usa esse ID para montar o payload com dados reais.**
+
+Padrão no SeedBuilder:
 ```typescript
-// specs/Grupo/AttemptRequests/PatchGrupo.spec.ts — setup complexo (múltiplas entidades)
+// SeedBuilders/TemporadaSuiteSeedBuilder.ts
+const CAMPEONATO_TEMPORADA_SEED = 'Campeonato Temporada Attempt QA';
+
+export async function seedTemporadaAttemptWithCampeonato(): Promise<{ campeonatoId: string }> {
+  await seedTemporadaAttempt(); // cria usuários
+  await insertCampeonato(CAMPEONATO_TEMPORADA_SEED); // cria dependência no banco
+  const campeonatoId = await selectCampeonatoByNome(CAMPEONATO_TEMPORADA_SEED);
+  return { campeonatoId: campeonatoId! };
+}
+```
+
+Padrão no Spec:
+```typescript
+// specs/Temporada/AttemptRequests/PostTemporada.spec.ts
 import {
-  test,
-  HTTP_UNAUTHORIZED, HTTP_OK, HTTP_FORBIDDEN,
+  test, HTTP,
   describeAttemptSuite,
-  setupGrupoComMembros,
-  GRUPO_ATTEMPT_USUARIOS,
-  seedGrupoAttempt,
+  TEMPORADA_ATTEMPT_USUARIOS, seedTemporadaAttemptWithCampeonato,
 } from '../../../resources';
 
 describeAttemptSuite(test, {
-  descricao: 'Attempt PATCH /grupos/:id',
+  descricao: 'Attempt POST /temporadas',
+  usuarios: TEMPORADA_ATTEMPT_USUARIOS,
+  seed: seedTemporadaAttemptWithCampeonato,
+  routeResolver: () => 'temporadas',
+  payloadResolver: (data) => ({ ano: 2026, campeonatoId: data.campeonatoId }),
   scenarios: [
-    { perfil: 'sem_token', method: 'PATCH', statusEsperado: HTTP_UNAUTHORIZED },
-    { perfil: 'admin_grupo', method: 'PATCH', statusEsperado: HTTP_OK },
-    { perfil: 'membro_grupo', method: 'PATCH', statusEsperado: HTTP_FORBIDDEN },
-    { perfil: 'user_fora', method: 'PATCH', statusEsperado: HTTP_FORBIDDEN },
+    ['sem_token',   'POST', HTTP.UNAUTHORIZED, 'sem autenticação'],
+    ['user',        'POST', HTTP.CREATED,      'criando temporada com campeonato válido'],
+    ['super_admin', 'POST', HTTP.CREATED,      'admin criando temporada'],
   ],
+});
+```
+
+**Princípios:**
+- O `seed` retorna um objeto com os IDs necessários (ex: `{ campeonatoId }`, `{ grupoId, codigoConvite }`)
+- O `payloadResolver` recebe esse objeto via `data` e monta o payload com IDs reais
+- O `routeResolver` também pode usar `data` para rotas com params (ex: `grupos/${data.grupoId}`)
+- NUNCA usar UUID inexistente quando o objetivo é testar o fluxo de sucesso (201)
+- UUID inexistente é válido apenas para testar cenários de erro (404, 403)
+
+#### 9.4.3 Setup complexo — múltiplas entidades com relacionamento
+
+```typescript
+// specs/Grupo/AttemptRequests/PatchGrupo.spec.ts
+describeAttemptSuite(test, {
+  descricao: 'Attempt PATCH /grupos/:id',
   usuarios: GRUPO_ATTEMPT_USUARIOS,
   seed: seedGrupoAttempt,
-  setup: (request) => setupGrupoComMembros(request, GRUPO_ATTEMPT_USUARIOS.admin_grupo, GRUPO_ATTEMPT_USUARIOS.membro_grupo, 'PatchAttempt'),
+  setup: (request) => setupGrupoComMembros(
+    request,
+    GRUPO_ATTEMPT_USUARIOS.admin_grupo,
+    GRUPO_ATTEMPT_USUARIOS.membro_grupo,
+    'PatchAttempt',
+  ),
   routeResolver: (data) => `grupos/${data.grupoId}`,
   payloadResolver: () => ({ nome: `Attempt Patch ${Date.now()}` }),
+  scenarios: [
+    ['sem_token',    'PATCH', HTTP.UNAUTHORIZED, 'sem autenticação'],
+    ['admin_grupo',  'PATCH', HTTP.OK,           'admin do grupo atualizando'],
+    ['membro_grupo', 'PATCH', HTTP.FORBIDDEN,    'membro sem permissão'],
+    ['user_fora',    'PATCH', HTTP.FORBIDDEN,    'usuário fora do grupo'],
+  ],
 });
 ```
 
@@ -1319,7 +1357,7 @@ describeSecuritySuite(test, {
 Cada teste DEVE ser independente e paralelizável:
 
 - **Setup próprio** — cada teste cria seus dados com identificador único (`Date.now()`)
-- **Cleanup próprio** — cada teste deleta o que criou no final
+- **Sem cleanup inline** — o global-teardown limpa tudo automaticamente após a execução
 - **Sem estado compartilhado** — NUNCA usar variáveis entre testes
 - **Sem `mode: 'serial'`** — testes não devem depender de ordem de execução
 - **Prefixo `qa.`** — emails de teste usam `qa.caso01.${Date.now()}@dominio.qa`
@@ -1333,8 +1371,7 @@ test('Caso 01 - Criar usuário', async ({ request }) => {
   const response = await API.UsuarioRoute.postUsuario(request, payload);
   expect(response.status()).toBe(API.HTTP_CREATED);
 
-  // Cleanup — remove o que criou
-  await API.UsuarioDB.deleteUsuarioByEmail(email);
+  // Sem cleanup — global-teardown cuida
 });
 ```
 
@@ -1382,6 +1419,53 @@ O `setHeaders` aceita `{ silent: true }` para não logar "Usuário autenticado" 
 ```typescript
 const headers = await setHeaders(request, usuario, { silent: true });
 ```
+
+### 9.10 Estratégia de limpeza de dados (OBRIGATÓRIO)
+
+A limpeza opera via **Global Teardown** — uma única camada que cobre todos os specs.
+
+#### Global Teardown (limpeza automática)
+
+O `global-teardown.ts` executa após TODOS os testes e remove qualquer dado criado durante a execução:
+
+```typescript
+// global-setup.ts — captura timestamp ANTES dos testes
+const executionTime = setCurrentTestExecutionTime(); // NOW() - 15min (margem)
+fs.writeFileSync('.execution-time', executionTime);
+
+// global-teardown.ts — deleta tudo criado após o timestamp
+await cleanTestsData(executionTime);
+```
+
+O `cleanTestsData()` em `database.ts` deleta na **ordem inversa de FK** (dependentes primeiro):
+```typescript
+// Ordem: Palpite → Jogo → Fase → GrupoUsuario → Grupo → RefreshToken → Temporada → Campeonato → Usuario
+DELETE FROM "Palpite" WHERE "dataCriacao" >= $1
+DELETE FROM "GrupoUsuario" WHERE "dataCriacao" >= $1
+DELETE FROM "Grupo" WHERE "dataCriacao" >= $1
+DELETE FROM "Temporada" WHERE "dataCriacao" >= $1
+DELETE FROM "Campeonato" WHERE "dataCriacao" >= $1
+DELETE FROM "Usuario" WHERE "dataCriacao" >= $1
+```
+
+Também limpa usuários de seed (criados via `ON CONFLICT` com `dataCriacao` antiga):
+```typescript
+DELETE FROM "Usuario" WHERE email LIKE '%.qa' OR email LIKE '%.qa.bolao'
+```
+
+#### Regras
+
+- **NUNCA fazer cleanup inline nos specs** — o global-teardown cuida de tudo
+- Seeds usam `ON CONFLICT` (idempotentes) — não acumulam lixo entre execuções
+- Testes de CRUD criam dados com `Date.now()` no nome/email — garantem unicidade sem precisar deletar
+- Testes de listagem verificam `Array.isArray(body)` — NUNCA contam registros ou assumem banco vazio
+- Se um teste precisa verificar que algo NÃO existe (ex: após delete), buscar pelo ID específico no banco
+
+#### Quando adicionar nova tabela
+
+Ao criar um novo módulo com tabela no banco:
+1. Adicionar a tabela em `SCHEMA` no `database.ts`
+2. Adicionar o `DELETE` correspondente em `cleanTestsData()` **na posição correta** (antes das tabelas que ela referencia via FK)
 
 ---
 
@@ -1694,23 +1778,25 @@ Adicionar ao `.gitignore` do projeto host:
 14. Após criar a estrutura, ajustar `tsconfig.json`, `tsconfig.build.json` e ESLint do host.
 15. Gerar `README.md` dentro de `tests/Integration/` documentando a estrutura.
 16. Rodar Prettier em todos os arquivos antes de finalizar.
-17. Cada teste DEVE ser independente — setup e cleanup próprios, sem estado compartilhado, paralelizável.
+17. Cada teste DEVE ser independente — dados únicos via `Date.now()`, sem estado compartilhado, paralelizável. Limpeza é feita pelo global-teardown — NUNCA fazer cleanup inline nos specs.
 18. Usar `test.step()` para agrupar asserções com nomes descritivos no Allure.
 19. Usar `{ silent: true }` no `setHeaders` quando o log "Usuário autenticado" não agrega valor.
 20. Templates separados por responsabilidade: `PermissionTemplate`, `InvalidFieldsTemplate`, `SecurityTemplate`.
 21. NUNCA usar `mode: 'serial'` — testes devem rodar em qualquer ordem.
 22. Quando o setup precisa de um ID (ex: rota com `:id`), buscar direto no banco via `Database` — NUNCA chamar outro endpoint para obter o ID.
-23. NUNCA hardcodar dados de usuário nos specs — sempre usar `factoryUsuario()` ou `factoryUsuarioAttemptRequests()`. Dados de teste ficam centralizados nas factories.
+23. Quando o endpoint depende de outra entidade (ex: Temporada depende de Campeonato), o `seed` DEVE criar a entidade-pai via INSERT no banco e retornar o ID. O `payloadResolver` usa esse ID para montar o payload com dados reais. NUNCA usar UUID inexistente quando o objetivo é testar o fluxo de sucesso (201). UUID inexistente é válido apenas para cenários de erro (404, 403).
+24. NUNCA hardcodar dados de usuário nos specs — sempre usar `factoryUsuario()` ou `factoryUsuarioAttemptRequests()`. Dados de teste ficam centralizados nas factories.
 24. DELETE specs DEVEM usar usuário dedicado (`para_deletar` na factory) — NUNCA deletar o usuário compartilhado dos outros specs.
-25. `basePayload` dos specs DEVE vir do `MockDataBuilder` (`buildUsuarioMock('post_usuario').payload`) — NUNCA hardcodar payloads nos specs.
+25. `basePayload` dos specs DEVE vir do `MockDataBuilder` (`buildUsuarioMock('post_usuario').payload`) — NUNCA hardcodar payloads nos specs. Exceção: quando o payload depende de dados dinâmicos do `seed` (ex: `campeonatoId`), usar `payloadResolver`.
 26. Cenários de params inválidos (UUID inválido, inexistente) ficam no MESMO spec de permissão via `routeOverride` — NUNCA criar arquivo separado para poucos cenários.
 27. Testes de segurança (SQL Injection, XSS, Mass Assignment, Concorrência, Stacktrace) são testes de integração — ficam na pasta `Security/` dentro do módulo, usando a mesma infra Docker/Playwright.
 28. Todo cenário DEVE ter campo `descricao` explicando o contexto. Formato no relatório: `[perfil] deve receber [status] quando [descricao]`.
 29. Todo spec de permissão DEVE incluir cenários de método HTTP não suportado (ex: GET numa rota que só aceita POST). Status esperado: `HTTP.METHOD_NOT_ALLOWED` (405). Se o backend retorna 404, usar `skip` com motivo.
-30. Lógica de seed/setup NUNCA inline no spec — extrair para o SeedBuilder como função nomeada (ex: `seedUsuarioAttemptWithId`, `seedUsuarioDelete`). O spec só referencia: `seed: seedUsuarioAttemptWithId`.
+30. Lógica de seed/setup NUNCA inline no spec — extrair para o SeedBuilder como função nomeada (ex: `seedUsuarioAttemptWithId`, `seedTemporadaAttemptWithCampeonato`). O spec só referencia: `seed: seedTemporadaAttemptWithCampeonato`.
 31. Cenários usam tuplas: `[perfil, method, status, descricao, skip?, routeOverride?]` — NUNCA objetos com chaves nomeadas.
 32. Ordem das propriedades no `describeAttemptSuite`: config primeiro (`descricao`, `usuarios`, `seed`, `setup`, `routeResolver`, `payloadResolver`), `scenarios` por último.
 33. Todos os templates DEVEM validar mensagens não tratadas do framework via `assertSemMensagemNaoTratada()`. A lista de termos fica em `MENSAGENS_NAO_TRATADAS` no `constants.ts`. Se o projeto for em inglês, esvaziar a lista.
+34. Teste de concorrência só faz sentido quando a entidade tem unique constraint no banco. Se não tem (ex: Campeonato.nome), NÃO incluir o bloco `concorrencia` no Security spec.
 
 ---
 
