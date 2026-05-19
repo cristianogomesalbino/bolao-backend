@@ -101,11 +101,23 @@ describe('JogoController', () => {
 
       const result = await controller.listar('fase-1');
 
-      expect(mockJogoService.buscarPorFaseComDetalhes).toHaveBeenCalledWith('fase-1');
+      expect(mockJogoService.buscarPorFaseComDetalhes).toHaveBeenCalledWith('fase-1', undefined);
       expect(result).toEqual({
         fase: { id: 'fase-1', nome: 'Rodada 1', tipo: 'PONTOS_CORRIDOS', ordem: 1 },
         jogos: [JogoPresenter.toHttp(jogoData, 'PONTOS_CORRIDOS')],
       });
+    });
+
+    it('deve passar rodada como número quando query param informado', async () => {
+      const faseData = { id: 'fase-1', nome: 'Rodada 1', tipo: 'PONTOS_CORRIDOS', ordem: 1 };
+      mockJogoService.buscarPorFaseComDetalhes.mockResolvedValue({
+        fase: faseData,
+        jogos: [jogoData],
+      });
+
+      await controller.listar('fase-1', '3');
+
+      expect(mockJogoService.buscarPorFaseComDetalhes).toHaveBeenCalledWith('fase-1', 3);
     });
   });
 

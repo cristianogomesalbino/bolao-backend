@@ -14,6 +14,7 @@ import {
 } from '../../../common/errors/domain-errors/palpites.errors';
 import { CriarPalpiteDto } from '../dto/criar-palpite.dto';
 import { AtualizarPalpiteDto } from '../dto/atualizar-palpite.dto';
+import type { PalpiteItemDto } from '../dto/criar-palpite-lote.dto';
 
 @Injectable()
 export class PalpiteService {
@@ -90,6 +91,21 @@ export class PalpiteService {
 
     const meuPalpite = await this.palpiteRepo.buscarPorUsuarioEJogo(usuarioId, jogoId);
     return meuPalpite ? [meuPalpite] : [];
+  }
+
+  async criarLote(palpites: PalpiteItemDto[], usuarioId: string) {
+    const resultados: { jogoId: string; sucesso: boolean; palpite?: any; erro?: string }[] = [];
+
+    for (const item of palpites) {
+      try {
+        const palpite = await this.criar(item.jogoId, { golsCasa: item.golsCasa, golsFora: item.golsFora }, usuarioId);
+        resultados.push({ jogoId: item.jogoId, sucesso: true, palpite });
+      } catch (error: any) {
+        resultados.push({ jogoId: item.jogoId, sucesso: false, erro: error.message });
+      }
+    }
+
+    return resultados;
   }
 
   private async buscarEValidarOwnership(id: string, usuarioId: string) {

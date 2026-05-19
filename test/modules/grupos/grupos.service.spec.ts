@@ -237,4 +237,37 @@ describe('GruposService', () => {
       );
     });
   });
+
+  // ==================== regenerarCodigoConvite ====================
+
+  describe('regenerarCodigoConvite', () => {
+    it('deve gerar novo código de convite', async () => {
+      const created = await service.criar(
+        { nome: 'Bolão', temporadaId: 'temp-1', privado: true },
+        'user-1',
+      );
+
+      const result = await service.regenerarCodigoConvite(created.id);
+
+      expect(result.codigoConvite).toBe('ABCD1234');
+    });
+
+    it('deve lançar GrupoNaoEncontradoError se grupo não existe', async () => {
+      await expect(
+        service.regenerarCodigoConvite('inexistente'),
+      ).rejects.toThrow(GrupoNaoEncontradoError);
+    });
+
+    it('deve lançar GrupoNaoEncontradoError se grupo está inativo', async () => {
+      const created = await service.criar(
+        { nome: 'Grupo', temporadaId: 'temp-1', privado: true },
+        'user-1',
+      );
+      await grupoRepo.atualizar(created.id, { ativo: false });
+
+      await expect(
+        service.regenerarCodigoConvite(created.id),
+      ).rejects.toThrow(GrupoNaoEncontradoError);
+    });
+  });
 });

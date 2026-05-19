@@ -116,4 +116,16 @@ export class GruposService {
       mensagem: GRUPOS.MENSAGENS.GRUPO_EXCLUIDO,
     };
   }
+
+  async regenerarCodigoConvite(id: string) {
+    const grupo = await this.grupoRepo.buscarPorIdSimples(id);
+
+    if (!grupo?.ativo) {
+      throw new GrupoNaoEncontradoError();
+    }
+
+    const novoCodigoConvite = nanoid(8).toUpperCase();
+
+    return this.grupoRepo.atualizar(id, { codigoConvite: novoCodigoConvite });
+  }
 }

@@ -6,6 +6,10 @@ import {
   JaEstaNoGrupoError,
   LimiteParticipantesError,
   UnicoAdminError,
+  ApenasCriadorPodePromoverError,
+  MembroJaEAdminError,
+  NaoPodeRemoverCriadorError,
+  CriadorDeveTransferirError,
 } from '@src/common/errors/domain-errors';
 import { GrupoNaoEncontradoError } from '@src/common/errors/domain-errors/grupos.errors';
 import { UsuarioNaoEncontradoError } from '@src/common/errors/domain-errors/usuarios.errors';
@@ -199,32 +203,35 @@ describe('GrupoUsuarioService', () => {
 
   describe('sair', () => {
     it('deve permitir MEMBER sair do grupo', async () => {
+      grupoRepo.items.push({ ...grupo });
       grupoUsuarioRepo.items.push({
-        usuarioId: userId,
+        usuarioId: userId2,
         grupoId,
         role: 'MEMBER',
         dataCriacao: new Date(),
       });
 
-      const result = await service.sair(grupoId, userId);
+      const result = await service.sair(grupoId, userId2);
 
       expect(result.mensagem).toBe('Você saiu do grupo');
       expect(grupoUsuarioRepo.items).toHaveLength(0);
     });
 
-    it('deve permitir ADMIN sair se houver outro admin', async () => {
+    it('deve permitir ADMIN sair se houver outro admin e não é criador', async () => {
+      grupoRepo.items.push({ ...grupo });
       grupoUsuarioRepo.items.push(
         { usuarioId: userId, grupoId, role: 'ADMIN', dataCriacao: new Date() },
         { usuarioId: userId2, grupoId, role: 'ADMIN', dataCriacao: new Date() },
       );
 
-      const result = await service.sair(grupoId, userId);
+      const result = await service.sair(grupoId, userId2);
 
       expect(result.mensagem).toBe('Você saiu do grupo');
       expect(grupoUsuarioRepo.items).toHaveLength(1);
     });
 
     it('deve bloquear saída do único ADMIN', async () => {
+      grupoRepo.items.push({ ...grupo, criadoPor: 'outro-user' });
       grupoUsuarioRepo.items.push({
         usuarioId: userId,
         grupoId,
@@ -234,6 +241,18 @@ describe('GrupoUsuarioService', () => {
 
       await expect(service.sair(grupoId, userId)).rejects.toThrow(
         UnicoAdminError,
+      );
+    });
+
+    it('deve bloquear saída do criador do grupo', async () => {
+      grupoRepo.items.push({ ...grupo });
+      grupoUsuarioRepo.items.push(
+        { usuarioId: userId, grupoId, role: 'ADMIN', dataCriacao: new Date() },
+        { usuarioId: userId2, grupoId, role: 'ADMIN', dataCriacao: new Date() },
+      );
+
+      await expect(service.sair(grupoId, userId)).rejects.toThrow(
+        CriadorDeveTransferirError,
       );
     });
 
@@ -248,23 +267,114 @@ describe('GrupoUsuarioService', () => {
 
   describe('removerMembro', () => {
     it('deve remover membro do grupo', async () => {
+      grupoRepo.items.push({ ...grupo });
       grupoUsuarioRepo.items.push({
-        usuarioId: userId,
+        usuarioId: userId2,
         grupoId,
         role: 'MEMBER',
         dataCriacao: new Date(),
       });
 
-      const result = await service.removerMembro(grupoId, userId);
+      const result = await service.removerMembro(grupoId, userId2);
 
       expect(result.mensagem).toBe('Usuário removido do grupo');
       expect(grupoUsuarioRepo.items).toHaveLength(0);
     });
 
+    it('deve lançar NaoPodeRemoverCriadorError ao tentar remover o criador', async () => {
+      grupoRepo.items.push({ ...grupo });
+      grupoUsuarioRepo.items.push({
+        usuarioId: userId,
+        grupoId,
+        role: 'ADMIN',
+        dataCriacao: new Date(),
+      });
+
+      await expect(service.removerMembro(grupoId, userId)).rejects.toThrow(
+        NaoPodeRemoverCriadorError,
+      );
+    });
+
+    it('deve lançar GrupoNaoEncontradoError se grupo não existe', async () => {
+      await expect(service.removerMembro('inexistente', userId2)).rejects.toThrow(
+        GrupoNaoEncontradoError,
+      );
+    });
+
     it('deve lançar NotFoundException se usuário não está no grupo', async () => {
+      grupoRepo.items.push({ ...grupo });
+
       await expect(service.removerMembro(grupoId, 'user-999')).rejects.toThrow(
         NotFoundException,
       );
+    });
+  });
+
+  // ==================== alterarRole ====================
+
+  describe('alterarRole', () => {
+    beforeEach(() => {
+      grupoRepo.items.push({ ...grupo });
+      grupoUsuarioRepo.items.push(
+        { usuarioId: userId, grupoId, role: 'ADMIN', dataCriacao: new Date() },
+        { usuarioId: userId2, grupoId, role: 'MEMBER', dataCriacao: new Date() },
+      );
+    });
+
+    it('deve promover membro para ADMIN', async () => {
+      const result = await service.alterarRole(grupoId, userId2, 'ADMIN', userId);
+
+      expect(result.mensagem).toContain('alterado');
+      const registro = grupoUsuarioRepo.items.find((i) => i.usuarioId === userId2);
+      expect(registro.role).toBe('ADMIN');
+    });
+
+    it('deve rebaixar admin para MEMBER', async () => {
+      grupoUsuarioRepo.items.find((i) => i.usuarioId === userId2)!.role = 'ADMIN';
+
+      const result = await service.alterarRole(grupoId, userId2, 'MEMBER', userId);
+
+      expect(result.mensagem).toContain('alterado');
+      const registro = grupoUsuarioRepo.items.find((i) => i.usuarioId === userId2);
+      expect(registro.role).toBe('MEMBER');
+    });
+
+    it('deve transferir propriedade quando transferir=true e role=ADMIN', async () => {
+      const result = await service.alterarRole(grupoId, userId2, 'ADMIN', userId, true);
+
+      expect(result.mensagem).toContain('transferida');
+      const grupoAtualizado = grupoRepo.items.find((g) => g.id === grupoId);
+      expect(grupoAtualizado.criadoPor).toBe(userId2);
+    });
+
+    it('deve lançar ApenasCriadorPodePromoverError se solicitante não é criador', async () => {
+      await expect(
+        service.alterarRole(grupoId, userId, 'MEMBER', userId2),
+      ).rejects.toThrow(ApenasCriadorPodePromoverError);
+    });
+
+    it('deve lançar NaoPodeRemoverCriadorError ao tentar alterar role do criador', async () => {
+      await expect(
+        service.alterarRole(grupoId, userId, 'MEMBER', userId),
+      ).rejects.toThrow(NaoPodeRemoverCriadorError);
+    });
+
+    it('deve lançar MembroJaEAdminError se membro já possui o role', async () => {
+      await expect(
+        service.alterarRole(grupoId, userId2, 'MEMBER', userId),
+      ).rejects.toThrow(MembroJaEAdminError);
+    });
+
+    it('deve lançar GrupoNaoEncontradoError se grupo não existe', async () => {
+      await expect(
+        service.alterarRole('inexistente', userId2, 'ADMIN', userId),
+      ).rejects.toThrow(GrupoNaoEncontradoError);
+    });
+
+    it('deve lançar NotFoundException se usuário não está no grupo', async () => {
+      await expect(
+        service.alterarRole(grupoId, 'user-999', 'ADMIN', userId),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 });

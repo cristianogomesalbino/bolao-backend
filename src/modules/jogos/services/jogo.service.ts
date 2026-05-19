@@ -443,16 +443,16 @@ export class JogoService {
       : jogoVolta.timeForaId;
   }
 
-  async buscarPorFase(faseId: string) {
-    return this.jogoRepo.buscarPorFase(faseId);
+  async buscarPorFase(faseId: string, rodada?: number) {
+    return this.jogoRepo.buscarPorFase(faseId, rodada);
   }
 
-  async buscarPorFaseComDetalhes(faseId: string) {
+  async buscarPorFaseComDetalhes(faseId: string, rodada?: number) {
     const fase = await this.faseRepo.buscarPorId(faseId);
     if (!fase) {
       throw new FaseNaoEncontradaError();
     }
-    const jogos = await this.jogoRepo.buscarPorFase(faseId);
+    const jogos = await this.jogoRepo.buscarPorFase(faseId, rodada);
     return { fase, jogos };
   }
 

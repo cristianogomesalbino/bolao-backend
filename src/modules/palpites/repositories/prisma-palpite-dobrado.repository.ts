@@ -33,4 +33,10 @@ export class PrismaPalpiteDobradoRepository implements PalpiteDobradoRepository 
       where: { jogoId: { in: jogoIds }, grupoId },
     });
   }
+
+  listarPorUsuarioEGrupo(usuarioId: string, grupoId: string) {
+    return this.prisma.palpiteDobrado.findMany({
+      where: { usuarioId, grupoId },
+    });
+  }
 }

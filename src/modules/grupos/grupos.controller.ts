@@ -92,4 +92,17 @@ export class GruposController {
   ) {
     return this.gruposService.remover(grupoId);
   }
+
+  @ApiOperation({ summary: 'Regenerar código de convite do grupo' })
+  @ApiResponse({ status: 200, description: 'Código de convite regenerado.' })
+  @ApiNotFoundResponse({ description: 'Grupo não encontrado.' })
+  @UseGuards(GroupRoleGuard)
+  @GroupRoles(GRUPO_ROLE.ADMIN)
+  @Patch(':grupoId/regenerar-convite')
+  async regenerarConvite(
+    @Param('grupoId', new ParseUUIDCustomPipe('grupoId')) grupoId: string,
+  ) {
+    const grupo = await this.gruposService.regenerarCodigoConvite(grupoId);
+    return { codigoConvite: grupo.codigoConvite, mensagem: GRUPOS.MENSAGENS.CONVITE_REGENERADO };
+  }
 }

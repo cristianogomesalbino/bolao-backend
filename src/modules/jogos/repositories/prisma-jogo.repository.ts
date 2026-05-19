@@ -18,9 +18,11 @@ export class PrismaJogoRepository implements JogoRepository {
     return this.prisma.jogo.findUnique({ where: { id }, include: { fase: true } });
   }
 
-  buscarPorFase(faseId: string) {
+  buscarPorFase(faseId: string, rodada?: number) {
+    const where: any = { faseId };
+    if (rodada !== undefined) where.rodada = rodada;
     return this.prisma.jogo.findMany({
-      where: { faseId },
+      where,
       orderBy: { dataHora: 'asc' },
     });
   }

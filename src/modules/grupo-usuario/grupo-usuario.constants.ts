@@ -13,5 +13,13 @@ export const GRUPO_USUARIO = {
     UNICO_ADMIN: 'Não é possível sair sendo o único administrador do grupo',
     SAIU_DO_GRUPO: 'Você saiu do grupo',
     USUARIO_REMOVIDO: 'Usuário removido do grupo',
+    APENAS_CRIADOR_PODE_PROMOVER: 'Apenas o criador do grupo pode promover membros',
+    MEMBRO_JA_E_ADMIN: 'O membro já possui este role',
+    MEMBRO_PROMOVIDO: 'Membro promovido a administrador com sucesso',
+    APENAS_CRIADOR_PODE_TRANSFERIR: 'Apenas o criador do grupo pode transferir a propriedade',
+    PROPRIEDADE_TRANSFERIDA: 'Propriedade do grupo transferida com sucesso',
+    NAO_PODE_REMOVER_CRIADOR: 'Não é possível remover o criador do grupo',
+    ROLE_ALTERADO: 'Role do membro alterado com sucesso',
+    CRIADOR_DEVE_TRANSFERIR: 'Transfira a propriedade do grupo antes de sair',
   },
 } as const;

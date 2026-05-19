@@ -35,3 +35,31 @@ export class UnicoAdminError extends DomainError {
     super(mensagem);
   }
 }
+
+export class ApenasCriadorPodePromoverError extends DomainError {
+  readonly statusCode = 403;
+  constructor(mensagem = GRUPO_USUARIO.MENSAGENS.APENAS_CRIADOR_PODE_PROMOVER) {
+    super(mensagem);
+  }
+}
+
+export class MembroJaEAdminError extends DomainError {
+  readonly statusCode = 409;
+  constructor(mensagem = GRUPO_USUARIO.MENSAGENS.MEMBRO_JA_E_ADMIN) {
+    super(mensagem);
+  }
+}
+
+export class NaoPodeRemoverCriadorError extends DomainError {
+  readonly statusCode = 403;
+  constructor(mensagem = GRUPO_USUARIO.MENSAGENS.NAO_PODE_REMOVER_CRIADOR) {
+    super(mensagem);
+  }
+}
+
+export class CriadorDeveTransferirError extends DomainError {
+  readonly statusCode = 400;
+  constructor(mensagem = GRUPO_USUARIO.MENSAGENS.CRIADOR_DEVE_TRANSFERIR) {
+    super(mensagem);
+  }
+}

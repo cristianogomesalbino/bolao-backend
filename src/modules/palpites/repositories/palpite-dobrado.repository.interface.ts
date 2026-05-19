@@ -4,4 +4,5 @@ export interface PalpiteDobradoRepository {
   buscarPorChave(usuarioId: string, jogoId: string, grupoId: string): Promise<any>;
   listarPorJogoEGrupo(jogoId: string, grupoId: string): Promise<any[]>;
   listarPorJogosEGrupo(jogoIds: string[], grupoId: string): Promise<any[]>;
+  listarPorUsuarioEGrupo(usuarioId: string, grupoId: string): Promise<any[]>;
 }
