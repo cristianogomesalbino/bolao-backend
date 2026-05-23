@@ -377,9 +377,14 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/grupos",
+              "raw": "{{baseUrl}}/grupos?membro=true",
               "host": ["{{baseUrl}}"],
-              "path": ["grupos"]
+              "path": ["grupos"],
+              "query": [
+                { "key": "membro", "value": "true", "description": "Filtrar apenas grupos onde o usuário é membro" },
+                { "key": "privado", "value": "false", "description": "Filtrar por visibilidade (false = apenas públicos)", "disabled": true },
+                { "key": "busca", "value": "", "description": "Busca por nome do grupo (parcial, case-insensitive)", "disabled": true }
+              ]
             }
           }
         },

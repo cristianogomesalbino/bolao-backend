@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
-import { GrupoRepository } from './grupo.repository.interface';
+import { GrupoRepository, FiltrosGrupo } from './grupo.repository.interface';
 
 const includeGrupo = {
   temporada: {
@@ -34,10 +34,42 @@ export class PrismaGrupoRepository implements GrupoRepository {
     });
   }
 
+  buscarComFiltros(filtros: FiltrosGrupo) {
+    const where: any = { ativo: filtros.ativo };
+
+    if (filtros.membro && filtros.usuarioId) {
+      where.usuarios = {
+        some: { usuarioId: filtros.usuarioId },
+      };
+    }
+
+    if (filtros.privado !== undefined) {
+      where.privado = filtros.privado;
+    }
+
+    if (filtros.busca) {
+      where.nome = {
+        contains: filtros.busca,
+        mode: 'insensitive',
+      };
+    }
+
+    return this.prisma.grupo.findMany({
+      where,
+      include: {
+        ...includeGrupo,
+        _count: { select: { usuarios: true } },
+      },
+    });
+  }
+
   buscarPorId(id: string) {
     return this.prisma.grupo.findUnique({
       where: { id },
-      include: includeGrupo,
+      include: {
+        ...includeGrupo,
+        _count: { select: { usuarios: true } },
+      },
     });
   }
 

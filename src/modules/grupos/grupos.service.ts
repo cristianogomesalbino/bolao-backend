@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { CriarGrupoDto } from './dto/create-grupo.dto';
 import { UpdateGrupoDto } from './dto/update-grupo.dto';
 import { UpdateStatusGrupoDto } from './dto/update-status-grupo.dto';
+import { FiltrarGruposDto } from './dto/filtrar-grupos.dto';
 import { nanoid } from 'nanoid';
 import {
   TemporadaNaoEncontradaError,
@@ -56,18 +57,37 @@ export class GruposService {
     return grupo;
   }
 
-  async buscarTodos() {
-    return this.grupoRepo.buscarTodos({ ativo: true });
+  async buscarTodos(filtros?: FiltrarGruposDto, usuarioId?: string) {
+    if (filtros && (filtros.membro !== undefined || filtros.privado !== undefined || filtros.busca)) {
+      return this.grupoRepo.buscarComFiltros({
+        ativo: true,
+        membro: filtros.membro,
+        usuarioId,
+        privado: filtros.privado,
+        busca: filtros.busca,
+      });
+    }
+
+    return this.grupoRepo.buscarComFiltros({
+      ativo: true,
+      membro: true,
+      usuarioId,
+    });
   }
 
-  async buscarPorId(id: string) {
+  async buscarPorId(id: string, usuarioId?: string) {
     const grupo = await this.grupoRepo.buscarPorId(id);
 
     if (!grupo?.ativo) {
       throw new GrupoNaoEncontradoError();
     }
 
-    return grupo;
+    if (usuarioId) {
+      const membro = await this.grupoUsuarioRepo.buscarPorChave(usuarioId, id);
+      return { ...grupo, ehMembro: !!membro };
+    }
+
+    return { ...grupo, ehMembro: false };
   }
 
   async atualizar(id: string, dto: UpdateGrupoDto) {

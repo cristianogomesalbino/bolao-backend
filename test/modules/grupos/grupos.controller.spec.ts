@@ -51,21 +51,42 @@ describe('GruposController', () => {
     it('deve retornar lista de grupos via presenter', async () => {
       mockService.buscarTodos.mockResolvedValue([grupoData]);
 
-      const result = await controller.buscarGrupos();
+      const result = await controller.buscarGrupos({}, { id: 'user-1' });
 
+      expect(mockService.buscarTodos).toHaveBeenCalledWith({}, 'user-1');
       expect(result).toHaveLength(1);
       expect(result[0]).toEqual(GrupoPresenter.toHttp(grupoData));
+    });
+
+    it('deve passar filtros para o service', async () => {
+      mockService.buscarTodos.mockResolvedValue([]);
+
+      await controller.buscarGrupos({ membro: true, privado: false, busca: 'bolao' }, { id: 'user-1' });
+
+      expect(mockService.buscarTodos).toHaveBeenCalledWith(
+        { membro: true, privado: false, busca: 'bolao' },
+        'user-1',
+      );
     });
   });
 
   describe('buscarGrupoPorId', () => {
-    it('deve retornar grupo via presenter', async () => {
-      mockService.buscarPorId.mockResolvedValue(grupoData);
+    it('deve retornar grupo completo via presenter quando é membro', async () => {
+      mockService.buscarPorId.mockResolvedValue({ ...grupoData, ehMembro: true });
 
-      const result = await controller.buscarGrupoPorId('grupo-1');
+      const result = await controller.buscarGrupoPorId('grupo-1', { id: 'user-1' });
 
-      expect(mockService.buscarPorId).toHaveBeenCalledWith('grupo-1');
-      expect(result).toEqual(GrupoPresenter.toHttp(grupoData));
+      expect(mockService.buscarPorId).toHaveBeenCalledWith('grupo-1', 'user-1');
+      expect(result).toEqual(GrupoPresenter.toHttp({ ...grupoData, ehMembro: true }));
+    });
+
+    it('deve retornar dados básicos quando não é membro', async () => {
+      mockService.buscarPorId.mockResolvedValue({ ...grupoData, ehMembro: false });
+
+      const result = await controller.buscarGrupoPorId('grupo-1', { id: 'user-2' });
+
+      expect(result).toEqual(GrupoPresenter.toHttpBasico({ ...grupoData, ehMembro: false }));
+      expect(result).not.toHaveProperty('codigoConvite');
     });
   });
 

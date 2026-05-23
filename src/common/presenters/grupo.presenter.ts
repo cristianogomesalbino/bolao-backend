@@ -14,9 +14,26 @@ export class GrupoPresenter {
       ativo: grupo.ativo,
       dataCriacao: grupo.dataCriacao,
       criadoPor: grupo.criadoPor,
+      ...(grupo.ehMembro !== undefined && { ehMembro: grupo.ehMembro }),
+      ...(grupo._count?.usuarios !== undefined && {
+        totalParticipantes: grupo._count.usuarios,
+      }),
       ...(grupo.temporada && {
         temporada: TemporadaPresenter.toHttp(grupo.temporada),
       }),
+    };
+  }
+
+  static toHttpBasico(grupo: any) {
+    return {
+      id: grupo.id,
+      nome: grupo.nome,
+      privado: grupo.privado,
+      maxParticipantes: grupo.maxParticipantes,
+      ...(grupo._count?.usuarios !== undefined && {
+        totalParticipantes: grupo._count.usuarios,
+      }),
+      ehMembro: false,
     };
   }
 }
