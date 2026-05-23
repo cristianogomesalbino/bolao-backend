@@ -70,9 +70,14 @@ export class FutebolApiService implements OnModuleInit {
   normalizarJogo(jogo: any): any {
     const status = this.mapearStatus(jogo);
 
+    // A API do ge.globo.com retorna data_realizacao em BRT (sem timezone)
+    // Precisamos marcar explicitamente como BRT (-03:00) para que new Date() converta corretamente para UTC
+    const dataHoraBrt = jogo.data_realizacao;
+    const dataHoraUtc = new Date(`${dataHoraBrt}-03:00`).toISOString();
+
     return {
       externoId: String(jogo.id),
-      dataHora: jogo.data_realizacao,
+      dataHora: dataHoraUtc,
       timeCasaId: String(jogo.equipes.mandante.id),
       timeForaId: String(jogo.equipes.visitante.id),
       golsCasa: status === 'FINALIZADO' ? (jogo.placar_oficial_mandante ?? null) : null,
