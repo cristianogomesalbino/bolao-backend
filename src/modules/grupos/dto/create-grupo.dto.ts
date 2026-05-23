@@ -1,6 +1,7 @@
 import { IsString, IsNotEmpty, IsDefined, IsBoolean, IsUUID, IsOptional, IsInt, Length, Max } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { GRUPOS } from '../grupos.constants';
 
 export class CriarGrupoDto {
   @ApiProperty({ description: 'Nome do grupo', example: 'Bolão da Firma' })
@@ -25,11 +26,11 @@ export class CriarGrupoDto {
   @IsBoolean({ message: 'Deve ser verdadeiro ou falso.' })
   permitirPalpiteAutomatico?: boolean;
 
-  @ApiPropertyOptional({ description: 'Máximo de participantes', example: 50 })
+  @ApiPropertyOptional({ description: 'Máximo de participantes', example: GRUPOS.MAX_PARTICIPANTES_DEFAULT })
   @IsOptional()
   @Type(() => Number)
   @IsInt({ message: 'Deve ser do tipo número inteiro.' })
-  @Max(50, { message: 'O grupo pode ter no máximo 50 participantes.' })
+  @Max(GRUPOS.MAX_PARTICIPANTES_DEFAULT, { message: `O grupo pode ter no máximo ${GRUPOS.MAX_PARTICIPANTES_DEFAULT} participantes.` })
   maxParticipantes?: number;
 
   @ApiPropertyOptional({ description: 'Habilitar palpite dobrado no grupo', example: false })

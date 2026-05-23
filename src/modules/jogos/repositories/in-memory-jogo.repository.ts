@@ -25,9 +25,17 @@ export class InMemoryJogoRepository implements JogoRepository {
     return this.items.find((j) => j.id === id) ?? null;
   }
 
-  async buscarPorFase(faseId: string) {
+  async buscarPorIds(ids: string[]) {
+    return this.items.filter((j) => ids.includes(j.id));
+  }
+
+  async buscarPorExternoIds(externoIds: string[]) {
+    return this.items.filter((j) => j.externoId && externoIds.includes(j.externoId));
+  }
+
+  async buscarPorFase(faseId: string, rodada?: number) {
     return this.items
-      .filter((j) => j.faseId === faseId)
+      .filter((j) => j.faseId === faseId && (rodada === undefined || j.rodada === rodada))
       .sort((a, b) => new Date(a.dataHora).getTime() - new Date(b.dataHora).getTime());
   }
 

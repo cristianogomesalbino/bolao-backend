@@ -27,6 +27,7 @@ describe('PalpiteController', () => {
       buscarMeuPalpitePorJogo: vi.fn().mockResolvedValue(palpiteMock),
       listarMeusPalpites: vi.fn().mockResolvedValue([palpiteMock]),
       listarPorJogoNoGrupo: vi.fn().mockResolvedValue([palpiteMock]),
+      criarLote: vi.fn(),
     };
 
     controller = new PalpiteController(mockService);
@@ -72,5 +73,24 @@ describe('PalpiteController', () => {
 
     expect(mockService.listarPorJogoNoGrupo).toHaveBeenCalledWith('jogo-1', 'grupo-1', userId);
     expect(result).toHaveLength(1);
+  });
+
+  it('criarLote deve chamar service.criarLote e retornar resultados', async () => {
+    const resultadoLote = [
+      { jogoId: 'jogo-1', sucesso: true, palpite: palpiteMock },
+      { jogoId: 'jogo-2', sucesso: false, erro: 'Jogo não encontrado' },
+    ];
+    mockService.criarLote.mockResolvedValue(resultadoLote);
+
+    const dto = {
+      palpites: [
+        { jogoId: 'jogo-1', golsCasa: 2, golsFora: 1 },
+        { jogoId: 'jogo-2', golsCasa: 0, golsFora: 0 },
+      ],
+    };
+    const result = await controller.criarLote(dto, user);
+
+    expect(mockService.criarLote).toHaveBeenCalledWith(dto.palpites, userId);
+    expect(result).toEqual(resultadoLote);
   });
 });

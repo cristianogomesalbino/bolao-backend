@@ -1,9 +1,11 @@
 import { Module } from '@nestjs/common';
 import { PalpiteController } from './controllers/palpite.controller';
 import { PalpiteDobradoController } from './controllers/palpite-dobrado.controller';
+import { PainelRodadaController } from './controllers/painel-rodada.controller';
 import { PalpiteService } from './services/palpite.service';
 import { PalpiteDobradoService } from './services/palpite-dobrado.service';
 import { TokenDobroService } from './services/token-dobro.service';
+import { PainelRodadaService } from './services/painel-rodada.service';
 import { PALPITES } from './palpites.constants';
 import { PrismaPalpiteRepository } from './repositories/prisma-palpite.repository';
 import { PrismaPalpiteDobradoRepository } from './repositories/prisma-palpite-dobrado.repository';
@@ -14,11 +16,12 @@ import { GrupoUsuarioModule } from '../grupo-usuario/grupo-usuario.module';
 
 @Module({
   imports: [JogosModule, GruposModule, GrupoUsuarioModule],
-  controllers: [PalpiteController, PalpiteDobradoController],
+  controllers: [PalpiteController, PalpiteDobradoController, PainelRodadaController],
   providers: [
     PalpiteService,
     PalpiteDobradoService,
     TokenDobroService,
+    PainelRodadaService,
     {
       provide: PALPITES.PALPITE_REPOSITORY_TOKEN,
       useClass: PrismaPalpiteRepository,

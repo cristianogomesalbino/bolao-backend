@@ -79,4 +79,15 @@ export class InMemoryGrupoUsuarioRepository implements GrupoUsuarioRepository {
         };
       });
   }
+
+  async atualizarRole(usuarioId: string, grupoId: string, role: string) {
+    const item = this.items.find(
+      (gu) => gu.usuarioId === usuarioId && gu.grupoId === grupoId,
+    );
+    if (item) {
+      item.role = role;
+      item.atualizadoEm = new Date();
+    }
+    return item ?? null;
+  }
 }

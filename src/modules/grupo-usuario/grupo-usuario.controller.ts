@@ -4,7 +4,9 @@ import {
   Delete,
   Get,
   Param,
+  Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -14,10 +16,12 @@ import {
   ApiBadRequestResponse,
   ApiNotFoundResponse,
   ApiConflictResponse,
+  ApiQuery,
 } from '@nestjs/swagger';
 import { GrupoUsuarioService } from './grupo-usuario.service';
 import { EntrarGrupoDto } from './dto/entrar-grupo.dto';
 import { AdicionarMembroDto } from './dto/adicionar-membro.dto';
+import { AlterarRoleDto } from './dto/alterar-role.dto';
 import { GroupRoleGuard } from '../../common/guards/group-role.guard';
 import { GroupRoles } from '../../common/decorators/group-roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -93,5 +97,25 @@ export class GrupoUsuarioController {
     usuarioId: string,
   ) {
     return this.service.removerMembro(grupoId, usuarioId);
+  }
+
+  @ApiOperation({ summary: 'Alterar role de membro (apenas criador)' })
+  @ApiResponse({ status: 200, description: 'Role alterado com sucesso.' })
+  @ApiNotFoundResponse({ description: 'Usuário não está no grupo.' })
+  @ApiBadRequestResponse({ description: 'Apenas o criador pode alterar roles.' })
+  @ApiConflictResponse({ description: 'Membro já possui este role.' })
+  @ApiQuery({ name: 'transferir', required: false, type: Boolean, description: 'Transferir propriedade do grupo (apenas ao promover)' })
+  @UseGuards(GroupRoleGuard)
+  @GroupRoles(GRUPO_ROLE.ADMIN)
+  @Patch(':grupoId/usuarios/:usuarioId/cargo')
+  alterarRole(
+    @Param('grupoId', new ParseUUIDCustomPipe('grupoId')) grupoId: string,
+    @Param('usuarioId', new ParseUUIDCustomPipe('usuarioId')) usuarioId: string,
+    @Body() dto: AlterarRoleDto,
+    @CurrentUser() user: { id: string },
+    @Query('transferir') transferir?: string,
+  ) {
+    const transferirPropriedade = transferir === 'true';
+    return this.service.alterarRole(grupoId, usuarioId, dto.role, user.id, transferirPropriedade);
   }
 }

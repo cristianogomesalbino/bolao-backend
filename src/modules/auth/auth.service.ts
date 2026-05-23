@@ -2,7 +2,6 @@ import { Inject, Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { randomUUID } from 'crypto';
-import { PrismaService } from '../../prisma/prisma.service';
 import {
   CredenciaisInvalidasError,
   RefreshNaoFornecidoError,
@@ -13,21 +12,28 @@ import {
 } from '../../common/errors/domain-errors';
 import { UsuarioNaoEncontradoError } from '../../common/errors/domain-errors/usuarios.errors';
 import { AUTH } from './auth.constants';
+import { USUARIOS } from '../usuarios/usuarios.constants';
 import type { EmailService } from './email/email.service.interface';
+import type { UsuarioRepository } from '../usuarios/repositories/usuario.repository.interface';
+import type { RefreshTokenRepository } from './repositories/refresh-token.repository.interface';
+import type { RecuperacaoSenhaRepository } from './repositories/recuperacao-senha.repository.interface';
 
 @Injectable()
 export class AuthService {
   constructor(
-    private readonly prisma: PrismaService,
+    @Inject(USUARIOS.REPOSITORY_TOKEN)
+    private readonly usuarioRepo: UsuarioRepository,
+    @Inject(AUTH.REFRESH_TOKEN_REPOSITORY_TOKEN)
+    private readonly refreshTokenRepo: RefreshTokenRepository,
+    @Inject(AUTH.RECUPERACAO_SENHA_REPOSITORY_TOKEN)
+    private readonly recuperacaoSenhaRepo: RecuperacaoSenhaRepository,
     private readonly jwtService: JwtService,
     @Inject(AUTH.EMAIL_SERVICE_TOKEN)
     private readonly emailService: EmailService,
   ) {}
 
   async login(email: string, senha: string) {
-    const usuario = await this.prisma.usuario.findUnique({
-      where: { email },
-    });
+    const usuario = await this.usuarioRepo.buscarPorEmail(email);
 
     if (!usuario || !usuario.ativo) {
       throw new CredenciaisInvalidasError();
@@ -38,20 +44,16 @@ export class AuthService {
       throw new CredenciaisInvalidasError();
     }
 
-    await this.prisma.refreshToken.deleteMany({
-      where: { usuarioId: usuario.id },
-    });
+    await this.refreshTokenRepo.removerPorUsuarioId(usuario.id);
 
     const payload = { sub: usuario.id, email: usuario.email, perfil: usuario.perfil };
-    const accessToken = this.jwtService.sign(payload, { expiresIn: '7d' });
-    const refreshToken = this.jwtService.sign(payload, { expiresIn: '7d' });
+    const accessToken = this.jwtService.sign(payload, { expiresIn: AUTH.TOKEN.ACCESS_EXPIRATION });
+    const refreshToken = this.jwtService.sign(payload, { expiresIn: AUTH.TOKEN.REFRESH_EXPIRATION });
 
-    await this.prisma.refreshToken.create({
-      data: {
-        token: refreshToken,
-        usuarioId: usuario.id,
-        expiraEm: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      },
+    await this.refreshTokenRepo.criar({
+      token: refreshToken,
+      usuarioId: usuario.id,
+      expiraEm: new Date(Date.now() + AUTH.TOKEN.REFRESH_EXPIRATION_MS),
     });
 
     return { accessToken, refreshToken };
@@ -62,9 +64,7 @@ export class AuthService {
       throw new RefreshNaoFornecidoError();
     }
 
-    const tokenRegistro = await this.prisma.refreshToken.findUnique({
-      where: { token: refreshToken },
-    });
+    const tokenRegistro = await this.refreshTokenRepo.buscarPorToken(refreshToken);
 
     if (!tokenRegistro) {
       throw new RefreshInvalidoError();
@@ -76,16 +76,14 @@ export class AuthService {
       throw new RefreshExpiradoError();
     }
 
-    const usuario = await this.prisma.usuario.findUnique({
-      where: { id: tokenRegistro.usuarioId },
-    });
+    const usuario = await this.usuarioRepo.buscarPorId(tokenRegistro.usuarioId);
 
     if (!usuario) {
       throw new UsuarioNaoEncontradoError();
     }
 
     const payload = { sub: usuario.id, email: usuario.email, perfil: usuario.perfil };
-    const accessToken = this.jwtService.sign(payload, { expiresIn: '7d' });
+    const accessToken = this.jwtService.sign(payload, { expiresIn: AUTH.TOKEN.ACCESS_EXPIRATION });
 
     return { accessToken };
   }
@@ -95,33 +93,24 @@ export class AuthService {
       throw new RefreshNaoFornecidoError();
     }
 
-    await this.prisma.refreshToken.deleteMany({
-      where: { token: refreshToken },
-    });
+    await this.refreshTokenRepo.removerPorToken(refreshToken);
 
     return { mensagem: AUTH.MENSAGENS.LOGOUT_SUCESSO };
   }
 
   async solicitarRecuperacao(email: string) {
-    const usuario = await this.prisma.usuario.findUnique({
-      where: { email },
-    });
+    const usuario = await this.usuarioRepo.buscarPorEmail(email);
 
     if (usuario && usuario.ativo) {
-      await this.prisma.recuperacaoSenha.updateMany({
-        where: { usuarioId: usuario.id, usado: false },
-        data: { usado: true },
-      });
+      await this.recuperacaoSenhaRepo.invalidarPorUsuarioId(usuario.id);
 
       const token = randomUUID();
-      const expiraEm = new Date(Date.now() + 60 * 60 * 1000); // 1 hora
+      const expiraEm = new Date(Date.now() + AUTH.TOKEN.RECUPERACAO_EXPIRATION_MS);
 
-      await this.prisma.recuperacaoSenha.create({
-        data: {
-          token,
-          usuarioId: usuario.id,
-          expiraEm,
-        },
+      await this.recuperacaoSenhaRepo.criar({
+        token,
+        usuarioId: usuario.id,
+        expiraEm,
       });
 
       await this.emailService.enviarRecuperacaoSenha(email, token);
@@ -131,9 +120,7 @@ export class AuthService {
   }
 
   async resetarSenha(token: string, novaSenha: string) {
-    const recuperacao = await this.prisma.recuperacaoSenha.findUnique({
-      where: { token },
-    });
+    const recuperacao = await this.recuperacaoSenhaRepo.buscarPorToken(token);
 
     if (!recuperacao || recuperacao.usado) {
       throw new TokenRecuperacaoInvalidoError();
@@ -143,21 +130,11 @@ export class AuthService {
       throw new TokenRecuperacaoExpiradoError();
     }
 
-    const senhaHash = await bcrypt.hash(novaSenha, 10);
+    const senhaHash = await bcrypt.hash(novaSenha, AUTH.BCRYPT_ROUNDS);
 
-    await this.prisma.$transaction([
-      this.prisma.usuario.update({
-        where: { id: recuperacao.usuarioId },
-        data: { senha: senhaHash },
-      }),
-      this.prisma.recuperacaoSenha.update({
-        where: { id: recuperacao.id },
-        data: { usado: true },
-      }),
-      this.prisma.refreshToken.deleteMany({
-        where: { usuarioId: recuperacao.usuarioId },
-      }),
-    ]);
+    await this.usuarioRepo.atualizar(recuperacao.usuarioId, { senha: senhaHash });
+    await this.recuperacaoSenhaRepo.marcarComoUsado(recuperacao.id);
+    await this.refreshTokenRepo.removerPorUsuarioId(recuperacao.usuarioId);
 
     return { mensagem: AUTH.MENSAGENS.SENHA_RESETADA };
   }

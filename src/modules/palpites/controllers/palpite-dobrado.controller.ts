@@ -107,4 +107,17 @@ export class PalpiteDobradoController {
     await this.palpiteDobradoService.atualizarConfiguracaoDobro(grupoId, dto.permitirPalpiteDobrado);
     return { mensagem: PALPITES.MENSAGENS.CONFIGURACAO_ATUALIZADA };
   }
+
+  @ApiOperation({ summary: 'Listar meus palpites dobrados no grupo' })
+  @ApiResponse({ status: 200, description: 'Lista de jogos dobrados.' })
+  @UseGuards(GroupRoleGuard)
+  @GroupRoles(GRUPO_ROLE.ADMIN, GRUPO_ROLE.MEMBER)
+  @Get(':grupoId/meus-dobros')
+  async listarMeusDobros(
+    @Param('grupoId', new ParseUUIDCustomPipe('grupoId')) grupoId: string,
+    @CurrentUser() user: { id: string },
+  ) {
+    const dobros = await this.palpiteDobradoService.listarMeusDobros(grupoId, user.id);
+    return dobros.map((d) => PalpiteDobradoPresenter.toHttp(d));
+  }
 }

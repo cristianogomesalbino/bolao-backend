@@ -13,6 +13,16 @@ export class InMemoryFaseRepository implements FaseRepository {
     return fase;
   }
 
+  async criarVarios(data: any[]) {
+    const fases = data.map((d) => ({
+      id: crypto.randomUUID(),
+      ...d,
+      dataCriacao: new Date(),
+    }));
+    this.items.push(...fases);
+    return fases;
+  }
+
   async buscarPorId(id: string) {
     return this.items.find((f) => f.id === id) ?? null;
   }

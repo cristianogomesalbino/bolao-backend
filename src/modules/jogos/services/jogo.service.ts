@@ -81,6 +81,7 @@ export class JogoService {
       timeCasaId: dto.timeCasaId,
       timeForaId: dto.timeForaId,
       dataHora: new Date(dto.dataHora),
+      rodada: dto.rodada ?? null,
       status: 'AGENDADO',
       temProrrogacao: false,
       temPenaltis: false,
@@ -442,8 +443,17 @@ export class JogoService {
       : jogoVolta.timeForaId;
   }
 
-  async buscarPorFase(faseId: string) {
-    return this.jogoRepo.buscarPorFase(faseId);
+  async buscarPorFase(faseId: string, rodada?: number) {
+    return this.jogoRepo.buscarPorFase(faseId, rodada);
+  }
+
+  async buscarPorFaseComDetalhes(faseId: string, rodada?: number) {
+    const fase = await this.faseRepo.buscarPorId(faseId);
+    if (!fase) {
+      throw new FaseNaoEncontradaError();
+    }
+    const jogos = await this.jogoRepo.buscarPorFase(faseId, rodada);
+    return { fase, jogos };
   }
 
   async buscarPorId(id: string) {
@@ -472,20 +482,24 @@ export class JogoService {
       rodada,
     );
 
-    // Buscar todos os externoIds existentes de uma vez (evita N+1)
-    const jogosExistentes = await this.jogoRepo.buscarPorFase(faseId);
-    const externosExistentes = new Set(
-      jogosExistentes.filter((j: any) => j.externoId).map((j: any) => j.externoId),
-    );
-
     // Normalizar todos os jogos e resolver times em batch (evita N+1)
     const normalizados = jogosApi.map((j: any) => this.futebolApiService.normalizarJogo(j));
+
+    // Verificar externoIds existentes globalmente (constraint unique é global, não por fase)
+    const externoIds = normalizados.map((n: any) => n.externoId);
+    const jogosExistentesGlobal = await this.buscarExternoIdsExistentes(externoIds);
+    const externosExistentes = new Set(jogosExistentesGlobal);
+
     const timesCache = await this.carregarCacheTimes(normalizados);
 
     let importados = 0;
+    let ignorados = 0;
 
     for (const normalizado of normalizados) {
-      if (externosExistentes.has(normalizado.externoId)) continue;
+      if (externosExistentes.has(normalizado.externoId)) {
+        ignorados++;
+        continue;
+      }
 
       const timeCasa = await this.resolverOuCriarTime(normalizado.timeCasa, timesCache);
       const timeFora = await this.resolverOuCriarTime(normalizado.timeFora, timesCache);
@@ -497,6 +511,7 @@ export class JogoService {
 
       await this.jogoRepo.criar({
         faseId,
+        rodada,
         timeCasaId: timeCasa.id,
         timeForaId: timeFora.id,
         dataHora: new Date(normalizado.dataHora),
@@ -520,7 +535,13 @@ export class JogoService {
       importados++;
     }
 
-    return { importados };
+    return { importados, ignorados };
+  }
+
+  private async buscarExternoIdsExistentes(externoIds: string[]): Promise<string[]> {
+    if (externoIds.length === 0) return [];
+    const jogos = await this.jogoRepo.buscarPorExternoIds(externoIds);
+    return jogos.map((j: any) => j.externoId);
   }
 
   private async carregarCacheTimes(normalizados: any[]): Promise<Map<string, any>> {

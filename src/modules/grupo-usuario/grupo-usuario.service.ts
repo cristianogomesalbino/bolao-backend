@@ -6,6 +6,11 @@ import {
   JaEstaNoGrupoError,
   LimiteParticipantesError,
   UnicoAdminError,
+  ApenasCriadorPodePromoverError,
+  MembroJaPossuiRoleError,
+  NaoPodeRemoverCriadorError,
+  NaoPodeAlterarRoleCriadorError,
+  CriadorDeveTransferirError,
 } from '../../common/errors/domain-errors';
 import { GrupoNaoEncontradoError } from '../../common/errors/domain-errors/grupos.errors';
 import { UsuarioNaoEncontradoError } from '../../common/errors/domain-errors/usuarios.errors';
@@ -64,6 +69,12 @@ export class GrupoUsuarioService {
       GRUPO_USUARIO.MENSAGENS.NAO_ESTA_NO_GRUPO,
     );
 
+    const grupo = await this.grupoRepo.buscarPorIdSimples(grupoId);
+
+    if (grupo?.criadoPor === usuarioId) {
+      throw new CriadorDeveTransferirError();
+    }
+
     if (registro.role === GRUPO_ROLE.ADMIN) {
       await this.validarUnicoAdmin(grupoId);
     }
@@ -74,6 +85,16 @@ export class GrupoUsuarioService {
   }
 
   async removerMembro(grupoId: string, usuarioId: string) {
+    const grupo = await this.grupoRepo.buscarPorIdSimples(grupoId);
+
+    if (!grupo) {
+      throw new GrupoNaoEncontradoError();
+    }
+
+    if (grupo.criadoPor === usuarioId) {
+      throw new NaoPodeRemoverCriadorError();
+    }
+
     await this.buscarRegistroOuFalhar(
       usuarioId,
       grupoId,
@@ -151,5 +172,46 @@ export class GrupoUsuarioService {
     if (admins <= 1) {
       throw new UnicoAdminError();
     }
+  }
+
+  async alterarRole(
+    grupoId: string,
+    usuarioId: string,
+    novoRole: string,
+    solicitanteId: string,
+    transferirPropriedade = false,
+  ) {
+    const grupo = await this.grupoRepo.buscarPorIdSimples(grupoId);
+
+    if (!grupo) {
+      throw new GrupoNaoEncontradoError();
+    }
+
+    if (grupo.criadoPor !== solicitanteId) {
+      throw new ApenasCriadorPodePromoverError();
+    }
+
+    if (grupo.criadoPor === usuarioId) {
+      throw new NaoPodeAlterarRoleCriadorError();
+    }
+
+    const registro = await this.grupoUsuarioRepo.buscarPorChave(usuarioId, grupoId);
+
+    if (!registro) {
+      throw ErrorFactory.notFound(GRUPO_USUARIO.MENSAGENS.USUARIO_NAO_ESTA_NO_GRUPO);
+    }
+
+    if (registro.role === novoRole) {
+      throw new MembroJaPossuiRoleError();
+    }
+
+    await this.grupoUsuarioRepo.atualizarRole(usuarioId, grupoId, novoRole);
+
+    if (transferirPropriedade && novoRole === GRUPO_ROLE.ADMIN) {
+      await this.grupoRepo.atualizar(grupoId, { criadoPor: usuarioId });
+      return { mensagem: GRUPO_USUARIO.MENSAGENS.PROPRIEDADE_TRANSFERIDA };
+    }
+
+    return { mensagem: GRUPO_USUARIO.MENSAGENS.ROLE_ALTERADO };
   }
 }

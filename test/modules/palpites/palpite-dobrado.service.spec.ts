@@ -190,4 +190,41 @@ describe('PalpiteDobradoService', () => {
       ).rejects.toThrow(GrupoNaoEncontradoError);
     });
   });
+
+  // ==================== listarMeusDobros ====================
+
+  describe('listarMeusDobros', () => {
+    it('deve retornar lista vazia quando não há dobros', async () => {
+      const result = await service.listarMeusDobros(grupoId, userId);
+
+      expect(result).toEqual([]);
+    });
+
+    it('deve retornar dobros do usuário no grupo', async () => {
+      await tokenDobroService.concederToken(userId, grupoId, 'ACERTO_EM_CHEIO', jogoId);
+      await tokenDobroService.concederToken(userId, grupoId, 'PRIMEIRO_RANKING', 'fase-1');
+      await service.ativarDobro(grupoId, jogoId, userId);
+
+      const result = await service.listarMeusDobros(grupoId, userId);
+
+      expect(result).toHaveLength(1);
+      expect(result[0].jogoId).toBe(jogoId);
+      expect(result[0].grupoId).toBe(grupoId);
+      expect(result[0].usuarioId).toBe(userId);
+    });
+
+    it('deve retornar apenas dobros do grupo solicitado', async () => {
+      // Ativar dobro no grupo-1
+      await tokenDobroService.concederToken(userId, grupoId, 'ACERTO_EM_CHEIO', jogoId);
+      await service.ativarDobro(grupoId, jogoId, userId);
+
+      // Inserir dobro direto no outro grupo (simula outro contexto)
+      await palpiteDobradoRepo.criar({ usuarioId: userId, jogoId, grupoId: 'grupo-outro' });
+
+      const result = await service.listarMeusDobros(grupoId, userId);
+
+      expect(result).toHaveLength(1);
+      expect(result[0].grupoId).toBe(grupoId);
+    });
+  });
 });

@@ -5,12 +5,14 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
   ApiResponse,
+  ApiQuery,
 } from '@nestjs/swagger';
 import { JogoService } from '../services/jogo.service';
 import { CriarJogoDto } from '../dto/criar-jogo.dto';
@@ -63,12 +65,18 @@ export class JogoController {
 
   @ApiOperation({ summary: 'Listar jogos de uma fase' })
   @ApiResponse({ status: 200, description: 'Lista de jogos' })
+  @ApiQuery({ name: 'rodada', required: false, type: Number, description: 'Filtrar por rodada' })
   @Get('fases/:faseId/jogos')
   async listar(
     @Param('faseId', new ParseUUIDCustomPipe('faseId')) faseId: string,
+    @Query('rodada') rodada?: string,
   ) {
-    const jogos = await this.jogoService.buscarPorFase(faseId);
-    return jogos.map((j) => JogoPresenter.toHttp(j));
+    const rodadaNum = rodada ? Number.parseInt(rodada, 10) : undefined;
+    const { fase, jogos } = await this.jogoService.buscarPorFaseComDetalhes(faseId, rodadaNum);
+    return {
+      fase: { id: fase.id, nome: fase.nome, tipo: fase.tipo, ordem: fase.ordem },
+      jogos: jogos.map((j) => JogoPresenter.toHttp(j, fase.tipo)),
+    };
   }
 
   @ApiOperation({ summary: 'Buscar jogo por ID' })
@@ -77,7 +85,8 @@ export class JogoController {
   async buscarPorId(
     @Param('id', new ParseUUIDCustomPipe('id')) id: string,
   ) {
-    return JogoPresenter.toHttp(await this.jogoService.buscarPorId(id));
+    const jogo = await this.jogoService.buscarPorId(id);
+    return JogoPresenter.toHttp(jogo, jogo.fase?.tipo);
   }
 
   @ApiOperation({ summary: 'Importar jogos da API externa (SUPER_ADMIN)' })

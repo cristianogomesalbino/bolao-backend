@@ -122,10 +122,10 @@ describe('Presenters — Property-Based Tests', () => {
 
   it('JogoPresenter.toHttp retorna apenas campos da allowlist', () => {
     const allowlist = [
-      'id', 'faseId', 'timeCasaId', 'timeForaId', 'dataHora', 'status',
+      'id', 'faseId', 'rodada', 'timeCasaId', 'timeForaId', 'dataHora', 'status',
       'golsCasa', 'golsFora', 'temProrrogacao', 'golsProrrogacaoCasa', 'golsProrrogacaoFora',
       'temPenaltis', 'penaltisCasa', 'penaltisFora', 'vencedorId',
-      'ehJogoVolta', 'grupoIdaVolta', 'fonteResultado', 'externoId', 'criadoPor',
+      'ehJogoVolta', 'grupoIdaVolta',
       'dataCriacao', 'atualizadoEm',
     ];
 
@@ -134,6 +134,7 @@ describe('Presenters — Property-Based Tests', () => {
         const input = {
           id: 'jogo-1',
           faseId: 'fase-1',
+          rodada: 1,
           timeCasaId: 'time-a',
           timeForaId: 'time-b',
           dataHora: new Date(),

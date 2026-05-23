@@ -20,6 +20,7 @@ import {
 import { PalpiteService } from '../services/palpite.service';
 import { CriarPalpiteDto } from '../dto/criar-palpite.dto';
 import { AtualizarPalpiteDto } from '../dto/atualizar-palpite.dto';
+import { CriarPalpiteLoteDto } from '../dto/criar-palpite-lote.dto';
 import { ParseUUIDCustomPipe } from '../../../common/pipes/parse-uuid-custom.pipe';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 import { GroupRoleGuard } from '../../../common/guards/group-role.guard';
@@ -110,5 +111,22 @@ export class PalpiteController {
   ) {
     const palpites = await this.palpiteService.listarPorJogoNoGrupo(jogoId, grupoId, user.id);
     return palpites.map((p) => PalpitePresenter.toHttp(p));
+  }
+
+  @ApiOperation({ summary: 'Criar palpites em lote' })
+  @ApiResponse({ status: 201, description: 'Palpites processados.' })
+  @ApiBadRequestResponse({ description: 'Dados inválidos.' })
+  @Post('palpites/lote')
+  async criarLote(
+    @Body() dto: CriarPalpiteLoteDto,
+    @CurrentUser() user: { id: string },
+  ) {
+    const resultados = await this.palpiteService.criarLote(dto.palpites, user.id);
+    return resultados.map((r) => ({
+      jogoId: r.jogoId,
+      sucesso: r.sucesso,
+      ...(r.palpite && { palpite: PalpitePresenter.toHttp(r.palpite) }),
+      ...(r.erro && { erro: r.erro }),
+    }));
   }
 }

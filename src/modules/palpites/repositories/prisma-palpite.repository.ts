@@ -28,6 +28,12 @@ export class PrismaPalpiteRepository implements PalpiteRepository {
     });
   }
 
+  buscarPorUsuarioEJogos(usuarioId: string, jogoIds: string[]) {
+    return this.prisma.palpite.findMany({
+      where: { usuarioId, jogoId: { in: jogoIds } },
+    });
+  }
+
   listarPorUsuario(usuarioId: string, filtros?: { temporadaId?: string }) {
     return this.prisma.palpite.findMany({
       where: {

@@ -66,4 +66,11 @@ export class PalpiteDobradoService {
 
     return this.grupoRepo.atualizar(grupoId, { permitirPalpiteDobrado: habilitado });
   }
+
+  async listarMeusDobros(grupoId: string, usuarioId: string) {
+    const grupo = await this.grupoRepo.buscarPorId(grupoId);
+    if (!grupo) throw new GrupoNaoEncontradoError();
+
+    return this.palpiteDobradoRepo.listarPorUsuarioEGrupo(usuarioId, grupoId);
+  }
 }

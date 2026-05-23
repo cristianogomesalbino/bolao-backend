@@ -13,20 +13,24 @@ import { UsuarioNaoEncontradoError } from '@src/common/errors/domain-errors/usua
 
 vi.mock('bcryptjs');
 
-const mockPrisma = {
-  usuario: { findUnique: vi.fn(), update: vi.fn() },
-  refreshToken: {
-    create: vi.fn(),
-    findUnique: vi.fn(),
-    deleteMany: vi.fn(),
-  },
-  recuperacaoSenha: {
-    updateMany: vi.fn(),
-    create: vi.fn(),
-    findUnique: vi.fn(),
-    update: vi.fn(),
-  },
-  $transaction: vi.fn(),
+const mockUsuarioRepo = {
+  buscarPorEmail: vi.fn(),
+  buscarPorId: vi.fn(),
+  atualizar: vi.fn(),
+};
+
+const mockRefreshTokenRepo = {
+  criar: vi.fn(),
+  buscarPorToken: vi.fn(),
+  removerPorUsuarioId: vi.fn(),
+  removerPorToken: vi.fn(),
+};
+
+const mockRecuperacaoSenhaRepo = {
+  criar: vi.fn(),
+  buscarPorToken: vi.fn(),
+  invalidarPorUsuarioId: vi.fn(),
+  marcarComoUsado: vi.fn(),
 };
 
 const mockJwt = {
@@ -50,39 +54,43 @@ describe('AuthService', () => {
   let service: AuthService;
 
   beforeEach(() => {
-    service = new AuthService(mockPrisma as any, mockJwt as any, mockEmailService as any);
+    service = new AuthService(
+      mockUsuarioRepo as any,
+      mockRefreshTokenRepo as any,
+      mockRecuperacaoSenhaRepo as any,
+      mockJwt as any,
+      mockEmailService as any,
+    );
     vi.clearAllMocks();
   });
 
   describe('login', () => {
     it('deve limpar tokens antigos e retornar novos tokens', async () => {
-      mockPrisma.usuario.findUnique.mockResolvedValue(mockUsuario);
+      mockUsuarioRepo.buscarPorEmail.mockResolvedValue(mockUsuario);
       (bcrypt.compare as any).mockResolvedValue(true);
-      mockPrisma.refreshToken.deleteMany.mockResolvedValue({ count: 1 });
+      mockRefreshTokenRepo.removerPorUsuarioId.mockResolvedValue(undefined);
       mockJwt.sign.mockReturnValueOnce('at').mockReturnValueOnce('rt');
-      mockPrisma.refreshToken.create.mockResolvedValue({});
+      mockRefreshTokenRepo.criar.mockResolvedValue({});
 
       const result = await service.login('joao@example.com', 'senha123');
 
       expect(result.accessToken).toBe('at');
       expect(result.refreshToken).toBe('rt');
-      expect(mockPrisma.refreshToken.deleteMany).toHaveBeenCalledWith({
-        where: { usuarioId: 'user-1' },
-      });
+      expect(mockRefreshTokenRepo.removerPorUsuarioId).toHaveBeenCalledWith('user-1');
     });
 
     it('deve lançar se usuário não existe', async () => {
-      mockPrisma.usuario.findUnique.mockResolvedValue(null);
+      mockUsuarioRepo.buscarPorEmail.mockResolvedValue(null);
       await expect(service.login('x@x.com', '1')).rejects.toThrow(CredenciaisInvalidasError);
     });
 
     it('deve lançar se usuário inativo', async () => {
-      mockPrisma.usuario.findUnique.mockResolvedValue({ ...mockUsuario, ativo: false });
+      mockUsuarioRepo.buscarPorEmail.mockResolvedValue({ ...mockUsuario, ativo: false });
       await expect(service.login('joao@example.com', '1')).rejects.toThrow(CredenciaisInvalidasError);
     });
 
     it('deve lançar se senha inválida', async () => {
-      mockPrisma.usuario.findUnique.mockResolvedValue(mockUsuario);
+      mockUsuarioRepo.buscarPorEmail.mockResolvedValue(mockUsuario);
       (bcrypt.compare as any).mockResolvedValue(false);
       await expect(service.login('joao@example.com', 'x')).rejects.toThrow(CredenciaisInvalidasError);
     });
@@ -90,9 +98,9 @@ describe('AuthService', () => {
 
   describe('refresh', () => {
     it('deve retornar novo access token', async () => {
-      mockPrisma.refreshToken.findUnique.mockResolvedValue({ token: 'v', usuarioId: 'user-1' });
+      mockRefreshTokenRepo.buscarPorToken.mockResolvedValue({ token: 'v', usuarioId: 'user-1' });
       mockJwt.verify.mockReturnValue({});
-      mockPrisma.usuario.findUnique.mockResolvedValue(mockUsuario);
+      mockUsuarioRepo.buscarPorId.mockResolvedValue(mockUsuario);
       mockJwt.sign.mockReturnValue('new-at');
       expect(await service.refresh('v')).toEqual({ accessToken: 'new-at' });
     });
@@ -102,27 +110,27 @@ describe('AuthService', () => {
     });
 
     it('deve lançar se não existe', async () => {
-      mockPrisma.refreshToken.findUnique.mockResolvedValue(null);
+      mockRefreshTokenRepo.buscarPorToken.mockResolvedValue(null);
       await expect(service.refresh('x')).rejects.toThrow(RefreshInvalidoError);
     });
 
     it('deve lançar se expirado', async () => {
-      mockPrisma.refreshToken.findUnique.mockResolvedValue({ token: 'e', usuarioId: 'user-1' });
+      mockRefreshTokenRepo.buscarPorToken.mockResolvedValue({ token: 'e', usuarioId: 'user-1' });
       mockJwt.verify.mockImplementation(() => { throw new Error(); });
       await expect(service.refresh('e')).rejects.toThrow(RefreshExpiradoError);
     });
 
     it('deve lançar se usuário deletado', async () => {
-      mockPrisma.refreshToken.findUnique.mockResolvedValue({ token: 'v', usuarioId: 'x' });
+      mockRefreshTokenRepo.buscarPorToken.mockResolvedValue({ token: 'v', usuarioId: 'x' });
       mockJwt.verify.mockReturnValue({});
-      mockPrisma.usuario.findUnique.mockResolvedValue(null);
+      mockUsuarioRepo.buscarPorId.mockResolvedValue(null);
       await expect(service.refresh('v')).rejects.toThrow(UsuarioNaoEncontradoError);
     });
   });
 
   describe('logout', () => {
     it('deve deletar token', async () => {
-      mockPrisma.refreshToken.deleteMany.mockResolvedValue({ count: 1 });
+      mockRefreshTokenRepo.removerPorToken.mockResolvedValue(undefined);
       const result = await service.logout('v');
       expect(result.mensagem).toBe('Logout realizado com sucesso');
     });
@@ -134,9 +142,9 @@ describe('AuthService', () => {
 
   describe('solicitarRecuperacao', () => {
     it('deve criar token de recuperação para usuário ativo', async () => {
-      mockPrisma.usuario.findUnique.mockResolvedValue(mockUsuario);
-      mockPrisma.recuperacaoSenha.updateMany.mockResolvedValue({ count: 0 });
-      mockPrisma.recuperacaoSenha.create.mockResolvedValue({});
+      mockUsuarioRepo.buscarPorEmail.mockResolvedValue(mockUsuario);
+      mockRecuperacaoSenhaRepo.invalidarPorUsuarioId.mockResolvedValue(undefined);
+      mockRecuperacaoSenhaRepo.criar.mockResolvedValue({});
       mockEmailService.enviarRecuperacaoSenha.mockResolvedValue(undefined);
 
       const result = await service.solicitarRecuperacao('joao@example.com');
@@ -144,7 +152,7 @@ describe('AuthService', () => {
       expect(result.mensagem).toBe(
         'Se o email estiver cadastrado, você receberá as instruções de recuperação',
       );
-      expect(mockPrisma.recuperacaoSenha.create).toHaveBeenCalled();
+      expect(mockRecuperacaoSenhaRepo.criar).toHaveBeenCalled();
       expect(mockEmailService.enviarRecuperacaoSenha).toHaveBeenCalledWith(
         'joao@example.com',
         expect.any(String),
@@ -152,39 +160,36 @@ describe('AuthService', () => {
     });
 
     it('deve invalidar tokens anteriores não usados', async () => {
-      mockPrisma.usuario.findUnique.mockResolvedValue(mockUsuario);
-      mockPrisma.recuperacaoSenha.updateMany.mockResolvedValue({ count: 1 });
-      mockPrisma.recuperacaoSenha.create.mockResolvedValue({});
+      mockUsuarioRepo.buscarPorEmail.mockResolvedValue(mockUsuario);
+      mockRecuperacaoSenhaRepo.invalidarPorUsuarioId.mockResolvedValue(undefined);
+      mockRecuperacaoSenhaRepo.criar.mockResolvedValue({});
 
       await service.solicitarRecuperacao('joao@example.com');
 
-      expect(mockPrisma.recuperacaoSenha.updateMany).toHaveBeenCalledWith({
-        where: { usuarioId: 'user-1', usado: false },
-        data: { usado: true },
-      });
+      expect(mockRecuperacaoSenhaRepo.invalidarPorUsuarioId).toHaveBeenCalledWith('user-1');
     });
 
     it('deve retornar mesma mensagem para email inexistente (sem vazar informação)', async () => {
-      mockPrisma.usuario.findUnique.mockResolvedValue(null);
+      mockUsuarioRepo.buscarPorEmail.mockResolvedValue(null);
 
       const result = await service.solicitarRecuperacao('naoexiste@example.com');
 
       expect(result.mensagem).toBe(
         'Se o email estiver cadastrado, você receberá as instruções de recuperação',
       );
-      expect(mockPrisma.recuperacaoSenha.create).not.toHaveBeenCalled();
+      expect(mockRecuperacaoSenhaRepo.criar).not.toHaveBeenCalled();
       expect(mockEmailService.enviarRecuperacaoSenha).not.toHaveBeenCalled();
     });
 
     it('deve retornar mesma mensagem para usuário inativo (sem vazar informação)', async () => {
-      mockPrisma.usuario.findUnique.mockResolvedValue({ ...mockUsuario, ativo: false });
+      mockUsuarioRepo.buscarPorEmail.mockResolvedValue({ ...mockUsuario, ativo: false });
 
       const result = await service.solicitarRecuperacao('joao@example.com');
 
       expect(result.mensagem).toBe(
         'Se o email estiver cadastrado, você receberá as instruções de recuperação',
       );
-      expect(mockPrisma.recuperacaoSenha.create).not.toHaveBeenCalled();
+      expect(mockRecuperacaoSenhaRepo.criar).not.toHaveBeenCalled();
     });
   });
 
@@ -198,18 +203,22 @@ describe('AuthService', () => {
     };
 
     it('deve resetar senha e invalidar token', async () => {
-      mockPrisma.recuperacaoSenha.findUnique.mockResolvedValue(mockRecuperacao);
+      mockRecuperacaoSenhaRepo.buscarPorToken.mockResolvedValue(mockRecuperacao);
       (bcrypt.hash as any).mockResolvedValue('new-hash');
-      mockPrisma.$transaction.mockResolvedValue([]);
+      mockUsuarioRepo.atualizar.mockResolvedValue({});
+      mockRecuperacaoSenhaRepo.marcarComoUsado.mockResolvedValue(undefined);
+      mockRefreshTokenRepo.removerPorUsuarioId.mockResolvedValue(undefined);
 
       const result = await service.resetarSenha('valid-token', 'novaSenha123');
 
       expect(result.mensagem).toBe('Senha alterada com sucesso');
-      expect(mockPrisma.$transaction).toHaveBeenCalled();
+      expect(mockUsuarioRepo.atualizar).toHaveBeenCalledWith('user-1', { senha: 'new-hash' });
+      expect(mockRecuperacaoSenhaRepo.marcarComoUsado).toHaveBeenCalledWith('rec-1');
+      expect(mockRefreshTokenRepo.removerPorUsuarioId).toHaveBeenCalledWith('user-1');
     });
 
     it('deve lançar se token não existe', async () => {
-      mockPrisma.recuperacaoSenha.findUnique.mockResolvedValue(null);
+      mockRecuperacaoSenhaRepo.buscarPorToken.mockResolvedValue(null);
 
       await expect(service.resetarSenha('invalid', 'nova')).rejects.toThrow(
         TokenRecuperacaoInvalidoError,
@@ -217,7 +226,7 @@ describe('AuthService', () => {
     });
 
     it('deve lançar se token já foi usado', async () => {
-      mockPrisma.recuperacaoSenha.findUnique.mockResolvedValue({
+      mockRecuperacaoSenhaRepo.buscarPorToken.mockResolvedValue({
         ...mockRecuperacao,
         usado: true,
       });
@@ -228,7 +237,7 @@ describe('AuthService', () => {
     });
 
     it('deve lançar se token expirado', async () => {
-      mockPrisma.recuperacaoSenha.findUnique.mockResolvedValue({
+      mockRecuperacaoSenhaRepo.buscarPorToken.mockResolvedValue({
         ...mockRecuperacao,
         expiraEm: new Date(Date.now() - 1000),
       });

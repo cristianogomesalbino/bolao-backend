@@ -56,4 +56,11 @@ export class PrismaGrupoUsuarioRepository implements GrupoUsuarioRepository {
       include: { usuario: { select: { id: true, nome: true } } },
     });
   }
+
+  atualizarRole(usuarioId: string, grupoId: string, role: string) {
+    return this.prisma.grupoUsuario.update({
+      where: { usuarioId_grupoId: { usuarioId, grupoId } },
+      data: { role: role as any },
+    });
+  }
 }

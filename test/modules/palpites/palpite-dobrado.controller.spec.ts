@@ -35,6 +35,7 @@ describe('PalpiteDobradoController', () => {
       ativarDobro: vi.fn().mockResolvedValue(dobroMock),
       desativarDobro: vi.fn().mockResolvedValue(undefined),
       atualizarConfiguracaoDobro: vi.fn().mockResolvedValue(undefined),
+      listarMeusDobros: vi.fn().mockResolvedValue([dobroMock]),
     };
 
     mockTokenDobroService = {
@@ -78,5 +79,13 @@ describe('PalpiteDobradoController', () => {
 
     expect(mockPalpiteDobradoService.atualizarConfiguracaoDobro).toHaveBeenCalledWith(grupoId, true);
     expect(result.mensagem).toBeDefined();
+  });
+
+  it('listarMeusDobros deve retornar array via presenter', async () => {
+    const result = await controller.listarMeusDobros(grupoId, user);
+
+    expect(mockPalpiteDobradoService.listarMeusDobros).toHaveBeenCalledWith(grupoId, userId);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toEqual(PalpiteDobradoPresenter.toHttp(dobroMock));
   });
 });

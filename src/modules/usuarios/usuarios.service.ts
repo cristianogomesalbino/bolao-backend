@@ -5,6 +5,7 @@ import {
 } from '../../common/errors/domain-errors';
 import * as bcrypt from 'bcryptjs';
 import { USUARIOS } from './usuarios.constants';
+import { AUTH } from '../auth/auth.constants';
 import type { UsuarioRepository } from './repositories/usuario.repository.interface';
 
 @Injectable()
@@ -21,7 +22,7 @@ export class UsuariosService {
       throw new EmailJaCadastradoError();
     }
 
-    const senhaHash = await bcrypt.hash(data.senha, 10);
+    const senhaHash = await bcrypt.hash(data.senha, AUTH.BCRYPT_ROUNDS);
 
     return this.usuarioRepo.criar({
       nome: data.nome,
@@ -58,7 +59,7 @@ export class UsuariosService {
     let senhaHash: string | undefined;
 
     if (data.senha) {
-      senhaHash = await bcrypt.hash(data.senha, 10);
+      senhaHash = await bcrypt.hash(data.senha, AUTH.BCRYPT_ROUNDS);
     }
 
     return this.usuarioRepo.atualizar(id, {

@@ -37,6 +37,9 @@ describe('GruposService', () => {
     temporadaRepo = new InMemoryTemporadaRepository();
     grupoUsuarioRepo = new InMemoryGrupoUsuarioRepository();
 
+    // Sincronizar grupoUsuarios entre os repos para filtros de membro
+    grupoRepo.grupoUsuarios = grupoUsuarioRepo.items;
+
     grupoRepo.temporadas = [{ ...temporada, campeonato }];
     temporadaRepo.items = [{ ...temporada }];
 
@@ -88,7 +91,7 @@ describe('GruposService', () => {
   // ==================== buscarTodos ====================
 
   describe('buscarTodos', () => {
-    it('deve retornar apenas grupos ativos', async () => {
+    it('deve retornar apenas grupos ativos do membro por padrão', async () => {
       await service.criar(
         { nome: 'Grupo Ativo', temporadaId: 'temp-1', privado: false },
         'user-1',
@@ -108,29 +111,119 @@ describe('GruposService', () => {
         dataCriacao: new Date(),
       });
 
-      const result = await service.buscarTodos();
+      const result = await service.buscarTodos(undefined, 'user-1');
 
       expect(result).toHaveLength(1);
       expect(result[0].nome).toBe('Grupo Ativo');
+    });
+
+    it('deve filtrar por membro=true retornando apenas grupos do usuário', async () => {
+      await service.criar(
+        { nome: 'Meu Grupo', temporadaId: 'temp-1', privado: false },
+        'user-1',
+      );
+
+      // Grupo de outro usuário
+      grupoRepo.items.push({
+        id: 'outro-grupo',
+        nome: 'Grupo Alheio',
+        temporadaId: 'temp-1',
+        privado: false,
+        codigoConvite: null,
+        permitirPalpiteAutomatico: false,
+        maxParticipantes: 50,
+        criadoPor: 'user-2',
+        ativo: true,
+        dataCriacao: new Date(),
+      });
+
+      const result = await service.buscarTodos({ membro: true }, 'user-1');
+
+      expect(result).toHaveLength(1);
+      expect(result[0].nome).toBe('Meu Grupo');
+    });
+
+    it('deve filtrar por privado=false retornando apenas grupos públicos', async () => {
+      await service.criar(
+        { nome: 'Grupo Público', temporadaId: 'temp-1', privado: false },
+        'user-1',
+      );
+      await service.criar(
+        { nome: 'Grupo Privado', temporadaId: 'temp-1', privado: true },
+        'user-1',
+      );
+
+      const result = await service.buscarTodos({ privado: false }, 'user-1');
+
+      expect(result).toHaveLength(1);
+      expect(result[0].nome).toBe('Grupo Público');
+    });
+
+    it('deve filtrar por busca (case-insensitive)', async () => {
+      await service.criar(
+        { nome: 'Bolão da Galera', temporadaId: 'temp-1', privado: false },
+        'user-1',
+      );
+      await service.criar(
+        { nome: 'Campeonato Top', temporadaId: 'temp-1', privado: false },
+        'user-1',
+      );
+
+      const result = await service.buscarTodos({ busca: 'bolao' }, 'user-1');
+
+      expect(result).toHaveLength(1);
+      expect(result[0].nome).toBe('Bolão da Galera');
+    });
+
+    it('deve combinar filtros membro + privado + busca', async () => {
+      await service.criar(
+        { nome: 'Bolão Público', temporadaId: 'temp-1', privado: false },
+        'user-1',
+      );
+      await service.criar(
+        { nome: 'Bolão Privado', temporadaId: 'temp-1', privado: true },
+        'user-1',
+      );
+
+      const result = await service.buscarTodos(
+        { membro: true, privado: false, busca: 'bolão' },
+        'user-1',
+      );
+
+      expect(result).toHaveLength(1);
+      expect(result[0].nome).toBe('Bolão Público');
     });
   });
 
   // ==================== buscarPorId ====================
 
   describe('buscarPorId', () => {
-    it('deve retornar grupo por ID', async () => {
+    it('deve retornar grupo por ID com ehMembro=true quando é membro', async () => {
       const created = await service.criar(
         { nome: 'Bolão da Galera', temporadaId: 'temp-1', privado: true },
         'user-1',
       );
 
-      const result = await service.buscarPorId(created.id);
+      const result = await service.buscarPorId(created.id, 'user-1');
 
       expect(result.nome).toBe('Bolão da Galera');
+      expect(result.ehMembro).toBe(true);
+    });
+
+    it('deve retornar grupo por ID com ehMembro=false quando não é membro', async () => {
+      const created = await service.criar(
+        { nome: 'Bolão da Galera', temporadaId: 'temp-1', privado: true },
+        'user-1',
+      );
+
+      const result = await service.buscarPorId(created.id, 'user-outro');
+
+      expect(result.nome).toBe('Bolão da Galera');
+      expect(result.ehMembro).toBe(false);
     });
 
     it('deve lançar GrupoNaoEncontradoError se grupo não existe', async () => {
-      await expect(service.buscarPorId('inexistente')).rejects.toThrow(
+      await expect(service.buscarPorId('inexistente', 'user-1')).rejects.toThrow(
         GrupoNaoEncontradoError,
       );
     });
@@ -142,7 +235,7 @@ describe('GruposService', () => {
       );
       await grupoRepo.atualizar(created.id, { ativo: false });
 
-      await expect(service.buscarPorId(created.id)).rejects.toThrow(
+      await expect(service.buscarPorId(created.id, 'user-1')).rejects.toThrow(
         GrupoNaoEncontradoError,
       );
     });
@@ -235,6 +328,39 @@ describe('GruposService', () => {
       await expect(service.remover('inexistente')).rejects.toThrow(
         GrupoNaoEncontradoError,
       );
+    });
+  });
+
+  // ==================== regenerarCodigoConvite ====================
+
+  describe('regenerarCodigoConvite', () => {
+    it('deve gerar novo código de convite', async () => {
+      const created = await service.criar(
+        { nome: 'Bolão', temporadaId: 'temp-1', privado: true },
+        'user-1',
+      );
+
+      const result = await service.regenerarCodigoConvite(created.id);
+
+      expect(result.codigoConvite).toBe('ABCD1234');
+    });
+
+    it('deve lançar GrupoNaoEncontradoError se grupo não existe', async () => {
+      await expect(
+        service.regenerarCodigoConvite('inexistente'),
+      ).rejects.toThrow(GrupoNaoEncontradoError);
+    });
+
+    it('deve lançar GrupoNaoEncontradoError se grupo está inativo', async () => {
+      const created = await service.criar(
+        { nome: 'Grupo', temporadaId: 'temp-1', privado: true },
+        'user-1',
+      );
+      await grupoRepo.atualizar(created.id, { ativo: false });
+
+      await expect(
+        service.regenerarCodigoConvite(created.id),
+      ).rejects.toThrow(GrupoNaoEncontradoError);
     });
   });
 });

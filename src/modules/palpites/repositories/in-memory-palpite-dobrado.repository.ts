@@ -32,4 +32,8 @@ export class InMemoryPalpiteDobradoRepository implements PalpiteDobradoRepositor
   async listarPorJogosEGrupo(jogoIds: string[], grupoId: string) {
     return this.items.filter((p) => jogoIds.includes(p.jogoId) && p.grupoId === grupoId);
   }
+
+  async listarPorUsuarioEGrupo(usuarioId: string, grupoId: string) {
+    return this.items.filter((p) => p.usuarioId === usuarioId && p.grupoId === grupoId);
+  }
 }

@@ -106,9 +106,20 @@ Seguir esta ordem. Não pular para o passo N+1 sem completar o passo N.
 - [ ] `PrismaModule` não deve ser importado nos modules — já é `@Global()`
 - [ ] Transações Prisma (`$transaction`) usadas quando há múltiplas operações dependentes
 - [ ] Validação de existência do recurso antes de operar (findUnique + throw se null)
+- [ ] Validação de pertencimento entre entidades dependentes (ex: fase pertence à temporada do grupo)
 - [ ] `ErrorFactory` usado para todas as exceções (nunca `throw new NotFoundException()` direto)
 - [ ] Strings hardcoded em ErrorFactory, @ApiTags ou retornos de mensagem — usar constantes do módulo (`{modulo}.constants.ts`)
 - [ ] Roles como strings literais (`'ADMIN'`, `'MEMBER'`) — usar `GRUPO_ROLE.ADMIN`, `GRUPO_ROLE.MEMBER` de `roles.constants.ts`
+- [ ] Presenter expondo campos internos/administrativos (`externoId`, `fonteResultado`, `criadoPor`) — usar allowlist de campos públicos
+- [ ] Presenter expondo dados sensíveis (`codigoConvite`) para usuários sem permissão — usar variantes (`toHttp`, `toHttpMembro`, `toHttpBasico`)
+- [ ] Novo método de repositório sem atualizar os 3 arquivos (interface + Prisma + InMemory)
+- [ ] **Injeção de dependência:**
+  - [ ] `PrismaService` injetado diretamente em services — NUNCA. Usar repositórios via `@Inject(MODULO.REPOSITORY_TOKEN)`
+  - [ ] Repositório usado no service sem estar registrado como provider no module (`{ provide: TOKEN, useClass: PrismaImpl }`)
+  - [ ] Service de outro módulo usado sem importar o módulo correspondente ou exportar o provider
+  - [ ] Dependência circular entre modules — usar `forwardRef()` ou reestruturar
+  - [ ] Services externos (APIs de terceiros) injetados como classe concreta — deve ter interface + token, igual repositories
+  - [ ] `@Inject()` com string literal em vez de constante do módulo (`MODULO.REPOSITORY_TOKEN`)
 
 ### Passo 5 — Tipagem
 - [ ] Parâmetros sem tipo explícito (ex: `@CurrentUser() user` sem tipo)
@@ -144,6 +155,16 @@ Seguir esta ordem. Não pular para o passo N+1 sem completar o passo N.
 - [ ] **I — Interface Segregation:** Services externos (APIs de terceiros) acessados via interface ou classe concreta? Deve ter interface + token de injeção, igual repositories
 - [ ] **D — Dependency Inversion:** Services dependem de abstrações (interfaces) ou implementações concretas? `process.env` direto em vez de `ConfigService`?
 
+### Passo 8.1 — Design Patterns
+- [ ] **Repository Pattern:** Toda persistência passa por interface de repositório? Nenhum `prisma.xxx` direto em services?
+- [ ] **Presenter Pattern:** Toda resposta HTTP passa por Presenter com allowlist? Nenhum objeto Prisma raw retornado ao client?
+- [ ] **Factory Pattern:** Erros criados via `DomainError` subclasses ou `ErrorFactory`? Nenhum `new HttpException()` direto?
+- [ ] **Strategy Pattern:** Lógica com 3+ variantes por tipo usa Strategy ou está acumulando if/else/switch?
+- [ ] **Guard Pattern:** Autorização encapsulada em Guards reutilizáveis? Nenhuma verificação de role/permissão dentro de services?
+- [ ] **Decorator Pattern:** Metadados de rota via decorators (`@Public()`, `@GroupRoles()`, `@CurrentUser()`)? Nenhuma leitura manual de request headers em controllers?
+- [ ] **Template Method (validação):** Services seguem o fluxo: validar existência → validar regras de negócio → executar operação → retornar resultado?
+- [ ] **Consistência de patterns:** Novo código segue os mesmos patterns dos módulos existentes? Não introduz padrão diferente sem justificativa (ex: usar event emitter onde o projeto usa chamada direta)?
+
 ### Passo 9 — Clean Code
 - [ ] Early returns ao invés de if aninhados
 - [ ] Métodos > 30 linhas → considerar quebrar
@@ -151,6 +172,10 @@ Seguir esta ordem. Não pular para o passo N+1 sem completar o passo N.
 - [ ] Service > 4 dependências → repensar
 - [ ] Código morto / imports não utilizados / código comentado
 - [ ] Helpers privados extraídos para lógica reutilizada (ex: `compositeKey()`, `validarEntrada()`)
+- [ ] Números mágicos — valores numéricos/strings devem ser constantes nomeadas (ex: bcrypt rounds, expirations, limites)
+- [ ] Lógica condicional confusa — simplificar com defaults (`??`) em vez de if/else com mesmo resultado
+- [ ] Domain Errors reutilizados fora do contexto semântico — cada ação deve ter seu erro específico
+- [ ] Assinaturas de método > 120 caracteres — quebrar em múltiplas linhas
 
 ### Passo 10 — Debug e Logs
 - [ ] `console.log` / `console.debug` / `debugger` em código de produção
@@ -158,6 +183,8 @@ Seguir esta ordem. Não pular para o passo N+1 sem completar o passo N.
 
 ### Passo 11 — Performance
 - [ ] N+1 queries (consultas em loop ao invés de includes/joins)
+- [ ] Operações de escrita em loop (usar `createMany` / `criarVarios` para batch inserts)
+- [ ] Operações em lote sem buscar dados antes do loop (usar `buscarPorIds`, `buscarPorUsuarioEJogos`)
 - [ ] Listagens sem paginação
 - [ ] `include` excessivo em queries (trazer apenas o necessário com `select`)
 

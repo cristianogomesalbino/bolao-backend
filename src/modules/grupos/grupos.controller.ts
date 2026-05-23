@@ -1,8 +1,9 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query } from '@nestjs/common';
 import { GruposService } from './grupos.service';
 import { CriarGrupoDto } from './dto/create-grupo.dto';
 import { UpdateGrupoDto } from './dto/update-grupo.dto';
 import { UpdateStatusGrupoDto } from './dto/update-status-grupo.dto';
+import { FiltrarGruposDto } from './dto/filtrar-grupos.dto';
 import { ParseUUIDCustomPipe } from '../../common/pipes/parse-uuid-custom.pipe';
 import {
   ApiTags,
@@ -10,6 +11,7 @@ import {
   ApiResponse,
   ApiBadRequestResponse,
   ApiNotFoundResponse,
+  ApiQuery,
 } from '@nestjs/swagger';
 import { GroupRoleGuard } from '../../common/guards/group-role.guard';
 import { GroupRoles } from '../../common/decorators/group-roles.decorator';
@@ -30,16 +32,22 @@ export class GruposController {
   @Post()
   async criarGrupo(
     @Body() criarGrupoDto: CriarGrupoDto,
-    @CurrentUser() user,
+    @CurrentUser() user: { id: string },
   ) {
     return GrupoPresenter.toHttp(await this.gruposService.criar(criarGrupoDto, user.id));
   }
 
-  @ApiOperation({ summary: 'Listar todos os grupos ativos' })
+  @ApiOperation({ summary: 'Listar grupos com filtros opcionais' })
   @ApiResponse({ status: 200, description: 'Lista de grupos retornada com sucesso.' })
+  @ApiQuery({ name: 'membro', required: false, type: Boolean, description: 'Filtrar apenas grupos onde o usuário é membro' })
+  @ApiQuery({ name: 'privado', required: false, type: Boolean, description: 'Filtrar por visibilidade (false = apenas públicos)' })
+  @ApiQuery({ name: 'busca', required: false, type: String, description: 'Busca por nome do grupo (parcial, case-insensitive)' })
   @Get()
-  async buscarGrupos() {
-    const grupos = await this.gruposService.buscarTodos();
+  async buscarGrupos(
+    @Query() filtros: FiltrarGruposDto,
+    @CurrentUser() user: { id: string },
+  ) {
+    const grupos = await this.gruposService.buscarTodos(filtros, user.id);
     return grupos.map((g) => GrupoPresenter.toHttp(g));
   }
 
@@ -49,8 +57,13 @@ export class GruposController {
   @Get(':grupoId')
   async buscarGrupoPorId(
     @Param('grupoId', new ParseUUIDCustomPipe('grupoId')) grupoId: string,
+    @CurrentUser() user: { id: string },
   ) {
-    return GrupoPresenter.toHttp(await this.gruposService.buscarPorId(grupoId));
+    const grupo = await this.gruposService.buscarPorId(grupoId, user.id);
+    if (grupo.ehMembro) {
+      return GrupoPresenter.toHttpMembro(grupo);
+    }
+    return GrupoPresenter.toHttpBasico(grupo);
   }
 
   @ApiOperation({ summary: 'Atualizar grupo por ID' })
@@ -91,5 +104,18 @@ export class GruposController {
     @Param('grupoId', new ParseUUIDCustomPipe('grupoId')) grupoId: string,
   ) {
     return this.gruposService.remover(grupoId);
+  }
+
+  @ApiOperation({ summary: 'Regenerar código de convite do grupo' })
+  @ApiResponse({ status: 200, description: 'Código de convite regenerado.' })
+  @ApiNotFoundResponse({ description: 'Grupo não encontrado.' })
+  @UseGuards(GroupRoleGuard)
+  @GroupRoles(GRUPO_ROLE.ADMIN)
+  @Patch(':grupoId/regenerar-convite')
+  async regenerarConvite(
+    @Param('grupoId', new ParseUUIDCustomPipe('grupoId')) grupoId: string,
+  ) {
+    const grupo = await this.gruposService.regenerarCodigoConvite(grupoId);
+    return { codigoConvite: grupo.codigoConvite, mensagem: GRUPOS.MENSAGENS.CONVITE_REGENERADO };
   }
 }

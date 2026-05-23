@@ -25,6 +25,10 @@ inclusion: always
 - **SEMPRE colocar guards genéricos em `src/modules/auth/`** — guards reutilizáveis (ex: `SuperAdminGuard`) não devem ficar dentro de módulos específicos
 - **SEMPRE usar erro semântico correto** — se o jogo foi encontrado mas falta `externoId`, não lançar `JogoNaoEncontradoError`
 - **NUNCA usar `any` em interfaces de repositório** — usar tipos do Prisma ou criar tipos próprios (dívida técnica atual, migrar gradualmente)
+- **SEMPRE validar pertencimento entre entidades dependentes** — ex: verificar se a fase pertence à temporada do grupo antes de operar. Não confiar apenas na existência do recurso
+- **SEMPRE usar métodos batch para operações em lote** — ex: `buscarPorIds`, `criarVarios`, `buscarPorUsuarioEJogos`. Nunca chamar métodos individuais dentro de loops
+- **SEMPRE nomear Domain Errors pela ação exata** — não reutilizar um erro de outro contexto (ex: não usar `NaoPodeRemoverCriadorError` quando a ação é alterar role; criar `NaoPodeAlterarRoleCriadorError`)
+- **SEMPRE usar constantes de roles em DTOs** — `@IsIn([GRUPO_ROLE.ADMIN, GRUPO_ROLE.MEMBER])` em vez de `@IsIn(['ADMIN', 'MEMBER'])`
 
 ## Dívida Técnica
 
@@ -113,6 +117,9 @@ Não usar `"campo": "geral"`. O campo `campo` é opcional — omitir quando não
 - Presenters em `src/common/presenters/` com método estático `toHttp()` — seleção positiva (allowlist) de campos
 - Para listas: `return items.map((i) => Presenter.toHttp(i))`
 - Retornos de mensagem (`{ mensagem: '...' }`) não passam por Presenter
+- Presenters podem ter variantes por nível de acesso: `toHttp` (admin/completo), `toHttpMembro` (membro sem dados sensíveis), `toHttpBasico` (público/não-membro)
+- Campos internos/administrativos (`externoId`, `fonteResultado`, `criadoPor`) **NUNCA** devem ser expostos no presenter padrão
+- Campos sensíveis como `codigoConvite` devem ser expostos apenas para admins do grupo
 
 ## Constantes
 
@@ -120,6 +127,11 @@ Não usar `"campo": "geral"`. O campo `campo` é opcional — omitir quando não
 - Usar constantes do módulo em vez de strings hardcoded em controllers, services e guards
 - Roles globais em `src/common/constants/roles.constants.ts` (`PERFIL`, `GRUPO_ROLE`)
 - Mensagens de validação de DTOs ficam inline (não extrair pra constantes)
+- **NUNCA usar números mágicos** — extrair para constantes nomeadas no `{modulo}.constants.ts`:
+  - Configurações de segurança: `AUTH.BCRYPT_ROUNDS`, `AUTH.TOKEN.ACCESS_EXPIRATION`, `AUTH.TOKEN.REFRESH_EXPIRATION`
+  - Limites de negócio: `GRUPOS.MAX_PARTICIPANTES_DEFAULT`, `GRUPOS.CODIGO_CONVITE_LENGTH`
+  - Pontuação: `RANKING.PONTOS.ACERTO_EM_CHEIO`, `RANKING.MULTIPLICADOR_DOBRO`
+- DTOs de validação (`@Max`, `@Length`, `@Min`) devem referenciar constantes, não valores literais
 
 ## Services
 
@@ -129,6 +141,8 @@ Não usar `"campo": "geral"`. O campo `campo` é opcional — omitir quando não
 - Implementações InMemory em `src/modules/{modulo}/repositories/in-memory-{entidade}.repository.ts` (para testes)
 - Token de injeção definido em `{modulo}.constants.ts` como `REPOSITORY_TOKEN`
 - Sempre validar existência do recurso antes de operar (repository retorna `null`, service lança domain error)
+- Ao adicionar novo método ao repositório, atualizar os 3 arquivos: interface + Prisma + InMemory
+- Preferir métodos batch (`buscarPorIds`, `criarVarios`, `buscarPorUsuarioEJogos`) para operações em lote — evita N+1
 
 ## Formatação
 

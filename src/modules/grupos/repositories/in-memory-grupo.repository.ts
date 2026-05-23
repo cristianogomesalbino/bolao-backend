@@ -1,8 +1,9 @@
-import { GrupoRepository } from './grupo.repository.interface';
+import { GrupoRepository, FiltrosGrupo } from './grupo.repository.interface';
 
 export class InMemoryGrupoRepository implements GrupoRepository {
   items: any[] = [];
   temporadas: any[] = [];
+  grupoUsuarios: any[] = [];
 
   async criar(data: {
     nome: string;
@@ -35,6 +36,37 @@ export class InMemoryGrupoRepository implements GrupoRepository {
     return this.items
       .filter((g) => g.ativo === filtros.ativo)
       .map((g) => this.comTemporada(g));
+  }
+
+  async buscarComFiltros(filtros: FiltrosGrupo) {
+    let resultado = this.items.filter((g) => g.ativo === filtros.ativo);
+
+    if (filtros.membro && filtros.usuarioId) {
+      resultado = resultado.filter((g) =>
+        this.grupoUsuarios.some(
+          (gu) => gu.grupoId === g.id && gu.usuarioId === filtros.usuarioId,
+        ),
+      );
+    }
+
+    if (filtros.privado !== undefined) {
+      resultado = resultado.filter((g) => g.privado === filtros.privado);
+    }
+
+    if (filtros.busca) {
+      const termo = filtros.busca.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      resultado = resultado.filter((g) => {
+        const nome = g.nome.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        return nome.includes(termo);
+      });
+    }
+
+    return resultado.map((g) => ({
+      ...this.comTemporada(g),
+      _count: {
+        usuarios: this.grupoUsuarios.filter((gu) => gu.grupoId === g.id).length,
+      },
+    }));
   }
 
   async buscarPorId(id: string) {

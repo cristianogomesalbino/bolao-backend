@@ -4,6 +4,7 @@ import {
   EmailJaCadastradoError,
   UsuarioNaoEncontradoError,
 } from '@src/common/errors/domain-errors';
+import { AUTH } from '@src/modules/auth/auth.constants';
 import * as bcrypt from 'bcryptjs';
 import { InMemoryUsuarioRepository } from '@src/modules/usuarios/repositories/in-memory-usuario.repository';
 
@@ -132,7 +133,7 @@ describe('UsuariosService', () => {
 
       await service.atualizar(criado.id, { senha: 'novasenha' });
 
-      expect(bcrypt.hash).toHaveBeenCalledWith('novasenha', 10);
+      expect(bcrypt.hash).toHaveBeenCalledWith('novasenha', AUTH.BCRYPT_ROUNDS);
       const atualizado = usuarioRepo.items.find((u) => u.id === criado.id);
       expect(atualizado.senha).toBe('new-hash');
     });

@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { CriarGrupoDto } from './dto/create-grupo.dto';
 import { UpdateGrupoDto } from './dto/update-grupo.dto';
 import { UpdateStatusGrupoDto } from './dto/update-status-grupo.dto';
+import { FiltrarGruposDto } from './dto/filtrar-grupos.dto';
 import { nanoid } from 'nanoid';
 import {
   TemporadaNaoEncontradaError,
@@ -34,7 +35,7 @@ export class GruposService {
       throw new TemporadaNaoEncontradaError();
     }
 
-    const codigoConvite = dto.privado ? nanoid(8).toUpperCase() : null;
+    const codigoConvite = dto.privado ? nanoid(GRUPOS.CODIGO_CONVITE_LENGTH).toUpperCase() : null;
 
     const grupo = await this.grupoRepo.criar({
       nome: dto.nome,
@@ -42,7 +43,7 @@ export class GruposService {
       privado: dto.privado,
       codigoConvite,
       permitirPalpiteAutomatico: dto.permitirPalpiteAutomatico ?? false,
-      maxParticipantes: dto.maxParticipantes ?? 50,
+      maxParticipantes: dto.maxParticipantes ?? GRUPOS.MAX_PARTICIPANTES_DEFAULT,
       permitirPalpiteDobrado: dto.permitirPalpiteDobrado ?? false,
       criadoPor: userId,
     });
@@ -56,18 +57,29 @@ export class GruposService {
     return grupo;
   }
 
-  async buscarTodos() {
-    return this.grupoRepo.buscarTodos({ ativo: true });
+  async buscarTodos(filtros?: FiltrarGruposDto, usuarioId?: string) {
+    return this.grupoRepo.buscarComFiltros({
+      ativo: true,
+      membro: filtros?.membro ?? true,
+      usuarioId,
+      privado: filtros?.privado,
+      busca: filtros?.busca,
+    });
   }
 
-  async buscarPorId(id: string) {
+  async buscarPorId(id: string, usuarioId?: string) {
     const grupo = await this.grupoRepo.buscarPorId(id);
 
     if (!grupo?.ativo) {
       throw new GrupoNaoEncontradoError();
     }
 
-    return grupo;
+    if (usuarioId) {
+      const membro = await this.grupoUsuarioRepo.buscarPorChave(usuarioId, id);
+      return { ...grupo, ehMembro: !!membro };
+    }
+
+    return { ...grupo, ehMembro: false };
   }
 
   async atualizar(id: string, dto: UpdateGrupoDto) {
@@ -115,5 +127,17 @@ export class GruposService {
     return {
       mensagem: GRUPOS.MENSAGENS.GRUPO_EXCLUIDO,
     };
+  }
+
+  async regenerarCodigoConvite(id: string) {
+    const grupo = await this.grupoRepo.buscarPorIdSimples(id);
+
+    if (!grupo?.ativo) {
+      throw new GrupoNaoEncontradoError();
+    }
+
+    const novoCodigoConvite = nanoid(GRUPOS.CODIGO_CONVITE_LENGTH).toUpperCase();
+
+    return this.grupoRepo.atualizar(id, { codigoConvite: novoCodigoConvite });
   }
 }
