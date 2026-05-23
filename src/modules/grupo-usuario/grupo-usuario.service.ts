@@ -7,8 +7,9 @@ import {
   LimiteParticipantesError,
   UnicoAdminError,
   ApenasCriadorPodePromoverError,
-  MembroJaEAdminError,
+  MembroJaPossuiRoleError,
   NaoPodeRemoverCriadorError,
+  NaoPodeAlterarRoleCriadorError,
   CriadorDeveTransferirError,
 } from '../../common/errors/domain-errors';
 import { GrupoNaoEncontradoError } from '../../common/errors/domain-errors/grupos.errors';
@@ -173,7 +174,13 @@ export class GrupoUsuarioService {
     }
   }
 
-  async alterarRole(grupoId: string, usuarioId: string, novoRole: string, solicitanteId: string, transferirPropriedade = false) {
+  async alterarRole(
+    grupoId: string,
+    usuarioId: string,
+    novoRole: string,
+    solicitanteId: string,
+    transferirPropriedade = false,
+  ) {
     const grupo = await this.grupoRepo.buscarPorIdSimples(grupoId);
 
     if (!grupo) {
@@ -185,7 +192,7 @@ export class GrupoUsuarioService {
     }
 
     if (grupo.criadoPor === usuarioId) {
-      throw new NaoPodeRemoverCriadorError();
+      throw new NaoPodeAlterarRoleCriadorError();
     }
 
     const registro = await this.grupoUsuarioRepo.buscarPorChave(usuarioId, grupoId);
@@ -195,7 +202,7 @@ export class GrupoUsuarioService {
     }
 
     if (registro.role === novoRole) {
-      throw new MembroJaEAdminError();
+      throw new MembroJaPossuiRoleError();
     }
 
     await this.grupoUsuarioRepo.atualizarRole(usuarioId, grupoId, novoRole);

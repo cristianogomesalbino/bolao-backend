@@ -32,7 +32,7 @@ export class GruposController {
   @Post()
   async criarGrupo(
     @Body() criarGrupoDto: CriarGrupoDto,
-    @CurrentUser() user,
+    @CurrentUser() user: { id: string },
   ) {
     return GrupoPresenter.toHttp(await this.gruposService.criar(criarGrupoDto, user.id));
   }
@@ -45,7 +45,7 @@ export class GruposController {
   @Get()
   async buscarGrupos(
     @Query() filtros: FiltrarGruposDto,
-    @CurrentUser() user,
+    @CurrentUser() user: { id: string },
   ) {
     const grupos = await this.gruposService.buscarTodos(filtros, user.id);
     return grupos.map((g) => GrupoPresenter.toHttp(g));
@@ -57,11 +57,11 @@ export class GruposController {
   @Get(':grupoId')
   async buscarGrupoPorId(
     @Param('grupoId', new ParseUUIDCustomPipe('grupoId')) grupoId: string,
-    @CurrentUser() user,
+    @CurrentUser() user: { id: string },
   ) {
     const grupo = await this.gruposService.buscarPorId(grupoId, user.id);
     if (grupo.ehMembro) {
-      return GrupoPresenter.toHttp(grupo);
+      return GrupoPresenter.toHttpMembro(grupo);
     }
     return GrupoPresenter.toHttpBasico(grupo);
   }

@@ -49,14 +49,16 @@ export class TemporadasService {
         createTemporadaDto.copiarFasesDe,
       );
 
-      for (const fase of fasesOrigem) {
-        await this.faseRepo.criar({
-          nome: fase.nome,
-          tipo: fase.tipo,
-          ordem: fase.ordem,
-          idaVolta: fase.idaVolta,
-          temporadaId: temporada.id,
-        });
+      if (fasesOrigem.length > 0) {
+        await this.faseRepo.criarVarios(
+          fasesOrigem.map((fase) => ({
+            nome: fase.nome,
+            tipo: fase.tipo,
+            ordem: fase.ordem,
+            idaVolta: fase.idaVolta,
+            temporadaId: temporada.id,
+          })),
+        );
       }
     }
 

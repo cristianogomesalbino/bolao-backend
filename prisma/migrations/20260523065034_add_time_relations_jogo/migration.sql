@@ -1,0 +1,5 @@
+-- AddForeignKey
+ALTER TABLE "Jogo" ADD CONSTRAINT "Jogo_timeCasaId_fkey" FOREIGN KEY ("timeCasaId") REFERENCES "Time"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Jogo" ADD CONSTRAINT "Jogo_timeForaId_fkey" FOREIGN KEY ("timeForaId") REFERENCES "Time"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

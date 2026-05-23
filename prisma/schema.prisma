@@ -121,6 +121,8 @@ model Time {
   externoId    String?  @unique
   dataCriacao  DateTime @default(now())
   atualizadoEm DateTime @updatedAt
+  jogosCasa    Jogo[]   @relation("TimeCasa")
+  jogosFora    Jogo[]   @relation("TimeFora")
 }
 
 model Jogo {
@@ -148,6 +150,8 @@ model Jogo {
   dataCriacao         DateTime         @default(now())
   atualizadoEm        DateTime         @updatedAt
   fase                Fase             @relation(fields: [faseId], references: [id])
+  timeCasa            Time             @relation("TimeCasa", fields: [timeCasaId], references: [id])
+  timeFora            Time             @relation("TimeFora", fields: [timeForaId], references: [id])
   palpites            Palpite[]
   palpitesDobrados    PalpiteDobrado[]
 

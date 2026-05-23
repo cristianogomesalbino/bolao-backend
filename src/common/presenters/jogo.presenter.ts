@@ -6,14 +6,17 @@ export class JogoPresenter {
       rodada: jogo.rodada,
       timeCasaId: jogo.timeCasaId,
       timeForaId: jogo.timeForaId,
+      ...(jogo.timeCasa && {
+        timeCasa: { id: jogo.timeCasa.id, nome: jogo.timeCasa.nome, sigla: jogo.timeCasa.sigla, escudo: jogo.timeCasa.escudo },
+      }),
+      ...(jogo.timeFora && {
+        timeFora: { id: jogo.timeFora.id, nome: jogo.timeFora.nome, sigla: jogo.timeFora.sigla, escudo: jogo.timeFora.escudo },
+      }),
       dataHora: jogo.dataHora,
       status: jogo.status,
       golsCasa: jogo.golsCasa,
       golsFora: jogo.golsFora,
       vencedorId: jogo.vencedorId,
-      fonteResultado: jogo.fonteResultado,
-      externoId: jogo.externoId,
-      criadoPor: jogo.criadoPor,
       dataCriacao: jogo.dataCriacao,
       atualizadoEm: jogo.atualizadoEm,
     };

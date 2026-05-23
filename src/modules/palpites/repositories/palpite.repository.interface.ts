@@ -4,6 +4,7 @@ export interface PalpiteRepository {
   remover(id: string): Promise<void>;
   buscarPorId(id: string): Promise<any>;
   buscarPorUsuarioEJogo(usuarioId: string, jogoId: string): Promise<any>;
+  buscarPorUsuarioEJogos(usuarioId: string, jogoIds: string[]): Promise<any[]>;
   listarPorUsuario(usuarioId: string, filtros?: { temporadaId?: string }): Promise<any[]>;
   listarPorJogoEUsuarios(jogoId: string, usuarioIds: string[]): Promise<any[]>;
   listarPorFaseEUsuario(faseId: string, usuarioId: string): Promise<any[]>;

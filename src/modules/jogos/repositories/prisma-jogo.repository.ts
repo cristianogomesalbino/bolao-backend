@@ -15,7 +15,18 @@ export class PrismaJogoRepository implements JogoRepository {
   }
 
   buscarPorId(id: string) {
-    return this.prisma.jogo.findUnique({ where: { id }, include: { fase: true } });
+    return this.prisma.jogo.findUnique({ where: { id }, include: { fase: true, timeCasa: true, timeFora: true } });
+  }
+
+  buscarPorIds(ids: string[]) {
+    return this.prisma.jogo.findMany({ where: { id: { in: ids } } });
+  }
+
+  buscarPorExternoIds(externoIds: string[]) {
+    return this.prisma.jogo.findMany({
+      where: { externoId: { in: externoIds } },
+      select: { externoId: true },
+    });
   }
 
   buscarPorFase(faseId: string, rodada?: number) {
@@ -23,6 +34,7 @@ export class PrismaJogoRepository implements JogoRepository {
     if (rodada !== undefined) where.rodada = rodada;
     return this.prisma.jogo.findMany({
       where,
+      include: { timeCasa: true, timeFora: true },
       orderBy: { dataHora: 'asc' },
     });
   }

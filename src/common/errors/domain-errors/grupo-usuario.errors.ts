@@ -43,9 +43,9 @@ export class ApenasCriadorPodePromoverError extends DomainError {
   }
 }
 
-export class MembroJaEAdminError extends DomainError {
+export class MembroJaPossuiRoleError extends DomainError {
   readonly statusCode = 409;
-  constructor(mensagem = GRUPO_USUARIO.MENSAGENS.MEMBRO_JA_E_ADMIN) {
+  constructor(mensagem = GRUPO_USUARIO.MENSAGENS.MEMBRO_JA_POSSUI_ROLE) {
     super(mensagem);
   }
 }
@@ -53,6 +53,13 @@ export class MembroJaEAdminError extends DomainError {
 export class NaoPodeRemoverCriadorError extends DomainError {
   readonly statusCode = 403;
   constructor(mensagem = GRUPO_USUARIO.MENSAGENS.NAO_PODE_REMOVER_CRIADOR) {
+    super(mensagem);
+  }
+}
+
+export class NaoPodeAlterarRoleCriadorError extends DomainError {
+  readonly statusCode = 403;
+  constructor(mensagem = GRUPO_USUARIO.MENSAGENS.NAO_PODE_ALTERAR_ROLE_CRIADOR) {
     super(mensagem);
   }
 }

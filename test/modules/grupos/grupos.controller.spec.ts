@@ -77,7 +77,8 @@ describe('GruposController', () => {
       const result = await controller.buscarGrupoPorId('grupo-1', { id: 'user-1' });
 
       expect(mockService.buscarPorId).toHaveBeenCalledWith('grupo-1', 'user-1');
-      expect(result).toEqual(GrupoPresenter.toHttp({ ...grupoData, ehMembro: true }));
+      expect(result).toEqual(GrupoPresenter.toHttpMembro({ ...grupoData, ehMembro: true }));
+      expect(result).toHaveProperty('codigoConvite', 'ABCD1234');
     });
 
     it('deve retornar dados básicos quando não é membro', async () => {

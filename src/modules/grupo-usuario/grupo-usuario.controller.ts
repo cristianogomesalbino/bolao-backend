@@ -105,6 +105,8 @@ export class GrupoUsuarioController {
   @ApiBadRequestResponse({ description: 'Apenas o criador pode alterar roles.' })
   @ApiConflictResponse({ description: 'Membro já possui este role.' })
   @ApiQuery({ name: 'transferir', required: false, type: Boolean, description: 'Transferir propriedade do grupo (apenas ao promover)' })
+  @UseGuards(GroupRoleGuard)
+  @GroupRoles(GRUPO_ROLE.ADMIN)
   @Patch(':grupoId/usuarios/:usuarioId/cargo')
   alterarRole(
     @Param('grupoId', new ParseUUIDCustomPipe('grupoId')) grupoId: string,

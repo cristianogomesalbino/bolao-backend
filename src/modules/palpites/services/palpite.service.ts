@@ -94,15 +94,42 @@ export class PalpiteService {
   }
 
   async criarLote(palpites: PalpiteItemDto[], usuarioId: string) {
+    if (palpites.length === 0) return [];
+
+    const jogoIds = palpites.map((p) => p.jogoId);
+    const [jogos, palpitesExistentes] = await Promise.all([
+      this.jogoRepo.buscarPorIds(jogoIds),
+      this.palpiteRepo.buscarPorUsuarioEJogos(usuarioId, jogoIds),
+    ]);
+
+    const jogosMap = new Map(jogos.map((j) => [j.id, j]));
+    const existentesSet = new Set(palpitesExistentes.map((p) => p.jogoId));
+
     const resultados: { jogoId: string; sucesso: boolean; palpite?: any; erro?: string }[] = [];
 
     for (const item of palpites) {
-      try {
-        const palpite = await this.criar(item.jogoId, { golsCasa: item.golsCasa, golsFora: item.golsFora }, usuarioId);
-        resultados.push({ jogoId: item.jogoId, sucesso: true, palpite });
-      } catch (error: any) {
-        resultados.push({ jogoId: item.jogoId, sucesso: false, erro: error.message });
+      const jogo = jogosMap.get(item.jogoId);
+      if (!jogo) {
+        resultados.push({ jogoId: item.jogoId, sucesso: false, erro: JOGOS.MENSAGENS.JOGO_NAO_ENCONTRADO });
+        continue;
       }
+      if (jogo.status !== 'AGENDADO') {
+        resultados.push({ jogoId: item.jogoId, sucesso: false, erro: PALPITES.MENSAGENS.JOGO_NAO_ACEITA_PALPITES });
+        continue;
+      }
+      if (existentesSet.has(item.jogoId)) {
+        resultados.push({ jogoId: item.jogoId, sucesso: false, erro: PALPITES.MENSAGENS.PALPITE_JA_EXISTE });
+        continue;
+      }
+
+      const palpite = await this.palpiteRepo.criar({
+        usuarioId,
+        jogoId: item.jogoId,
+        golsCasa: item.golsCasa,
+        golsFora: item.golsFora,
+      });
+      existentesSet.add(item.jogoId);
+      resultados.push({ jogoId: item.jogoId, sucesso: true, palpite });
     }
 
     return resultados;

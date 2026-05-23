@@ -40,6 +40,10 @@ export class PainelRodadaService {
     const fase = await this.faseRepo.buscarPorId(faseId);
     if (!fase) throw new FaseNaoEncontradaError();
 
+    if (fase.temporadaId !== grupo.temporadaId) {
+      throw new FaseNaoEncontradaError();
+    }
+
     const jogos = await this.jogoRepo.buscarPorFase(faseId, rodada);
     const jogoIds = jogos.map((j) => j.id);
 

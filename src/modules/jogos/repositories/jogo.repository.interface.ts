@@ -2,6 +2,8 @@ export interface JogoRepository {
   criar(data: any): Promise<any>;
   atualizar(id: string, data: any): Promise<any>;
   buscarPorId(id: string): Promise<any>;
+  buscarPorIds(ids: string[]): Promise<any[]>;
+  buscarPorExternoIds(externoIds: string[]): Promise<any[]>;
   buscarPorFase(faseId: string, rodada?: number): Promise<any[]>;
   buscarPorExternoId(externoId: string): Promise<any>;
   buscarPorGrupoIdaVolta(grupoIdaVolta: string): Promise<any[]>;

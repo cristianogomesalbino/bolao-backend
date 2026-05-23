@@ -7,8 +7,9 @@ import {
   LimiteParticipantesError,
   UnicoAdminError,
   ApenasCriadorPodePromoverError,
-  MembroJaEAdminError,
+  MembroJaPossuiRoleError,
   NaoPodeRemoverCriadorError,
+  NaoPodeAlterarRoleCriadorError,
   CriadorDeveTransferirError,
 } from '@src/common/errors/domain-errors';
 import { GrupoNaoEncontradoError } from '@src/common/errors/domain-errors/grupos.errors';
@@ -353,16 +354,16 @@ describe('GrupoUsuarioService', () => {
       ).rejects.toThrow(ApenasCriadorPodePromoverError);
     });
 
-    it('deve lançar NaoPodeRemoverCriadorError ao tentar alterar role do criador', async () => {
+    it('deve lançar NaoPodeAlterarRoleCriadorError ao tentar alterar role do criador', async () => {
       await expect(
         service.alterarRole(grupoId, userId, 'MEMBER', userId),
-      ).rejects.toThrow(NaoPodeRemoverCriadorError);
+      ).rejects.toThrow(NaoPodeAlterarRoleCriadorError);
     });
 
-    it('deve lançar MembroJaEAdminError se membro já possui o role', async () => {
+    it('deve lançar MembroJaPossuiRoleError se membro já possui o role', async () => {
       await expect(
         service.alterarRole(grupoId, userId2, 'MEMBER', userId),
-      ).rejects.toThrow(MembroJaEAdminError);
+      ).rejects.toThrow(MembroJaPossuiRoleError);
     });
 
     it('deve lançar GrupoNaoEncontradoError se grupo não existe', async () => {

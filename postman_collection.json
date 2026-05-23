@@ -443,6 +443,18 @@
               "path": ["grupos", "{{grupoId}}"]
             }
           }
+        },
+        {
+          "name": "Regenerar Código de Convite",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/grupos/{{grupoId}}/regenerar-convite",
+              "host": ["{{baseUrl}}"],
+              "path": ["grupos", "{{grupoId}}", "regenerar-convite"]
+            }
+          }
         }
       ]
     },
@@ -526,6 +538,44 @@
               "raw": "{{baseUrl}}/grupos/{{grupoId}}/usuarios/{{usuarioId}}",
               "host": ["{{baseUrl}}"],
               "path": ["grupos", "{{grupoId}}", "usuarios", "{{usuarioId}}"]
+            }
+          }
+        },
+        {
+          "name": "Alterar Role de Membro",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"ADMIN\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/grupos/{{grupoId}}/usuarios/{{usuarioId}}/cargo",
+              "host": ["{{baseUrl}}"],
+              "path": ["grupos", "{{grupoId}}", "usuarios", "{{usuarioId}}", "cargo"]
+            }
+          }
+        },
+        {
+          "name": "Alterar Role com Transferência de Propriedade",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"ADMIN\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/grupos/{{grupoId}}/usuarios/{{usuarioId}}/cargo?transferir=true",
+              "host": ["{{baseUrl}}"],
+              "path": ["grupos", "{{grupoId}}", "usuarios", "{{usuarioId}}", "cargo"],
+              "query": [
+                {
+                  "key": "transferir",
+                  "value": "true"
+                }
+              ]
             }
           }
         }
@@ -829,6 +879,22 @@
               "path": ["grupos", "{{grupoId}}", "jogos", "{{jogoId}}", "palpites"]
             }
           }
+        },
+        {
+          "name": "Criar Palpites em Lote",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"palpites\": [\n    { \"jogoId\": \"{{jogoId}}\", \"golsCasa\": 2, \"golsFora\": 1 }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/palpites/lote",
+              "host": ["{{baseUrl}}"],
+              "path": ["palpites", "lote"]
+            }
+          }
         }
       ]
     },
@@ -896,6 +962,33 @@
               "raw": "{{baseUrl}}/grupos/{{grupoId}}/configuracao-dobro",
               "host": ["{{baseUrl}}"],
               "path": ["grupos", "{{grupoId}}", "configuracao-dobro"]
+            }
+          }
+        },
+        {
+          "name": "Listar Meus Dobros",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/grupos/{{grupoId}}/meus-dobros",
+              "host": ["{{baseUrl}}"],
+              "path": ["grupos", "{{grupoId}}", "meus-dobros"]
+            }
+          }
+        },
+        {
+          "name": "Painel da Rodada",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/grupos/{{grupoId}}/painel-rodada/{{faseId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["grupos", "{{grupoId}}", "painel-rodada", "{{faseId}}"],
+              "query": [
+                { "key": "rodada", "value": "1", "description": "Número da rodada (opcional)", "disabled": true }
+              ]
             }
           }
         }

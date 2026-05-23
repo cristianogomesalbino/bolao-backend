@@ -10,6 +10,14 @@ export class PrismaFaseRepository implements FaseRepository {
     return this.prisma.fase.create({ data });
   }
 
+  async criarVarios(data: any[]) {
+    await this.prisma.fase.createMany({ data });
+    return this.prisma.fase.findMany({
+      where: { temporadaId: data[0]?.temporadaId },
+      orderBy: { ordem: 'asc' },
+    });
+  }
+
   buscarPorId(id: string) {
     return this.prisma.fase.findUnique({ where: { id } });
   }

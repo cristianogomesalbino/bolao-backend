@@ -121,6 +121,12 @@ export class PalpiteController {
     @Body() dto: CriarPalpiteLoteDto,
     @CurrentUser() user: { id: string },
   ) {
-    return this.palpiteService.criarLote(dto.palpites, user.id);
+    const resultados = await this.palpiteService.criarLote(dto.palpites, user.id);
+    return resultados.map((r) => ({
+      jogoId: r.jogoId,
+      sucesso: r.sucesso,
+      ...(r.palpite && { palpite: PalpitePresenter.toHttp(r.palpite) }),
+      ...(r.erro && { erro: r.erro }),
+    }));
   }
 }
