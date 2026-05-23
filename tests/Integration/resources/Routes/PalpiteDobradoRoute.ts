@@ -69,3 +69,30 @@ export async function patchConfigurarDobro(
   await logRequestResponse('PATCH', url, payload, headers, response);
   return response;
 }
+
+export async function getMeusDobros(
+  request: APIRequestContext,
+  usuario: { email: string; senha: string },
+  grupoId: string,
+) {
+  const url = `${BASE_URL}grupos/${grupoId}/meus-dobros`;
+  const headers = await setHeaders(request, usuario);
+  const response = await request.get(url, { headers });
+  await logRequestResponse('GET', url, undefined, headers, response);
+  return response;
+}
+
+export async function getPainelRodada(
+  request: APIRequestContext,
+  usuario: { email: string; senha: string },
+  grupoId: string,
+  faseId: string,
+  rodada?: number,
+) {
+  let url = `${BASE_URL}grupos/${grupoId}/painel-rodada/${faseId}`;
+  if (rodada !== undefined) url += `?rodada=${rodada}`;
+  const headers = await setHeaders(request, usuario);
+  const response = await request.get(url, { headers });
+  await logRequestResponse('GET', url, undefined, headers, response);
+  return response;
+}

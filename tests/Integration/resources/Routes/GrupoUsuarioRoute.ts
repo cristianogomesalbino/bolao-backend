@@ -68,3 +68,19 @@ export async function deleteRemoverMembro(
   await logRequestResponse('DELETE', url, undefined, headers, response);
   return response;
 }
+
+export async function patchAlterarCargo(
+  request: APIRequestContext,
+  usuario: { email: string; senha: string },
+  grupoId: string,
+  usuarioId: string,
+  payload: { role: string },
+  transferir = false,
+) {
+  let url = `${BASE_URL}grupos/${grupoId}/usuarios/${usuarioId}/cargo`;
+  if (transferir) url += '?transferir=true';
+  const headers = await setHeaders(request, usuario);
+  const response = await request.patch(url, { headers, data: payload });
+  await logRequestResponse('PATCH', url, payload, headers, response);
+  return response;
+}

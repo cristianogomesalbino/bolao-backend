@@ -79,3 +79,15 @@ export async function deleteGrupo(
   await logRequestResponse('DELETE', url, undefined, headers, response);
   return response;
 }
+
+export async function patchRegenerarConvite(
+  request: APIRequestContext,
+  usuario: { email: string; senha: string },
+  grupoId: string,
+) {
+  const url = `${BASE_URL}grupos/${grupoId}/regenerar-convite`;
+  const headers = await setHeaders(request, usuario);
+  const response = await request.patch(url, { headers });
+  await logRequestResponse('PATCH', url, undefined, headers, response);
+  return response;
+}

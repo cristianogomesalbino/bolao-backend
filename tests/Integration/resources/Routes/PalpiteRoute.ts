@@ -69,3 +69,15 @@ export async function getMeusPalpites(
   await logRequestResponse('GET', url, undefined, headers, response);
   return response;
 }
+
+export async function postPalpiteLote(
+  request: APIRequestContext,
+  usuario: { email: string; senha: string },
+  payload: { palpites: Array<{ jogoId: string; golsCasa: number; golsFora: number }> },
+) {
+  const url = `${BASE_URL}palpites/lote`;
+  const headers = await setHeaders(request, usuario);
+  const response = await request.post(url, { headers, data: payload });
+  await logRequestResponse('POST', url, payload, headers, response);
+  return response;
+}
