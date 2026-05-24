@@ -452,8 +452,15 @@ export class JogoService {
     if (!fase) {
       throw new FaseNaoEncontradaError();
     }
-    const jogos = await this.jogoRepo.buscarPorFase(faseId, rodada);
-    return { fase, jogos };
+
+    const rodadaFiltro = rodada ?? await this.obterRodadaAtual(faseId);
+    const jogos = await this.jogoRepo.buscarPorFase(faseId, rodadaFiltro);
+    return { fase, jogos, rodadaAtual: rodadaFiltro };
+  }
+
+  async obterRodadaAtual(faseId: string): Promise<number | undefined> {
+    const rodada = await this.jogoRepo.buscarRodadaAtual(faseId);
+    return rodada ?? undefined;
   }
 
   async buscarPorId(id: string) {
@@ -564,14 +571,31 @@ export class JogoService {
     cache: Map<string, any>,
   ): Promise<any> {
     const cached = cache.get(timeData.externoId);
+    if (cached && cached.escudo) return cached;
+
+    if (cached && !cached.escudo && timeData.escudo) {
+      const atualizado = await this.timeRepo.atualizar(cached.id, { escudo: timeData.escudo });
+      cache.set(timeData.externoId, atualizado);
+      return atualizado;
+    }
+
     if (cached) return cached;
 
-    let time = await this.timeRepo.buscarPorExternoId(timeData.externoId);
-    if (!time) {
-      time = await this.timeRepo.criar(timeData);
+    const existente = await this.timeRepo.buscarPorExternoId(timeData.externoId);
+    if (existente && !existente.escudo && timeData.escudo) {
+      const atualizado = await this.timeRepo.atualizar(existente.id, { escudo: timeData.escudo });
+      cache.set(timeData.externoId, atualizado);
+      return atualizado;
     }
-    cache.set(timeData.externoId, time);
-    return time;
+
+    if (existente) {
+      cache.set(timeData.externoId, existente);
+      return existente;
+    }
+
+    const novo = await this.timeRepo.criar(timeData);
+    cache.set(timeData.externoId, novo);
+    return novo;
   }
 
   // --- Sincronização de placares ---

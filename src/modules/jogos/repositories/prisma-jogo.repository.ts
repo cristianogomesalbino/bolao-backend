@@ -46,4 +46,21 @@ export class PrismaJogoRepository implements JogoRepository {
   buscarPorGrupoIdaVolta(grupoIdaVolta: string) {
     return this.prisma.jogo.findMany({ where: { grupoIdaVolta } });
   }
+
+  async buscarRodadaAtual(faseId: string): Promise<number | null> {
+    const jogo = await this.prisma.jogo.findFirst({
+      where: { faseId, status: { not: 'FINALIZADO' }, rodada: { not: null } },
+      orderBy: { rodada: 'asc' },
+      select: { rodada: true },
+    });
+    if (jogo?.rodada) return jogo.rodada;
+
+    // Todas finalizadas → retornar a última rodada
+    const ultimo = await this.prisma.jogo.findFirst({
+      where: { faseId, rodada: { not: null } },
+      orderBy: { rodada: 'desc' },
+      select: { rodada: true },
+    });
+    return ultimo?.rodada ?? null;
+  }
 }

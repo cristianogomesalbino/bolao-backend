@@ -46,4 +46,18 @@ export class InMemoryJogoRepository implements JogoRepository {
   async buscarPorGrupoIdaVolta(grupoIdaVolta: string) {
     return this.items.filter((j) => j.grupoIdaVolta === grupoIdaVolta);
   }
+
+  async buscarRodadaAtual(faseId: string): Promise<number | null> {
+    const naoFinalizados = this.items
+      .filter((j) => j.faseId === faseId && j.status !== 'FINALIZADO' && j.rodada != null)
+      .sort((a, b) => a.rodada - b.rodada);
+
+    if (naoFinalizados.length > 0) return naoFinalizados[0].rodada;
+
+    const todos = this.items
+      .filter((j) => j.faseId === faseId && j.rodada != null)
+      .sort((a, b) => b.rodada - a.rodada);
+
+    return todos.length > 0 ? todos[0].rodada : null;
+  }
 }

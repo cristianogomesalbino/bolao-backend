@@ -1,5 +1,6 @@
 export interface TimeRepository {
   criar(data: any): Promise<any>;
+  atualizar(id: string, data: Partial<{ nome: string; sigla: string; escudo: string }>): Promise<any>;
   buscarPorExternoId(externoId: string): Promise<any>;
   buscarPorId(id: string): Promise<any>;
   buscarPorSigla(sigla: string): Promise<any>;

@@ -44,7 +44,8 @@ export class PainelRodadaService {
       throw new FaseNaoEncontradaError();
     }
 
-    const jogos = await this.jogoRepo.buscarPorFase(faseId, rodada);
+    const rodadaFiltro = rodada ?? await this.jogoRepo.buscarRodadaAtual(faseId) ?? undefined;
+    const jogos = await this.jogoRepo.buscarPorFase(faseId, rodadaFiltro);
     const jogoIds = jogos.map((j) => j.id);
 
     const [palpites, dobros, saldo] = await Promise.all([

@@ -10,6 +10,10 @@ export class PrismaTimeRepository implements TimeRepository {
     return this.prisma.time.create({ data });
   }
 
+  atualizar(id: string, data: Partial<{ nome: string; sigla: string; escudo: string }>) {
+    return this.prisma.time.update({ where: { id }, data });
+  }
+
   buscarPorExternoId(externoId: string) {
     return this.prisma.time.findUnique({ where: { externoId } });
   }

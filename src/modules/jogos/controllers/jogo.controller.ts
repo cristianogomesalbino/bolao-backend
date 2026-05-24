@@ -65,16 +65,17 @@ export class JogoController {
 
   @ApiOperation({ summary: 'Listar jogos de uma fase' })
   @ApiResponse({ status: 200, description: 'Lista de jogos' })
-  @ApiQuery({ name: 'rodada', required: false, type: Number, description: 'Filtrar por rodada' })
+  @ApiQuery({ name: 'rodada', required: false, type: Number, description: 'Filtrar por rodada (default: rodada atual)' })
   @Get('fases/:faseId/jogos')
   async listar(
     @Param('faseId', new ParseUUIDCustomPipe('faseId')) faseId: string,
     @Query('rodada') rodada?: string,
   ) {
     const rodadaNum = rodada ? Number.parseInt(rodada, 10) : undefined;
-    const { fase, jogos } = await this.jogoService.buscarPorFaseComDetalhes(faseId, rodadaNum);
+    const { fase, jogos, rodadaAtual } = await this.jogoService.buscarPorFaseComDetalhes(faseId, rodadaNum);
     return {
       fase: { id: fase.id, nome: fase.nome, tipo: fase.tipo, ordem: fase.ordem },
+      rodadaAtual,
       jogos: jogos.map((j) => JogoPresenter.toHttp(j, fase.tipo)),
     };
   }
