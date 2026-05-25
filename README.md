@@ -131,14 +131,15 @@ sh dev start-prod      # Build e inicia em modo produção
 
 ### Grupos (`/grupos`)
 
-| Método | Rota                      | Descrição              | Auth       |
-|--------|---------------------------|------------------------|------------|
-| POST   | `/grupos`                 | Criar grupo            | JWT        |
-| GET    | `/grupos`                 | Listar grupos ativos   | JWT        |
-| GET    | `/grupos/:grupoId`        | Buscar por ID          | JWT        |
-| PATCH  | `/grupos/:grupoId`        | Atualizar grupo        | JWT + Admin|
-| PATCH  | `/grupos/:grupoId/status` | Ativar/desativar       | JWT + Admin|
-| DELETE | `/grupos/:grupoId`        | Excluir grupo inativo  | JWT + Admin|
+| Método | Rota                              | Descrição              | Auth       |
+|--------|-----------------------------------|------------------------|------------|
+| POST   | `/grupos`                         | Criar grupo            | JWT        |
+| GET    | `/grupos`                         | Listar grupos ativos   | JWT        |
+| GET    | `/grupos/:grupoId`                | Buscar por ID          | JWT        |
+| PATCH  | `/grupos/:grupoId`                | Atualizar grupo        | JWT + Admin|
+| PATCH  | `/grupos/:grupoId/status`         | Ativar/desativar       | JWT + Admin|
+| PATCH  | `/grupos/:grupoId/regenerar-convite` | Regenerar código convite | JWT + Admin|
+| DELETE | `/grupos/:grupoId`                | Excluir grupo inativo  | JWT + Admin|
 
 
 ### Membros do Grupo (`/grupos`)
@@ -150,17 +151,20 @@ sh dev start-prod      # Build e inicia em modo produção
 | GET    | `/grupos/:grupoId/membros`              | Listar membros do grupo      | JWT + Membro  |
 | DELETE | `/grupos/:grupoId/sair`                 | Sair do grupo                | JWT + Membro  |
 | DELETE | `/grupos/:grupoId/usuarios/:usuarioId`  | Remover membro               | JWT + Admin   |
+| PATCH  | `/grupos/:grupoId/usuarios/:usuarioId/cargo` | Alterar role de membro  | JWT + Admin   |
 
 ### Palpites (`/palpites`, `/jogos/:jogoId/palpites`)
 
 | Método | Rota                                              | Descrição                          | Auth          |
 |--------|---------------------------------------------------|------------------------------------|---------------|
 | POST   | `/jogos/:jogoId/palpites`                         | Criar palpite                      | JWT           |
+| POST   | `/palpites/lote`                                  | Criar palpites em lote             | JWT           |
 | PATCH  | `/palpites/:id`                                   | Editar palpite                     | JWT           |
 | DELETE | `/palpites/:id`                                   | Excluir palpite                    | JWT           |
 | GET    | `/jogos/:jogoId/meu-palpite`                      | Buscar meu palpite por jogo        | JWT           |
 | GET    | `/meus-palpites`                                  | Listar meus palpites (filtro temporadaId) | JWT     |
 | GET    | `/grupos/:grupoId/jogos/:jogoId/palpites`         | Listar palpites do grupo por jogo  | JWT + Membro  |
+| GET    | `/grupos/:grupoId/painel-rodada/:faseId`          | Painel da rodada (jogos + palpites + dobros) | JWT + Membro |
 
 ### Palpite Dobrado (`/grupos/:grupoId`)
 
@@ -177,7 +181,7 @@ sh dev start-prod      # Build e inicia em modo produção
 | Método | Rota                                                      | Descrição                          | Auth          |
 |--------|-----------------------------------------------------------|------------------------------------|---------------|
 | GET    | `/grupos/:grupoId/ranking/geral`                          | Ranking geral da temporada         | JWT + Membro  |
-| GET    | `/grupos/:grupoId/ranking/fases/:faseId`                  | Ranking por fase                   | JWT + Membro  |
+| GET    | `/grupos/:grupoId/ranking/fases/:faseId`                  | Ranking por fase (filtros: ?rodada, ?ateRodada) | JWT + Membro  |
 | GET    | `/grupos/:grupoId/ranking/jogos/:jogoId`                  | Detalhamento de pontuação por jogo | JWT + Membro  |
 | POST   | `/grupos/:grupoId/ranking/processar-jogo/:jogoId`         | Processar pontuação de jogo        | JWT + Admin   |
 
@@ -237,13 +241,29 @@ Funcionalidades:
 - Edições manuais em jogos importados alteram `fonteResultado` para MANUAL, protegendo contra sobrescrita na sincronização
 - Endpoint de reset permite reverter `fonteResultado` para API_FOOTBALL
 
-Transições de status dos jogos: AGENDADO → EM_ANDAMENTO → FINALIZADO, AGENDADO → CANCELADO, EM_ANDAMENTO → CANCELADO.
+Transições de status dos jogos:
+- `AGENDADO → EM_ANDAMENTO → FINALIZADO`
+- `AGENDADO → ADIADO → AGENDADO` (jogo remarcado)
+- `AGENDADO → CANCELADO`
+- `ADIADO → CANCELADO`
+- `EM_ANDAMENTO → CANCELADO`
+
+Jogos adiados:
+- Jogos sem data definida na API são importados com status `ADIADO` e `dataHora: null`
+- Campo `foiAdiado: true` marca permanentemente que o jogo foi adiado
+- Quando a sincronização detecta nova data, o jogo volta para `AGENDADO`
+- Front pode filtrar com `GET /fases/:faseId/jogos?status=ADIADO`
+
+Listagem de jogos:
+- `GET /fases/:faseId/jogos` sem `?rodada` retorna a rodada atual automaticamente
+- Resposta inclui `rodadaAtual` e dados dos times (nome, sigla, escudo)
 
 ## Palpites e Palpite Dobrado
 
 Regras de domínio:
 - Palpite é universal: um por usuário por jogo, vale para todos os grupos
 - Palpites só podem ser criados, editados ou excluídos enquanto o jogo estiver AGENDADO
+- Criação em lote via `POST /palpites/lote` (valida cada jogo individualmente, retorna sucesso/erro por item)
 - Visibilidade no grupo: palpites de outros membros só são visíveis após o jogo ser FINALIZADO
 - Palpite Dobrado é opcional por grupo (campo `permitirPalpiteDobrado`)
 - Token Dobro: fichas acumuladas por conquistas (palpites completos na fase, acerto em cheio, primeiro/último no ranking)
