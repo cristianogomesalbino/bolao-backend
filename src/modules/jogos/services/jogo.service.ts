@@ -27,7 +27,8 @@ import {
 } from '../../../common/errors/domain-errors';
 
 const TRANSICOES_VALIDAS: Record<string, string[]> = {
-  AGENDADO: ['EM_ANDAMENTO', 'CANCELADO'],
+  AGENDADO: ['EM_ANDAMENTO', 'ADIADO', 'CANCELADO'],
+  ADIADO: ['AGENDADO', 'CANCELADO'],
   EM_ANDAMENTO: ['FINALIZADO', 'CANCELADO'],
 };
 
@@ -447,10 +448,15 @@ export class JogoService {
     return this.jogoRepo.buscarPorFase(faseId, rodada);
   }
 
-  async buscarPorFaseComDetalhes(faseId: string, rodada?: number) {
+  async buscarPorFaseComDetalhes(faseId: string, rodada?: number, status?: string) {
     const fase = await this.faseRepo.buscarPorId(faseId);
     if (!fase) {
       throw new FaseNaoEncontradaError();
+    }
+
+    if (status) {
+      const jogos = await this.jogoRepo.buscarPorFaseEStatus(faseId, status);
+      return { fase, jogos, rodadaAtual: null };
     }
 
     const rodadaFiltro = rodada ?? await this.obterRodadaAtual(faseId);
@@ -516,13 +522,17 @@ export class JogoService {
           ? this.determinarVencedorPorPlacar(normalizado.golsCasa, normalizado.golsFora, timeCasa.id, timeFora.id)
           : null;
 
+      const dataHora = normalizado.dataHora ? new Date(normalizado.dataHora) : null;
+      const dataValida = dataHora && dataHora.getFullYear() >= 2020;
+
       await this.jogoRepo.criar({
         faseId,
         rodada,
         timeCasaId: timeCasa.id,
         timeForaId: timeFora.id,
-        dataHora: new Date(normalizado.dataHora),
-        status: normalizado.status,
+        dataHora: dataValida ? dataHora : null,
+        status: dataValida ? normalizado.status : 'ADIADO',
+        foiAdiado: !dataValida,
         golsCasa: normalizado.golsCasa,
         golsFora: normalizado.golsFora,
         temProrrogacao: false,
@@ -677,6 +687,13 @@ export class JogoService {
 
     const novoStatus = this.definirStatusFinal(jogo, jogoApi?.status);
     const updateData: any = { status: novoStatus };
+
+    // Jogo adiado que recebeu data na API → atualizar dataHora e voltar para AGENDADO
+    if (jogo.status === 'ADIADO' && jogoApi?.dataHora) {
+      updateData.dataHora = new Date(jogoApi.dataHora);
+      updateData.status = 'AGENDADO';
+      updateData.foiAdiado = true;
+    }
 
     if (jogoApi && novoStatus === 'FINALIZADO') {
       this.preencherPlacarSync(updateData, jogoApi, jogo);

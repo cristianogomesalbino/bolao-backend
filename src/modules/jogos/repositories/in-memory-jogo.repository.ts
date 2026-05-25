@@ -39,6 +39,18 @@ export class InMemoryJogoRepository implements JogoRepository {
       .sort((a, b) => new Date(a.dataHora).getTime() - new Date(b.dataHora).getTime());
   }
 
+  async buscarPorFaseAteRodada(faseId: string, ateRodada: number) {
+    return this.items
+      .filter((j) => j.faseId === faseId && j.rodada !== null && j.rodada <= ateRodada)
+      .sort((a, b) => new Date(a.dataHora).getTime() - new Date(b.dataHora).getTime());
+  }
+
+  async buscarPorFaseEStatus(faseId: string, status: string) {
+    return this.items
+      .filter((j) => j.faseId === faseId && j.status === status)
+      .sort((a, b) => (a.rodada ?? 0) - (b.rodada ?? 0));
+  }
+
   async buscarPorExternoId(externoId: string) {
     return this.items.find((j) => j.externoId === externoId) ?? null;
   }

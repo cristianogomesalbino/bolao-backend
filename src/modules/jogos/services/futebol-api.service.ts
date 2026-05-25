@@ -12,6 +12,90 @@ export class FutebolApiService implements OnModuleInit {
     this.logger.log('Integração com API de futebol (ge.globo.com) inicializada');
   }
 
+  async buscarClassificacao(season: number): Promise<any[]> {
+    // Tentar API do ge.globo.com primeiro
+    const resultado = await this.buscarClassificacaoGe(season);
+    if (resultado.length > 0) return resultado;
+
+    // Fallback: pacote campeonato-brasileiro-api
+    return this.buscarClassificacaoPacote();
+  }
+
+  private async buscarClassificacaoGe(season: number): Promise<any[]> {
+    const fase = `fase-unica-campeonato-brasileiro-${season}`;
+    const url = `${GE_BASE_URL}/${BRASILEIRAO_CAMPEONATO_ID}/fase/${fase}/classificacao/`;
+
+    try {
+      const response = await fetch(url, { method: 'GET' });
+
+      if (!response.ok) {
+        this.logger.warn(`Classificação GE indisponível: status ${response.status}`);
+        return [];
+      }
+
+      const data = await response.json();
+
+      if (!Array.isArray(data)) return [];
+
+      const resultado: any[] = [];
+      for (const grupo of data) {
+        if (grupo.classificacao && Array.isArray(grupo.classificacao)) {
+          for (const item of grupo.classificacao) {
+            resultado.push({
+              posicao: item.ordem,
+              timeId: String(item.equipe_id),
+              nome: item.nome_popular || item.nome || '',
+              sigla: item.sigla || '',
+              escudo: item.escudo || null,
+              pontos: item.pontos ?? 0,
+              jogos: item.jogos ?? 0,
+              vitorias: item.vitorias ?? 0,
+              empates: item.empates ?? 0,
+              derrotas: item.derrotas ?? 0,
+              golsPro: item.gols_pro ?? 0,
+              golsContra: item.gols_contra ?? 0,
+              saldoGols: item.saldo_gols ?? 0,
+            });
+          }
+        }
+      }
+
+      return resultado;
+    } catch (error) {
+      this.logger.warn('Erro ao buscar classificação da API GE', error);
+      return [];
+    }
+  }
+
+  private async buscarClassificacaoPacote(): Promise<any[]> {
+    try {
+      const { getStandings } = await import('campeonato-brasileiro-api');
+      const standings = await getStandings('a');
+
+      if (!standings?.tables?.[0]?.entries) return [];
+
+      return standings.tables[0].entries.map((entry: any) => ({
+        posicao: entry.position,
+        timeId: String(entry.team.id),
+        nome: entry.team.name,
+        sigla: entry.team.shortName,
+        escudo: entry.team.badge || null,
+        pontos: entry.points ?? 0,
+        jogos: entry.matches ?? 0,
+        vitorias: entry.wins ?? 0,
+        empates: entry.draws ?? 0,
+        derrotas: entry.losses ?? 0,
+        golsPro: entry.goalsFor ?? 0,
+        golsContra: entry.goalsAgainst ?? 0,
+        saldoGols: entry.goalDifference ?? 0,
+        recentForm: entry.recentForm ?? [],
+      }));
+    } catch (error) {
+      this.logger.warn('Erro ao buscar classificação via pacote', error);
+      return [];
+    }
+  }
+
   async buscarJogosPorRodada(season: number, rodada: number): Promise<any[]> {
     const fase = `fase-unica-campeonato-brasileiro-${season}`;
     const url = `${GE_BASE_URL}/${BRASILEIRAO_CAMPEONATO_ID}/fase/${fase}/rodada/${rodada}/jogos/`;
@@ -71,18 +155,20 @@ export class FutebolApiService implements OnModuleInit {
     const status = this.mapearStatus(jogo);
 
     // A API do ge.globo.com retorna data_realizacao em BRT (sem timezone)
-    // Precisamos marcar explicitamente como BRT (-03:00) para que new Date() converta corretamente para UTC
+    // Jogos adiados têm data_realizacao = null
     const dataHoraBrt = jogo.data_realizacao;
-    const dataHoraUtc = new Date(`${dataHoraBrt}-03:00`).toISOString();
+    const dataHoraUtc = dataHoraBrt
+      ? new Date(`${dataHoraBrt}-03:00`).toISOString()
+      : null;
 
     return {
       externoId: String(jogo.id),
       dataHora: dataHoraUtc,
+      status: dataHoraUtc ? status : 'ADIADO',
       timeCasaId: String(jogo.equipes.mandante.id),
       timeForaId: String(jogo.equipes.visitante.id),
       golsCasa: status === 'FINALIZADO' ? (jogo.placar_oficial_mandante ?? null) : null,
       golsFora: status === 'FINALIZADO' ? (jogo.placar_oficial_visitante ?? null) : null,
-      status,
       penaltisCasa: jogo.placar_penaltis_mandante ?? null,
       penaltisFora: jogo.placar_penaltis_visitante ?? null,
       timeCasa: {

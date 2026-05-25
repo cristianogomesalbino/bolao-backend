@@ -39,6 +39,22 @@ export class PrismaJogoRepository implements JogoRepository {
     });
   }
 
+  buscarPorFaseAteRodada(faseId: string, ateRodada: number) {
+    return this.prisma.jogo.findMany({
+      where: { faseId, rodada: { lte: ateRodada } },
+      include: { timeCasa: true, timeFora: true },
+      orderBy: { dataHora: 'asc' },
+    });
+  }
+
+  buscarPorFaseEStatus(faseId: string, status: string) {
+    return this.prisma.jogo.findMany({
+      where: { faseId, status: status as any },
+      include: { timeCasa: true, timeFora: true },
+      orderBy: [{ rodada: 'asc' }, { dataHora: 'asc' }],
+    });
+  }
+
   buscarPorExternoId(externoId: string) {
     return this.prisma.jogo.findUnique({ where: { externoId } });
   }
@@ -48,8 +64,9 @@ export class PrismaJogoRepository implements JogoRepository {
   }
 
   async buscarRodadaAtual(faseId: string): Promise<number | null> {
+    // Menor rodada com pelo menos 1 jogo não finalizado e não adiado = rodada em andamento/próxima
     const jogo = await this.prisma.jogo.findFirst({
-      where: { faseId, status: { not: 'FINALIZADO' }, rodada: { not: null } },
+      where: { faseId, status: { notIn: ['FINALIZADO', 'ADIADO', 'CANCELADO'] }, rodada: { not: null } },
       orderBy: { rodada: 'asc' },
       select: { rodada: true },
     });

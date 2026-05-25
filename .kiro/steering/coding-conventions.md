@@ -29,10 +29,17 @@ inclusion: always
 - **SEMPRE usar métodos batch para operações em lote** — ex: `buscarPorIds`, `criarVarios`, `buscarPorUsuarioEJogos`. Nunca chamar métodos individuais dentro de loops
 - **SEMPRE nomear Domain Errors pela ação exata** — não reutilizar um erro de outro contexto (ex: não usar `NaoPodeRemoverCriadorError` quando a ação é alterar role; criar `NaoPodeAlterarRoleCriadorError`)
 - **SEMPRE usar constantes de roles em DTOs** — `@IsIn([GRUPO_ROLE.ADMIN, GRUPO_ROLE.MEMBER])` em vez de `@IsIn(['ADMIN', 'MEMBER'])`
+- **NUNCA salvar datas de APIs externas sem conversão explícita de timezone** — APIs brasileiras retornam BRT sem offset; sempre adicionar `-03:00` antes de `new Date()`
+- **NUNCA salvar datas inválidas (epoch/1970)** — validar que `getFullYear() >= 2020` antes de persistir; se inválida, salvar como `null` com status adequado
+- **SEMPRE definir transições de status válidas** — usar mapa `TRANSICOES_VALIDAS` e validar antes de alterar status
+- **SEMPRE incluir dados de relações necessários para o front** — ex: `include: { timeCasa: true, timeFora: true }` em queries de listagem de jogos
+- **SEMPRE ter fallback de rodada atual** — endpoints de listagem sem `?rodada` devem retornar a menor rodada com jogos não finalizados
 
 ## Dívida Técnica
 
 - Interfaces de repositório usam `Promise<any>` — migrar para tipos Prisma (`Prisma.Jogo`, `Prisma.Fase`, etc.)
+- AuthService usa PrismaService diretamente — migrar para Repository Pattern
+- ACCESS_EXPIRATION e REFRESH_EXPIRATION ambos com '7d' — separar (access: 15m, refresh: 7d)
 - Presenters e services usam `any` nos parâmetros — tipar gradualmente
 
 ## Padrões de Erro

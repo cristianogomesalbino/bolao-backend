@@ -66,7 +66,7 @@ export class RankingService {
     private readonly tokenDobroRepo: TokenDobroRepository,
   ) {}
 
-  async obterRankingFase(grupoId: string, faseId: string): Promise<RankingEntry[]> {
+  async obterRankingFase(grupoId: string, faseId: string, rodada?: number, ateRodada?: number): Promise<RankingEntry[]> {
     const grupo = await this.grupoRepo.buscarPorId(grupoId);
     if (!grupo) throw new GrupoNaoEncontradoError();
 
@@ -74,8 +74,18 @@ export class RankingService {
     if (!fase) throw new FaseNaoEncontradaError();
 
     const membros = await this.grupoUsuarioRepo.listarPorGrupoComUsuario(grupoId);
-    const jogos = await this.jogoRepo.buscarPorFase(faseId);
-    const jogosFinalizados = jogos.filter((j: any) => j.status === 'FINALIZADO');
+
+    // ateRodada: busca todos os jogos da fase e filtra até a rodada
+    // rodada: busca apenas jogos daquela rodada
+    const jogos = ateRodada
+      ? await this.jogoRepo.buscarPorFase(faseId)
+      : await this.jogoRepo.buscarPorFase(faseId, rodada);
+
+    const jogosFinalizados = jogos.filter((j: any) => {
+      if (j.status !== 'FINALIZADO') return false;
+      if (ateRodada && j.rodada > ateRodada) return false;
+      return true;
+    });
 
     return this.calcularRanking(membros, jogosFinalizados, grupo);
   }

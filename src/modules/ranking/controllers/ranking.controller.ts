@@ -1,10 +1,11 @@
-import { Controller, Get, Post, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Param, Query, UseGuards } from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
   ApiResponse,
   ApiNotFoundResponse,
   ApiBadRequestResponse,
+  ApiQuery,
 } from '@nestjs/swagger';
 import { RankingService } from '../services/ranking.service';
 import { RANKING } from '../ranking.constants';
@@ -35,14 +36,20 @@ export class RankingController {
   @ApiOperation({ summary: 'Obter ranking de uma fase específica do grupo' })
   @ApiResponse({ status: 200, description: 'Ranking da fase retornado com sucesso.' })
   @ApiNotFoundResponse({ description: 'Grupo ou fase não encontrado.' })
+  @ApiQuery({ name: 'rodada', required: false, type: Number, description: 'Ranking apenas da rodada específica' })
+  @ApiQuery({ name: 'ateRodada', required: false, type: Number, description: 'Ranking acumulado até a rodada (inclusive)' })
   @UseGuards(GroupRoleGuard)
   @GroupRoles(GRUPO_ROLE.ADMIN, GRUPO_ROLE.MEMBER)
   @Get(':grupoId/ranking/fases/:faseId')
   async obterRankingFase(
     @Param('grupoId', new ParseUUIDCustomPipe('grupoId')) grupoId: string,
     @Param('faseId', new ParseUUIDCustomPipe('faseId')) faseId: string,
+    @Query('rodada') rodada?: string,
+    @Query('ateRodada') ateRodada?: string,
   ) {
-    const ranking = await this.rankingService.obterRankingFase(grupoId, faseId);
+    const rodadaNum = rodada ? Number.parseInt(rodada, 10) : undefined;
+    const ateRodadaNum = ateRodada ? Number.parseInt(ateRodada, 10) : undefined;
+    const ranking = await this.rankingService.obterRankingFase(grupoId, faseId, rodadaNum, ateRodadaNum);
     return ranking.map((entry) => RankingPresenter.toHttp(entry));
   }
 
