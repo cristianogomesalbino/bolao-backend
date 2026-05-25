@@ -5,6 +5,9 @@ export interface JogoRepository {
   buscarPorIds(ids: string[]): Promise<any[]>;
   buscarPorExternoIds(externoIds: string[]): Promise<any[]>;
   buscarPorFase(faseId: string, rodada?: number): Promise<any[]>;
+  buscarPorFaseAteRodada(faseId: string, ateRodada: number): Promise<any[]>;
+  buscarPorFaseEStatus(faseId: string, status: string): Promise<any[]>;
   buscarPorExternoId(externoId: string): Promise<any>;
   buscarPorGrupoIdaVolta(grupoIdaVolta: string): Promise<any[]>;
+  buscarRodadaAtual(faseId: string): Promise<number | null>;
 }

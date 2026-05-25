@@ -33,12 +33,12 @@ export class AtualizarJogoDto {
 
   @ApiPropertyOptional({
     description: 'Status do jogo',
-    enum: ['AGENDADO', 'EM_ANDAMENTO', 'FINALIZADO', 'CANCELADO'],
+    enum: ['AGENDADO', 'ADIADO', 'EM_ANDAMENTO', 'FINALIZADO', 'CANCELADO'],
     example: 'EM_ANDAMENTO',
   })
-  @IsIn(['AGENDADO', 'EM_ANDAMENTO', 'FINALIZADO', 'CANCELADO'], {
-    message: 'status deve ser AGENDADO, EM_ANDAMENTO, FINALIZADO ou CANCELADO',
+  @IsIn(['AGENDADO', 'ADIADO', 'EM_ANDAMENTO', 'FINALIZADO', 'CANCELADO'], {
+    message: 'status deve ser AGENDADO, ADIADO, EM_ANDAMENTO, FINALIZADO ou CANCELADO',
   })
   @IsOptional()
-  status?: 'AGENDADO' | 'EM_ANDAMENTO' | 'FINALIZADO' | 'CANCELADO';
+  status?: 'AGENDADO' | 'ADIADO' | 'EM_ANDAMENTO' | 'FINALIZADO' | 'CANCELADO';
 }

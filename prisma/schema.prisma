@@ -130,7 +130,7 @@ model Jogo {
   faseId              String
   timeCasaId          String
   timeForaId          String
-  dataHora            DateTime
+  dataHora            DateTime?
   rodada              Int?
   status              StatusJogo       @default(AGENDADO)
   golsCasa            Int?
@@ -145,6 +145,7 @@ model Jogo {
   ehJogoVolta         Boolean          @default(false)
   grupoIdaVolta       String?
   fonteResultado      FonteResultado   @default(MANUAL)
+  foiAdiado           Boolean          @default(false)
   externoId           String?          @unique
   criadoPor           String
   dataCriacao         DateTime         @default(now())
@@ -221,6 +222,7 @@ enum TipoFase {
 
 enum StatusJogo {
   AGENDADO
+  ADIADO
   EM_ANDAMENTO
   FINALIZADO
   CANCELADO

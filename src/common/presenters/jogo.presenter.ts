@@ -14,6 +14,7 @@ export class JogoPresenter {
       }),
       dataHora: jogo.dataHora,
       status: jogo.status,
+      foiAdiado: jogo.foiAdiado,
       golsCasa: jogo.golsCasa,
       golsFora: jogo.golsFora,
       vencedorId: jogo.vencedorId,

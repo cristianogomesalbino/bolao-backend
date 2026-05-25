@@ -11,7 +11,7 @@ API REST para gerenciamento de bolões de campeonatos de futebol.
 - NestJS 11 com TypeScript
 - Prisma ORM 6 com PostgreSQL (Supabase)
 - Vitest 4 para testes unitários
-- Autenticação JWT (access token 15min + refresh token 7d) com guard global via APP_GUARD
+- Autenticação JWT (access token 7d + refresh token 7d) com guard global via APP_GUARD
 - Swagger em `/docs`
 - Repository Pattern (interfaces + Prisma impl + InMemory impl)
 - Domain Errors para erros de negócio tipados
@@ -39,25 +39,64 @@ src/modules/
 ├── auth/            # Login, refresh, logout, guards, decorators
 ├── usuarios/        # CRUD de usuários com bcrypt e soft delete
 ├── campeonatos/     # Gerenciamento de campeonatos
-├── temporadas/      # Temporadas vinculadas a campeonatos
+├── temporadas/      # Temporadas vinculadas a campeonatos (copiar fases)
 ├── grupos/          # Grupos de bolão (público/privado, código convite)
-└── grupo-usuario/   # Membros dos grupos (entrar, sair, remover)
+├── grupo-usuario/   # Membros dos grupos (entrar, sair, remover, alterar role)
+├── jogos/           # Jogos, fases, importação via API externa, sincronização
+├── palpites/        # Palpites (CRUD, lote), palpite dobrado, painel da rodada
+├── times/           # Times (criados automaticamente na importação)
+└── ranking/         # Pontuação calculada on-the-fly, ranking por grupo/fase
 ```
 
 ## Modelos Prisma
 
-- Campeonato → Temporada → Grupo → GrupoUsuario
+- Campeonato → Temporada → Fase → Jogo
+- Temporada → Grupo → GrupoUsuario
+- Jogo → Palpite, PalpiteDobrado
+- Jogo → Time (timeCasa, timeFora — relações nomeadas)
 - Usuario (perfil: SUPER_ADMIN | USER)
 - GrupoUsuario (role: ADMIN | MEMBER)
-- RefreshToken
+- RefreshToken, RecuperacaoSenha
+- TokenDobro (fichas de palpite dobrado)
 
 ## Regras de Domínio
 
 - Criador do grupo sempre começa como ADMIN
 - Roles dentro do grupo são independentes do perfil global do usuário
 - Um usuário pode ser ADMIN em um grupo e MEMBER em outro
-- Palpites só podem ser feitos antes do jogo começar
-- Um usuário só pode participar uma vez por grupo
+- Palpites só podem ser feitos antes do jogo começar (status = AGENDADO)
+- Um usuário só pode ter 1 palpite por jogo
+- Jogos adiados (sem data definida) têm status ADIADO e dataHora null
+- Quando um jogo adiado recebe nova data, volta para AGENDADO com foiAdiado = true
+- Ranking é calculado on-the-fly (sem tabela de pontuação persistida)
+- Pontuação: acerto em cheio (10pts), acerto de resultado (5pts), acerto de gols de 1 time (3pts)
+- Palpite dobrado multiplica pontos por 2
+
+## Status de Jogo
+
+```
+AGENDADO → EM_ANDAMENTO → FINALIZADO
+AGENDADO → ADIADO → AGENDADO (remarcado)
+AGENDADO → CANCELADO
+ADIADO → CANCELADO
+EM_ANDAMENTO → CANCELADO
+```
+
+## Importação de Jogos (API Externa)
+
+- Fonte: API do ge.globo.com (pública, sem chave)
+- Horários retornados em BRT (sem timezone) — convertidos para UTC com `-03:00`
+- Jogos sem data (`data_realizacao: null`) são importados como ADIADO
+- Validação: datas antes de 2020 são tratadas como inválidas → status ADIADO
+- Sincronização de placares: atualiza status e placar de jogos com fonteResultado = API_EXTERNA
+- Times são criados automaticamente na primeira importação (com escudo da API)
+
+## Endpoint de Listagem de Jogos
+
+- `GET /fases/:faseId/jogos` — sem `?rodada` retorna a rodada atual (menor rodada com jogos não finalizados)
+- `GET /fases/:faseId/jogos?rodada=5` — retorna rodada específica
+- `GET /fases/:faseId/jogos?status=ADIADO` — retorna todos os jogos adiados da fase
+- Resposta inclui `rodadaAtual`, dados dos times (nome, sigla, escudo) e `foiAdiado`
 
 ## Roadmap de Módulos
 
@@ -67,9 +106,10 @@ src/modules/
 4. ~~Temporadas~~ ✅
 5. ~~Grupos~~ ✅
 6. ~~GrupoUsuario~~ ✅
-7. Jogos — Jogos pertencem à temporada, contêm placar e status
-8. Palpites — Usuário aposta em jogos, apenas 1 por jogo, não pode apostar após início
-9. Ranking — Pontuação baseada em acertos, ranking por grupo
+7. ~~Jogos~~ ✅
+8. ~~Palpites~~ ✅
+9. ~~Ranking~~ ✅
+10. Planos/Monetização — Limites por plano (max participantes, etc.)
 
 ## Idioma
 
