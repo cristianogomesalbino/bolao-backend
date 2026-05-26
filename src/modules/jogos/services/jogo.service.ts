@@ -618,7 +618,7 @@ export class JogoService {
 
     const jogos = await this.jogoRepo.buscarPorFase(faseId);
     const jogosComExterno = jogos.filter(
-      (j: any) => j.externoId != null && j.fonteResultado === 'API_EXTERNA',
+      (j: any) => j.externoId != null && j.fonteResultado === 'API_EXTERNA' && j.status !== 'FINALIZADO' && j.status !== 'CANCELADO',
     );
 
     if (jogosComExterno.length === 0) {

@@ -1,10 +1,45 @@
 import { TemporadaPresenter } from './temporada.presenter';
 
+interface GrupoBase {
+  id: string;
+  nome: string;
+  icone: string | null;
+  temporadaId: string;
+  privado: boolean;
+  codigoConvite: string | null;
+  permitirPalpiteAutomatico: boolean;
+  maxParticipantes: number;
+  permitirPalpiteDobrado: boolean;
+  ativo: boolean;
+  dataCriacao: Date;
+  criadoPor: string;
+}
+
+interface TemporadaRelacao {
+  id: string;
+  ano: number;
+  campeonatoId: string;
+  dataCriacao: Date;
+  campeonato?: {
+    id: string;
+    nome: string;
+    dataCriacao: Date;
+    atualizadoEm: Date;
+  };
+}
+
+interface GrupoComRelacoes extends GrupoBase {
+  ehMembro?: boolean;
+  _count?: { usuarios: number };
+  temporada?: TemporadaRelacao;
+}
+
 export class GrupoPresenter {
-  static toHttp(grupo: any) {
-    return {
+  static toHttp(grupo: GrupoComRelacoes) {
+    const resultado: Record<string, unknown> = {
       id: grupo.id,
       nome: grupo.nome,
+      icone: grupo.icone ?? null,
       temporadaId: grupo.temporadaId,
       privado: grupo.privado,
       codigoConvite: grupo.codigoConvite,
@@ -14,20 +49,26 @@ export class GrupoPresenter {
       ativo: grupo.ativo,
       dataCriacao: grupo.dataCriacao,
       criadoPor: grupo.criadoPor,
-      ...(grupo.ehMembro !== undefined && { ehMembro: grupo.ehMembro }),
-      ...(grupo._count?.usuarios !== undefined && {
-        totalParticipantes: grupo._count.usuarios,
-      }),
-      ...(grupo.temporada && {
-        temporada: TemporadaPresenter.toHttp(grupo.temporada),
-      }),
     };
+
+    if (grupo.ehMembro !== undefined) {
+      resultado.ehMembro = grupo.ehMembro;
+    }
+    if (grupo._count?.usuarios !== undefined) {
+      resultado.totalParticipantes = grupo._count.usuarios;
+    }
+    if (grupo.temporada) {
+      resultado.temporada = TemporadaPresenter.toHttp(grupo.temporada);
+    }
+
+    return resultado;
   }
 
-  static toHttpMembro(grupo: any) {
-    return {
+  static toHttpMembro(grupo: GrupoComRelacoes) {
+    const resultado: Record<string, unknown> = {
       id: grupo.id,
       nome: grupo.nome,
+      icone: grupo.icone ?? null,
       temporadaId: grupo.temporadaId,
       privado: grupo.privado,
       codigoConvite: grupo.codigoConvite,
@@ -38,25 +79,32 @@ export class GrupoPresenter {
       dataCriacao: grupo.dataCriacao,
       criadoPor: grupo.criadoPor,
       ehMembro: true,
-      ...(grupo._count?.usuarios !== undefined && {
-        totalParticipantes: grupo._count.usuarios,
-      }),
-      ...(grupo.temporada && {
-        temporada: TemporadaPresenter.toHttp(grupo.temporada),
-      }),
     };
+
+    if (grupo._count?.usuarios !== undefined) {
+      resultado.totalParticipantes = grupo._count.usuarios;
+    }
+    if (grupo.temporada) {
+      resultado.temporada = TemporadaPresenter.toHttp(grupo.temporada);
+    }
+
+    return resultado;
   }
 
-  static toHttpBasico(grupo: any) {
-    return {
+  static toHttpBasico(grupo: GrupoComRelacoes) {
+    const resultado: Record<string, unknown> = {
       id: grupo.id,
       nome: grupo.nome,
+      icone: grupo.icone ?? null,
       privado: grupo.privado,
       maxParticipantes: grupo.maxParticipantes,
-      ...(grupo._count?.usuarios !== undefined && {
-        totalParticipantes: grupo._count.usuarios,
-      }),
       ehMembro: false,
     };
+
+    if (grupo._count?.usuarios !== undefined) {
+      resultado.totalParticipantes = grupo._count.usuarios;
+    }
+
+    return resultado;
   }
 }
