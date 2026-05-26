@@ -30,7 +30,8 @@ export class PalpiteService {
   async criar(jogoId: string, dto: CriarPalpiteDto, usuarioId: string) {
     const jogo = await this.jogoRepo.buscarPorId(jogoId);
     if (!jogo) throw new JogoNaoEncontradoError();
-    if (jogo.status !== 'AGENDADO') throw new JogoNaoAceitaPalpitesError();
+    if (jogo.status !== 'AGENDADO' && jogo.status !== 'ADIADO')
+      throw new JogoNaoAceitaPalpitesError();
 
     const existente = await this.palpiteRepo.buscarPorUsuarioEJogo(usuarioId, jogoId);
     if (existente) throw new PalpiteJaExisteError();
@@ -47,7 +48,8 @@ export class PalpiteService {
     const palpite = await this.buscarEValidarOwnership(id, usuarioId);
 
     const jogo = await this.jogoRepo.buscarPorId(palpite.jogoId);
-    if (jogo.status !== 'AGENDADO') throw new JogoNaoAceitaPalpitesError();
+    if (jogo.status !== 'AGENDADO' && jogo.status !== 'ADIADO')
+      throw new JogoNaoAceitaPalpitesError();
 
     return this.palpiteRepo.atualizar(id, {
       golsCasa: dto.golsCasa,
@@ -59,7 +61,8 @@ export class PalpiteService {
     const palpite = await this.buscarEValidarOwnership(id, usuarioId);
 
     const jogo = await this.jogoRepo.buscarPorId(palpite.jogoId);
-    if (jogo.status !== 'AGENDADO') throw new JogoNaoAceitaPalpitesError();
+    if (jogo.status !== 'AGENDADO' && jogo.status !== 'ADIADO')
+      throw new JogoNaoAceitaPalpitesError();
 
     await this.palpiteRepo.remover(id);
   }
@@ -72,6 +75,10 @@ export class PalpiteService {
     if (!palpite) throw new PalpiteNaoEncontradoError();
 
     return palpite;
+  }
+
+  async buscarMeusPalpitesPorJogos(jogoIds: string[], usuarioId: string) {
+    return this.palpiteRepo.buscarPorUsuarioEJogos(usuarioId, jogoIds);
   }
 
   async listarMeusPalpites(usuarioId: string, filtros?: { temporadaId?: string }) {
@@ -91,6 +98,41 @@ export class PalpiteService {
 
     const meuPalpite = await this.palpiteRepo.buscarPorUsuarioEJogo(usuarioId, jogoId);
     return meuPalpite ? [meuPalpite] : [];
+  }
+
+  async buscarEstatisticasPorJogo(jogoId: string, grupoId: string) {
+    const jogo = await this.jogoRepo.buscarPorId(jogoId);
+    if (!jogo) throw new JogoNaoEncontradoError();
+
+    const membros = await this.grupoUsuarioRepo.listarPorGrupo(grupoId);
+    const membrosIds = membros.map((m) => m.usuario.id);
+
+    const palpites = await this.palpiteRepo.listarPorJogoEUsuarios(
+      jogoId,
+      membrosIds,
+    );
+
+    let vitoriaCasa = 0;
+    let empate = 0;
+    let vitoriaFora = 0;
+
+    for (const p of palpites) {
+      if (p.golsCasa > p.golsFora) vitoriaCasa++;
+      else if (p.golsCasa === p.golsFora) empate++;
+      else vitoriaFora++;
+    }
+
+    const total = palpites.length;
+
+    return {
+      total,
+      vitoriaCasa,
+      empate,
+      vitoriaFora,
+      percentualCasa: total > 0 ? Math.round((vitoriaCasa / total) * 100) : 0,
+      percentualEmpate: total > 0 ? Math.round((empate / total) * 100) : 0,
+      percentualFora: total > 0 ? Math.round((vitoriaFora / total) * 100) : 0,
+    };
   }
 
   async criarLote(palpites: PalpiteItemDto[], usuarioId: string) {
@@ -113,7 +155,7 @@ export class PalpiteService {
         resultados.push({ jogoId: item.jogoId, sucesso: false, erro: JOGOS.MENSAGENS.JOGO_NAO_ENCONTRADO });
         continue;
       }
-      if (jogo.status !== 'AGENDADO') {
+      if (jogo.status !== 'AGENDADO' && jogo.status !== 'ADIADO') {
         resultados.push({ jogoId: item.jogoId, sucesso: false, erro: PALPITES.MENSAGENS.JOGO_NAO_ACEITA_PALPITES });
         continue;
       }
