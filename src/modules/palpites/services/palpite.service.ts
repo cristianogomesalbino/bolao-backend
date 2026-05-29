@@ -1,16 +1,21 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { PALPITES } from '../palpites.constants';
 import { JOGOS } from '../../jogos/jogos.constants';
+import { GRUPOS } from '../../grupos/grupos.constants';
 import { GRUPO_USUARIO } from '../../grupo-usuario/grupo-usuario.constants';
 import type { PalpiteRepository } from '../repositories/palpite.repository.interface';
 import type { JogoRepository } from '../../jogos/repositories/jogo.repository.interface';
+import type { FaseRepository } from '../../jogos/repositories/fase.repository.interface';
+import type { GrupoRepository } from '../../grupos/repositories/grupo.repository.interface';
 import type { GrupoUsuarioRepository } from '../../grupo-usuario/repositories/grupo-usuario.repository.interface';
 import { JogoNaoEncontradoError } from '../../../common/errors/domain-errors/jogos.errors';
+import { GrupoNaoEncontradoError } from '../../../common/errors/domain-errors/grupos.errors';
 import {
   PalpiteNaoEncontradoError,
   JogoNaoAceitaPalpitesError,
   PalpiteJaExisteError,
   PalpiteNaoPertenceAoUsuarioError,
+  JogoNaoPertenceAoGrupoError,
 } from '../../../common/errors/domain-errors/palpites.errors';
 import { CriarPalpiteDto } from '../dto/criar-palpite.dto';
 import { AtualizarPalpiteDto } from '../dto/atualizar-palpite.dto';
@@ -25,6 +30,10 @@ export class PalpiteService {
     private readonly jogoRepo: JogoRepository,
     @Inject(GRUPO_USUARIO.REPOSITORY_TOKEN)
     private readonly grupoUsuarioRepo: GrupoUsuarioRepository,
+    @Inject(JOGOS.FASE_REPOSITORY_TOKEN)
+    private readonly faseRepo: FaseRepository,
+    @Inject(GRUPOS.REPOSITORY_TOKEN)
+    private readonly grupoRepo: GrupoRepository,
   ) {}
 
   async criar(jogoId: string, dto: CriarPalpiteDto, usuarioId: string) {
@@ -86,6 +95,8 @@ export class PalpiteService {
     const jogo = await this.jogoRepo.buscarPorId(jogoId);
     if (!jogo) throw new JogoNaoEncontradoError();
 
+    await this.validarJogoPertenceAoGrupo(jogo, grupoId);
+
     const membros = await this.grupoUsuarioRepo.listarPorGrupo(grupoId);
     const membrosIds = membros.map((m) => m.usuario.id);
 
@@ -100,6 +111,8 @@ export class PalpiteService {
   async buscarEstatisticasPorJogo(jogoId: string, grupoId: string) {
     const jogo = await this.jogoRepo.buscarPorId(jogoId);
     if (!jogo) throw new JogoNaoEncontradoError();
+
+    await this.validarJogoPertenceAoGrupo(jogo, grupoId);
 
     const membros = await this.grupoUsuarioRepo.listarPorGrupo(grupoId);
     const membrosIds = membros.map((m) => m.usuario.id);
@@ -172,6 +185,16 @@ export class PalpiteService {
     }
 
     return resultados;
+  }
+
+  private async validarJogoPertenceAoGrupo(jogo: any, grupoId: string) {
+    const grupo = await this.grupoRepo.buscarPorId(grupoId);
+    if (!grupo) throw new GrupoNaoEncontradoError();
+
+    const fase = await this.faseRepo.buscarPorId(jogo.faseId);
+    if (!fase || fase.temporadaId !== grupo.temporadaId) {
+      throw new JogoNaoPertenceAoGrupoError();
+    }
   }
 
   private async buscarEValidarOwnership(id: string, usuarioId: string) {

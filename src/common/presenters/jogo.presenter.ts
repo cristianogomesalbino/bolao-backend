@@ -1,4 +1,18 @@
 export class JogoPresenter {
+  static toHttpResumido(jogo: any) {
+    return {
+      id: jogo.id,
+      rodada: jogo.rodada,
+      status: jogo.status,
+      dataHora: jogo.dataHora,
+      golsCasa: jogo.golsCasa,
+      golsFora: jogo.golsFora,
+      foiAdiado: jogo.foiAdiado,
+      timeCasa: jogo.timeCasa ? { id: jogo.timeCasa.id, nome: jogo.timeCasa.nome, sigla: jogo.timeCasa.sigla, escudo: jogo.timeCasa.escudo } : null,
+      timeFora: jogo.timeFora ? { id: jogo.timeFora.id, nome: jogo.timeFora.nome, sigla: jogo.timeFora.sigla, escudo: jogo.timeFora.escudo } : null,
+    };
+  }
+
   static toHttp(jogo: any, tipoFase?: string) {
     const base = {
       id: jogo.id,

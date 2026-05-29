@@ -240,18 +240,7 @@ export class JogoService {
     const vencedorId =
       dto.golsCasa > dto.golsFora ? jogo.timeCasaId : jogo.timeForaId;
 
-    return this.jogoRepo.atualizar(jogo.id, {
-      status: 'FINALIZADO',
-      golsCasa: dto.golsCasa,
-      golsFora: dto.golsFora,
-      temProrrogacao: false,
-      golsProrrogacaoCasa: null,
-      golsProrrogacaoFora: null,
-      temPenaltis: false,
-      penaltisCasa: null,
-      penaltisFora: null,
-      vencedorId,
-    });
+    return this.jogoRepo.atualizar(jogo.id, this.buildUpdateFinalizado(dto, vencedorId));
   }
 
   private async finalizarMataMataComEmpate(jogo: any, dto: FinalizarJogoDto) {
@@ -640,15 +629,14 @@ export class JogoService {
       );
       if (resultado.atualizado) {
         sincronizados++;
-        const jogoAtualizado = await this.jogoRepo.buscarPorId(jogo.id);
         jogosAtualizados.push({
-          id: jogoAtualizado.id,
-          timeCasa: jogoAtualizado.timeCasa?.sigla || jogoAtualizado.timeCasa?.nome,
-          timeFora: jogoAtualizado.timeFora?.sigla || jogoAtualizado.timeFora?.nome,
-          status: jogoAtualizado.status,
-          golsCasa: jogoAtualizado.golsCasa,
-          golsFora: jogoAtualizado.golsFora,
-          rodada: jogoAtualizado.rodada,
+          id: jogo.id,
+          timeCasa: jogo.timeCasa?.sigla || jogo.timeCasa?.nome,
+          timeFora: jogo.timeFora?.sigla || jogo.timeFora?.nome,
+          status: resultado.novoStatus ?? jogo.status,
+          golsCasa: resultado.golsCasa ?? jogo.golsCasa,
+          golsFora: resultado.golsFora ?? jogo.golsFora,
+          rodada: jogo.rodada,
           horarioAlterado: resultado.horarioAlterado || false,
           horarioAnterior: resultado.horarioAnterior || null,
           horarioNovo: resultado.horarioNovo || null,
@@ -690,7 +678,7 @@ export class JogoService {
     jogo: any,
     jogoApiMap: Map<string, any>,
     apiDisponivel: boolean,
-  ): Promise<{ atualizado: boolean; horarioAlterado?: boolean; horarioAnterior?: string | null; horarioNovo?: string | null }> {
+  ): Promise<{ atualizado: boolean; novoStatus?: string; golsCasa?: number | null; golsFora?: number | null; horarioAlterado?: boolean; horarioAnterior?: string | null; horarioNovo?: string | null }> {
     const jogoApi = jogoApiMap.get(jogo.externoId);
 
     if (!jogoApi) {
@@ -704,11 +692,12 @@ export class JogoService {
     const novoStatus = this.definirStatusFinal(jogo, jogoApi?.status);
     const updateData: any = { status: novoStatus };
     let horarioAlterado = false;
-    let horarioAnterior: string | null = jogo.dataHora ? new Date(jogo.dataHora).toISOString() : null;
+    let horarioAnterior: string | null = null;
     let horarioNovo: string | null = null;
 
     // Jogo adiado que recebeu data na API → atualizar dataHora e voltar para AGENDADO
     if (jogo.status === 'ADIADO' && jogoApi?.dataHora) {
+      horarioAnterior = jogo.dataHora ? new Date(jogo.dataHora).toISOString() : null;
       updateData.dataHora = new Date(jogoApi.dataHora);
       updateData.status = 'AGENDADO';
       updateData.foiAdiado = true;
@@ -721,6 +710,7 @@ export class JogoService {
       const dataApi = new Date(jogoApi.dataHora).getTime();
       const dataBanco = new Date(jogo.dataHora).getTime();
       if (dataApi !== dataBanco) {
+        horarioAnterior = new Date(jogo.dataHora).toISOString();
         updateData.dataHora = new Date(jogoApi.dataHora);
         horarioAlterado = true;
         horarioNovo = updateData.dataHora.toISOString();
@@ -733,7 +723,15 @@ export class JogoService {
 
     if (novoStatus !== jogo.status || jogoApi) {
       await this.jogoRepo.atualizar(jogo.id, updateData);
-      return { atualizado: true, horarioAlterado, horarioAnterior, horarioNovo };
+      return {
+        atualizado: true,
+        novoStatus: updateData.status,
+        golsCasa: updateData.golsCasa ?? null,
+        golsFora: updateData.golsFora ?? null,
+        horarioAlterado,
+        horarioAnterior,
+        horarioNovo,
+      };
     }
 
     return { atualizado: false };

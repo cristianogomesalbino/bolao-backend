@@ -2,12 +2,16 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { PalpiteService } from '@src/modules/palpites/services/palpite.service';
 import { InMemoryPalpiteRepository } from '@src/modules/palpites/repositories/in-memory-palpite.repository';
 import { InMemoryJogoRepository } from '@src/modules/jogos/repositories/in-memory-jogo.repository';
+import { InMemoryFaseRepository } from '@src/modules/jogos/repositories/in-memory-fase.repository';
+import { InMemoryGrupoRepository } from '@src/modules/grupos/repositories/in-memory-grupo.repository';
 import { InMemoryGrupoUsuarioRepository } from '@src/modules/grupo-usuario/repositories/in-memory-grupo-usuario.repository';
 
 describe('PalpiteService — criarLote', () => {
   let service: PalpiteService;
   let palpiteRepo: InMemoryPalpiteRepository;
   let jogoRepo: InMemoryJogoRepository;
+  let faseRepo: InMemoryFaseRepository;
+  let grupoRepo: InMemoryGrupoRepository;
   let grupoUsuarioRepo: InMemoryGrupoUsuarioRepository;
 
   const userId = 'user-1';
@@ -51,6 +55,8 @@ describe('PalpiteService — criarLote', () => {
   beforeEach(() => {
     palpiteRepo = new InMemoryPalpiteRepository();
     jogoRepo = new InMemoryJogoRepository();
+    faseRepo = new InMemoryFaseRepository();
+    grupoRepo = new InMemoryGrupoRepository();
     grupoUsuarioRepo = new InMemoryGrupoUsuarioRepository();
     jogoRepo.items = [
       { ...jogoAgendado1 },
@@ -59,7 +65,11 @@ describe('PalpiteService — criarLote', () => {
       { ...jogoEmAndamento },
     ];
 
-    service = new PalpiteService(palpiteRepo, jogoRepo, grupoUsuarioRepo);
+    faseRepo.items = [
+      { id: 'fase-1', temporadaId: 'temporada-1', nome: 'Fase 1', tipo: 'PONTOS_CORRIDOS', ordem: 1 },
+    ];
+
+    service = new PalpiteService(palpiteRepo, jogoRepo, grupoUsuarioRepo, faseRepo, grupoRepo);
   });
 
   it('deve criar múltiplos palpites com sucesso', async () => {

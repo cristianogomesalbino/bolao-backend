@@ -135,7 +135,7 @@ describe('RankingService', () => {
 
       const jogo = criarJogo({ golsCasa: 2, golsFora: 1 });
 
-      // Alice acerta em cheio (10 pts)
+      // Alice acerta em cheio (3 pts)
       criarPalpite(userId1, jogo.id, 2, 1);
       // Bob erra tudo (0 pts)
       criarPalpite(userId2, jogo.id, 0, 3);
@@ -144,7 +144,7 @@ describe('RankingService', () => {
 
       expect(ranking).toHaveLength(2);
       expect(ranking[0].usuarioId).toBe(userId1);
-      expect(ranking[0].pontuacaoTotal).toBe(10);
+      expect(ranking[0].pontuacaoTotal).toBe(3);
       expect(ranking[0].acertosEmCheio).toBe(1);
       expect(ranking[0].posicao).toBe(1);
       expect(ranking[1].usuarioId).toBe(userId2);
@@ -196,14 +196,14 @@ describe('RankingService', () => {
       const jogo1 = criarJogo({ faseId: 'fase-1', golsCasa: 2, golsFora: 1 });
       const jogo2 = criarJogo({ faseId: 'fase-2', golsCasa: 0, golsFora: 0 });
 
-      // Alice acerta em cheio no jogo 1 (10 pts) e acerta resultado no jogo 2 (5 pts)
+      // Alice acerta em cheio no jogo 1 (3 pts) e acerta resultado no jogo 2 (1 pt)
       criarPalpite(userId1, jogo1.id, 2, 1);
       criarPalpite(userId1, jogo2.id, 1, 1);
 
       const ranking = await service.obterRankingGeral(grupoId);
 
       expect(ranking).toHaveLength(1);
-      expect(ranking[0].pontuacaoTotal).toBe(15);
+      expect(ranking[0].pontuacaoTotal).toBe(4);
       expect(ranking[0].acertosEmCheio).toBe(1);
       expect(ranking[0].acertosDeResultado).toBe(1);
     });
@@ -235,14 +235,14 @@ describe('RankingService', () => {
 
       const alice = detalhamento.find((d) => d.usuarioId === userId1)!;
       expect(alice.categoriaAcerto).toBe('ACERTO_EM_CHEIO');
-      expect(alice.pontosBase).toBe(10);
+      expect(alice.pontosBase).toBe(3);
       expect(alice.multiplicador).toBe(1);
-      expect(alice.pontosFinais).toBe(10);
+      expect(alice.pontosFinais).toBe(3);
       expect(alice.dobrado).toBe(false);
 
       const bob = detalhamento.find((d) => d.usuarioId === userId2)!;
       expect(bob.categoriaAcerto).toBe('ACERTO_DE_RESULTADO');
-      expect(bob.pontosBase).toBe(5);
+      expect(bob.pontosBase).toBe(1);
     });
 
     it('deve retornar pontuação null para jogo não finalizado', async () => {
@@ -293,7 +293,7 @@ describe('RankingService', () => {
 
       expect(detalhamento[0].dobrado).toBe(true);
       expect(detalhamento[0].multiplicador).toBe(2);
-      expect(detalhamento[0].pontosFinais).toBe(20);
+      expect(detalhamento[0].pontosFinais).toBe(6);
     });
   });
 
@@ -436,7 +436,7 @@ describe('RankingService', () => {
 
       const jogo = criarJogo({ golsCasa: 2, golsFora: 1 });
 
-      // Ambos acertam resultado (5 pts base), mas Alice tem dobro
+      // Ambos acertam resultado (1 pt base), mas Alice tem dobro
       criarPalpite(userId1, jogo.id, 1, 0);
       criarPalpite(userId2, jogo.id, 3, 0);
       criarPalpiteDobrado(userId1, jogo.id);
@@ -446,8 +446,8 @@ describe('RankingService', () => {
       const alice = ranking.find((r) => r.usuarioId === userId1)!;
       const bob = ranking.find((r) => r.usuarioId === userId2)!;
 
-      expect(alice.pontuacaoTotal).toBe(10); // 5 * 2
-      expect(bob.pontuacaoTotal).toBe(5);    // 5 * 1
+      expect(alice.pontuacaoTotal).toBe(2); // 1 * 2
+      expect(bob.pontuacaoTotal).toBe(1);    // 1 * 1
       expect(alice.posicao).toBe(1);
       expect(bob.posicao).toBe(2);
     });
@@ -561,11 +561,11 @@ describe('RankingService', () => {
       const jogo1 = criarJogo({ golsCasa: 2, golsFora: 1 });
       const jogo2 = criarJogo({ golsCasa: 0, golsFora: 0 });
 
-      // Alice: acerto em cheio (10) + erro (0) = 10
+      // Alice: acerto em cheio (3) + erro (0) = 3
       criarPalpite(userId1, jogo1.id, 2, 1);
       criarPalpite(userId1, jogo2.id, 1, 0);
 
-      // Bob: acerto resultado (5) + acerto resultado (5) = 10
+      // Bob: acerto resultado (1) + acerto resultado (1) = 2
       criarPalpite(userId2, jogo1.id, 1, 0);
       criarPalpite(userId2, jogo2.id, 1, 1);
 

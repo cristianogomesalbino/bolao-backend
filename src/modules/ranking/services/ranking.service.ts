@@ -27,7 +27,6 @@ interface RankingEntry {
   pontuacaoTotal: number;
   acertosEmCheio: number;
   acertosDeResultado: number;
-  acertosDeGolsUmTime: number;
   errosTotais: number;
 }
 
@@ -377,7 +376,6 @@ export class RankingService {
       let pontuacaoTotal = 0;
       let acertosEmCheio = 0;
       let acertosDeResultado = 0;
-      let acertosDeGolsUmTime = 0;
       let errosTotais = 0;
 
       for (const jogo of jogosFinalizados) {
@@ -402,9 +400,6 @@ export class RankingService {
           case 'ACERTO_DE_RESULTADO':
             acertosDeResultado++;
             break;
-          case 'ACERTO_DE_GOLS_UM_TIME':
-            acertosDeGolsUmTime++;
-            break;
           case 'ERRO_TOTAL':
             errosTotais++;
             break;
@@ -417,7 +412,6 @@ export class RankingService {
         pontuacaoTotal,
         acertosEmCheio,
         acertosDeResultado,
-        acertosDeGolsUmTime,
         errosTotais,
       };
     });

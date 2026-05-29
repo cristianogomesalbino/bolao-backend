@@ -48,7 +48,6 @@ export class GrupoPresenter {
       permitirPalpiteDobrado: grupo.permitirPalpiteDobrado,
       ativo: grupo.ativo,
       dataCriacao: grupo.dataCriacao,
-      criadoPor: grupo.criadoPor,
     };
 
     if (grupo.ehMembro !== undefined) {
@@ -77,7 +76,6 @@ export class GrupoPresenter {
       permitirPalpiteDobrado: grupo.permitirPalpiteDobrado,
       ativo: grupo.ativo,
       dataCriacao: grupo.dataCriacao,
-      criadoPor: grupo.criadoPor,
       ehMembro: true,
     };
 
@@ -89,6 +87,13 @@ export class GrupoPresenter {
     }
 
     return resultado;
+  }
+
+  static toHttpAdmin(grupo: GrupoComRelacoes) {
+    return {
+      ...GrupoPresenter.toHttp(grupo),
+      criadoPor: grupo.criadoPor,
+    };
   }
 
   static toHttpBasico(grupo: GrupoComRelacoes) {

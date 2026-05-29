@@ -1,0 +1,8 @@
+#!/bin/bash
+# Hook pre-commit: gera docs/endpoints.md automaticamente antes de cada commit
+
+PROJECT_ROOT="$(git rev-parse --show-toplevel)"
+
+node "$PROJECT_ROOT/scripts/generate-endpoints.js" > /dev/null 2>&1
+
+exit 0

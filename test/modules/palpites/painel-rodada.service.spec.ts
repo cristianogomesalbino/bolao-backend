@@ -104,7 +104,8 @@ describe('PainelRodadaService', () => {
     expect(result.fase.tipo).toBe('PONTOS_CORRIDOS');
     expect(result.saldoTokensDobro).toBe(0);
     expect(result.permitirPalpiteDobrado).toBe(true);
-    expect(result.jogos).toHaveLength(3);
+    // Sem filtro de rodada, retorna a rodada atual (rodada 1 = 2 jogos)
+    expect(result.jogos).toHaveLength(2);
   });
 
   it('deve filtrar jogos por rodada', async () => {

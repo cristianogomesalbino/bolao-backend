@@ -66,12 +66,12 @@ src/modules/
 - Criador do grupo sempre começa como ADMIN
 - Roles dentro do grupo são independentes do perfil global do usuário
 - Um usuário pode ser ADMIN em um grupo e MEMBER em outro
-- Palpites só podem ser feitos antes do jogo começar (status = AGENDADO)
+- Palpites podem ser feitos em jogos com status AGENDADO ou ADIADO
 - Um usuário só pode ter 1 palpite por jogo
 - Jogos adiados (sem data definida) têm status ADIADO e dataHora null
 - Quando um jogo adiado recebe nova data, volta para AGENDADO com foiAdiado = true
 - Ranking é calculado on-the-fly (sem tabela de pontuação persistida)
-- Pontuação: acerto em cheio (10pts), acerto de resultado (5pts), acerto de gols de 1 time (3pts)
+- Pontuação: acerto em cheio (3pts), acerto de resultado (1pt), erro (0pts)
 - Palpite dobrado multiplica pontos por 2
 
 ## Status de Jogo

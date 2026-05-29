@@ -21,6 +21,7 @@ import { PalpiteService } from '../services/palpite.service';
 import { CriarPalpiteDto } from '../dto/criar-palpite.dto';
 import { AtualizarPalpiteDto } from '../dto/atualizar-palpite.dto';
 import { CriarPalpiteLoteDto } from '../dto/criar-palpite-lote.dto';
+import { BuscarPalpitesPorJogosDto } from '../dto/buscar-palpites-por-jogos.dto';
 import { ParseUUIDCustomPipe } from '../../../common/pipes/parse-uuid-custom.pipe';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 import { GroupRoleGuard } from '../../../common/guards/group-role.guard';
@@ -91,11 +92,11 @@ export class PalpiteController {
   @ApiResponse({ status: 200, description: 'Lista de palpites.' })
   @Post('meus-palpites/por-jogos')
   async buscarMeusPalpitesPorJogos(
-    @Body() body: { jogoIds: string[] },
+    @Body() dto: BuscarPalpitesPorJogosDto,
     @CurrentUser() user: { id: string },
   ) {
     const palpites = await this.palpiteService.buscarMeusPalpitesPorJogos(
-      body.jogoIds,
+      dto.jogoIds,
       user.id,
     );
     return palpites.map((p) => PalpitePresenter.toHttp(p));
@@ -109,20 +110,7 @@ export class PalpiteController {
     @Query('temporadaId') temporadaId?: string,
   ) {
     const palpites = await this.palpiteService.listarMeusPalpites(user.id, { temporadaId });
-    return palpites.map((p: any) => ({
-      ...PalpitePresenter.toHttp(p),
-      jogo: p.jogo ? {
-        id: p.jogo.id,
-        rodada: p.jogo.rodada,
-        status: p.jogo.status,
-        dataHora: p.jogo.dataHora,
-        golsCasa: p.jogo.golsCasa,
-        golsFora: p.jogo.golsFora,
-        foiAdiado: p.jogo.foiAdiado,
-        timeCasa: p.jogo.timeCasa ? { id: p.jogo.timeCasa.id, nome: p.jogo.timeCasa.nome, sigla: p.jogo.timeCasa.sigla, escudo: p.jogo.timeCasa.escudo } : null,
-        timeFora: p.jogo.timeFora ? { id: p.jogo.timeFora.id, nome: p.jogo.timeFora.nome, sigla: p.jogo.timeFora.sigla, escudo: p.jogo.timeFora.escudo } : null,
-      } : null,
-    }));
+    return palpites.map((p) => PalpitePresenter.toHttpComJogo(p));
   }
 
   @ApiOperation({ summary: 'Listar palpites de um jogo no contexto de grupo' })

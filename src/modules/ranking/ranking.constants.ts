@@ -8,9 +8,8 @@ export const RANKING = {
     PONTUACAO_PROCESSADA: 'Pontuação processada com sucesso',
   },
   PONTOS: {
-    ACERTO_EM_CHEIO: 10,
-    ACERTO_DE_RESULTADO: 5,
-    ACERTO_DE_GOLS_UM_TIME: 3,
+    ACERTO_EM_CHEIO: 3,
+    ACERTO_DE_RESULTADO: 1,
     ERRO_TOTAL: 0,
   },
   MULTIPLICADOR_DOBRO: 2,

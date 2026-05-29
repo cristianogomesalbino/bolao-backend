@@ -3,6 +3,8 @@ import fc from 'fast-check';
 import { PalpiteService } from '@src/modules/palpites/services/palpite.service';
 import { InMemoryPalpiteRepository } from '@src/modules/palpites/repositories/in-memory-palpite.repository';
 import { InMemoryJogoRepository } from '@src/modules/jogos/repositories/in-memory-jogo.repository';
+import { InMemoryFaseRepository } from '@src/modules/jogos/repositories/in-memory-fase.repository';
+import { InMemoryGrupoRepository } from '@src/modules/grupos/repositories/in-memory-grupo.repository';
 import { InMemoryGrupoUsuarioRepository } from '@src/modules/grupo-usuario/repositories/in-memory-grupo-usuario.repository';
 import {
   JogoNaoAceitaPalpitesError,
@@ -15,6 +17,8 @@ describe('PalpiteService — Property-Based Tests', () => {
   let service: PalpiteService;
   let palpiteRepo: InMemoryPalpiteRepository;
   let jogoRepo: InMemoryJogoRepository;
+  let faseRepo: InMemoryFaseRepository;
+  let grupoRepo: InMemoryGrupoRepository;
   let grupoUsuarioRepo: InMemoryGrupoUsuarioRepository;
 
   const jogoAgendado = {
@@ -58,12 +62,22 @@ describe('PalpiteService — Property-Based Tests', () => {
   beforeEach(() => {
     palpiteRepo = new InMemoryPalpiteRepository();
     jogoRepo = new InMemoryJogoRepository();
+    faseRepo = new InMemoryFaseRepository();
+    grupoRepo = new InMemoryGrupoRepository();
     grupoUsuarioRepo = new InMemoryGrupoUsuarioRepository();
     jogoRepo.items = [
       { ...jogoAgendado },
       { ...jogoEmAndamento },
       { ...jogoFinalizado },
       { ...jogoCancelado },
+    ];
+
+    faseRepo.items = [
+      { id: 'fase-1', temporadaId: 'temporada-1', nome: 'Fase 1', tipo: 'PONTOS_CORRIDOS', ordem: 1 },
+    ];
+
+    grupoRepo.items = [
+      { id: 'grupo-1', nome: 'Grupo 1', temporadaId: 'temporada-1', privado: false, codigoConvite: null, permitirPalpiteAutomatico: false, maxParticipantes: 50, permitirPalpiteDobrado: false, criadoPor: 'user-1', ativo: true, dataCriacao: new Date() },
     ];
 
     grupoUsuarioRepo.usuarios = [
@@ -75,7 +89,7 @@ describe('PalpiteService — Property-Based Tests', () => {
       { usuarioId: 'user-2', grupoId: 'grupo-1', role: 'MEMBER' },
     ];
 
-    service = new PalpiteService(palpiteRepo, jogoRepo, grupoUsuarioRepo);
+    service = new PalpiteService(palpiteRepo, jogoRepo, grupoUsuarioRepo, faseRepo, grupoRepo);
   });
 
   const arbGols = fc.nat({ max: 20 });
