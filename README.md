@@ -32,6 +32,7 @@ src/
 │   ├── decorators/         # @Public(), @CurrentUser(), @GroupRoles()
 │   ├── errors/             # ErrorFactory + DomainError + domain errors por módulo
 │   ├── filters/            # Exception filters (HTTP, Prisma, DomainException)
+│   ├── middleware/         # LoggerMiddleware (log de requisições HTTP)
 │   ├── pipes/              # Custom pipes (UUID validation)
 │   └── presenters/         # Presenters com toHttp() por entidade
 └── prisma/                 # Prisma service e configurações
@@ -84,6 +85,21 @@ sh dev build           # Rebuilda as imagens
 A API estará disponível em `http://localhost:3002`.
 
 Documentação Swagger em `http://localhost:3002/docs`.
+
+> Timezone dos containers: `America/Sao_Paulo` (logs e datas em BRT).
+
+## Logs
+
+Todas as requisições HTTP são logadas automaticamente via `LoggerMiddleware`:
+
+```
+[Nest] [HTTP] GET /campeonatos 200 - 12ms
+[Nest] [HTTP] POST /auth/login 401 - 5ms
+[Nest] [HTTP] GET /jogos/abc 404 - 3ms
+```
+
+- Nível `LOG` para 2xx/3xx, `WARN` para 4xx, `ERROR` para 5xx
+- Inclui método, URL completa (com query params), status code e tempo de resposta
 
 ## Produção
 

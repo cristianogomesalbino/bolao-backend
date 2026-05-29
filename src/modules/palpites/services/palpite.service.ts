@@ -71,10 +71,7 @@ export class PalpiteService {
     const jogo = await this.jogoRepo.buscarPorId(jogoId);
     if (!jogo) throw new JogoNaoEncontradoError();
 
-    const palpite = await this.palpiteRepo.buscarPorUsuarioEJogo(usuarioId, jogoId);
-    if (!palpite) throw new PalpiteNaoEncontradoError();
-
-    return palpite;
+    return this.palpiteRepo.buscarPorUsuarioEJogo(usuarioId, jogoId);
   }
 
   async buscarMeusPalpitesPorJogos(jogoIds: string[], usuarioId: string) {

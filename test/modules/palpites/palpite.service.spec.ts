@@ -209,10 +209,9 @@ describe('PalpiteService', () => {
       ).rejects.toThrow(JogoNaoEncontradoError);
     });
 
-    it('deve lançar PalpiteNaoEncontradoError se não tem palpite', async () => {
-      await expect(
-        service.buscarMeuPalpitePorJogo('jogo-1', userId),
-      ).rejects.toThrow(PalpiteNaoEncontradoError);
+    it('deve retornar null se não tem palpite', async () => {
+      const result = await service.buscarMeuPalpitePorJogo('jogo-1', userId);
+      expect(result).toBeNull();
     });
   });
 

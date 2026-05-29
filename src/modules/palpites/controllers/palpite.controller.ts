@@ -77,14 +77,14 @@ export class PalpiteController {
   }
 
   @ApiOperation({ summary: 'Buscar meu palpite por jogo' })
-  @ApiResponse({ status: 200, description: 'Palpite encontrado.' })
-  @ApiNotFoundResponse({ description: 'Palpite ou jogo não encontrado.' })
+  @ApiResponse({ status: 200, description: 'Palpite encontrado ou null se não existe.' })
   @Get('jogos/:jogoId/meu-palpite')
   async buscarMeuPalpite(
     @Param('jogoId', new ParseUUIDCustomPipe('jogoId')) jogoId: string,
     @CurrentUser() user: { id: string },
   ) {
-    return PalpitePresenter.toHttp(await this.palpiteService.buscarMeuPalpitePorJogo(jogoId, user.id));
+    const palpite = await this.palpiteService.buscarMeuPalpitePorJogo(jogoId, user.id);
+    return palpite ? PalpitePresenter.toHttp(palpite) : null;
   }
 
   @ApiOperation({ summary: 'Buscar meus palpites para múltiplos jogos' })
@@ -109,7 +109,20 @@ export class PalpiteController {
     @Query('temporadaId') temporadaId?: string,
   ) {
     const palpites = await this.palpiteService.listarMeusPalpites(user.id, { temporadaId });
-    return palpites.map((p) => PalpitePresenter.toHttp(p));
+    return palpites.map((p: any) => ({
+      ...PalpitePresenter.toHttp(p),
+      jogo: p.jogo ? {
+        id: p.jogo.id,
+        rodada: p.jogo.rodada,
+        status: p.jogo.status,
+        dataHora: p.jogo.dataHora,
+        golsCasa: p.jogo.golsCasa,
+        golsFora: p.jogo.golsFora,
+        foiAdiado: p.jogo.foiAdiado,
+        timeCasa: p.jogo.timeCasa ? { id: p.jogo.timeCasa.id, nome: p.jogo.timeCasa.nome, sigla: p.jogo.timeCasa.sigla, escudo: p.jogo.timeCasa.escudo } : null,
+        timeFora: p.jogo.timeFora ? { id: p.jogo.timeFora.id, nome: p.jogo.timeFora.nome, sigla: p.jogo.timeFora.sigla, escudo: p.jogo.timeFora.escudo } : null,
+      } : null,
+    }));
   }
 
   @ApiOperation({ summary: 'Listar palpites de um jogo no contexto de grupo' })

@@ -189,9 +189,8 @@ describe('PalpiteService — Property-Based Tests', () => {
         const criado = await service.criar('jogo-agendado', { golsCasa: gc, golsFora: gf }, 'user-1');
         await service.remover(criado.id, 'user-1');
 
-        await expect(
-          service.buscarMeuPalpitePorJogo('jogo-agendado', 'user-1'),
-        ).rejects.toThrow(PalpiteNaoEncontradoError);
+        const result = await service.buscarMeuPalpitePorJogo('jogo-agendado', 'user-1');
+        expect(result).toBeNull();
       }),
       { numRuns: 100 },
     );

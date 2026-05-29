@@ -31,6 +31,8 @@ O projeto roda 100% dentro de Docker. **NUNCA executar comandos npm/npx diretame
 - Rodar qualquer comando npx: `sh dev npx <comando>`
 - Logs: `sh dev logs`
 - Parar: `sh dev stop`
+- Timezone dos containers: `America/Sao_Paulo` (BRT)
+- Logging HTTP automático via `LoggerMiddleware` (método, URL, status, tempo)
 
 ## Estrutura de Módulos
 

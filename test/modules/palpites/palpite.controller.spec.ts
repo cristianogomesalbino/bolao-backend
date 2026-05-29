@@ -61,6 +61,14 @@ describe('PalpiteController', () => {
     expect(result).toEqual(PalpitePresenter.toHttp(palpiteMock));
   });
 
+  it('buscarMeuPalpite deve retornar null se não tem palpite', async () => {
+    mockService.buscarMeuPalpitePorJogo.mockResolvedValueOnce(null);
+
+    const result = await controller.buscarMeuPalpite('jogo-1', user);
+
+    expect(result).toBeNull();
+  });
+
   it('listarMeusPalpites deve retornar array via presenter', async () => {
     const result = await controller.listarMeusPalpites(user);
 
