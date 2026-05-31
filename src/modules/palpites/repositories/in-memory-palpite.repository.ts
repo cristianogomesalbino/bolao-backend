@@ -38,7 +38,13 @@ export class InMemoryPalpiteRepository implements PalpiteRepository {
   }
 
   async listarPorUsuario(usuarioId: string, filtros?: { temporadaId?: string }) {
-    return this.items.filter((p) => p.usuarioId === usuarioId);
+    let resultado = this.items.filter((p) => p.usuarioId === usuarioId);
+    if (filtros?.temporadaId) {
+      resultado = resultado.filter(
+        (p) => p.jogo?.fase?.temporadaId === filtros.temporadaId,
+      );
+    }
+    return resultado;
   }
 
   async listarPorJogoEUsuarios(jogoId: string, usuarioIds: string[]) {

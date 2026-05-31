@@ -51,6 +51,7 @@ model Grupo {
   criadoPor                 String
   privado                   Boolean
   codigoConvite             String?          @unique @db.VarChar(8)
+  icone                     String?
   permitirPalpiteAutomatico Boolean          @default(false)
   maxParticipantes          Int              @default(50)
   ativo                     Boolean          @default(true)

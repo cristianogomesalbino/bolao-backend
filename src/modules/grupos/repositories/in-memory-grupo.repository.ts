@@ -66,6 +66,13 @@ export class InMemoryGrupoRepository implements GrupoRepository {
       _count: {
         usuarios: this.grupoUsuarios.filter((gu) => gu.grupoId === g.id).length,
       },
+      ...(filtros.usuarioId
+        ? {
+            usuarios: this.grupoUsuarios
+              .filter((gu) => gu.grupoId === g.id && gu.usuarioId === filtros.usuarioId)
+              .map((gu) => ({ role: gu.role })),
+          }
+        : {}),
     }));
   }
 

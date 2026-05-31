@@ -72,13 +72,13 @@ describe('RankingController', () => {
 
       expect(result).toEqual(rankingMock.map((e) => RankingPresenter.toHttp(e)));
     });
-  });
+  }); 
 
   describe('obterRankingFase', () => {
     it('deve delegar para rankingService.obterRankingFase', async () => {
       await controller.obterRankingFase(grupoId, faseId);
 
-      expect(mockService.obterRankingFase).toHaveBeenCalledWith(grupoId, faseId);
+      expect(mockService.obterRankingFase).toHaveBeenCalledWith(grupoId, faseId, undefined, undefined);
     });
 
     it('deve aplicar RankingPresenter na resposta', async () => {

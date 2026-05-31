@@ -8,6 +8,7 @@ export const PALPITES = {
     JOGO_NAO_ACEITA_PALPITES: 'O jogo não aceita mais palpites',
     PALPITE_JA_EXISTE: 'Já existe um palpite para este jogo',
     PALPITE_NAO_PERTENCE_AO_USUARIO: 'Este palpite não pertence ao usuário',
+    JOGO_NAO_PERTENCE_AO_GRUPO: 'O jogo não pertence à temporada deste grupo',
     PALPITE_CRIADO: 'Palpite criado com sucesso',
     PALPITE_ATUALIZADO: 'Palpite atualizado com sucesso',
     PALPITE_EXCLUIDO: 'Palpite excluído com sucesso',

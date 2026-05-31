@@ -181,6 +181,14 @@ Sempre que um controller for criado ou alterado (novas rotas, método HTTP, path
 - Body de exemplo deve refletir os campos do DTO
 - Variáveis existentes: `baseUrl`, `accessToken`, `refreshToken`, `usuarioId`, `campeonatoId`, `temporadaId`, `grupoId`, `codigoConvite`, `membroId`
 
+## Code Review
+
+Sempre que um code review for solicitado, seguir as instruções completas do arquivo `code-review-bolao.md` (steering manual).
+
+- Arquivo de saída: `docs/outputs_ai/code-review-[FEATURE].md`
+- Formato, ordem de execução e checklist estão definidos no steering `code-review-bolao.md`
+- Incluir o steering via `#code-review-bolao.md` no chat antes de iniciar o review
+
 ## README
 
 Sempre que houver alteração em rotas, módulos, comandos de desenvolvimento ou regras de domínio, atualizar o `README.md` na raiz do projeto.

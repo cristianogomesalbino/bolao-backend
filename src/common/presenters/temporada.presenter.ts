@@ -1,7 +1,15 @@
 import { CampeonatoPresenter } from './campeonato.presenter';
 
+interface TemporadaData {
+  id: string;
+  ano: number;
+  campeonatoId: string;
+  dataCriacao: Date;
+  campeonato?: { id: string; nome: string; dataCriacao: Date; atualizadoEm: Date };
+}
+
 export class TemporadaPresenter {
-  static toHttp(temporada: any) {
+  static toHttp(temporada: TemporadaData) {
     const nomeCampeonato = temporada.campeonato?.nome;
     return {
       id: temporada.id,

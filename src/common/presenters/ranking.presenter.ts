@@ -7,7 +7,6 @@ export class RankingPresenter {
       pontuacaoTotal: entry.pontuacaoTotal,
       acertosEmCheio: entry.acertosEmCheio,
       acertosDeResultado: entry.acertosDeResultado,
-      acertosDeGolsUmTime: entry.acertosDeGolsUmTime,
       errosTotais: entry.errosTotais,
     };
   }

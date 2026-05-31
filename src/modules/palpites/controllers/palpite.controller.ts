@@ -21,6 +21,7 @@ import { PalpiteService } from '../services/palpite.service';
 import { CriarPalpiteDto } from '../dto/criar-palpite.dto';
 import { AtualizarPalpiteDto } from '../dto/atualizar-palpite.dto';
 import { CriarPalpiteLoteDto } from '../dto/criar-palpite-lote.dto';
+import { BuscarPalpitesPorJogosDto } from '../dto/buscar-palpites-por-jogos.dto';
 import { ParseUUIDCustomPipe } from '../../../common/pipes/parse-uuid-custom.pipe';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 import { GroupRoleGuard } from '../../../common/guards/group-role.guard';
@@ -77,14 +78,28 @@ export class PalpiteController {
   }
 
   @ApiOperation({ summary: 'Buscar meu palpite por jogo' })
-  @ApiResponse({ status: 200, description: 'Palpite encontrado.' })
-  @ApiNotFoundResponse({ description: 'Palpite ou jogo não encontrado.' })
+  @ApiResponse({ status: 200, description: 'Palpite encontrado ou null se não existe.' })
   @Get('jogos/:jogoId/meu-palpite')
   async buscarMeuPalpite(
     @Param('jogoId', new ParseUUIDCustomPipe('jogoId')) jogoId: string,
     @CurrentUser() user: { id: string },
   ) {
-    return PalpitePresenter.toHttp(await this.palpiteService.buscarMeuPalpitePorJogo(jogoId, user.id));
+    const palpite = await this.palpiteService.buscarMeuPalpitePorJogo(jogoId, user.id);
+    return palpite ? PalpitePresenter.toHttp(palpite) : null;
+  }
+
+  @ApiOperation({ summary: 'Buscar meus palpites para múltiplos jogos' })
+  @ApiResponse({ status: 200, description: 'Lista de palpites.' })
+  @Post('meus-palpites/por-jogos')
+  async buscarMeusPalpitesPorJogos(
+    @Body() dto: BuscarPalpitesPorJogosDto,
+    @CurrentUser() user: { id: string },
+  ) {
+    const palpites = await this.palpiteService.buscarMeusPalpitesPorJogos(
+      dto.jogoIds,
+      user.id,
+    );
+    return palpites.map((p) => PalpitePresenter.toHttp(p));
   }
 
   @ApiOperation({ summary: 'Listar meus palpites' })
@@ -95,7 +110,7 @@ export class PalpiteController {
     @Query('temporadaId') temporadaId?: string,
   ) {
     const palpites = await this.palpiteService.listarMeusPalpites(user.id, { temporadaId });
-    return palpites.map((p) => PalpitePresenter.toHttp(p));
+    return palpites.map((p) => PalpitePresenter.toHttpComJogo(p));
   }
 
   @ApiOperation({ summary: 'Listar palpites de um jogo no contexto de grupo' })
@@ -111,6 +126,19 @@ export class PalpiteController {
   ) {
     const palpites = await this.palpiteService.listarPorJogoNoGrupo(jogoId, grupoId, user.id);
     return palpites.map((p) => PalpitePresenter.toHttp(p));
+  }
+
+  @ApiOperation({ summary: 'Estatísticas de palpites de um jogo no grupo' })
+  @ApiResponse({ status: 200, description: 'Distribuição de palpites.' })
+  @ApiNotFoundResponse({ description: 'Jogo não encontrado.' })
+  @UseGuards(GroupRoleGuard)
+  @GroupRoles(GRUPO_ROLE.ADMIN, GRUPO_ROLE.MEMBER)
+  @Get('grupos/:grupoId/jogos/:jogoId/palpites/estatisticas')
+  async estatisticasPorJogo(
+    @Param('grupoId', new ParseUUIDCustomPipe('grupoId')) grupoId: string,
+    @Param('jogoId', new ParseUUIDCustomPipe('jogoId')) jogoId: string,
+  ) {
+    return this.palpiteService.buscarEstatisticasPorJogo(jogoId, grupoId);
   }
 
   @ApiOperation({ summary: 'Criar palpites em lote' })

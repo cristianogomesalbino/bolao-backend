@@ -4,7 +4,6 @@ import { RANKING } from '../ranking.constants';
 type CategoriaAcerto =
   | 'ACERTO_EM_CHEIO'
   | 'ACERTO_DE_RESULTADO'
-  | 'ACERTO_DE_GOLS_UM_TIME'
   | 'ERRO_TOTAL';
 
 interface ResultadoPontuacao {
@@ -31,10 +30,6 @@ export class PontuacaoService {
 
     if (resultadoPalpite === resultadoJogo) {
       return { categoriaAcerto: 'ACERTO_DE_RESULTADO', pontosBase: RANKING.PONTOS.ACERTO_DE_RESULTADO };
-    }
-
-    if (palpite.golsCasa === jogo.golsCasa || palpite.golsFora === jogo.golsFora) {
-      return { categoriaAcerto: 'ACERTO_DE_GOLS_UM_TIME', pontosBase: RANKING.PONTOS.ACERTO_DE_GOLS_UM_TIME };
     }
 
     return { categoriaAcerto: 'ERRO_TOTAL', pontosBase: RANKING.PONTOS.ERRO_TOTAL };

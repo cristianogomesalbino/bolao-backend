@@ -11,6 +11,7 @@ services:
     environment:
       NODE_ENV: production
       DATABASE_URL: ${DATABASE_URL}
+      TZ: America/Sao_Paulo
     profiles:
       - prod
 
@@ -27,6 +28,7 @@ services:
     environment:
       NODE_ENV: development
       DATABASE_URL: ${DATABASE_URL}
+      TZ: America/Sao_Paulo
     command: sh -c "npm install && npx prisma generate && npm run start:dev"
     profiles:
       - dev

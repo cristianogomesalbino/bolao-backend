@@ -1,16 +1,21 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { PALPITES } from '../palpites.constants';
 import { JOGOS } from '../../jogos/jogos.constants';
+import { GRUPOS } from '../../grupos/grupos.constants';
 import { GRUPO_USUARIO } from '../../grupo-usuario/grupo-usuario.constants';
 import type { PalpiteRepository } from '../repositories/palpite.repository.interface';
 import type { JogoRepository } from '../../jogos/repositories/jogo.repository.interface';
+import type { FaseRepository } from '../../jogos/repositories/fase.repository.interface';
+import type { GrupoRepository } from '../../grupos/repositories/grupo.repository.interface';
 import type { GrupoUsuarioRepository } from '../../grupo-usuario/repositories/grupo-usuario.repository.interface';
 import { JogoNaoEncontradoError } from '../../../common/errors/domain-errors/jogos.errors';
+import { GrupoNaoEncontradoError } from '../../../common/errors/domain-errors/grupos.errors';
 import {
   PalpiteNaoEncontradoError,
   JogoNaoAceitaPalpitesError,
   PalpiteJaExisteError,
   PalpiteNaoPertenceAoUsuarioError,
+  JogoNaoPertenceAoGrupoError,
 } from '../../../common/errors/domain-errors/palpites.errors';
 import { CriarPalpiteDto } from '../dto/criar-palpite.dto';
 import { AtualizarPalpiteDto } from '../dto/atualizar-palpite.dto';
@@ -25,12 +30,17 @@ export class PalpiteService {
     private readonly jogoRepo: JogoRepository,
     @Inject(GRUPO_USUARIO.REPOSITORY_TOKEN)
     private readonly grupoUsuarioRepo: GrupoUsuarioRepository,
+    @Inject(JOGOS.FASE_REPOSITORY_TOKEN)
+    private readonly faseRepo: FaseRepository,
+    @Inject(GRUPOS.REPOSITORY_TOKEN)
+    private readonly grupoRepo: GrupoRepository,
   ) {}
 
   async criar(jogoId: string, dto: CriarPalpiteDto, usuarioId: string) {
     const jogo = await this.jogoRepo.buscarPorId(jogoId);
     if (!jogo) throw new JogoNaoEncontradoError();
-    if (jogo.status !== 'AGENDADO') throw new JogoNaoAceitaPalpitesError();
+    if (jogo.status !== 'AGENDADO' && jogo.status !== 'ADIADO')
+      throw new JogoNaoAceitaPalpitesError();
 
     const existente = await this.palpiteRepo.buscarPorUsuarioEJogo(usuarioId, jogoId);
     if (existente) throw new PalpiteJaExisteError();
@@ -47,7 +57,8 @@ export class PalpiteService {
     const palpite = await this.buscarEValidarOwnership(id, usuarioId);
 
     const jogo = await this.jogoRepo.buscarPorId(palpite.jogoId);
-    if (jogo.status !== 'AGENDADO') throw new JogoNaoAceitaPalpitesError();
+    if (jogo.status !== 'AGENDADO' && jogo.status !== 'ADIADO')
+      throw new JogoNaoAceitaPalpitesError();
 
     return this.palpiteRepo.atualizar(id, {
       golsCasa: dto.golsCasa,
@@ -59,7 +70,8 @@ export class PalpiteService {
     const palpite = await this.buscarEValidarOwnership(id, usuarioId);
 
     const jogo = await this.jogoRepo.buscarPorId(palpite.jogoId);
-    if (jogo.status !== 'AGENDADO') throw new JogoNaoAceitaPalpitesError();
+    if (jogo.status !== 'AGENDADO' && jogo.status !== 'ADIADO')
+      throw new JogoNaoAceitaPalpitesError();
 
     await this.palpiteRepo.remover(id);
   }
@@ -68,10 +80,11 @@ export class PalpiteService {
     const jogo = await this.jogoRepo.buscarPorId(jogoId);
     if (!jogo) throw new JogoNaoEncontradoError();
 
-    const palpite = await this.palpiteRepo.buscarPorUsuarioEJogo(usuarioId, jogoId);
-    if (!palpite) throw new PalpiteNaoEncontradoError();
+    return this.palpiteRepo.buscarPorUsuarioEJogo(usuarioId, jogoId);
+  }
 
-    return palpite;
+  async buscarMeusPalpitesPorJogos(jogoIds: string[], usuarioId: string) {
+    return this.palpiteRepo.buscarPorUsuarioEJogos(usuarioId, jogoIds);
   }
 
   async listarMeusPalpites(usuarioId: string, filtros?: { temporadaId?: string }) {
@@ -82,6 +95,8 @@ export class PalpiteService {
     const jogo = await this.jogoRepo.buscarPorId(jogoId);
     if (!jogo) throw new JogoNaoEncontradoError();
 
+    await this.validarJogoPertenceAoGrupo(jogo, grupoId);
+
     const membros = await this.grupoUsuarioRepo.listarPorGrupo(grupoId);
     const membrosIds = membros.map((m) => m.usuario.id);
 
@@ -91,6 +106,43 @@ export class PalpiteService {
 
     const meuPalpite = await this.palpiteRepo.buscarPorUsuarioEJogo(usuarioId, jogoId);
     return meuPalpite ? [meuPalpite] : [];
+  }
+
+  async buscarEstatisticasPorJogo(jogoId: string, grupoId: string) {
+    const jogo = await this.jogoRepo.buscarPorId(jogoId);
+    if (!jogo) throw new JogoNaoEncontradoError();
+
+    await this.validarJogoPertenceAoGrupo(jogo, grupoId);
+
+    const membros = await this.grupoUsuarioRepo.listarPorGrupo(grupoId);
+    const membrosIds = membros.map((m) => m.usuario.id);
+
+    const palpites = await this.palpiteRepo.listarPorJogoEUsuarios(
+      jogoId,
+      membrosIds,
+    );
+
+    let vitoriaCasa = 0;
+    let empate = 0;
+    let vitoriaFora = 0;
+
+    for (const p of palpites) {
+      if (p.golsCasa > p.golsFora) vitoriaCasa++;
+      else if (p.golsCasa === p.golsFora) empate++;
+      else vitoriaFora++;
+    }
+
+    const total = palpites.length;
+
+    return {
+      total,
+      vitoriaCasa,
+      empate,
+      vitoriaFora,
+      percentualCasa: total > 0 ? Math.round((vitoriaCasa / total) * 100) : 0,
+      percentualEmpate: total > 0 ? Math.round((empate / total) * 100) : 0,
+      percentualFora: total > 0 ? Math.round((vitoriaFora / total) * 100) : 0,
+    };
   }
 
   async criarLote(palpites: PalpiteItemDto[], usuarioId: string) {
@@ -113,7 +165,7 @@ export class PalpiteService {
         resultados.push({ jogoId: item.jogoId, sucesso: false, erro: JOGOS.MENSAGENS.JOGO_NAO_ENCONTRADO });
         continue;
       }
-      if (jogo.status !== 'AGENDADO') {
+      if (jogo.status !== 'AGENDADO' && jogo.status !== 'ADIADO') {
         resultados.push({ jogoId: item.jogoId, sucesso: false, erro: PALPITES.MENSAGENS.JOGO_NAO_ACEITA_PALPITES });
         continue;
       }
@@ -133,6 +185,16 @@ export class PalpiteService {
     }
 
     return resultados;
+  }
+
+  private async validarJogoPertenceAoGrupo(jogo: any, grupoId: string) {
+    const grupo = await this.grupoRepo.buscarPorId(grupoId);
+    if (!grupo) throw new GrupoNaoEncontradoError();
+
+    const fase = await this.faseRepo.buscarPorId(jogo.faseId);
+    if (!fase || fase.temporadaId !== grupo.temporadaId) {
+      throw new JogoNaoPertenceAoGrupoError();
+    }
   }
 
   private async buscarEValidarOwnership(id: string, usuarioId: string) {

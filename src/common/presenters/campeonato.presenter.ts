@@ -1,5 +1,12 @@
+interface CampeonatoData {
+  id: string;
+  nome: string;
+  dataCriacao: Date;
+  atualizadoEm: Date;
+}
+
 export class CampeonatoPresenter {
-  static toHttp(campeonato: any) {
+  static toHttp(campeonato: CampeonatoData) {
     return {
       id: campeonato.id,
       nome: campeonato.nome,

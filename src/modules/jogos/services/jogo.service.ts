@@ -240,18 +240,7 @@ export class JogoService {
     const vencedorId =
       dto.golsCasa > dto.golsFora ? jogo.timeCasaId : jogo.timeForaId;
 
-    return this.jogoRepo.atualizar(jogo.id, {
-      status: 'FINALIZADO',
-      golsCasa: dto.golsCasa,
-      golsFora: dto.golsFora,
-      temProrrogacao: false,
-      golsProrrogacaoCasa: null,
-      golsProrrogacaoFora: null,
-      temPenaltis: false,
-      penaltisCasa: null,
-      penaltisFora: null,
-      vencedorId,
-    });
+    return this.jogoRepo.atualizar(jogo.id, this.buildUpdateFinalizado(dto, vencedorId));
   }
 
   private async finalizarMataMataComEmpate(jogo: any, dto: FinalizarJogoDto) {
@@ -618,7 +607,7 @@ export class JogoService {
 
     const jogos = await this.jogoRepo.buscarPorFase(faseId);
     const jogosComExterno = jogos.filter(
-      (j: any) => j.externoId != null && j.fonteResultado === 'API_EXTERNA',
+      (j: any) => j.externoId != null && j.fonteResultado === 'API_EXTERNA' && j.status !== 'FINALIZADO' && j.status !== 'CANCELADO',
     );
 
     if (jogosComExterno.length === 0) {
@@ -630,17 +619,32 @@ export class JogoService {
     );
 
     let sincronizados = 0;
+    const jogosAtualizados: any[] = [];
 
     for (const jogo of jogosComExterno) {
-      const atualizado = await this.processarJogoSync(
+      const resultado = await this.processarJogoSync(
         jogo,
         jogoApiMap,
         apiDisponivel,
       );
-      if (atualizado) sincronizados++;
+      if (resultado.atualizado) {
+        sincronizados++;
+        jogosAtualizados.push({
+          id: jogo.id,
+          timeCasa: jogo.timeCasa?.sigla || jogo.timeCasa?.nome,
+          timeFora: jogo.timeFora?.sigla || jogo.timeFora?.nome,
+          status: resultado.novoStatus ?? jogo.status,
+          golsCasa: resultado.golsCasa ?? jogo.golsCasa,
+          golsFora: resultado.golsFora ?? jogo.golsFora,
+          rodada: jogo.rodada,
+          horarioAlterado: resultado.horarioAlterado || false,
+          horarioAnterior: resultado.horarioAnterior || null,
+          horarioNovo: resultado.horarioNovo || null,
+        });
+      }
     }
 
-    return { sincronizados };
+    return { sincronizados, jogosAtualizados };
   }
 
   private async buscarJogosParaSync(jogos: any[]) {
@@ -674,7 +678,7 @@ export class JogoService {
     jogo: any,
     jogoApiMap: Map<string, any>,
     apiDisponivel: boolean,
-  ): Promise<boolean> {
+  ): Promise<{ atualizado: boolean; novoStatus?: string; golsCasa?: number | null; golsFora?: number | null; horarioAlterado?: boolean; horarioAnterior?: string | null; horarioNovo?: string | null }> {
     const jogoApi = jogoApiMap.get(jogo.externoId);
 
     if (!jogoApi) {
@@ -687,12 +691,30 @@ export class JogoService {
 
     const novoStatus = this.definirStatusFinal(jogo, jogoApi?.status);
     const updateData: any = { status: novoStatus };
+    let horarioAlterado = false;
+    let horarioAnterior: string | null = null;
+    let horarioNovo: string | null = null;
 
     // Jogo adiado que recebeu data na API → atualizar dataHora e voltar para AGENDADO
     if (jogo.status === 'ADIADO' && jogoApi?.dataHora) {
+      horarioAnterior = jogo.dataHora ? new Date(jogo.dataHora).toISOString() : null;
       updateData.dataHora = new Date(jogoApi.dataHora);
       updateData.status = 'AGENDADO';
       updateData.foiAdiado = true;
+      horarioAlterado = true;
+      horarioNovo = updateData.dataHora.toISOString();
+    }
+
+    // Detectar mudança de horário em jogos agendados
+    if (jogoApi?.dataHora && jogo.status === 'AGENDADO' && jogo.dataHora) {
+      const dataApi = new Date(jogoApi.dataHora).getTime();
+      const dataBanco = new Date(jogo.dataHora).getTime();
+      if (dataApi !== dataBanco) {
+        horarioAnterior = new Date(jogo.dataHora).toISOString();
+        updateData.dataHora = new Date(jogoApi.dataHora);
+        horarioAlterado = true;
+        horarioNovo = updateData.dataHora.toISOString();
+      }
     }
 
     if (jogoApi && novoStatus === 'FINALIZADO') {
@@ -701,10 +723,18 @@ export class JogoService {
 
     if (novoStatus !== jogo.status || jogoApi) {
       await this.jogoRepo.atualizar(jogo.id, updateData);
-      return true;
+      return {
+        atualizado: true,
+        novoStatus: updateData.status,
+        golsCasa: updateData.golsCasa ?? null,
+        golsFora: updateData.golsFora ?? null,
+        horarioAlterado,
+        horarioAnterior,
+        horarioNovo,
+      };
     }
 
-    return false;
+    return { atualizado: false };
   }
 
   private preencherPlacarSync(updateData: any, jogoApi: any, jogo: any) {

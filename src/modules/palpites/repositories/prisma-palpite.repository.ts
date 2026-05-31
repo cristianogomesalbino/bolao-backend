@@ -42,8 +42,12 @@ export class PrismaPalpiteRepository implements PalpiteRepository {
           jogo: { fase: { temporadaId: filtros.temporadaId } },
         }),
       },
-      include: { jogo: true },
-      orderBy: { dataCriacao: 'desc' },
+      include: {
+        jogo: {
+          include: { timeCasa: true, timeFora: true },
+        },
+      },
+      orderBy: { jogo: { rodada: 'desc' } },
     });
   }
 

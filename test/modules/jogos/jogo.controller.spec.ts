@@ -101,7 +101,7 @@ describe('JogoController', () => {
 
       const result = await controller.listar('fase-1');
 
-      expect(mockJogoService.buscarPorFaseComDetalhes).toHaveBeenCalledWith('fase-1', undefined);
+      expect(mockJogoService.buscarPorFaseComDetalhes).toHaveBeenCalledWith('fase-1', undefined, undefined);
       expect(result).toEqual({
         fase: { id: 'fase-1', nome: 'Rodada 1', tipo: 'PONTOS_CORRIDOS', ordem: 1 },
         jogos: [JogoPresenter.toHttp(jogoData, 'PONTOS_CORRIDOS')],
@@ -117,7 +117,7 @@ describe('JogoController', () => {
 
       await controller.listar('fase-1', '3');
 
-      expect(mockJogoService.buscarPorFaseComDetalhes).toHaveBeenCalledWith('fase-1', 3);
+      expect(mockJogoService.buscarPorFaseComDetalhes).toHaveBeenCalledWith('fase-1', 3, undefined);
     });
   });
 

@@ -63,3 +63,10 @@ export class JogoNaoAceitaDobroError extends DomainError {
     super(mensagem);
   }
 }
+
+export class JogoNaoPertenceAoGrupoError extends DomainError {
+  readonly statusCode = 400;
+  constructor(mensagem = PALPITES.MENSAGENS.JOGO_NAO_PERTENCE_AO_GRUPO) {
+    super(mensagem);
+  }
+}

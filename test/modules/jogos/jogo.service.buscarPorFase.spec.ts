@@ -108,7 +108,9 @@ describe('JogoService — buscarPorFaseComDetalhes com filtro de rodada', () => 
     it('deve retornar fase + todos os jogos sem filtro', async () => {
       const result = await service.buscarPorFaseComDetalhes('fase-1');
 
-      expect(result.jogos).toHaveLength(3);
+      // Sem filtro de rodada, retorna a rodada atual (rodada 1 = menor com jogos não finalizados)
+      expect(result.jogos).toHaveLength(2);
+      expect(result.rodadaAtual).toBe(1);
     });
 
     it('deve lançar FaseNaoEncontradaError se fase inexistente', async () => {

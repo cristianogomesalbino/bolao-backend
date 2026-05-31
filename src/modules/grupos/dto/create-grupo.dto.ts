@@ -33,6 +33,12 @@ export class CriarGrupoDto {
   @Max(GRUPOS.MAX_PARTICIPANTES_DEFAULT, { message: `O grupo pode ter no máximo ${GRUPOS.MAX_PARTICIPANTES_DEFAULT} participantes.` })
   maxParticipantes?: number;
 
+  @ApiPropertyOptional({ description: 'Ícone do grupo (emoji ou URL)', example: '⚽' })
+  @IsOptional()
+  @IsString({ message: 'Deve ser um texto.' })
+  @Length(1, 255, { message: 'Deve ter entre 1 e 255 caracteres.' })
+  icone?: string;
+
   @ApiPropertyOptional({ description: 'Habilitar palpite dobrado no grupo', example: false })
   @IsOptional()
   @IsBoolean({ message: 'Deve ser verdadeiro ou falso.' })

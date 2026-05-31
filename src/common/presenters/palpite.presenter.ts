@@ -1,3 +1,5 @@
+import { JogoPresenter } from './jogo.presenter';
+
 export class PalpitePresenter {
   static toHttp(palpite: any) {
     return {
@@ -8,6 +10,13 @@ export class PalpitePresenter {
       usuarioId: palpite.usuarioId,
       dataCriacao: palpite.dataCriacao,
       atualizadoEm: palpite.atualizadoEm,
+    };
+  }
+
+  static toHttpComJogo(palpite: any) {
+    return {
+      ...PalpitePresenter.toHttp(palpite),
+      jogo: palpite.jogo ? JogoPresenter.toHttpResumido(palpite.jogo) : null,
     };
   }
 }
