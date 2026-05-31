@@ -59,6 +59,9 @@ export class PrismaGrupoRepository implements GrupoRepository {
       include: {
         ...includeGrupo,
         _count: { select: { usuarios: true } },
+        ...(filtros.usuarioId
+          ? { usuarios: { where: { usuarioId: filtros.usuarioId }, select: { role: true } } }
+          : {}),
       },
     });
   }

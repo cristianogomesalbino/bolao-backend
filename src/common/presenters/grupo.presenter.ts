@@ -32,6 +32,7 @@ interface GrupoComRelacoes extends GrupoBase {
   ehMembro?: boolean;
   _count?: { usuarios: number };
   temporada?: TemporadaRelacao;
+  usuarios?: Array<{ role: string }>;
 }
 
 export class GrupoPresenter {
@@ -55,6 +56,9 @@ export class GrupoPresenter {
     }
     if (grupo._count?.usuarios !== undefined) {
       resultado.totalParticipantes = grupo._count.usuarios;
+    }
+    if (grupo.usuarios?.length) {
+      resultado.meuRole = grupo.usuarios[0].role;
     }
     if (grupo.temporada) {
       resultado.temporada = TemporadaPresenter.toHttp(grupo.temporada);
