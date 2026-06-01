@@ -157,6 +157,37 @@ Não usar `"campo": "geral"`. O campo `campo` é opcional — omitir quando não
 - ESLint: `recommendedTypeChecked` do typescript-eslint
 - `@typescript-eslint/no-explicit-any`: off
 - `@typescript-eslint/no-floating-promises`: warn
+- `@typescript-eslint/no-unsafe-argument`: warn (dívida técnica aceita — não bloqueia)
+- **SEMPRE usar optional chaining** — `!obj || !obj.prop` → `!obj?.prop`
+- **SEMPRE quebrar tipos de retorno longos em múltiplas linhas** — se o tipo inline tem mais de 80 caracteres, quebrar com uma propriedade por linha
+- **SEMPRE quebrar parâmetros de função em múltiplas linhas** — se a assinatura ultrapassa 100 caracteres
+- **NUNCA deixar condições compostas longas em uma linha** — extrair em variáveis com nomes descritivos (ex: `const semData = !jogo.dataHora && !jogoApi?.dataHora`)
+
+## Qualidade de Código (Lint/Sonar)
+
+- **SEMPRE verificar diagnostics após criar/editar arquivo .ts** — usar getDiagnostics e corrigir erros de Prettier e warnings corrigíveis
+- **SEMPRE usar optional chaining** quando acessar propriedades de objetos possivelmente null/undefined
+- **SEMPRE manter complexidade cognitiva ≤ 15** — se ultrapassar, extrair helpers privados
+- **Erros de `Unsafe ... any value` são aceitos** — dívida técnica documentada (repositories retornam `Promise<any>`)
+- **NUNCA commitar com erros de Prettier** — formatação deve estar correta antes de qualquer commit
+- **Ao criar código novo, seguir estes padrões para evitar issues de Sonar:**
+  - Usar `?.` em vez de `&& obj.prop` (S6582)
+  - Marcar membros como `readonly` quando não são reatribuídos (S2933)
+  - Remover imports não utilizados (S1128)
+  - Não criar classes vazias (S2094)
+  - Não duplicar imports do mesmo módulo (S3863)
+
+## Redução Gradual de Dívida Técnica (Regra dos 10%)
+
+- **Sempre que editar um arquivo .ts existente**, corrigir pelo menos **10% dos erros de lint pré-existentes** nesse arquivo (arredondando pra cima, mínimo 1)
+- Prioridade de correção:
+  1. Erros de Prettier (formatação)
+  2. Optional chaining (`!obj || !obj.prop` → `!obj?.prop`)
+  3. Complexidade cognitiva > 15 (extrair helpers)
+  4. `Unsafe ... any value` — tipar parâmetros de métodos privados que recebem dados de repositório (ex: `jogo: any` → `jogo: { id: string; status: string; ... }`)
+- **Cálculo:** se o arquivo tem 290 erros de lint, corrigir pelo menos 29 ao editá-lo. Se tem 5, corrigir pelo menos 1.
+- **Não quebrar funcionalidade** — se a tipagem de `any` exigir mudanças em cascata (interface + Prisma + InMemory), limitar ao escopo do arquivo editado
+- **Documentar no commit** — mencionar "redução de dívida técnica" quando aplicável
 
 ## Testes
 

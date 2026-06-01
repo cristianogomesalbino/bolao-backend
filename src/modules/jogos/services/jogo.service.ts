@@ -160,10 +160,16 @@ export class JogoService {
     this.validarSemDesempate(dto);
 
     const vencedorId = this.determinarVencedorPorPlacar(
-      dto.golsCasa, dto.golsFora, jogo.timeCasaId, jogo.timeForaId,
+      dto.golsCasa,
+      dto.golsFora,
+      jogo.timeCasaId,
+      jogo.timeForaId,
     );
 
-    return this.jogoRepo.atualizar(jogo.id, this.buildUpdateFinalizado(dto, vencedorId));
+    return this.jogoRepo.atualizar(
+      jogo.id,
+      this.buildUpdateFinalizado(dto, vencedorId),
+    );
   }
 
   private async finalizarMataMata(jogo: any, fase: any, dto: FinalizarJogoDto) {
@@ -180,7 +186,10 @@ export class JogoService {
 
   private async finalizarJogoIda(jogo: any, dto: FinalizarJogoDto) {
     this.validarSemDesempate(dto);
-    return this.jogoRepo.atualizar(jogo.id, this.buildUpdateFinalizado(dto, null));
+    return this.jogoRepo.atualizar(
+      jogo.id,
+      this.buildUpdateFinalizado(dto, null),
+    );
   }
 
   private async finalizarJogoVolta(jogo: any, dto: FinalizarJogoDto) {
@@ -189,7 +198,7 @@ export class JogoService {
     );
     const jogoIda = jogosDoGrupo.find((j: any) => !j.ehJogoVolta);
 
-    if (!jogoIda || jogoIda.status !== 'FINALIZADO') {
+    if (jogoIda?.status !== 'FINALIZADO') {
       throw new JogoIdaNaoEncontradoError();
     }
 
@@ -240,7 +249,10 @@ export class JogoService {
     const vencedorId =
       dto.golsCasa > dto.golsFora ? jogo.timeCasaId : jogo.timeForaId;
 
-    return this.jogoRepo.atualizar(jogo.id, this.buildUpdateFinalizado(dto, vencedorId));
+    return this.jogoRepo.atualizar(
+      jogo.id,
+      this.buildUpdateFinalizado(dto, vencedorId),
+    );
   }
 
   private async finalizarMataMataComEmpate(jogo: any, dto: FinalizarJogoDto) {
@@ -378,14 +390,24 @@ export class JogoService {
     if (jogo.golsCasa > jogo.golsFora) return jogo.timeCasaId;
     if (jogo.golsFora > jogo.golsCasa) return jogo.timeForaId;
 
-    if (!jogo.temProrrogacao || jogo.golsProrrogacaoCasa == null || jogo.golsProrrogacaoFora == null) {
+    if (
+      !jogo.temProrrogacao ||
+      jogo.golsProrrogacaoCasa == null ||
+      jogo.golsProrrogacaoFora == null
+    ) {
       return null;
     }
 
-    if (jogo.golsProrrogacaoCasa > jogo.golsProrrogacaoFora) return jogo.timeCasaId;
-    if (jogo.golsProrrogacaoFora > jogo.golsProrrogacaoCasa) return jogo.timeForaId;
+    if (jogo.golsProrrogacaoCasa > jogo.golsProrrogacaoFora)
+      return jogo.timeCasaId;
+    if (jogo.golsProrrogacaoFora > jogo.golsProrrogacaoCasa)
+      return jogo.timeForaId;
 
-    if (!jogo.temPenaltis || jogo.penaltisCasa == null || jogo.penaltisFora == null) {
+    if (
+      !jogo.temPenaltis ||
+      jogo.penaltisCasa == null ||
+      jogo.penaltisFora == null
+    ) {
       return null;
     }
 
@@ -437,7 +459,11 @@ export class JogoService {
     return this.jogoRepo.buscarPorFase(faseId, rodada);
   }
 
-  async buscarPorFaseComDetalhes(faseId: string, rodada?: number, status?: string) {
+  async buscarPorFaseComDetalhes(
+    faseId: string,
+    rodada?: number,
+    status?: string,
+  ) {
     const fase = await this.faseRepo.buscarPorId(faseId);
     if (!fase) {
       throw new FaseNaoEncontradaError();
@@ -448,7 +474,7 @@ export class JogoService {
       return { fase, jogos, rodadaAtual: null };
     }
 
-    const rodadaFiltro = rodada ?? await this.obterRodadaAtual(faseId);
+    const rodadaFiltro = rodada ?? (await this.obterRodadaAtual(faseId));
     const jogos = await this.jogoRepo.buscarPorFase(faseId, rodadaFiltro);
     return { fase, jogos, rodadaAtual: rodadaFiltro };
   }
@@ -485,11 +511,14 @@ export class JogoService {
     );
 
     // Normalizar todos os jogos e resolver times em batch (evita N+1)
-    const normalizados = jogosApi.map((j: any) => this.futebolApiService.normalizarJogo(j));
+    const normalizados = jogosApi.map((j: any) =>
+      this.futebolApiService.normalizarJogo(j),
+    );
 
     // Verificar externoIds existentes globalmente (constraint unique é global, não por fase)
     const externoIds = normalizados.map((n: any) => n.externoId);
-    const jogosExistentesGlobal = await this.buscarExternoIdsExistentes(externoIds);
+    const jogosExistentesGlobal =
+      await this.buscarExternoIdsExistentes(externoIds);
     const externosExistentes = new Set(jogosExistentesGlobal);
 
     const timesCache = await this.carregarCacheTimes(normalizados);
@@ -503,15 +532,30 @@ export class JogoService {
         continue;
       }
 
-      const timeCasa = await this.resolverOuCriarTime(normalizado.timeCasa, timesCache);
-      const timeFora = await this.resolverOuCriarTime(normalizado.timeFora, timesCache);
+      const timeCasa = await this.resolverOuCriarTime(
+        normalizado.timeCasa,
+        timesCache,
+      );
+      const timeFora = await this.resolverOuCriarTime(
+        normalizado.timeFora,
+        timesCache,
+      );
 
       const vencedorId =
-        normalizado.status === 'FINALIZADO' && normalizado.golsCasa != null && normalizado.golsFora != null
-          ? this.determinarVencedorPorPlacar(normalizado.golsCasa, normalizado.golsFora, timeCasa.id, timeFora.id)
+        normalizado.status === 'FINALIZADO' &&
+        normalizado.golsCasa != null &&
+        normalizado.golsFora != null
+          ? this.determinarVencedorPorPlacar(
+              normalizado.golsCasa,
+              normalizado.golsFora,
+              timeCasa.id,
+              timeFora.id,
+            )
           : null;
 
-      const dataHora = normalizado.dataHora ? new Date(normalizado.dataHora) : null;
+      const dataHora = normalizado.dataHora
+        ? new Date(normalizado.dataHora)
+        : null;
       const dataValida = dataHora && dataHora.getFullYear() >= 2020;
 
       await this.jogoRepo.criar({
@@ -544,20 +588,26 @@ export class JogoService {
     return { importados, ignorados };
   }
 
-  private async buscarExternoIdsExistentes(externoIds: string[]): Promise<string[]> {
+  private async buscarExternoIdsExistentes(
+    externoIds: string[],
+  ): Promise<string[]> {
     if (externoIds.length === 0) return [];
     const jogos = await this.jogoRepo.buscarPorExternoIds(externoIds);
     return jogos.map((j: any) => j.externoId);
   }
 
-  private async carregarCacheTimes(normalizados: any[]): Promise<Map<string, any>> {
+  private async carregarCacheTimes(
+    normalizados: any[],
+  ): Promise<Map<string, any>> {
     const externoIds = new Set<string>();
     for (const n of normalizados) {
       if (n.timeCasa?.externoId) externoIds.add(n.timeCasa.externoId);
       if (n.timeFora?.externoId) externoIds.add(n.timeFora.externoId);
     }
 
-    const timesExistentes = await this.timeRepo.buscarPorExternoIds([...externoIds]);
+    const timesExistentes = await this.timeRepo.buscarPorExternoIds([
+      ...externoIds,
+    ]);
     const cache = new Map<string, any>();
     for (const time of timesExistentes) {
       cache.set(time.externoId, time);
@@ -566,23 +616,34 @@ export class JogoService {
   }
 
   private async resolverOuCriarTime(
-    timeData: { externoId: string; nome: string; sigla: string; escudo: string },
+    timeData: {
+      externoId: string;
+      nome: string;
+      sigla: string;
+      escudo: string;
+    },
     cache: Map<string, any>,
   ): Promise<any> {
     const cached = cache.get(timeData.externoId);
-    if (cached && cached.escudo) return cached;
+    if (cached?.escudo) return cached;
 
     if (cached && !cached.escudo && timeData.escudo) {
-      const atualizado = await this.timeRepo.atualizar(cached.id, { escudo: timeData.escudo });
+      const atualizado = await this.timeRepo.atualizar(cached.id, {
+        escudo: timeData.escudo,
+      });
       cache.set(timeData.externoId, atualizado);
       return atualizado;
     }
 
     if (cached) return cached;
 
-    const existente = await this.timeRepo.buscarPorExternoId(timeData.externoId);
+    const existente = await this.timeRepo.buscarPorExternoId(
+      timeData.externoId,
+    );
     if (existente && !existente.escudo && timeData.escudo) {
-      const atualizado = await this.timeRepo.atualizar(existente.id, { escudo: timeData.escudo });
+      const atualizado = await this.timeRepo.atualizar(existente.id, {
+        escudo: timeData.escudo,
+      });
       cache.set(timeData.externoId, atualizado);
       return atualizado;
     }
@@ -607,21 +668,35 @@ export class JogoService {
 
     const jogos = await this.jogoRepo.buscarPorFase(faseId);
     const jogosComExterno = jogos.filter(
-      (j: any) => j.externoId != null && j.fonteResultado === 'API_EXTERNA' && j.status !== 'FINALIZADO' && j.status !== 'CANCELADO',
+      (j: any) =>
+        j.externoId != null &&
+        j.fonteResultado === 'API_EXTERNA' &&
+        j.status !== 'FINALIZADO' &&
+        j.status !== 'CANCELADO',
     );
 
     if (jogosComExterno.length === 0) {
       return { sincronizados: 0 };
     }
 
-    const { jogoApiMap, apiDisponivel } = await this.buscarJogosParaSync(
-      jogosComExterno,
+    // Limitar sincronização: apenas rodadas até a atual + 1 (evita buscar rodadas futuras desnecessárias)
+    const rodadaAtual = await this.obterRodadaAtual(faseId);
+    const limiteRodada = (rodadaAtual ?? 1) + 1;
+    const jogosParaSync = jogosComExterno.filter(
+      (j: any) => j.rodada == null || j.rodada <= limiteRodada,
     );
+
+    if (jogosParaSync.length === 0) {
+      return { sincronizados: 0 };
+    }
+
+    const { jogoApiMap, apiDisponivel } =
+      await this.buscarJogosParaSync(jogosParaSync);
 
     let sincronizados = 0;
     const jogosAtualizados: any[] = [];
 
-    for (const jogo of jogosComExterno) {
+    for (const jogo of jogosParaSync) {
       const resultado = await this.processarJogoSync(
         jogo,
         jogoApiMap,
@@ -648,12 +723,15 @@ export class JogoService {
   }
 
   private async buscarJogosParaSync(jogos: any[]) {
-    const externoIds = jogos.map((j: any) => Number(j.externoId));
+    const rodadasPendentes = [
+      ...new Set(jogos.map((j: any) => j.rodada).filter(Boolean)),
+    ] as number[];
     let jogosApi: any[] = [];
     let apiDisponivel = true;
 
     try {
-      jogosApi = await this.futebolApiService.buscarJogosPorIds(externoIds);
+      jogosApi =
+        await this.futebolApiService.buscarJogosPorRodadas(rodadasPendentes);
     } catch (error) {
       if (error instanceof ApiExternaIndisponivelError) {
         this.logger.warn(
@@ -678,7 +756,15 @@ export class JogoService {
     jogo: any,
     jogoApiMap: Map<string, any>,
     apiDisponivel: boolean,
-  ): Promise<{ atualizado: boolean; novoStatus?: string; golsCasa?: number | null; golsFora?: number | null; horarioAlterado?: boolean; horarioAnterior?: string | null; horarioNovo?: string | null }> {
+  ): Promise<{
+    atualizado: boolean;
+    novoStatus?: string;
+    golsCasa?: number | null;
+    golsFora?: number | null;
+    horarioAlterado?: boolean;
+    horarioAnterior?: string | null;
+    horarioNovo?: string | null;
+  }> {
     const jogoApi = jogoApiMap.get(jogo.externoId);
 
     if (!jogoApi) {
@@ -691,13 +777,60 @@ export class JogoService {
 
     const novoStatus = this.definirStatusFinal(jogo, jogoApi?.status);
     const updateData: any = { status: novoStatus };
+
+    // Proteção: jogo sem data não pode ser AGENDADO nem EM_ANDAMENTO
+    const semData = !jogo.dataHora && !jogoApi?.dataHora;
+    const statusIncompativelSemData =
+      updateData.status === 'AGENDADO' || updateData.status === 'EM_ANDAMENTO';
+
+    if (semData && statusIncompativelSemData) {
+      updateData.status = 'ADIADO';
+    }
+
+    const { horarioAlterado, horarioAnterior, horarioNovo } =
+      this.detectarMudancaHorario(jogo, jogoApi, updateData);
+
+    if (
+      jogoApi &&
+      (novoStatus === 'FINALIZADO' || novoStatus === 'EM_ANDAMENTO')
+    ) {
+      this.preencherPlacarSync(updateData, jogoApi, jogo, novoStatus);
+    }
+
+    if (novoStatus !== jogo.status || jogoApi) {
+      await this.jogoRepo.atualizar(jogo.id, updateData);
+      return {
+        atualizado: true,
+        novoStatus: updateData.status,
+        golsCasa: updateData.golsCasa ?? null,
+        golsFora: updateData.golsFora ?? null,
+        horarioAlterado,
+        horarioAnterior,
+        horarioNovo,
+      };
+    }
+
+    return { atualizado: false };
+  }
+
+  private detectarMudancaHorario(
+    jogo: any,
+    jogoApi: any,
+    updateData: any,
+  ): {
+    horarioAlterado: boolean;
+    horarioAnterior: string | null;
+    horarioNovo: string | null;
+  } {
     let horarioAlterado = false;
     let horarioAnterior: string | null = null;
     let horarioNovo: string | null = null;
 
     // Jogo adiado que recebeu data na API → atualizar dataHora e voltar para AGENDADO
     if (jogo.status === 'ADIADO' && jogoApi?.dataHora) {
-      horarioAnterior = jogo.dataHora ? new Date(jogo.dataHora).toISOString() : null;
+      horarioAnterior = jogo.dataHora
+        ? new Date(jogo.dataHora).toISOString()
+        : null;
       updateData.dataHora = new Date(jogoApi.dataHora);
       updateData.status = 'AGENDADO';
       updateData.foiAdiado = true;
@@ -717,39 +850,26 @@ export class JogoService {
       }
     }
 
-    if (jogoApi && novoStatus === 'FINALIZADO') {
-      this.preencherPlacarSync(updateData, jogoApi, jogo);
-    }
-
-    if (novoStatus !== jogo.status || jogoApi) {
-      await this.jogoRepo.atualizar(jogo.id, updateData);
-      return {
-        atualizado: true,
-        novoStatus: updateData.status,
-        golsCasa: updateData.golsCasa ?? null,
-        golsFora: updateData.golsFora ?? null,
-        horarioAlterado,
-        horarioAnterior,
-        horarioNovo,
-      };
-    }
-
-    return { atualizado: false };
+    return { horarioAlterado, horarioAnterior, horarioNovo };
   }
 
-  private preencherPlacarSync(updateData: any, jogoApi: any, jogo: any) {
+  private preencherPlacarSync(
+    updateData: any,
+    jogoApi: any,
+    jogo: any,
+    status: string,
+  ) {
     updateData.golsCasa = jogoApi.golsCasa ?? null;
     updateData.golsFora = jogoApi.golsFora ?? null;
 
-    let vencedorId: string | null = null;
-    if (updateData.golsCasa != null && updateData.golsFora != null) {
-      if (updateData.golsCasa > updateData.golsFora) {
-        vencedorId = jogo.timeCasaId;
-      } else if (updateData.golsFora > updateData.golsCasa) {
-        vencedorId = jogo.timeForaId;
-      }
-    }
-    updateData.vencedorId = vencedorId;
+    if (status !== 'FINALIZADO') return;
+
+    updateData.vencedorId = this.determinarVencedorPorPlacar(
+      updateData.golsCasa,
+      updateData.golsFora,
+      jogo.timeCasaId,
+      jogo.timeForaId,
+    );
   }
 
   // --- Reset de fonteResultado ---
@@ -761,7 +881,9 @@ export class JogoService {
     }
 
     if (!jogo.externoId) {
-      throw ErrorFactory.badRequest('Jogo não possui externoId para resetar fonte');
+      throw ErrorFactory.badRequest(
+        'Jogo não possui externoId para resetar fonte',
+      );
     }
 
     return this.jogoRepo.atualizar(id, { fonteResultado: 'API_EXTERNA' });

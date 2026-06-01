@@ -89,6 +89,19 @@ Seguir esta ordem. Não pular para o passo N+1 sem completar o passo N.
 - [ ] Propriedades duplicadas em objetos literais
 - [ ] Tipos incompatíveis entre DTOs e chamadas Prisma
 
+### Passo 2.1 — Lint e Formatação (OBRIGATÓRIO)
+- [ ] Rodar `getDiagnostics` em **todos os arquivos modificados** e listar problemas encontrados
+- [ ] Erros de Prettier (mensagens "Replace", "Insert", "Delete") — corrigir formatação
+- [ ] Warnings de optional chaining (`Prefer using an optional chain expression`) — aplicar `?.`
+- [ ] Warnings de complexidade cognitiva (`Refactor this function to reduce its Cognitive Complexity`) — extrair helpers
+- [ ] Ignorar: erros de `Unsafe ... any value` (dívida técnica aceita)
+
+### Passo 2.2 — SonarQube (OBRIGATÓRIO)
+- [ ] Usar `mcp_sonarqube_analyze_code_snippet` para analisar **cada arquivo modificado** com mais de 50 linhas
+- [ ] Listar todos os issues encontrados com severidade MAJOR ou superior
+- [ ] Para cada issue, incluir no relatório como [CR-XXX] com código sugerido de correção
+- [ ] Categorias SonarQube a verificar: bugs, vulnerabilities, code smells, duplicação
+
 ### Passo 3 — Segurança
 - [ ] `process.env` direto (deve usar variáveis do `.env` via ConfigService ou equivalente) — exceção: `prisma/schema.prisma`
 - [ ] `$queryRaw` / `$executeRaw` (NUNCA usar)
@@ -378,6 +391,15 @@ describe('ModuloService', () => {
 ## 🔧 Comandos de Verificação
 
 ```bash
+# Lint e Formatação (OBRIGATÓRIO — rodar em cada arquivo modificado)
+# Usar getDiagnostics do IDE para cada arquivo .ts modificado
+# Ou via container:
+docker exec bolao-backend-dev npx eslint src/modules/{modulo}/ --ext .ts
+
+# SonarQube (OBRIGATÓRIO — analisar cada arquivo com mais de 50 linhas)
+# Usar mcp_sonarqube_analyze_code_snippet para cada arquivo modificado
+# Listar issues com severidade MAJOR ou superior
+
 # Segurança
 grep -r "process\.env\." src/ --include="*.ts" --exclude-dir=node_modules
 grep -r "\$queryRaw\|\$executeRaw" src/ --include="*.ts"
@@ -430,6 +452,8 @@ Ao final de cada review, incluir:
 | 🔓 Vulnerabilities | X | X | ✅/❌ |
 | 🧹 Code Smells | X | X | ❌ |
 | 📊 Duplicação | — | — | ❌ |
+| 🔍 Lint (Prettier/ESLint) | X | X | ✅ (se Prettier) / ❌ (se warning) |
+| 🧠 Complexidade Cognitiva | X | X | ✅ (se > 15) |
 
 ### 📋 Prioridades
 

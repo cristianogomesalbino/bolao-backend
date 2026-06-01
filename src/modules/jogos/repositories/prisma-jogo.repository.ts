@@ -64,9 +64,14 @@ export class PrismaJogoRepository implements JogoRepository {
   }
 
   async buscarRodadaAtual(faseId: string): Promise<number | null> {
-    // Menor rodada com pelo menos 1 jogo não finalizado e não adiado = rodada em andamento/próxima
+    // Menor rodada com pelo menos 1 jogo ativo (não finalizado, não adiado, com data definida)
     const jogo = await this.prisma.jogo.findFirst({
-      where: { faseId, status: { notIn: ['FINALIZADO', 'ADIADO', 'CANCELADO'] }, rodada: { not: null } },
+      where: {
+        faseId,
+        status: { notIn: ['FINALIZADO', 'ADIADO', 'CANCELADO'] },
+        rodada: { not: null },
+        dataHora: { not: null },
+      },
       orderBy: { rodada: 'asc' },
       select: { rodada: true },
     });

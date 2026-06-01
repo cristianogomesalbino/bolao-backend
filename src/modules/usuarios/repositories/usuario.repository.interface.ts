@@ -3,6 +3,6 @@ export interface UsuarioRepository {
   buscarPorId(id: string): Promise<any>;
   buscarPorEmail(email: string): Promise<any>;
   listar(filtros: { ativo: boolean }): Promise<any[]>;
-  atualizar(id: string, data: Partial<{ nome: string; email: string; senha: string }>): Promise<any>;
+  atualizar(id: string, data: Partial<{ nome: string; email: string; senha: string; grupoFavoritoId: string | null }>): Promise<any>;
   desativar(id: string): Promise<any>;
 }

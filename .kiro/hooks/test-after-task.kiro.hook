@@ -1,0 +1,14 @@
+{
+  "enabled": true,
+  "name": "Testes após task",
+  "description": "Antes de finalizar uma task de spec, roda os testes automaticamente para garantir que nada quebrou.",
+  "version": "1",
+  "when": {
+    "type": "postTaskExecution"
+  },
+  "then": {
+    "type": "runCommand",
+    "command": "docker exec bolao-backend-dev npx vitest run 2>&1 | tail -5",
+    "timeout": 120
+  }
+}

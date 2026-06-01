@@ -34,6 +34,13 @@ export class PrismaGrupoUsuarioRepository implements GrupoUsuarioRepository {
     });
   }
 
+  listarPorUsuario(usuarioId: string) {
+    return this.prisma.grupoUsuario.findMany({
+      where: { usuarioId },
+      select: { grupoId: true, role: true },
+    });
+  }
+
   contarPorGrupo(grupoId: string) {
     return this.prisma.grupoUsuario.count({ where: { grupoId } });
   }

@@ -30,7 +30,7 @@ export class InMemoryUsuarioRepository implements UsuarioRepository {
     return this.items.filter((u) => u.ativo === filtros.ativo);
   }
 
-  async atualizar(id: string, data: Partial<{ nome: string; email: string; senha: string }>) {
+  async atualizar(id: string, data: Partial<{ nome: string; email: string; senha: string; grupoFavoritoId: string | null }>) {
     const index = this.items.findIndex((u) => u.id === id);
     if (index === -1) return null;
     this.items[index] = {

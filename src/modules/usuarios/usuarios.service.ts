@@ -3,16 +3,21 @@ import {
   EmailJaCadastradoError,
   UsuarioNaoEncontradoError,
 } from '../../common/errors/domain-errors';
+import { ErrorFactory } from '../../common/errors/error.factory';
 import * as bcrypt from 'bcryptjs';
 import { USUARIOS } from './usuarios.constants';
 import { AUTH } from '../auth/auth.constants';
 import type { UsuarioRepository } from './repositories/usuario.repository.interface';
+import { GRUPO_USUARIO } from '../grupo-usuario/grupo-usuario.constants';
+import type { GrupoUsuarioRepository } from '../grupo-usuario/repositories/grupo-usuario.repository.interface';
 
 @Injectable()
 export class UsuariosService {
   constructor(
     @Inject(USUARIOS.REPOSITORY_TOKEN)
     private readonly usuarioRepo: UsuarioRepository,
+    @Inject(GRUPO_USUARIO.REPOSITORY_TOKEN)
+    private readonly grupoUsuarioRepo: GrupoUsuarioRepository,
   ) {}
 
   async criar(data: { nome: string; email: string; senha: string }) {
@@ -39,7 +44,7 @@ export class UsuariosService {
   async buscarPorId(id: string) {
     const usuario = await this.usuarioRepo.buscarPorId(id);
 
-    if (!usuario || !usuario.ativo) {
+    if (!usuario?.ativo) {
       throw new UsuarioNaoEncontradoError();
     }
 
@@ -52,7 +57,7 @@ export class UsuariosService {
   ) {
     const usuarioExistente = await this.usuarioRepo.buscarPorId(id);
 
-    if (!usuarioExistente || !usuarioExistente.ativo) {
+    if (!usuarioExistente?.ativo) {
       throw new UsuarioNaoEncontradoError();
     }
 
@@ -87,5 +92,27 @@ export class UsuariosService {
 
   async buscarPorEmail(email: string) {
     return this.usuarioRepo.buscarPorEmail(email);
+  }
+
+  async definirGrupoFavorito(usuarioId: string, grupoId: string | null) {
+    const usuario = await this.usuarioRepo.buscarPorId(usuarioId);
+
+    if (!usuario?.ativo) {
+      throw new UsuarioNaoEncontradoError();
+    }
+
+    // Se grupoId é null, remove o favorito
+    if (!grupoId) {
+      return this.usuarioRepo.atualizar(usuarioId, { grupoFavoritoId: null });
+    }
+
+    // Validar que o usuário pertence ao grupo
+    const membro = await this.grupoUsuarioRepo.buscarPorChave(usuarioId, grupoId);
+
+    if (!membro) {
+      throw ErrorFactory.badRequest('Usuário não pertence ao grupo');
+    }
+
+    return this.usuarioRepo.atualizar(usuarioId, { grupoFavoritoId: grupoId });
   }
 }

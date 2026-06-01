@@ -49,6 +49,12 @@ export class InMemoryGrupoUsuarioRepository implements GrupoUsuarioRepository {
       });
   }
 
+  async listarPorUsuario(usuarioId: string) {
+    return this.items
+      .filter((gu) => gu.usuarioId === usuarioId)
+      .map((gu) => ({ grupoId: gu.grupoId, role: gu.role }));
+  }
+
   async contarPorGrupo(grupoId: string) {
     return this.items.filter((gu) => gu.grupoId === grupoId).length;
   }
