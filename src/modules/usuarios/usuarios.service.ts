@@ -7,12 +7,16 @@ import * as bcrypt from 'bcryptjs';
 import { USUARIOS } from './usuarios.constants';
 import { AUTH } from '../auth/auth.constants';
 import type { UsuarioRepository } from './repositories/usuario.repository.interface';
+import { GRUPO_USUARIO } from '../grupo-usuario/grupo-usuario.constants';
+import type { GrupoUsuarioRepository } from '../grupo-usuario/repositories/grupo-usuario.repository.interface';
 
 @Injectable()
 export class UsuariosService {
   constructor(
     @Inject(USUARIOS.REPOSITORY_TOKEN)
     private readonly usuarioRepo: UsuarioRepository,
+    @Inject(GRUPO_USUARIO.REPOSITORY_TOKEN)
+    private readonly grupoUsuarioRepo: GrupoUsuarioRepository,
   ) {}
 
   async criar(data: { nome: string; email: string; senha: string }) {
@@ -41,6 +45,15 @@ export class UsuariosService {
 
     if (!usuario || !usuario.ativo) {
       throw new UsuarioNaoEncontradoError();
+    }
+
+    // Auto-definir grupo favorito se tem apenas 1 grupo
+    if (!usuario.grupoFavoritoId) {
+      const grupos = await this.grupoUsuarioRepo.listarPorUsuario(id);
+      if (grupos && grupos.length === 1) {
+        await this.usuarioRepo.atualizar(id, { grupoFavoritoId: grupos[0].grupoId });
+        usuario.grupoFavoritoId = grupos[0].grupoId;
+      }
     }
 
     return usuario;
@@ -87,5 +100,27 @@ export class UsuariosService {
 
   async buscarPorEmail(email: string) {
     return this.usuarioRepo.buscarPorEmail(email);
+  }
+
+  async definirGrupoFavorito(usuarioId: string, grupoId: string | null) {
+    const usuario = await this.usuarioRepo.buscarPorId(usuarioId);
+
+    if (!usuario || !usuario.ativo) {
+      throw new UsuarioNaoEncontradoError();
+    }
+
+    // Se grupoId é null, remove o favorito
+    if (!grupoId) {
+      return this.usuarioRepo.atualizar(usuarioId, { grupoFavoritoId: null });
+    }
+
+    // Validar que o usuário pertence ao grupo
+    const membro = await this.grupoUsuarioRepo.buscarPorChave(usuarioId, grupoId);
+
+    if (!membro) {
+      throw new UsuarioNaoEncontradoError();
+    }
+
+    return this.usuarioRepo.atualizar(usuarioId, { grupoFavoritoId: grupoId });
   }
 }

@@ -35,6 +35,8 @@ model Usuario {
   atualizadoEm      DateTime           @updatedAt
   perfil            Perfil             @default(USER)
   ativo             Boolean            @default(true)
+  grupoFavoritoId   String?
+  grupoFavorito     Grupo?             @relation("GrupoFavorito", fields: [grupoFavoritoId], references: [id])
   gruposCriados     Grupo[]            @relation("GrupoCriador")
   grupos            GrupoUsuario[]
   palpites          Palpite[]
@@ -61,6 +63,7 @@ model Grupo {
   criador                   Usuario          @relation("GrupoCriador", fields: [criadoPor], references: [id])
   temporada                 Temporada        @relation(fields: [temporadaId], references: [id])
   usuarios                  GrupoUsuario[]
+  usuariosFavorito          Usuario[]        @relation("GrupoFavorito")
   palpitesDobrados          PalpiteDobrado[]
   tokensDobro               TokenDobro[]
 }

@@ -6,6 +6,7 @@ export class UsuarioPresenter {
       email: usuario.email,
       perfil: usuario.perfil,
       ativo: usuario.ativo,
+      grupoFavoritoId: usuario.grupoFavoritoId ?? null,
       dataCriacao: usuario.dataCriacao,
       atualizadoEm: usuario.atualizadoEm,
     };

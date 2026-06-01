@@ -3,8 +3,8 @@
 USERID="$(id -u)"
 export USERID
 
-NPM_DEV="docker compose exec app-dev npm"
-NPX_DEV="docker compose exec app-dev npx"
+NPM_DEV="docker compose exec --user $USERID:$USERID app-dev npm"
+NPX_DEV="docker compose exec --user $USERID:$USERID app-dev npx"
 API_ENV_FILE=".env"
 API_ENV_FILE_EXAMPLE=".env.example"
 ICON="⚽"

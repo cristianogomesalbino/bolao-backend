@@ -7,7 +7,7 @@ import { GruposModule } from '../grupos/grupos.module';
 import { UsuariosModule } from '../usuarios/usuarios.module';
 
 @Module({
-  imports: [forwardRef(() => GruposModule), UsuariosModule],
+  imports: [forwardRef(() => GruposModule), forwardRef(() => UsuariosModule)],
   controllers: [GrupoUsuarioController],
   providers: [
     GrupoUsuarioService,
