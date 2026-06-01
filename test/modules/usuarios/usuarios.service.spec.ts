@@ -7,16 +7,20 @@ import {
 import { AUTH } from '@src/modules/auth/auth.constants';
 import * as bcrypt from 'bcryptjs';
 import { InMemoryUsuarioRepository } from '@src/modules/usuarios/repositories/in-memory-usuario.repository';
+import { InMemoryGrupoUsuarioRepository } from '@src/modules/grupo-usuario/repositories/in-memory-grupo-usuario.repository';
+import { BadRequestException } from '@nestjs/common';
 
 vi.mock('bcryptjs');
 
 describe('UsuariosService', () => {
   let service: UsuariosService;
   let usuarioRepo: InMemoryUsuarioRepository;
+  let grupoUsuarioRepo: InMemoryGrupoUsuarioRepository;
 
   beforeEach(() => {
     usuarioRepo = new InMemoryUsuarioRepository();
-    service = new UsuariosService(usuarioRepo);
+    grupoUsuarioRepo = new InMemoryGrupoUsuarioRepository();
+    service = new UsuariosService(usuarioRepo, grupoUsuarioRepo);
     vi.clearAllMocks();
     (bcrypt.hash as any).mockResolvedValue('hashed');
   });
@@ -215,6 +219,67 @@ describe('UsuariosService', () => {
       const result = await service.buscarPorEmail('naoexiste@example.com');
 
       expect(result).toBeNull();
+    });
+  });
+
+  // ==================== definirGrupoFavorito ====================
+
+  describe('definirGrupoFavorito', () => {
+    it('deve definir grupo favorito com sucesso', async () => {
+      const criado = await service.criar({
+        nome: 'João',
+        email: 'joao@example.com',
+        senha: 's',
+      });
+      grupoUsuarioRepo.items.push({ usuarioId: criado.id, grupoId: 'grupo-1', role: 'MEMBER' });
+
+      const result = await service.definirGrupoFavorito(criado.id, 'grupo-1');
+
+      expect(result.grupoFavoritoId).toBe('grupo-1');
+    });
+
+    it('deve remover grupo favorito quando grupoId é null', async () => {
+      const criado = await service.criar({
+        nome: 'João',
+        email: 'joao@example.com',
+        senha: 's',
+      });
+      await usuarioRepo.atualizar(criado.id, { grupoFavoritoId: 'grupo-1' });
+
+      const result = await service.definirGrupoFavorito(criado.id, null);
+
+      expect(result.grupoFavoritoId).toBeNull();
+    });
+
+    it('deve lançar erro quando usuário não pertence ao grupo', async () => {
+      const criado = await service.criar({
+        nome: 'João',
+        email: 'joao@example.com',
+        senha: 's',
+      });
+
+      await expect(
+        service.definirGrupoFavorito(criado.id, 'grupo-inexistente'),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('deve lançar UsuarioNaoEncontradoError se usuário não existe', async () => {
+      await expect(
+        service.definirGrupoFavorito('inexistente', 'grupo-1'),
+      ).rejects.toThrow(UsuarioNaoEncontradoError);
+    });
+
+    it('deve lançar UsuarioNaoEncontradoError se usuário está inativo', async () => {
+      const criado = await service.criar({
+        nome: 'João',
+        email: 'joao@example.com',
+        senha: 's',
+      });
+      await usuarioRepo.desativar(criado.id);
+
+      await expect(
+        service.definirGrupoFavorito(criado.id, 'grupo-1'),
+      ).rejects.toThrow(UsuarioNaoEncontradoError);
     });
   });
 });

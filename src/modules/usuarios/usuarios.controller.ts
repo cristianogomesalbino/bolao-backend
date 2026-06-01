@@ -28,8 +28,21 @@ export class UsuariosController {
   @ApiOperation({ summary: 'Buscar perfil do usuário autenticado' })
   @ApiResponse({ status: 200, description: 'Perfil retornado com sucesso.' })
   @Get('me')
-  async buscarPerfil(@CurrentUser() user) {
+  async buscarPerfil(@CurrentUser() user: { id: string }) {
     return UsuarioPresenter.toHttp(await this.usuariosService.buscarPorId(user.id));
+  }
+
+  @ApiOperation({ summary: 'Definir grupo favorito' })
+  @ApiResponse({ status: 200, description: 'Grupo favorito definido com sucesso.' })
+  @ApiBadRequestResponse({ description: 'Usuário não pertence ao grupo.' })
+  @Patch('me/grupo-favorito')
+  async definirGrupoFavorito(
+    @Body() dto: DefinirGrupoFavoritoDto,
+    @CurrentUser() user: { id: string },
+  ) {
+    return UsuarioPresenter.toHttp(
+      await this.usuariosService.definirGrupoFavorito(user.id, dto.grupoId ?? null),
+    );
   }
 
   @ApiOperation({ summary: 'Buscar usuário por ID' })
@@ -53,19 +66,6 @@ export class UsuariosController {
     @Body() atualizarUsuarioDto: AtualizarUsuarioDto,
   ) {
     return UsuarioPresenter.toHttp(await this.usuariosService.atualizar(id, atualizarUsuarioDto));
-  }
-
-  @ApiOperation({ summary: 'Definir grupo favorito' })
-  @ApiResponse({ status: 200, description: 'Grupo favorito definido com sucesso.' })
-  @ApiNotFoundResponse({ description: 'Usuário não pertence ao grupo.' })
-  @Patch('me/grupo-favorito')
-  async definirGrupoFavorito(
-    @Body() dto: DefinirGrupoFavoritoDto,
-    @CurrentUser() user: { id: string },
-  ) {
-    return UsuarioPresenter.toHttp(
-      await this.usuariosService.definirGrupoFavorito(user.id, dto.grupoId ?? null),
-    );
   }
 
   @ApiOperation({ summary: 'Remover usuário' })

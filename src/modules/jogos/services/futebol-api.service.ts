@@ -135,16 +135,19 @@ export class FutebolApiService implements OnModuleInit {
     if (rodadas.length === 0) return [];
 
     const season = new Date().getFullYear();
+
+    const resultados = await Promise.allSettled(
+      rodadas.map((rodada) => this.buscarJogosPorRodada(season, rodada)),
+    );
+
     const encontrados: any[] = [];
     let falhas = 0;
 
-    for (const rodada of rodadas) {
-      try {
-        const jogos = await this.buscarJogosPorRodada(season, rodada);
-        encontrados.push(...jogos);
-      } catch {
+    for (const resultado of resultados) {
+      if (resultado.status === 'fulfilled') {
+        encontrados.push(...resultado.value);
+      } else {
         falhas++;
-        continue;
       }
     }
 

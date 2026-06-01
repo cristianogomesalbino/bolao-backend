@@ -3,6 +3,7 @@ import {
   EmailJaCadastradoError,
   UsuarioNaoEncontradoError,
 } from '../../common/errors/domain-errors';
+import { ErrorFactory } from '../../common/errors/error.factory';
 import * as bcrypt from 'bcryptjs';
 import { USUARIOS } from './usuarios.constants';
 import { AUTH } from '../auth/auth.constants';
@@ -43,17 +44,8 @@ export class UsuariosService {
   async buscarPorId(id: string) {
     const usuario = await this.usuarioRepo.buscarPorId(id);
 
-    if (!usuario || !usuario.ativo) {
+    if (!usuario?.ativo) {
       throw new UsuarioNaoEncontradoError();
-    }
-
-    // Auto-definir grupo favorito se tem apenas 1 grupo
-    if (!usuario.grupoFavoritoId) {
-      const grupos = await this.grupoUsuarioRepo.listarPorUsuario(id);
-      if (grupos && grupos.length === 1) {
-        await this.usuarioRepo.atualizar(id, { grupoFavoritoId: grupos[0].grupoId });
-        usuario.grupoFavoritoId = grupos[0].grupoId;
-      }
     }
 
     return usuario;
@@ -65,7 +57,7 @@ export class UsuariosService {
   ) {
     const usuarioExistente = await this.usuarioRepo.buscarPorId(id);
 
-    if (!usuarioExistente || !usuarioExistente.ativo) {
+    if (!usuarioExistente?.ativo) {
       throw new UsuarioNaoEncontradoError();
     }
 
@@ -105,7 +97,7 @@ export class UsuariosService {
   async definirGrupoFavorito(usuarioId: string, grupoId: string | null) {
     const usuario = await this.usuarioRepo.buscarPorId(usuarioId);
 
-    if (!usuario || !usuario.ativo) {
+    if (!usuario?.ativo) {
       throw new UsuarioNaoEncontradoError();
     }
 
@@ -118,7 +110,7 @@ export class UsuariosService {
     const membro = await this.grupoUsuarioRepo.buscarPorChave(usuarioId, grupoId);
 
     if (!membro) {
-      throw new UsuarioNaoEncontradoError();
+      throw ErrorFactory.badRequest('Usuário não pertence ao grupo');
     }
 
     return this.usuarioRepo.atualizar(usuarioId, { grupoFavoritoId: grupoId });
