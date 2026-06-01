@@ -131,9 +131,38 @@ export class FutebolApiService implements OnModuleInit {
     return encontrados;
   }
 
+  async buscarJogosPorRodadas(rodadas: number[]): Promise<any[]> {
+    if (rodadas.length === 0) return [];
+
+    const season = new Date().getFullYear();
+    const encontrados: any[] = [];
+    let falhas = 0;
+
+    for (const rodada of rodadas) {
+      try {
+        const jogos = await this.buscarJogosPorRodada(season, rodada);
+        encontrados.push(...jogos);
+      } catch {
+        falhas++;
+        continue;
+      }
+    }
+
+    // Se todas as rodadas falharam, a API está indisponível
+    if (falhas === rodadas.length) {
+      throw new ApiExternaIndisponivelError();
+    }
+
+    return encontrados;
+  }
+
   private async fetchJogos(url: string): Promise<any[]> {
     try {
-      const response = await fetch(url, { method: 'GET' });
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 10000);
+
+      const response = await fetch(url, { method: 'GET', signal: controller.signal });
+      clearTimeout(timeout);
 
       if (!response.ok) {
         this.logger.error(`API externa retornou status ${response.status}`);
@@ -156,10 +185,15 @@ export class FutebolApiService implements OnModuleInit {
 
     // A API do ge.globo.com retorna data_realizacao em BRT (sem timezone)
     // Jogos adiados têm data_realizacao = null
+    // Alguns jogos podem vir com timezone (Z ou offset) — detectar e não aplicar -03:00 novamente
     const dataHoraBrt = jogo.data_realizacao;
-    const dataHoraUtc = dataHoraBrt
-      ? new Date(`${dataHoraBrt}-03:00`).toISOString()
-      : null;
+    let dataHoraUtc: string | null = null;
+    if (dataHoraBrt) {
+      const jaTemTimezone = /[Zz]$|[+-]\d{2}:\d{2}$|[+-]\d{4}$/.test(dataHoraBrt.trim());
+      dataHoraUtc = jaTemTimezone
+        ? new Date(dataHoraBrt).toISOString()
+        : new Date(`${dataHoraBrt}-03:00`).toISOString();
+    }
 
     return {
       externoId: String(jogo.id),
@@ -167,8 +201,8 @@ export class FutebolApiService implements OnModuleInit {
       status: dataHoraUtc ? status : 'ADIADO',
       timeCasaId: String(jogo.equipes.mandante.id),
       timeForaId: String(jogo.equipes.visitante.id),
-      golsCasa: status === 'FINALIZADO' ? (jogo.placar_oficial_mandante ?? null) : null,
-      golsFora: status === 'FINALIZADO' ? (jogo.placar_oficial_visitante ?? null) : null,
+      golsCasa: (status === 'FINALIZADO' || status === 'EM_ANDAMENTO') ? (jogo.placar_oficial_mandante ?? null) : null,
+      golsFora: (status === 'FINALIZADO' || status === 'EM_ANDAMENTO') ? (jogo.placar_oficial_visitante ?? null) : null,
       penaltisCasa: jogo.placar_penaltis_mandante ?? null,
       penaltisFora: jogo.placar_penaltis_visitante ?? null,
       timeCasa: {

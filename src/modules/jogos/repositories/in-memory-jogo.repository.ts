@@ -61,7 +61,13 @@ export class InMemoryJogoRepository implements JogoRepository {
 
   async buscarRodadaAtual(faseId: string): Promise<number | null> {
     const naoFinalizados = this.items
-      .filter((j) => j.faseId === faseId && j.status !== 'FINALIZADO' && j.rodada != null)
+      .filter(
+        (j) =>
+          j.faseId === faseId &&
+          !['FINALIZADO', 'ADIADO', 'CANCELADO'].includes(j.status) &&
+          j.rodada != null &&
+          j.dataHora != null,
+      )
       .sort((a, b) => a.rodada - b.rodada);
 
     if (naoFinalizados.length > 0) return naoFinalizados[0].rodada;
