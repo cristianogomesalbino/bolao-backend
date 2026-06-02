@@ -744,25 +744,48 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"season\": 2026,\n  \"rodada\": 1,\n  \"faseId\": \"{{faseId}}\"\n}"
+              "raw": "{\n  \"campeonatoSlug\": \"brasileirao\",\n  \"faseSlug\": \"fase-unica-campeonato-brasileiro-2025\",\n  \"rodada\": 1,\n  \"faseId\": \"{{faseId}}\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/jogos/importar",
               "host": ["{{baseUrl}}"],
               "path": ["jogos", "importar"]
-            }
+            },
+            "description": "Importa jogos de uma rodada da API externa. campeonatoSlug: 'brasileirao' ou 'copa-do-mundo-2026'. faseSlug: slug da fase na API (ex: 'fase-unica-campeonato-brasileiro-2025', 'fase-de-grupos-copa-do-mundo-2026'). Validação dinâmica de rodada por campeonato/fase."
+          }
+        },
+        {
+          "name": "Importar Jogos Copa do Mundo (SUPER_ADMIN)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"campeonatoSlug\": \"copa-do-mundo-2026\",\n  \"faseSlug\": \"fase-de-grupos-copa-do-mundo-2026\",\n  \"rodada\": 1,\n  \"faseId\": \"{{faseId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/jogos/importar",
+              "host": ["{{baseUrl}}"],
+              "path": ["jogos", "importar"]
+            },
+            "description": "Exemplo de importação para Copa do Mundo 2026 — fase de grupos, rodada 1. Fases disponíveis: fase-de-grupos-copa-do-mundo-2026 (max 3 rodadas), 32avos-de-final-copa-do-mundo-2026 (max 1), oitavas-de-final-copa-do-mundo-2026 (max 1), quartas-de-final-copa-do-mundo-2026 (max 1), semifinais-copa-do-mundo-2026 (max 1), disputa-terceiro-lugar-copa-do-mundo-2026 (max 1), final-copa-do-mundo-2026 (max 1)."
           }
         },
         {
           "name": "Sincronizar Placares (SUPER_ADMIN)",
           "request": {
             "method": "POST",
-            "header": [],
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"campeonatoSlug\": \"brasileirao\",\n  \"faseSlug\": \"fase-unica-campeonato-brasileiro-2025\"\n}"
+            },
             "url": {
               "raw": "{{baseUrl}}/fases/{{faseId}}/jogos/sincronizar",
               "host": ["{{baseUrl}}"],
               "path": ["fases", "{{faseId}}", "jogos", "sincronizar"]
-            }
+            },
+            "description": "Sincroniza placares dos jogos da fase via API externa. Requer campeonatoSlug e faseSlug no body para determinar qual config usar."
           }
         }
       ]

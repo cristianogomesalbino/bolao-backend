@@ -137,11 +137,16 @@ describe('JogoController', () => {
     it('deve chamar jogoService.importarJogos e retornar resultado', async () => {
       mockJogoService.importarJogos.mockResolvedValue({ importados: 5 });
 
-      const dto = { season: 2026, rodada: 1, faseId: 'fase-1' };
+      const dto = {
+        campeonatoSlug: 'brasileirao',
+        faseSlug: 'fase-unica',
+        rodada: 1,
+        faseId: 'fase-1',
+      };
       const user = { id: 'user-1' };
       const result = await controller.importar(dto as any, user);
 
-      expect(mockJogoService.importarJogos).toHaveBeenCalledWith(2026, 1, 'fase-1', 'user-1');
+      expect(mockJogoService.importarJogos).toHaveBeenCalledWith(dto, 'user-1');
       expect(result).toEqual({ importados: 5 });
     });
   });
@@ -150,9 +155,17 @@ describe('JogoController', () => {
     it('deve chamar jogoService.sincronizarPlacares e retornar resultado', async () => {
       mockJogoService.sincronizarPlacares.mockResolvedValue({ sincronizados: 3 });
 
-      const result = await controller.sincronizar('fase-1');
+      const dto = {
+        campeonatoSlug: 'brasileirao',
+        faseSlug: 'fase-unica',
+      };
+      const result = await controller.sincronizar('fase-1', dto as any);
 
-      expect(mockJogoService.sincronizarPlacares).toHaveBeenCalledWith('fase-1');
+      expect(mockJogoService.sincronizarPlacares).toHaveBeenCalledWith(
+        'fase-1',
+        'brasileirao',
+        'fase-unica',
+      );
       expect(result).toEqual({ sincronizados: 3 });
     });
   });

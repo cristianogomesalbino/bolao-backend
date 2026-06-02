@@ -20,6 +20,7 @@ import { CriarJogoDto } from '../dto/criar-jogo.dto';
 import { AtualizarJogoDto } from '../dto/atualizar-jogo.dto';
 import { FinalizarJogoDto } from '../dto/finalizar-jogo.dto';
 import { ImportarJogosDto } from '../dto/importar-jogos.dto';
+import { SincronizarJogosDto } from '../dto/sincronizar-jogos.dto';
 import { ParseUUIDCustomPipe } from '../../../common/pipes/parse-uuid-custom.pipe';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 import { JOGOS } from '../jogos.constants';
@@ -113,12 +114,7 @@ export class JogoController {
     @Body() dto: ImportarJogosDto,
     @CurrentUser() user: { id: string },
   ) {
-    return this.jogoService.importarJogos(
-      dto.season,
-      dto.rodada,
-      dto.faseId,
-      user.id,
-    );
+    return this.jogoService.importarJogos(dto, user.id);
   }
 
   @ApiOperation({ summary: 'Sincronizar placares via API externa (SUPER_ADMIN)' })
@@ -127,8 +123,13 @@ export class JogoController {
   @Post('fases/:faseId/jogos/sincronizar')
   async sincronizar(
     @Param('faseId', new ParseUUIDCustomPipe('faseId')) faseId: string,
+    @Body() dto: SincronizarJogosDto,
   ) {
-    return this.jogoService.sincronizarPlacares(faseId);
+    return this.jogoService.sincronizarPlacares(
+      faseId,
+      dto.campeonatoSlug,
+      dto.faseSlug,
+    );
   }
 
   @ApiOperation({ summary: 'Resetar fonte de resultado para API_EXTERNA' })

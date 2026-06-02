@@ -121,3 +121,15 @@ A API externa (ge.globo.com) já suporta a Copa do Mundo com o mesmo formato de 
 2. QUANDO importando jogos para uma fase eliminatória da Copa do Mundo com rodada maior que 1, O ImportacaoService DEVE rejeitar a requisição com um domain error
 3. QUANDO importando jogos para uma fase do Brasileirão com rodada maior que 38, O ImportacaoService DEVE rejeitar a requisição com um domain error
 4. QUANDO importando jogos com rodada menor que 1, O ImportacaoService DEVE rejeitar a requisição com um erro de validação
+
+### Requisito 9: Configuração de Tema Visual por Campeonato
+
+**User Story:** Como frontend, quero receber do backend a configuração de tema (cores) de cada campeonato, para que eu possa aplicar um layout diferenciado (ex: verde e amarelo para Copa do Mundo).
+
+#### Critérios de Aceitação
+
+1. O CampeonatoConfig DEVE incluir um objeto `tema` contendo `corPrimaria` e `corSecundaria` como strings hexadecimais
+2. O tema da Copa do Mundo 2026 DEVE definir `corPrimaria` como `#009739` (verde) e `corSecundaria` como `#FEDD00` (amarelo)
+3. O tema do Brasileirão DEVE definir `corPrimaria` como `#1B5E20` (verde escuro) e `corSecundaria` como `#FFFFFF` (branco)
+4. QUANDO o endpoint de listagem de campeonatos ou detalhes de temporada é chamado, O Presenter DEVE incluir o objeto `tema` na resposta
+5. QUANDO o endpoint de listagem de grupos é chamado, O Presenter DEVE incluir o `tema` do campeonato associado à temporada do grupo

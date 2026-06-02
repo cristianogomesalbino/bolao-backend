@@ -98,3 +98,36 @@ export class ApiExternaIndisponivelError extends DomainError {
     super(mensagem);
   }
 }
+
+export class CampeonatoNaoSuportadoError extends DomainError {
+  readonly statusCode = 400;
+  constructor(slug?: string) {
+    super(
+      slug
+        ? `Campeonato '${slug}' não é suportado`
+        : JOGOS.MENSAGENS.CAMPEONATO_NAO_SUPORTADO,
+    );
+  }
+}
+
+export class RodadaForaDoLimiteError extends DomainError {
+  readonly statusCode = 400;
+  constructor(rodada?: number, max?: number, fase?: string) {
+    super(
+      rodada != null && max != null && fase
+        ? `Rodada ${rodada} excede o limite de ${max} para a fase '${fase}'`
+        : JOGOS.MENSAGENS.RODADA_FORA_DO_LIMITE,
+    );
+  }
+}
+
+export class FaseSlugInvalidaError extends DomainError {
+  readonly statusCode = 400;
+  constructor(faseSlug?: string, campeonato?: string) {
+    super(
+      faseSlug && campeonato
+        ? `Fase '${faseSlug}' não é válida para o campeonato '${campeonato}'`
+        : JOGOS.MENSAGENS.FASE_SLUG_INVALIDA,
+    );
+  }
+}

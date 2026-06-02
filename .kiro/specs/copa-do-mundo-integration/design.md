@@ -101,6 +101,27 @@ class ImportarJogosDto {
 }
 ```
 
+### Tema Visual (Type)
+
+```typescript
+interface TemaConfig {
+  corPrimaria: string;   // Hex color (ex: '#009739')
+  corSecundaria: string; // Hex color (ex: '#FEDD00')
+}
+```
+
+Incluído no `CampeonatoConfig`:
+```typescript
+interface CampeonatoConfig {
+  campeonatoId: string;
+  slug: string;
+  nome: string;
+  fases: FaseConfig[];
+  tema: TemaConfig;  // Cores para o frontend aplicar layout diferenciado
+  buildFaseSlug: (season: number, faseSlug: string) => string;
+}
+```
+
 ### Novos Domain Errors
 
 ```typescript

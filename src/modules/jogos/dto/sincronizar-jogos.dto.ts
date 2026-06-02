@@ -1,7 +1,7 @@
-import { IsInt, IsUUID, IsNotEmpty, IsIn, IsString, Min } from 'class-validator';
+import { IsIn, IsNotEmpty, IsString } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
-export class ImportarJogosDto {
+export class SincronizarJogosDto {
   @ApiProperty({
     description: 'Slug do campeonato (brasileirao ou copa-do-mundo-2026)',
     example: 'brasileirao',
@@ -19,20 +19,4 @@ export class ImportarJogosDto {
   @IsString({ message: 'faseSlug deve ser uma string' })
   @IsNotEmpty({ message: 'faseSlug é obrigatório' })
   faseSlug: string;
-
-  @ApiProperty({
-    description: 'Número da rodada (validação dinâmica por campeonato/fase)',
-    example: 1,
-  })
-  @IsInt({ message: 'rodada deve ser um número inteiro' })
-  @Min(1, { message: 'rodada deve ser no mínimo 1' })
-  rodada: number;
-
-  @ApiProperty({
-    description: 'ID da fase onde os jogos serão importados',
-    example: '550e8400-e29b-41d4-a716-446655440000',
-  })
-  @IsUUID('4', { message: 'faseId deve ser um UUID válido' })
-  @IsNotEmpty({ message: 'faseId é obrigatório' })
-  faseId: string;
 }

@@ -197,7 +197,16 @@ Refatorar o `FutebolApiService` e o fluxo de importação/sincronização para s
     - Adicionar exemplos para Copa do Mundo e Brasileirão
     - _Requirements: 3.1, 3.2_
 
-  - [ ] 8.2 Atualizar módulo NestJS e garantir wiring correto
+  - [ ] 8.2 Adicionar campo `tema` no CampeonatoConfig e expor nos Presenters
+    - Adicionar interface `TemaConfig` com `corPrimaria` e `corSecundaria` em `jogos.constants.ts`
+    - Adicionar `tema` no `CampeonatoConfig` da Copa do Mundo: `{ corPrimaria: '#009739', corSecundaria: '#FEDD00' }`
+    - Adicionar `tema` no `CampeonatoConfig` do Brasileirão: `{ corPrimaria: '#1B5E20', corSecundaria: '#FFFFFF' }`
+    - Atualizar Presenter de campeonato/temporada para incluir `tema` na resposta
+    - Atualizar Presenter de grupo para incluir `tema` do campeonato associado
+    - Escrever testes unitários verificando que o tema é retornado corretamente
+    - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.5_
+
+  - [ ] 8.3 Atualizar módulo NestJS e garantir wiring correto
     - Verificar que `JogosModule` exporta/provê todos os services e repositories necessários
     - Garantir que não há imports circulares
     - Verificar que o `FutebolApiService` continua injetável sem alterações no module
@@ -231,7 +240,7 @@ Refatorar o `FutebolApiService` e o fluxo de importação/sincronização para s
     { "id": 5, "tasks": ["4.4", "4.5", "4.6", "4.7"] },
     { "id": 6, "tasks": ["6.1", "6.2"] },
     { "id": 7, "tasks": ["6.3", "6.4", "6.5", "6.6"] },
-    { "id": 8, "tasks": ["8.1", "8.2"] }
+    { "id": 8, "tasks": ["8.1", "8.2", "8.3"] }
   ]
 }
 ```
