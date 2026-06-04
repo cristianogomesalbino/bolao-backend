@@ -63,6 +63,35 @@ export class PrismaJogoRepository implements JogoRepository {
     return this.prisma.jogo.findMany({ where: { grupoIdaVolta } });
   }
 
+  buscarProximoJogoPorTemporada(temporadaId: string) {
+    return this.prisma.jogo.findFirst({
+      where: {
+        fase: { temporadaId },
+        status: 'AGENDADO',
+        dataHora: { gt: new Date() },
+      },
+      include: { fase: true, timeCasa: true, timeFora: true },
+      orderBy: { dataHora: 'asc' },
+    });
+  }
+
+  contarAdiadosPorTemporada(temporadaId: string) {
+    return this.prisma.jogo.count({
+      where: {
+        fase: { temporadaId },
+        status: 'ADIADO',
+      },
+    });
+  }
+
+  buscarTodosPorTemporada(temporadaId: string) {
+    return this.prisma.jogo.findMany({
+      where: { fase: { temporadaId } },
+      include: { fase: true, timeCasa: true, timeFora: true },
+      orderBy: [{ fase: { ordem: 'asc' } }, { rodada: 'asc' }, { dataHora: 'asc' }],
+    });
+  }
+
   async buscarRodadaAtual(faseId: string): Promise<number | null> {
     // Menor rodada com pelo menos 1 jogo ativo (não finalizado, não adiado, com data definida)
     const jogo = await this.prisma.jogo.findFirst({

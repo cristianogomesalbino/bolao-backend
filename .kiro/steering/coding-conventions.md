@@ -20,11 +20,18 @@ inclusion: always
 - **SEMPRE usar early returns em vez de ifs aninhados** — reduz complexidade cognitiva e melhora legibilidade
 - **SEMPRE extrair lógica duplicada em helpers** — se o mesmo bloco aparece 2+ vezes, criar método privado (ex: `validarSemDesempate`, `determinarVencedorPorPlacar`, `buildUpdateFinalizado`)
 - **NUNCA fazer queries em loop (N+1)** — buscar todos os dados necessários antes do loop com uma única query
+- **SEMPRE criar endpoints consolidados quando o frontend precisa de dados de múltiplas entidades** — ex: se a tela precisa de "próximo jogo + total adiados", criar 1 endpoint que retorna tudo em vez de forçar o frontend a fazer N requests por fase
 - **NUNCA deixar código morto** — remover funções não chamadas por ninguém (YAGNI)
 - **SEMPRE validar variáveis de ambiente no startup** — usar `OnModuleInit` para validar e logar warning se env var obrigatória estiver ausente
 - **SEMPRE colocar guards genéricos em `src/modules/auth/`** — guards reutilizáveis (ex: `SuperAdminGuard`) não devem ficar dentro de módulos específicos
 - **SEMPRE usar erro semântico correto** — se o jogo foi encontrado mas falta `externoId`, não lançar `JogoNaoEncontradoError`
-- **NUNCA usar `any` em interfaces de repositório** — usar tipos do Prisma ou criar tipos próprios (dívida técnica atual, migrar gradualmente)
+- **NUNCA usar `any` em interfaces de repositório** — definir tipos próprios na interface (ex: `Temporada`, `TemporadaComCampeonato`, `CriarTemporadaData`). Repositories devem retornar `Promise<Tipo>`, nunca `Promise<any>`
+- **SEMPRE tipar retornos de repository** — cada interface define seus tipos de entrada e saída como interfaces exportadas no mesmo arquivo
+- **Padrão de tipagem de repository:**
+  - Tipo base: `interface Entidade { id: string; ... }` (campos do model Prisma)
+  - Tipo com relações: `interface EntidadeComRelacoes extends Entidade { relacao?: {...} }`
+  - Tipo de criação: `interface CriarEntidadeData { ... }` (campos obrigatórios sem id/datas)
+  - Retornos: `criar(): Promise<Entidade>`, `buscarPorId(): Promise<Entidade | null>`, `buscarTodos(): Promise<EntidadeComRelacoes[]>`
 - **SEMPRE validar pertencimento entre entidades dependentes** — ex: verificar se a fase pertence à temporada do grupo antes de operar. Não confiar apenas na existência do recurso
 - **SEMPRE usar métodos batch para operações em lote** — ex: `buscarPorIds`, `criarVarios`, `buscarPorUsuarioEJogos`. Nunca chamar métodos individuais dentro de loops
 - **SEMPRE nomear Domain Errors pela ação exata** — não reutilizar um erro de outro contexto (ex: não usar `NaoPodeRemoverCriadorError` quando a ação é alterar role; criar `NaoPodeAlterarRoleCriadorError`)
@@ -37,10 +44,8 @@ inclusion: always
 
 ## Dívida Técnica
 
-- Interfaces de repositório usam `Promise<any>` — migrar para tipos Prisma (`Prisma.Jogo`, `Prisma.Fase`, etc.)
 - AuthService usa PrismaService diretamente — migrar para Repository Pattern
 - ACCESS_EXPIRATION e REFRESH_EXPIRATION ambos com '7d' — separar (access: 15m, refresh: 7d)
-- Presenters e services usam `any` nos parâmetros — tipar gradualmente
 
 ## Padrões de Erro
 
@@ -168,7 +173,7 @@ Não usar `"campo": "geral"`. O campo `campo` é opcional — omitir quando não
 - **SEMPRE verificar diagnostics após criar/editar arquivo .ts** — usar getDiagnostics e corrigir erros de Prettier e warnings corrigíveis
 - **SEMPRE usar optional chaining** quando acessar propriedades de objetos possivelmente null/undefined
 - **SEMPRE manter complexidade cognitiva ≤ 15** — se ultrapassar, extrair helpers privados
-- **Erros de `Unsafe ... any value` são aceitos** — dívida técnica documentada (repositories retornam `Promise<any>`)
+- **NUNCA usar `any` em código novo** — tipar tudo. Em código legado sendo editado, tipar o que tocar
 - **NUNCA commitar com erros de Prettier** — formatação deve estar correta antes de qualquer commit
 - **Ao criar código novo, seguir estes padrões para evitar issues de Sonar:**
   - Usar `?.` em vez de `&& obj.prop` (S6582)
@@ -184,10 +189,11 @@ Não usar `"campo": "geral"`. O campo `campo` é opcional — omitir quando não
   1. Erros de Prettier (formatação)
   2. Optional chaining (`!obj || !obj.prop` → `!obj?.prop`)
   3. Complexidade cognitiva > 15 (extrair helpers)
-  4. `Unsafe ... any value` — tipar parâmetros de métodos privados que recebem dados de repositório (ex: `jogo: any` → `jogo: { id: string; status: string; ... }`)
+  4. `Unsafe ... any value` — tipar parâmetros de métodos e retornos de repositórios com tipos próprios definidos na interface
 - **Cálculo:** se o arquivo tem 290 erros de lint, corrigir pelo menos 29 ao editá-lo. Se tem 5, corrigir pelo menos 1.
-- **Não quebrar funcionalidade** — se a tipagem de `any` exigir mudanças em cascata (interface + Prisma + InMemory), limitar ao escopo do arquivo editado
+- **Não quebrar funcionalidade** — ao tipar, garantir que os 3 arquivos (interface + Prisma + InMemory) estão alinhados
 - **Documentar no commit** — mencionar "redução de dívida técnica" quando aplicável
+- **Meta:** zero erros de lint em código novo. Código legado deve ser tipado ao ser editado.
 
 ## Testes
 

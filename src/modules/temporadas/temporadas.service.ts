@@ -10,6 +10,7 @@ import { CAMPEONATOS } from '../campeonatos/campeonatos.constants';
 import type { CampeonatoRepository } from '../campeonatos/repositories/campeonato.repository.interface';
 import { JOGOS } from '../jogos/jogos.constants';
 import type { FaseRepository } from '../jogos/repositories/fase.repository.interface';
+import type { JogoRepository } from '../jogos/repositories/jogo.repository.interface';
 
 @Injectable()
 export class TemporadasService {
@@ -20,6 +21,8 @@ export class TemporadasService {
     private readonly campeonatoRepo: CampeonatoRepository,
     @Inject(JOGOS.FASE_REPOSITORY_TOKEN)
     private readonly faseRepo: FaseRepository,
+    @Inject(JOGOS.JOGO_REPOSITORY_TOKEN)
+    private readonly jogoRepo: JogoRepository,
   ) {}
 
   async criar(createTemporadaDto: CreateTemporadaDto) {
@@ -67,5 +70,18 @@ export class TemporadasService {
 
   buscarTodos() {
     return this.temporadaRepo.buscarTodos();
+  }
+
+  async buscarDadosTemporada(temporadaId: string) {
+    const [proximoJogo, totalAdiados] = await Promise.all([
+      this.jogoRepo.buscarProximoJogoPorTemporada(temporadaId),
+      this.jogoRepo.contarAdiadosPorTemporada(temporadaId),
+    ]);
+
+    return { proximoJogo, totalAdiados };
+  }
+
+  async buscarJogosTemporada(temporadaId: string) {
+    return this.jogoRepo.buscarTodosPorTemporada(temporadaId);
   }
 }

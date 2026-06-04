@@ -91,7 +91,9 @@ export class GruposService {
 
     return this.grupoRepo.atualizar(id, {
       nome: dto.nome ?? grupo.nome,
+      icone: dto.icone ?? grupo.icone,
       privado: dto.privado ?? grupo.privado,
+      maxParticipantes: dto.maxParticipantes ?? grupo.maxParticipantes,
       permitirPalpiteAutomatico:
         dto.permitirPalpiteAutomatico ?? grupo.permitirPalpiteAutomatico,
       permitirPalpiteDobrado:

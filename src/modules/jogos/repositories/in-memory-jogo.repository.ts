@@ -59,6 +59,22 @@ export class InMemoryJogoRepository implements JogoRepository {
     return this.items.filter((j) => j.grupoIdaVolta === grupoIdaVolta);
   }
 
+  async buscarProximoJogoPorTemporada(temporadaId: string) {
+    const agora = Date.now();
+    const candidatos = this.items
+      .filter((j) => j.faseId && j.status === 'AGENDADO' && j.dataHora && new Date(j.dataHora).getTime() > agora)
+      .sort((a, b) => new Date(a.dataHora).getTime() - new Date(b.dataHora).getTime());
+    return candidatos[0] ?? null;
+  }
+
+  async contarAdiadosPorTemporada(temporadaId: string) {
+    return this.items.filter((j) => j.status === 'ADIADO').length;
+  }
+
+  async buscarTodosPorTemporada(temporadaId: string) {
+    return this.items.filter((j) => !!j.faseId);
+  }
+
   async buscarRodadaAtual(faseId: string): Promise<number | null> {
     const naoFinalizados = this.items
       .filter(

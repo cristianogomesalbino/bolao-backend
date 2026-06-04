@@ -168,6 +168,13 @@ Seguir esta ordem. Não pular para o passo N+1 sem completar o passo N.
 - [ ] **I — Interface Segregation:** Services externos (APIs de terceiros) acessados via interface ou classe concreta? Deve ter interface + token de injeção, igual repositories
 - [ ] **D — Dependency Inversion:** Services dependem de abstrações (interfaces) ou implementações concretas? `process.env` direto em vez de `ConfigService`?
 
+### Passo 9 — Performance e Requisições
+- [ ] **N+1 no backend:** Queries dentro de loops (`for`, `map`, `forEach`) — deve buscar todos de uma vez com `WHERE IN` ou batch
+- [ ] **N+1 no frontend:** Tela que faz request por item renderizado (ex: buscar estatísticas por jogo individualmente) — deve usar endpoint batch ou consolidado
+- [ ] **Endpoints que forçam cascata no frontend:** Se um endpoint retorna apenas IDs e o frontend precisa fazer N requests pra resolver, sugerir include/expand ou endpoint dedicado
+- [ ] **staleTime inadequado:** Queries pesadas com `staleTime: 0` ou `refetchOnWindowFocus: true` — avaliar se os dados realmente mudam com essa frequência
+- [ ] **Ausência de endpoint consolidado:** Se uma tela precisa de dados de múltiplas entidades/fases (ex: próximo jogo de toda a temporada), deve existir 1 endpoint que resolve em 1-2 queries SQL, não N requests paralelos do frontend
+
 ### Passo 8.1 — Design Patterns
 - [ ] **Repository Pattern:** Toda persistência passa por interface de repositório? Nenhum `prisma.xxx` direto em services?
 - [ ] **Presenter Pattern:** Toda resposta HTTP passa por Presenter com allowlist? Nenhum objeto Prisma raw retornado ao client?

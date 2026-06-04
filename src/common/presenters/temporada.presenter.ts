@@ -5,7 +5,7 @@ interface TemporadaData {
   ano: number;
   campeonatoId: string;
   dataCriacao: Date;
-  campeonato?: { id: string; nome: string; dataCriacao: Date; atualizadoEm: Date };
+  campeonato?: { id: string; nome: string; dataCriacao: Date; atualizadoEm: Date } | null;
 }
 
 export class TemporadaPresenter {

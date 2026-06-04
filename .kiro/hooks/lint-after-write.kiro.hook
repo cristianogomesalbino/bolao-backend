@@ -11,6 +11,6 @@
   },
   "then": {
     "type": "askAgent",
-    "prompt": "Verifique se o arquivo que acabou de ser escrito/editado é um .ts ou .tsx. Se for, use getDiagnostics para verificar se há erros de Prettier (mensagens com \"Replace\" ou \"Insert\" ou \"Delete\") ou warnings de optional chaining ou complexidade cognitiva. Se encontrar erros de Prettier ou warnings corrigíveis, corrija-os imediatamente. Ignore erros de \"Unsafe ... any value\" pois são dívida técnica aceita do projeto. Não mencione nada ao usuário se não houver problemas corrigíveis."
+    "prompt": "Verifique se o arquivo que acabou de ser escrito/editado é um .ts ou .tsx. Se for, use getDiagnostics para verificar se há erros de Prettier (mensagens com \"Replace\" ou \"Insert\" ou \"Delete\"), warnings de optional chaining, complexidade cognitiva, ou erros de \"Unsafe ... any value\". Se encontrar erros de Prettier, corrija a formatação imediatamente. Se encontrar warnings de optional chaining ou complexidade, corrija-os. Para erros de 'Unsafe any', corrija tipando corretamente (código novo nunca deve usar any). Não mencione nada ao usuário se não houver problemas corrigíveis. Se o arquivo tiver muitos erros de any pré-existentes (mais de 50), corrija pelo menos 10% deles."
   }
 }
