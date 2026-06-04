@@ -223,6 +223,15 @@ describe('JogoService — sincronização multi-campeonato', () => {
       ).rejects.toThrow(FaseNaoEncontradaError);
     });
 
+    it('deve lançar CampeonatoNaoSuportadoError para campeonatoSlug inválido', async () => {
+      const { CampeonatoNaoSuportadoError } = await import(
+        '@src/common/errors/domain-errors'
+      );
+      await expect(
+        service.sincronizarPlacares('fase-sync-1', 'invalido', 'qualquer'),
+      ).rejects.toThrow(CampeonatoNaoSuportadoError);
+    });
+
     it('deve retornar sincronizados 0 quando não há jogos com externoId', async () => {
       jogoRepo.items.push({
         id: 'jogo-manual',

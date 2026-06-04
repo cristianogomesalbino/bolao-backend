@@ -666,15 +666,15 @@ export class JogoService {
     if (existentePorSigla) {
       // Se já existe time com essa sigla mas externoId diferente, criar com sigla diferenciada
       if (existentePorSigla.externoId && existentePorSigla.externoId !== timeData.externoId) {
-        const siglaUnica = `${timeData.sigla}-${timeData.externoId.slice(0, 4)}`;
+        const siglaUnica = `${timeData.sigla}-${timeData.externoId}`;
         const novo = await this.timeRepo.criar({ ...timeData, sigla: siglaUnica });
         cache.set(timeData.externoId, novo);
         return novo;
       }
-      // Mesmo time sem externoId — vincular
-      const atualizado = await this.timeRepo.atualizar(existentePorSigla.id, {
-        ...(timeData.escudo && !existentePorSigla.escudo && { escudo: timeData.escudo }),
-      });
+      // Mesmo time sem externoId — vincular externoId + escudo
+      const updateData: Record<string, any> = { externoId: timeData.externoId };
+      if (timeData.escudo && !existentePorSigla.escudo) updateData.escudo = timeData.escudo;
+      const atualizado = await this.timeRepo.atualizar(existentePorSigla.id, updateData);
       cache.set(timeData.externoId, atualizado);
       return atualizado;
     }
@@ -922,10 +922,12 @@ export class JogoService {
 
     // Se empate no tempo normal e tem pênaltis, vencedor é por pênaltis
     if (!updateData.vencedorId && updateData.temPenaltis) {
-      updateData.vencedorId =
-        updateData.penaltisCasa > updateData.penaltisFora
-          ? jogo.timeCasaId
-          : jogo.timeForaId;
+      if (updateData.penaltisCasa > updateData.penaltisFora) {
+        updateData.vencedorId = jogo.timeCasaId;
+      } else if (updateData.penaltisFora > updateData.penaltisCasa) {
+        updateData.vencedorId = jogo.timeForaId;
+      }
+      // Se penaltisCasa === penaltisFora → vencedorId permanece null (dados inconsistentes)
     }
   }
 

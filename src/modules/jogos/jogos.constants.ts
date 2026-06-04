@@ -1,5 +1,11 @@
 // --- Interfaces de configuração multi-campeonato ---
 
+import {
+  CampeonatoNaoSuportadoError,
+  FaseSlugInvalidaError,
+  RodadaForaDoLimiteError,
+} from '../../common/errors/domain-errors';
+
 export interface TemaConfig {
   corPrimaria: string;
   corSecundaria: string;
@@ -76,11 +82,8 @@ export const CAMPEONATO_CONFIGS: Record<string, CampeonatoConfig> = {
 
 // --- Funções utilitárias ---
 
-import {
-  CampeonatoNaoSuportadoError,
-  FaseSlugInvalidaError,
-  RodadaForaDoLimiteError,
-} from '../../common/errors/domain-errors';
+export const CAMPEONATO_SLUGS = Object.keys(CAMPEONATO_CONFIGS);
+export type CampeonatoSlug = keyof typeof CAMPEONATO_CONFIGS;
 
 export function obterCampeonatoConfig(slug: string): CampeonatoConfig {
   const config = CAMPEONATO_CONFIGS[slug];

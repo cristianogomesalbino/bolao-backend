@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 
 USERID="$(id -u)"
 export USERID
@@ -15,21 +15,21 @@ show_commands () {
   echo
   echo "$ICON Comandos disponíveis:"
   echo
-  echo "sh dev.sh build             - (Re)Builda as imagens dos containers"
-  echo "sh dev.sh start-dev         - Inicia os containers em modo Dev"
-  echo "sh dev.sh start-prod        - Inicia os containers em modo Prod"
-  echo "sh dev.sh status            - Exibe o status dos containers"
-  echo "sh dev.sh stop              - Desliga os containers"
-  echo "sh dev.sh logs              - Exibe e acompanha os logs do container"
-  echo "sh dev.sh npm COMANDO       - Executa os comandos do NPM"
-  echo "sh dev.sh npx COMANDO       - Executa os comandos do NPX"
+  echo "sh dev build             - (Re)Builda as imagens dos containers"
+  echo "sh dev start-dev         - Inicia os containers em modo Dev"
+  echo "sh dev start-prod        - Inicia os containers em modo Prod"
+  echo "sh dev status            - Exibe o status dos containers"
+  echo "sh dev stop              - Desliga os containers"
+  echo "sh dev logs              - Exibe e acompanha os logs do container"
+  echo "sh dev npm COMANDO       - Executa os comandos do NPM"
+  echo "sh dev npx COMANDO       - Executa os comandos do NPX"
   echo
 }
 
 check_env_exists () {
   if [ ! -f "$API_ENV_FILE" ]; then
     echo "$ICON Criando arquivo de configuração $API_ENV_FILE..."
-    cp $API_ENV_FILE_EXAMPLE $API_ENV_FILE
+    cp "$API_ENV_FILE_EXAMPLE" "$API_ENV_FILE"
     echo
   fi
 }
@@ -83,7 +83,7 @@ check_app_is_up () {
   if ! docker compose ps | grep -q -E "bolao-backend"; then
     echo
     echo "$ICON Você precisa iniciar os containers da aplicação!"
-    echo "$ICON Comando: sh dev.sh start-dev"
+    echo "$ICON Comando: sh dev start-dev"
     echo
     exit 1
   fi
@@ -108,7 +108,7 @@ execute_npx () {
 }
 
 start_dev () {
-  compose_down
+  docker compose --profile dev stop
   compose_up_dev
 }
 

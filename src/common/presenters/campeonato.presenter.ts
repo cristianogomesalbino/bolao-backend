@@ -10,14 +10,16 @@ interface CampeonatoData {
   atualizadoEm: Date;
 }
 
-function obterTemaPorNome(nome: string): TemaConfig | null {
-  const config = Object.values(CAMPEONATO_CONFIGS).find((c) => c.nome === nome);
+function obterTemaPorId(campeonatoId: string): TemaConfig | null {
+  const config = Object.values(CAMPEONATO_CONFIGS).find(
+    (c) => c.campeonatoId === campeonatoId,
+  );
   return config?.tema ?? null;
 }
 
 export class CampeonatoPresenter {
   static toHttp(campeonato: CampeonatoData) {
-    const tema = obterTemaPorNome(campeonato.nome);
+    const tema = obterTemaPorId(campeonato.id);
     return {
       id: campeonato.id,
       nome: campeonato.nome,
