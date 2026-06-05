@@ -1,6 +1,6 @@
 import { IsIn, IsNotEmpty, IsString } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { CAMPEONATO_SLUGS } from '../jogos.constants';
+import { CAMPEONATO_SLUGS, type CampeonatoSlug } from '../jogos.constants';
 
 export class SincronizarJogosDto {
   @ApiProperty({
@@ -11,7 +11,7 @@ export class SincronizarJogosDto {
   @IsIn(CAMPEONATO_SLUGS, {
     message: `campeonatoSlug deve ser um de: ${CAMPEONATO_SLUGS.join(', ')}`,
   })
-  campeonatoSlug: string;
+  campeonatoSlug: CampeonatoSlug;
 
   @ApiProperty({
     description: 'Slug da fase na API externa',

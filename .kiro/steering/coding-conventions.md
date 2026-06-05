@@ -184,6 +184,7 @@ Não usar `"campo": "geral"`. O campo `campo` é opcional — omitir quando não
 
 ## Redução Gradual de Dívida Técnica (Regra dos 10%)
 
+- **Se um arquivo editado tem QUALQUER erro de `any` em código novo**, tipar o arquivo inteiro — não apenas o trecho novo. Corrigir interface + Prisma + InMemory do módulo correspondente.
 - **Sempre que editar um arquivo .ts existente**, corrigir pelo menos **10% dos erros de lint pré-existentes** nesse arquivo (arredondando pra cima, mínimo 1)
 - Prioridade de correção:
   1. Erros de Prettier (formatação)

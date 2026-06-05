@@ -9,6 +9,7 @@ import {
   ApiNotFoundResponse,
 } from '@nestjs/swagger';
 import { TEMPORADAS } from './temporadas.constants';
+import { ParseUUIDCustomPipe } from '../../common/pipes/parse-uuid-custom.pipe';
 import {
   TemporadaPresenter,
   JogoPresenter,
@@ -47,8 +48,12 @@ export class TemporadasController {
     summary: 'Busca dados da temporada (próximo jogo + total adiados)',
   })
   @ApiResponse({ status: 200, description: 'Dados da temporada' })
+  @ApiNotFoundResponse({ description: 'Temporada não encontrada' })
   @Get(':temporadaId/dados')
-  async buscarDadosTemporada(@Param('temporadaId') temporadaId: string) {
+  async buscarDadosTemporada(
+    @Param('temporadaId', new ParseUUIDCustomPipe('temporadaId'))
+    temporadaId: string,
+  ) {
     const { proximoJogo, totalAdiados } =
       await this.temporadasService.buscarDadosTemporada(temporadaId);
 
@@ -63,11 +68,18 @@ export class TemporadasController {
     };
   }
 
-  @ApiOperation({ summary: 'Lista todos os jogos de uma temporada (agrupados por fase)' })
+  @ApiOperation({
+    summary: 'Lista todos os jogos de uma temporada',
+  })
   @ApiResponse({ status: 200, description: 'Lista de jogos da temporada' })
+  @ApiNotFoundResponse({ description: 'Temporada não encontrada' })
   @Get(':temporadaId/jogos')
-  async buscarJogosTemporada(@Param('temporadaId') temporadaId: string) {
-    const jogos = await this.temporadasService.buscarJogosTemporada(temporadaId);
+  async buscarJogosTemporada(
+    @Param('temporadaId', new ParseUUIDCustomPipe('temporadaId'))
+    temporadaId: string,
+  ) {
+    const jogos =
+      await this.temporadasService.buscarJogosTemporada(temporadaId);
     return jogos.map((j) => JogoPresenter.toHttp(j));
   }
 }

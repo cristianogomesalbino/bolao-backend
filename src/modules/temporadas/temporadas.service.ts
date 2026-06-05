@@ -3,6 +3,7 @@ import { CreateTemporadaDto } from './dto/create-temporada.dto';
 import {
   CampeonatoNaoEncontradoError,
   TemporadaOrigemNaoEncontradaError,
+  TemporadaNaoEncontradaError,
 } from '../../common/errors/domain-errors';
 import { TEMPORADAS } from './temporadas.constants';
 import type { TemporadaRepository } from './repositories/temporada.repository.interface';
@@ -73,6 +74,9 @@ export class TemporadasService {
   }
 
   async buscarDadosTemporada(temporadaId: string) {
+    const temporada = await this.temporadaRepo.buscarPorId(temporadaId);
+    if (!temporada) throw new TemporadaNaoEncontradaError();
+
     const [proximoJogo, totalAdiados] = await Promise.all([
       this.jogoRepo.buscarProximoJogoPorTemporada(temporadaId),
       this.jogoRepo.contarAdiadosPorTemporada(temporadaId),
@@ -82,6 +86,9 @@ export class TemporadasService {
   }
 
   async buscarJogosTemporada(temporadaId: string) {
+    const temporada = await this.temporadaRepo.buscarPorId(temporadaId);
+    if (!temporada) throw new TemporadaNaoEncontradaError();
+
     return this.jogoRepo.buscarTodosPorTemporada(temporadaId);
   }
 }
