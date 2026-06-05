@@ -1,20 +1,25 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
-import { TemporadaRepository } from './temporada.repository.interface';
+import {
+  TemporadaRepository,
+  Temporada,
+  TemporadaComCampeonato,
+  CriarTemporadaData,
+} from './temporada.repository.interface';
 
 @Injectable()
 export class PrismaTemporadaRepository implements TemporadaRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  criar(data: { ano: number; campeonatoId: string }) {
+  async criar(data: CriarTemporadaData): Promise<Temporada> {
     return this.prisma.temporada.create({ data });
   }
 
-  buscarTodos() {
+  async buscarTodos(): Promise<TemporadaComCampeonato[]> {
     return this.prisma.temporada.findMany({ include: { campeonato: true } });
   }
 
-  buscarPorId(id: string) {
+  async buscarPorId(id: string): Promise<Temporada | null> {
     return this.prisma.temporada.findUnique({ where: { id } });
   }
 }

@@ -677,8 +677,14 @@ describe('JogoService — Property-Based Tests', () => {
           },
         }));
 
-        const r1 = await svc.importarJogos(2026, 1, 'fase-pc', userId);
-        const r2 = await svc.importarJogos(2026, 1, 'fase-pc', userId);
+        const r1 = await svc.importarJogos(
+          { campeonatoSlug: 'brasileirao', faseSlug: 'fase-unica', rodada: 1, faseId: 'fase-pc' } as any,
+          userId,
+        );
+        const r2 = await svc.importarJogos(
+          { campeonatoSlug: 'brasileirao', faseSlug: 'fase-unica', rodada: 1, faseId: 'fase-pc' } as any,
+          userId,
+        );
 
         expect(r1.importados).toBe(n);
         expect(r2.importados).toBe(0);
@@ -729,7 +735,7 @@ describe('JogoService — Property-Based Tests', () => {
       penaltisFora: null,
     });
 
-    await svc.sincronizarPlacares('fase-pc');
+    await svc.sincronizarPlacares('fase-pc', 'brasileirao', 'fase-unica-campeonato-brasileiro-2026');
     expect(jogoRepo.items[0].fonteResultado).toBe('MANUAL');
   });
 

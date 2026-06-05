@@ -1,7 +1,7 @@
 {
   "enabled": true,
   "name": "Lint após escrita",
-  "description": "Após escrever um arquivo TypeScript, verifica se há problemas de lint (ESLint + Prettier + TypeScript) e corrige automaticamente antes de prosseguir.",
+  "description": "Após escrever um arquivo TypeScript, verifica se há problemas de lint e corrige automaticamente.",
   "version": "1",
   "when": {
     "type": "postToolUse",
@@ -11,6 +11,6 @@
   },
   "then": {
     "type": "askAgent",
-    "prompt": "Verifique se o arquivo que acabou de ser escrito/editado é um .ts ou .tsx. Se for, use getDiagnostics para verificar se há erros de Prettier (mensagens com \"Replace\" ou \"Insert\" ou \"Delete\") ou warnings de optional chaining ou complexidade cognitiva. Se encontrar erros de Prettier ou warnings corrigíveis, corrija-os imediatamente. Ignore erros de \"Unsafe ... any value\" pois são dívida técnica aceita do projeto. Não mencione nada ao usuário se não houver problemas corrigíveis."
+    "prompt": "Verifique se o arquivo que acabou de ser escrito/editado é um .ts ou .tsx. Se for, use getDiagnostics para verificar se há erros. Se encontrar erros de Prettier (mensagens com 'Replace', 'Insert' ou 'Delete'), corrija a formatação imediatamente. Se encontrar warnings de optional chaining ou complexidade cognitiva, corrija-os. Para erros de 'Unsafe any': se o arquivo é código NOVO ou foi substancialmente editado, corrija TODO o arquivo tipando corretamente (incluindo interface + Prisma + InMemory do módulo se necessário). Se o arquivo é legado com muitos erros pré-existentes (mais de 50), corrija pelo menos 10%. Não mencione nada ao usuário se não houver problemas corrigíveis."
   }
 }

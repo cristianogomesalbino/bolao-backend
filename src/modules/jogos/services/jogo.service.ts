@@ -1,5 +1,10 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import { JOGOS } from '../jogos.constants';
+import {
+  JOGOS,
+  obterCampeonatoConfig,
+  obterFaseConfig,
+  validarRodada,
+} from '../jogos.constants';
 import { TIMES } from '../../times/time.constants';
 import type { JogoRepository } from '../repositories/jogo.repository.interface';
 import type { FaseRepository } from '../repositories/fase.repository.interface';
@@ -9,6 +14,7 @@ import { ErrorFactory } from '../../../common/errors/error.factory';
 import { CriarJogoDto } from '../dto/criar-jogo.dto';
 import { AtualizarJogoDto } from '../dto/atualizar-jogo.dto';
 import { FinalizarJogoDto } from '../dto/finalizar-jogo.dto';
+import { ImportarJogosDto } from '../dto/importar-jogos.dto';
 import {
   FaseNaoEncontradaError,
   JogoNaoEncontradoError,
@@ -494,28 +500,28 @@ export class JogoService {
 
   // --- Importação de jogos via API externa ---
 
-  async importarJogos(
-    season: number,
-    rodada: number,
-    faseId: string,
-    userId: string,
-  ) {
-    const fase = await this.faseRepo.buscarPorId(faseId);
+  async importarJogos(dto: ImportarJogosDto, userId: string) {
+    const fase = await this.faseRepo.buscarPorId(dto.faseId);
     if (!fase) {
       throw new FaseNaoEncontradaError();
     }
 
+    // Resolver config e validar rodada
+    const config = obterCampeonatoConfig(dto.campeonatoSlug);
+    const faseConfig = obterFaseConfig(config, dto.faseSlug);
+    validarRodada(dto.rodada, faseConfig);
+
+    const faseSlugCompleto = config.buildFaseSlug(dto.faseSlug);
     const jogosApi = await this.futebolApiService.buscarJogosPorRodada(
-      season,
-      rodada,
+      config.campeonatoId,
+      faseSlugCompleto,
+      dto.rodada,
     );
 
-    // Normalizar todos os jogos e resolver times em batch (evita N+1)
     const normalizados = jogosApi.map((j: any) =>
       this.futebolApiService.normalizarJogo(j),
     );
 
-    // Verificar externoIds existentes globalmente (constraint unique é global, não por fase)
     const externoIds = normalizados.map((n: any) => n.externoId);
     const jogosExistentesGlobal =
       await this.buscarExternoIdsExistentes(externoIds);
@@ -559,8 +565,8 @@ export class JogoService {
       const dataValida = dataHora && dataHora.getFullYear() >= 2020;
 
       await this.jogoRepo.criar({
-        faseId,
-        rodada,
+        faseId: dto.faseId,
+        rodada: dto.rodada,
         timeCasaId: timeCasa.id,
         timeForaId: timeFora.id,
         dataHora: dataValida ? dataHora : null,
@@ -571,9 +577,9 @@ export class JogoService {
         temProrrogacao: false,
         golsProrrogacaoCasa: null,
         golsProrrogacaoFora: null,
-        temPenaltis: false,
-        penaltisCasa: null,
-        penaltisFora: null,
+        temPenaltis: normalizado.penaltisCasa != null,
+        penaltisCasa: normalizado.penaltisCasa,
+        penaltisFora: normalizado.penaltisFora,
         vencedorId,
         ehJogoVolta: false,
         grupoIdaVolta: null,
@@ -653,6 +659,26 @@ export class JogoService {
       return existente;
     }
 
+    // Buscar por sigla antes de criar — evita conflito de constraint unique
+    const existentePorSigla = await this.timeRepo.buscarPorSigla(
+      timeData.sigla,
+    );
+    if (existentePorSigla) {
+      // Se já existe time com essa sigla mas externoId diferente, criar com sigla diferenciada
+      if (existentePorSigla.externoId && existentePorSigla.externoId !== timeData.externoId) {
+        const siglaUnica = `${timeData.sigla}-${timeData.externoId}`;
+        const novo = await this.timeRepo.criar({ ...timeData, sigla: siglaUnica });
+        cache.set(timeData.externoId, novo);
+        return novo;
+      }
+      // Mesmo time sem externoId — vincular externoId + escudo
+      const updateData: Record<string, any> = { externoId: timeData.externoId };
+      if (timeData.escudo && !existentePorSigla.escudo) updateData.escudo = timeData.escudo;
+      const atualizado = await this.timeRepo.atualizar(existentePorSigla.id, updateData);
+      cache.set(timeData.externoId, atualizado);
+      return atualizado;
+    }
+
     const novo = await this.timeRepo.criar(timeData);
     cache.set(timeData.externoId, novo);
     return novo;
@@ -660,11 +686,18 @@ export class JogoService {
 
   // --- Sincronização de placares ---
 
-  async sincronizarPlacares(faseId: string) {
+  async sincronizarPlacares(
+    faseId: string,
+    campeonatoSlug: string,
+    faseSlug: string,
+  ) {
     const fase = await this.faseRepo.buscarPorId(faseId);
     if (!fase) {
       throw new FaseNaoEncontradaError();
     }
+
+    const config = obterCampeonatoConfig(campeonatoSlug);
+    const faseSlugCompleto = config.buildFaseSlug(faseSlug);
 
     const jogos = await this.jogoRepo.buscarPorFase(faseId);
     const jogosComExterno = jogos.filter(
@@ -679,7 +712,6 @@ export class JogoService {
       return { sincronizados: 0 };
     }
 
-    // Limitar sincronização: apenas rodadas até a atual + 1 (evita buscar rodadas futuras desnecessárias)
     const rodadaAtual = await this.obterRodadaAtual(faseId);
     const limiteRodada = (rodadaAtual ?? 1) + 1;
     const jogosParaSync = jogosComExterno.filter(
@@ -690,8 +722,11 @@ export class JogoService {
       return { sincronizados: 0 };
     }
 
-    const { jogoApiMap, apiDisponivel } =
-      await this.buscarJogosParaSync(jogosParaSync);
+    const { jogoApiMap, apiDisponivel } = await this.buscarJogosParaSync(
+      jogosParaSync,
+      config.campeonatoId,
+      faseSlugCompleto,
+    );
 
     let sincronizados = 0;
     const jogosAtualizados: any[] = [];
@@ -722,7 +757,11 @@ export class JogoService {
     return { sincronizados, jogosAtualizados };
   }
 
-  private async buscarJogosParaSync(jogos: any[]) {
+  private async buscarJogosParaSync(
+    jogos: any[],
+    campeonatoId: string,
+    faseSlug: string,
+  ) {
     const rodadasPendentes = [
       ...new Set(jogos.map((j: any) => j.rodada).filter(Boolean)),
     ] as number[];
@@ -730,8 +769,11 @@ export class JogoService {
     let apiDisponivel = true;
 
     try {
-      jogosApi =
-        await this.futebolApiService.buscarJogosPorRodadas(rodadasPendentes);
+      jogosApi = await this.futebolApiService.buscarJogosPorRodadas(
+        campeonatoId,
+        faseSlug,
+        rodadasPendentes,
+      );
     } catch (error) {
       if (error instanceof ApiExternaIndisponivelError) {
         this.logger.warn(
@@ -864,12 +906,29 @@ export class JogoService {
 
     if (status !== 'FINALIZADO') return;
 
+    // Suporte a pênaltis (jogos mata-mata da Copa do Mundo)
+    if (jogoApi.penaltisCasa != null && jogoApi.penaltisFora != null) {
+      updateData.temPenaltis = true;
+      updateData.penaltisCasa = jogoApi.penaltisCasa;
+      updateData.penaltisFora = jogoApi.penaltisFora;
+    }
+
     updateData.vencedorId = this.determinarVencedorPorPlacar(
       updateData.golsCasa,
       updateData.golsFora,
       jogo.timeCasaId,
       jogo.timeForaId,
     );
+
+    // Se empate no tempo normal e tem pênaltis, vencedor é por pênaltis
+    if (!updateData.vencedorId && updateData.temPenaltis) {
+      if (updateData.penaltisCasa > updateData.penaltisFora) {
+        updateData.vencedorId = jogo.timeCasaId;
+      } else if (updateData.penaltisFora > updateData.penaltisCasa) {
+        updateData.vencedorId = jogo.timeForaId;
+      }
+      // Se penaltisCasa === penaltisFora → vencedorId permanece null (dados inconsistentes)
+    }
   }
 
   // --- Reset de fonteResultado ---

@@ -1,8 +1,10 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ApiExternaIndisponivelError } from '../../../common/errors/domain-errors';
-
-const GE_BASE_URL = 'https://api.globoesporte.globo.com/tabela';
-const BRASILEIRAO_CAMPEONATO_ID = 'd1a37fa4-e948-43a6-ba53-ab24ab3a45b1';
+import {
+  GE_BASE_URL,
+  BRASILEIRAO_CAMPEONATO_ID,
+  type CampeonatoConfig,
+} from '../jogos.constants';
 
 @Injectable()
 export class FutebolApiService implements OnModuleInit {
@@ -13,11 +15,9 @@ export class FutebolApiService implements OnModuleInit {
   }
 
   async buscarClassificacao(season: number): Promise<any[]> {
-    // Tentar API do ge.globo.com primeiro
     const resultado = await this.buscarClassificacaoGe(season);
     if (resultado.length > 0) return resultado;
 
-    // Fallback: pacote campeonato-brasileiro-api
     return this.buscarClassificacaoPacote();
   }
 
@@ -96,26 +96,45 @@ export class FutebolApiService implements OnModuleInit {
     }
   }
 
-  async buscarJogosPorRodada(season: number, rodada: number): Promise<any[]> {
-    const fase = `fase-unica-campeonato-brasileiro-${season}`;
-    const url = `${GE_BASE_URL}/${BRASILEIRAO_CAMPEONATO_ID}/fase/${fase}/rodada/${rodada}/jogos/`;
-
+  async buscarJogosPorRodada(
+    campeonatoId: string,
+    faseSlug: string,
+    rodada: number,
+  ): Promise<any[]> {
+    const url = `${GE_BASE_URL}/${campeonatoId}/fase/${faseSlug}/rodada/${rodada}/jogos/`;
     return this.fetchJogos(url);
   }
 
-  async buscarJogosPorIds(ids: number[]): Promise<any[]> {
+  async buscarJogosPorIds(ids: number[], config: CampeonatoConfig): Promise<any[]> {
     if (ids.length === 0) return [];
 
-    // ge.globo.com não tem endpoint por IDs — buscar todas as rodadas necessárias
-    // Para sync, iteramos rodadas 1-38 até encontrar todos os IDs
     const idsSet = new Set(ids);
     const encontrados: any[] = [];
 
-    for (let rodada = 1; rodada <= 38; rodada++) {
+    for (const fase of config.fases) {
+      if (idsSet.size === 0) break;
+      await this.buscarIdsPorFase(config, fase, idsSet, encontrados);
+    }
+
+    return encontrados;
+  }
+
+  private async buscarIdsPorFase(
+    config: CampeonatoConfig,
+    fase: { slug: string; maxRodadas: number },
+    idsSet: Set<number>,
+    encontrados: any[],
+  ): Promise<void> {
+    for (let rodada = 1; rodada <= fase.maxRodadas; rodada++) {
       if (idsSet.size === 0) break;
 
       try {
-        const jogos = await this.buscarJogosPorRodada(new Date().getFullYear(), rodada);
+        const faseSlugCompleto = config.buildFaseSlug(fase.slug);
+        const jogos = await this.buscarJogosPorRodada(
+          config.campeonatoId,
+          faseSlugCompleto,
+          rodada,
+        );
         for (const jogo of jogos) {
           if (idsSet.has(jogo.id)) {
             encontrados.push(jogo);
@@ -123,21 +142,22 @@ export class FutebolApiService implements OnModuleInit {
           }
         }
       } catch {
-        // Rodada pode não existir ainda, continuar
         continue;
       }
     }
-
-    return encontrados;
   }
 
-  async buscarJogosPorRodadas(rodadas: number[]): Promise<any[]> {
+  async buscarJogosPorRodadas(
+    campeonatoId: string,
+    faseSlug: string,
+    rodadas: number[],
+  ): Promise<any[]> {
     if (rodadas.length === 0) return [];
 
-    const season = new Date().getFullYear();
-
     const resultados = await Promise.allSettled(
-      rodadas.map((rodada) => this.buscarJogosPorRodada(season, rodada)),
+      rodadas.map((rodada) =>
+        this.buscarJogosPorRodada(campeonatoId, faseSlug, rodada),
+      ),
     );
 
     const encontrados: any[] = [];
@@ -151,7 +171,6 @@ export class FutebolApiService implements OnModuleInit {
       }
     }
 
-    // Se todas as rodadas falharam, a API está indisponível
     if (falhas === rodadas.length) {
       throw new ApiExternaIndisponivelError();
     }
@@ -186,9 +205,6 @@ export class FutebolApiService implements OnModuleInit {
   normalizarJogo(jogo: any): any {
     const status = this.mapearStatus(jogo);
 
-    // A API do ge.globo.com retorna data_realizacao em BRT (sem timezone)
-    // Jogos adiados têm data_realizacao = null
-    // Alguns jogos podem vir com timezone (Z ou offset) — detectar e não aplicar -03:00 novamente
     const dataHoraBrt = jogo.data_realizacao;
     let dataHoraUtc: string | null = null;
     if (dataHoraBrt) {
@@ -204,8 +220,14 @@ export class FutebolApiService implements OnModuleInit {
       status: dataHoraUtc ? status : 'ADIADO',
       timeCasaId: String(jogo.equipes.mandante.id),
       timeForaId: String(jogo.equipes.visitante.id),
-      golsCasa: (status === 'FINALIZADO' || status === 'EM_ANDAMENTO') ? (jogo.placar_oficial_mandante ?? null) : null,
-      golsFora: (status === 'FINALIZADO' || status === 'EM_ANDAMENTO') ? (jogo.placar_oficial_visitante ?? null) : null,
+      golsCasa:
+        status === 'FINALIZADO' || status === 'EM_ANDAMENTO'
+          ? (jogo.placar_oficial_mandante ?? null)
+          : null,
+      golsFora:
+        status === 'FINALIZADO' || status === 'EM_ANDAMENTO'
+          ? (jogo.placar_oficial_visitante ?? null)
+          : null,
       penaltisCasa: jogo.placar_penaltis_mandante ?? null,
       penaltisFora: jogo.placar_penaltis_visitante ?? null,
       timeCasa: {

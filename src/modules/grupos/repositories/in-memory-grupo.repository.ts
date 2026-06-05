@@ -90,7 +90,7 @@ export class InMemoryGrupoRepository implements GrupoRepository {
     return this.items.find((g) => g.codigoConvite === codigo) ?? null;
   }
 
-  async atualizar(id: string, data: Partial<{ nome: string; privado: boolean; permitirPalpiteAutomatico: boolean; ativo: boolean }>) {
+  async atualizar(id: string, data: Partial<{ nome: string; icone: string; privado: boolean; maxParticipantes: number; permitirPalpiteAutomatico: boolean; ativo: boolean; permitirPalpiteDobrado: boolean; codigoConvite: string }>) {
     const index = this.items.findIndex((g) => g.id === id);
     if (index === -1) return null;
     this.items[index] = { ...this.items[index], ...data };
