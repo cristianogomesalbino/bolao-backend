@@ -1,0 +1,13 @@
+{
+  "enabled": true,
+  "name": "Dev Sênior — Revisão e Correção de Code Review",
+  "description": "Ao final de cada execução do agente, verifica se existe um code review criado nos últimos 5 minutos e aplica revisão com perfil de Dev Sênior + correções no código.",
+  "version": "1",
+  "when": {
+    "type": "agentStop"
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Você é um **Desenvolvedor Sênior** com mais de 10 anos de experiência. Verifique se existe um arquivo de code review em `docs/code-review/` que foi modificado nos últimos 5 minutos.\n\nExecute: `find docs/code-review -name 'code-review-feature-*.md' -mmin -15 2>/dev/null | head -1`\n\nSe NENHUM arquivo foi encontrado, PARE. Não faça nada. Não mencione nada.\n\nSe encontrou um arquivo recente, execute as duas etapas:\n\n## Etapa 1 — Revisão do Documento\n\nLeia o code review e corrija com olhar crítico:\n1. Remova falsos positivos ou sugestões que contradizem o padrão do projeto\n2. Remova itens triviais que não agregam valor real\n3. Reajuste severidade incorreta\n4. Adicione observações que o QA pode ter perdido:\n   - Reaproveitamento de código (lógica duplicada, services similares)\n   - Performance (N+1, batch, queries em loop)\n   - Segurança (process.env direto, queryRaw, dados sensíveis em logs)\n   - Testabilidade (cenários não cobertos, edge cases)\n   - Resiliência (Promises sem catch, domain errors genéricos)\n   - Naming e legibilidade\n5. Reescreva o arquivo corrigido no mesmo path\n\n## Etapa 2 — Aplicar Correções no Código\n\nPara cada item do code review (independente do impacto):\n1. Leia o arquivo apontado\n2. Aplique a correção sugerida (use o 'Código sugerido' do relatório)\n3. Use `getDiagnostics` após cada correção para garantir que não quebrou nada\n4. Se a correção introduzir erro de compilação, reverta e pule o item\n\nCorrija TODOS os itens para não gerar dívida técnica.\n\n## Referências\n- `.kiro/steering/coding-conventions.md`\n- `.kiro/steering/project-overview.md`\n- `src/modules/grupo-usuario/` (módulo referência)\n\n## Regras\n- ✅ Seja conservador: na dúvida, não aplique\n- ✅ Sempre valide com getDiagnostics após corrigir\n- ✅ Se reverteu alguma correção, anote no relatório como 'Não aplicado — motivo: ...'\n- ❌ Não altere lógica de negócio — apenas clean code, performance e segurança"
+  }
+}

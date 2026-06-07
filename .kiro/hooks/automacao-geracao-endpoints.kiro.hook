@@ -1,0 +1,14 @@
+{
+  "enabled": true,
+  "name": "Automação — Geração de Endpoints",
+  "description": "Quando um controller é salvo, regenera docs/endpoints.md automaticamente.",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": ["**/*.controller.ts"]
+  },
+  "then": {
+    "type": "runCommand",
+    "command": "node scripts/generate-endpoints.js"
+  }
+}

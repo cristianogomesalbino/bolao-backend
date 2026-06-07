@@ -1,13 +1,11 @@
 {
   "enabled": true,
-  "name": "Lint após escrita",
-  "description": "Após escrever um arquivo TypeScript, verifica se há problemas de lint e corrige automaticamente.",
+  "name": "Linter — Validação TypeScript",
+  "description": "Após qualquer escrita em arquivo .ts, verifica erros de TypeScript e Prettier usando getDiagnostics e corrige automaticamente.",
   "version": "1",
   "when": {
     "type": "postToolUse",
-    "toolTypes": [
-      "write"
-    ]
+    "toolTypes": ["write"]
   },
   "then": {
     "type": "askAgent",

@@ -1,7 +1,7 @@
 {
   "enabled": true,
-  "name": "Testes após task",
-  "description": "Antes de finalizar uma task de spec, roda os testes automaticamente para garantir que nada quebrou.",
+  "name": "CI — Testes após Task",
+  "description": "Após finalizar uma task de spec, roda os testes automaticamente para garantir que nada quebrou.",
   "version": "1",
   "when": {
     "type": "postTaskExecution"

@@ -25,6 +25,7 @@ src/
 │   ├── grupos/             # Grupos de bolão
 │   ├── grupo-usuario/      # Membros dos grupos (adicionar, remover, convite)
 │   ├── jogos/              # Fases, jogos, integração API de futebol
+│   ├── times/              # Times (criados automaticamente na importação, sem controller)
 │   ├── palpites/           # Palpites universais, palpite dobrado, token dobro
 │   └── ranking/            # Pontuação, ranking por fase/geral, detalhamento
 ├── common/
@@ -111,6 +112,12 @@ sh dev start-prod      # Build e inicia em modo produção
 
 ## Endpoints
 
+### Health Check
+
+| Método | Rota      | Descrição        | Auth |
+|--------|-----------|------------------|------|
+| GET    | `/health` | Status da API    | Não  |
+
 ### Autenticação (`/auth`)
 
 | Método | Rota                    | Descrição                    | Auth |
@@ -123,13 +130,14 @@ sh dev start-prod      # Build e inicia em modo produção
 
 ### Usuários (`/usuarios`)
 
-| Método | Rota             | Descrição              | Auth |
-|--------|------------------|------------------------|------|
-| POST   | `/usuarios`      | Criar usuário          | Não  |
-| GET    | `/usuarios/me`   | Perfil autenticado     | JWT  |
-| GET    | `/usuarios/:id`  | Buscar por ID          | JWT  |
-| PATCH  | `/usuarios/:id`  | Atualizar usuário      | JWT  |
-| DELETE | `/usuarios/:id`  | Desativar usuário      | JWT  |
+| Método | Rota                          | Descrição              | Auth            |
+|--------|-------------------------------|------------------------|-----------------|
+| POST   | `/usuarios`                   | Criar usuário          | Não             |
+| GET    | `/usuarios/me`                | Perfil autenticado     | JWT             |
+| PATCH  | `/usuarios/me/grupo-favorito` | Definir grupo favorito | JWT             |
+| GET    | `/usuarios/:id`               | Buscar por ID          | JWT + SelfOrAdmin |
+| PATCH  | `/usuarios/:id`               | Atualizar usuário      | JWT + SelfOrAdmin |
+| DELETE | `/usuarios/:id`               | Desativar usuário      | JWT + SelfOrAdmin |
 
 ### Campeonatos (`/campeonatos`)
 
@@ -140,22 +148,29 @@ sh dev start-prod      # Build e inicia em modo produção
 
 ### Temporadas (`/temporadas`)
 
-| Método | Rota              | Descrição              | Auth |
-|--------|-------------------|------------------------|------|
-| POST   | `/temporadas`     | Criar temporada        | JWT  |
-| GET    | `/temporadas`     | Listar temporadas      | JWT  |
+| Método | Rota                              | Descrição                            | Auth |
+|--------|-----------------------------------|--------------------------------------|------|
+| POST   | `/temporadas`                     | Criar temporada                      | JWT  |
+| GET    | `/temporadas`                     | Listar temporadas                    | JWT  |
+| GET    | `/temporadas/:temporadaId/dados`  | Dados consolidados da temporada      | JWT  |
+| GET    | `/temporadas/:temporadaId/jogos`  | Listar jogos da temporada            | JWT  |
 
 ### Grupos (`/grupos`)
 
-| Método | Rota                              | Descrição              | Auth       |
-|--------|-----------------------------------|------------------------|------------|
-| POST   | `/grupos`                         | Criar grupo            | JWT        |
-| GET    | `/grupos`                         | Listar grupos ativos   | JWT        |
-| GET    | `/grupos/:grupoId`                | Buscar por ID          | JWT        |
-| PATCH  | `/grupos/:grupoId`                | Atualizar grupo        | JWT + Admin|
-| PATCH  | `/grupos/:grupoId/status`         | Ativar/desativar       | JWT + Admin|
+| Método | Rota                                 | Descrição                | Auth       |
+|--------|--------------------------------------|--------------------------|------------|
+| POST   | `/grupos`                            | Criar grupo              | JWT        |
+| GET    | `/grupos`                            | Listar grupos (filtros)  | JWT        |
+| GET    | `/grupos/:grupoId`                   | Buscar por ID            | JWT        |
+| PATCH  | `/grupos/:grupoId`                   | Atualizar grupo          | JWT + Admin|
+| PATCH  | `/grupos/:grupoId/status`            | Ativar/desativar         | JWT + Admin|
 | PATCH  | `/grupos/:grupoId/regenerar-convite` | Regenerar código convite | JWT + Admin|
-| DELETE | `/grupos/:grupoId`                | Excluir grupo inativo  | JWT + Admin|
+| DELETE | `/grupos/:grupoId`                   | Excluir grupo inativo    | JWT + Admin|
+
+Filtros do `GET /grupos`:
+- `?membro=true` — apenas grupos onde o usuário é membro
+- `?privado=false` — filtrar por visibilidade
+- `?busca=texto` — busca por nome (parcial, case-insensitive)
 
 
 ### Membros do Grupo (`/grupos`)
@@ -169,17 +184,21 @@ sh dev start-prod      # Build e inicia em modo produção
 | DELETE | `/grupos/:grupoId/usuarios/:usuarioId`  | Remover membro               | JWT + Admin   |
 | PATCH  | `/grupos/:grupoId/usuarios/:usuarioId/cargo` | Alterar role de membro  | JWT + Admin   |
 
+O endpoint de alterar role aceita `?transferir=true` para transferência de propriedade do grupo.
+
 ### Palpites (`/palpites`, `/jogos/:jogoId/palpites`)
 
-| Método | Rota                                              | Descrição                          | Auth          |
-|--------|---------------------------------------------------|------------------------------------|---------------|
-| POST   | `/jogos/:jogoId/palpites`                         | Criar palpite                      | JWT           |
-| POST   | `/palpites/lote`                                  | Criar palpites em lote             | JWT           |
-| PATCH  | `/palpites/:id`                                   | Editar palpite                     | JWT           |
-| DELETE | `/palpites/:id`                                   | Excluir palpite                    | JWT           |
-| GET    | `/jogos/:jogoId/meu-palpite`                      | Buscar meu palpite por jogo        | JWT           |
-| GET    | `/meus-palpites`                                  | Listar meus palpites (filtro temporadaId) | JWT     |
-| GET    | `/grupos/:grupoId/jogos/:jogoId/palpites`         | Listar palpites do grupo por jogo  | JWT + Membro  |
+| Método | Rota                                              | Descrição                                | Auth          |
+|--------|---------------------------------------------------|------------------------------------------|---------------|
+| POST   | `/jogos/:jogoId/palpites`                         | Criar palpite                            | JWT           |
+| POST   | `/palpites/lote`                                  | Criar palpites em lote                   | JWT           |
+| POST   | `/meus-palpites/por-jogos`                        | Buscar palpites para múltiplos jogos     | JWT           |
+| PATCH  | `/palpites/:id`                                   | Editar palpite                           | JWT           |
+| DELETE | `/palpites/:id`                                   | Excluir palpite                          | JWT           |
+| GET    | `/jogos/:jogoId/meu-palpite`                      | Buscar meu palpite por jogo              | JWT           |
+| GET    | `/meus-palpites`                                  | Listar meus palpites (filtro temporadaId)| JWT           |
+| GET    | `/grupos/:grupoId/jogos/:jogoId/palpites`         | Listar palpites do grupo por jogo        | JWT + Membro  |
+| GET    | `/grupos/:grupoId/jogos/:jogoId/palpites/estatisticas` | Estatísticas de palpites por jogo   | JWT + Membro  |
 | GET    | `/grupos/:grupoId/painel-rodada/:faseId`          | Painel da rodada (jogos + palpites + dobros) | JWT + Membro |
 
 ### Palpite Dobrado (`/grupos/:grupoId`)
@@ -188,6 +207,7 @@ sh dev start-prod      # Build e inicia em modo produção
 |--------|---------------------------------------------------|------------------------------------|---------------|
 | POST   | `/grupos/:grupoId/jogos/:jogoId/dobro`            | Ativar dobro em jogo               | JWT + Membro  |
 | DELETE | `/grupos/:grupoId/jogos/:jogoId/dobro`            | Desativar dobro em jogo            | JWT + Membro  |
+| GET    | `/grupos/:grupoId/meus-dobros`                    | Listar meus dobros no grupo        | JWT + Membro  |
 | GET    | `/grupos/:grupoId/tokens-dobro/saldo`             | Consultar saldo de fichas          | JWT + Membro  |
 | GET    | `/grupos/:grupoId/tokens-dobro/historico`          | Consultar histórico de fichas      | JWT + Membro  |
 | PATCH  | `/grupos/:grupoId/configuracao-dobro`             | Habilitar/desabilitar dobro        | JWT + Admin   |
@@ -230,32 +250,44 @@ sh dev start-prod      # Build e inicia em modo produção
 
 ### Jogos (`/fases/:faseId/jogos`, `/jogos`)
 
-| Método | Rota                                          | Descrição                    | Auth              |
-|--------|-----------------------------------------------|------------------------------|--------------------|
-| POST   | `/fases/:faseId/jogos`                        | Criar jogo                   | JWT                |
-| PATCH  | `/jogos/:id`                                  | Atualizar jogo               | JWT                |
-| PATCH  | `/jogos/:id/finalizar`                        | Finalizar jogo com placar    | JWT                |
-| GET    | `/fases/:faseId/jogos`                        | Listar jogos da fase         | JWT                |
-| GET    | `/jogos/:id`                                  | Buscar jogo por ID           | JWT                |
-| POST   | `/jogos/importar`                             | Importar jogos (API externa) | JWT + SUPER_ADMIN  |
-| POST   | `/fases/:faseId/jogos/sincronizar`            | Sincronizar placares         | JWT + SUPER_ADMIN  |
-| PATCH  | `/jogos/:id/resetar-fonte`                    | Resetar fonte resultado      | JWT                |
+| Método | Rota                                          | Descrição                          | Auth              |
+|--------|-----------------------------------------------|------------------------------------|--------------------|
+| POST   | `/fases/:faseId/jogos`                        | Criar jogo                         | JWT                |
+| PATCH  | `/jogos/:id`                                  | Atualizar jogo                     | JWT                |
+| PATCH  | `/jogos/:id/finalizar`                        | Finalizar jogo com placar          | JWT                |
+| GET    | `/fases/:faseId/jogos`                        | Listar jogos da fase               | JWT                |
+| GET    | `/jogos/:id`                                  | Buscar jogo por ID                 | JWT                |
+| GET    | `/classificacao`                              | Classificação via API externa       | JWT                |
+| POST   | `/jogos/importar`                             | Importar jogos (API externa)       | JWT + SUPER_ADMIN  |
+| POST   | `/fases/:faseId/jogos/sincronizar`            | Sincronizar placares               | JWT + SUPER_ADMIN  |
+| PATCH  | `/jogos/:id/resetar-fonte`                    | Resetar fonte resultado            | JWT                |
 
 ## Integração com API de Futebol
 
 O módulo de Jogos suporta importação e sincronização de jogos via API do ge.globo.com (Globo Esporte).
 
-Liga suportada:
-- Brasileirão Série A
+Ligas suportadas:
+- Brasileirão Série A (`campeonatoSlug: "brasileirao"`)
+- Copa do Mundo 2026 (`campeonatoSlug: "copa-do-mundo-2026"`)
 
-A API não requer autenticação. A integração usa o endpoint público da tabela do Brasileirão.
+A API não requer autenticação. A integração usa endpoints públicos.
 
 Funcionalidades:
-- Importar jogos de uma rodada específica (1-38) para uma fase
+- Importar jogos de uma rodada específica para uma fase
 - Sincronizar placares automaticamente via API externa
-- Modo híbrido: jogos podem ter `fonteResultado` MANUAL ou API_FOOTBALL
+- Modo híbrido: jogos podem ter `fonteResultado` MANUAL ou API_EXTERNA
 - Edições manuais em jogos importados alteram `fonteResultado` para MANUAL, protegendo contra sobrescrita na sincronização
-- Endpoint de reset permite reverter `fonteResultado` para API_FOOTBALL
+- Endpoint de reset permite reverter `fonteResultado` para API_EXTERNA
+- Classificação ao vivo via `GET /classificacao`
+
+Fases disponíveis para Copa do Mundo 2026:
+- `fase-de-grupos-copa-do-mundo-2026` (max 3 rodadas)
+- `32avos-de-final-copa-do-mundo-2026` (max 1 rodada)
+- `oitavas-de-final-copa-do-mundo-2026` (max 1 rodada)
+- `quartas-de-final-copa-do-mundo-2026` (max 1 rodada)
+- `semifinais-copa-do-mundo-2026` (max 1 rodada)
+- `disputa-terceiro-lugar-copa-do-mundo-2026` (max 1 rodada)
+- `final-copa-do-mundo-2026` (max 1 rodada)
 
 Transições de status dos jogos:
 - `AGENDADO → EM_ANDAMENTO → FINALIZADO`
@@ -309,4 +341,4 @@ docker exec bolao-backend-dev npx vitest run --coverage  # cobertura
 
 ## Licença
 
-MIT
+UNLICENSED
