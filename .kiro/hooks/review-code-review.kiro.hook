@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "name": "Corrigir Code Review",
+  "description": "Quando um arquivo de code review é criado na pasta docs/code-review, inicia uma conversa com perfil de desenvolvedor sênior para revisar e corrigir o documento.",
+  "version": "1",
+  "when": {
+    "type": "fileCreated",
+    "patterns": [
+      "**/docs/code-review/*.md"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Você é um desenvolvedor sênior com mais de 10 anos de experiência em arquitetura de software, clean code, SOLID, design patterns e code review profissional. Analise o arquivo de code review que acabou de ser criado e corrija-o seguindo estas diretrizes:\n\n1. Verifique se o code review está completo e bem estruturado\n2. Corrija erros de análise técnica (falsos positivos, severidade incorreta, sugestões que contradizem o padrão do projeto)\n3. Remova itens redundantes ou triviais que não agregam valor\n4. Garanta que as sugestões são acionáveis e específicas (com exemplos de código quando aplicável)\n5. Verifique se a priorização dos achados está correta (crítico > alto > médio > baixo)\n6. Garanta consistência com as convenções do projeto (coding-conventions.md e project-overview.md)\n7. Adicione observações de arquitetura que possam ter sido perdidas\n8. Verifique se o tom é construtivo e profissional\n9. Analise oportunidades de reaproveitamento de código — identifique lógica duplicada, services similares, helpers que poderiam ser extraídos, guards/pipes/interceptors reutilizáveis e padrões repetidos que poderiam ser consolidados em abstrações compartilhadas. Sugira refatorações concretas com exemplos de como unificar o código\n10. Analise oportunidades de melhoria de performance — identifique queries N+1, falta de índices no banco, operações em loop que poderiam ser batch, falta de cache em dados estáticos ou pouco mutáveis, transações desnecessariamente grandes, e eager loading excessivo. Sugira melhorias concretas com exemplos\n11. Analise segurança — identifique inputs não sanitizados, exposição de dados sensíveis em respostas ou logs, tokens/secrets hardcoded, falta de validação de permissões em rotas, SQL injection, mass assignment, e endpoints sem rate limiting. Sugira correções específicas\n12. Analise testabilidade — identifique código difícil de testar (dependências acopladas, efeitos colaterais ocultos, funções com muitas responsabilidades), edge cases negligenciados, cenários de erro não cobertos e services sem InMemory repository correspondente. Sugira como tornar o código mais testável\n13. Analise resiliência e tratamento de erros — identifique Promises sem catch, erros silenciados (catch vazio), falta de validação de estado antes de operações, ausência de retry em chamadas a APIs externas, transações sem rollback adequado, e domain errors genéricos onde deveria haver específicos. Sugira padrões de tratamento adequados\n14. Analise naming e legibilidade — identifique variáveis/funções com nomes genéricos (data, item, handler, result), código que precisa de comentário para ser entendido quando deveria ser autoexplicativo, e funções longas que deveriam ser quebradas. Sugira nomes descritivos e refatorações\n\nLeia o arquivo criado, analise criticamente cada item e reescreva o documento corrigido no mesmo arquivo."
+  }
+}
