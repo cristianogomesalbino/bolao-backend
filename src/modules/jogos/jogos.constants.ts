@@ -32,7 +32,8 @@ export const GE_BASE_URL = 'https://api.globoesporte.globo.com/tabela';
 
 export const BRASILEIRAO_CAMPEONATO_ID = 'd1a37fa4-e948-43a6-ba53-ab24ab3a45b1';
 
-export const COPA_DO_MUNDO_CAMPEONATO_ID = 'b5ff9c28-476e-4816-a699-7645acc94cd0';
+export const COPA_DO_MUNDO_CAMPEONATO_ID =
+  'b5ff9c28-476e-4816-a699-7645acc94cd0';
 
 // --- Constantes da Copa do Mundo 2026 ---
 
@@ -58,8 +59,16 @@ export const CAMPEONATO_CONFIGS: Record<string, CampeonatoConfig> = {
     nome: 'Campeonato Brasileiro Série A',
     tema: { corPrimaria: '#1B5E20', corSecundaria: '#FFFFFF' },
     fases: [
-      { slug: 'fase-unica-campeonato-brasileiro-2025', tipo: 'PONTOS_CORRIDOS', maxRodadas: 38 },
-      { slug: 'fase-unica-campeonato-brasileiro-2026', tipo: 'PONTOS_CORRIDOS', maxRodadas: 38 },
+      {
+        slug: 'fase-unica-campeonato-brasileiro-2025',
+        tipo: 'PONTOS_CORRIDOS',
+        maxRodadas: 38,
+      },
+      {
+        slug: 'fase-unica-campeonato-brasileiro-2026',
+        tipo: 'PONTOS_CORRIDOS',
+        maxRodadas: 38,
+      },
     ],
     buildFaseSlug: (faseSlug: string) => faseSlug,
   },
@@ -69,7 +78,11 @@ export const CAMPEONATO_CONFIGS: Record<string, CampeonatoConfig> = {
     nome: 'Copa do Mundo FIFA 2026',
     tema: { corPrimaria: '#009739', corSecundaria: '#FEDD00' },
     fases: [
-      { slug: COPA_FASES.FASE_DE_GRUPOS, tipo: 'PONTOS_CORRIDOS', maxRodadas: 3 },
+      {
+        slug: COPA_FASES.FASE_DE_GRUPOS,
+        tipo: 'PONTOS_CORRIDOS',
+        maxRodadas: 3,
+      },
       { slug: COPA_FASES.TRINTA_E_DOIS_AVOS, tipo: 'MATA_MATA', maxRodadas: 1 },
       { slug: COPA_FASES.OITAVAS, tipo: 'MATA_MATA', maxRodadas: 1 },
       { slug: COPA_FASES.QUARTAS, tipo: 'MATA_MATA', maxRodadas: 1 },
@@ -94,7 +107,10 @@ export function obterCampeonatoConfig(slug: string): CampeonatoConfig {
   return config;
 }
 
-export function obterFaseConfig(config: CampeonatoConfig, faseSlug: string): FaseConfig {
+export function obterFaseConfig(
+  config: CampeonatoConfig,
+  faseSlug: string,
+): FaseConfig {
   const fase = config.fases.find((f) => f.slug === faseSlug);
   if (!fase) {
     throw new FaseSlugInvalidaError(faseSlug, config.slug);
@@ -104,7 +120,11 @@ export function obterFaseConfig(config: CampeonatoConfig, faseSlug: string): Fas
 
 export function validarRodada(rodada: number, faseConfig: FaseConfig): void {
   if (rodada < 1 || rodada > faseConfig.maxRodadas) {
-    throw new RodadaForaDoLimiteError(rodada, faseConfig.maxRodadas, faseConfig.slug);
+    throw new RodadaForaDoLimiteError(
+      rodada,
+      faseConfig.maxRodadas,
+      faseConfig.slug,
+    );
   }
 }
 
@@ -122,13 +142,17 @@ export const JOGOS = {
     JOGO_CANCELADO: 'Não é possível alterar um jogo cancelado',
     PLACAR_INVALIDO: 'Placar deve ser um número inteiro não negativo',
     PRORROGACAO_NAO_PERMITIDA: 'Prorrogação não é permitida neste tipo de fase',
-    PENALTIS_NAO_PERMITIDO: 'Pênaltis não são permitidos sem empate na prorrogação',
+    PENALTIS_NAO_PERMITIDO:
+      'Pênaltis não são permitidos sem empate na prorrogação',
     PLACAR_PENALTIS_EMPATADO: 'Placar de pênaltis não pode ser empatado',
-    VENCEDOR_OBRIGATORIO: 'É obrigatório definir um vencedor em jogos de mata-mata',
+    VENCEDOR_OBRIGATORIO:
+      'É obrigatório definir um vencedor em jogos de mata-mata',
     TRANSICAO_STATUS_INVALIDA: 'Transição de status inválida',
-    IDA_VOLTA_NAO_PERMITIDA: 'Jogos de ida e volta não são permitidos nesta fase',
+    IDA_VOLTA_NAO_PERMITIDA:
+      'Jogos de ida e volta não são permitidos nesta fase',
     JOGO_IDA_NAO_ENCONTRADO: 'Jogo de ida não encontrado para este confronto',
-    API_EXTERNA_INDISPONIVEL: 'API externa de futebol está indisponível no momento',
+    API_EXTERNA_INDISPONIVEL:
+      'API externa de futebol está indisponível no momento',
     CAMPEONATO_NAO_SUPORTADO: 'Campeonato não é suportado',
     RODADA_FORA_DO_LIMITE: 'Rodada excede o limite para a fase',
     FASE_SLUG_INVALIDA: 'Fase não é válida para o campeonato',

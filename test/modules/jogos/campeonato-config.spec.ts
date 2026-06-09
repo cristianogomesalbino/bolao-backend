@@ -23,8 +23,9 @@ describe('CampeonatoConfig', () => {
 
       expect(config.slug).toBe('brasileirao');
       expect(config.campeonatoId).toBe(BRASILEIRAO_CAMPEONATO_ID);
-      expect(config.fases).toHaveLength(1);
+      expect(config.fases).toHaveLength(2);
       expect(config.fases[0].maxRodadas).toBe(38);
+      expect(config.fases[1].maxRodadas).toBe(38);
     });
 
     it('deve retornar config da copa-do-mundo-2026', () => {
@@ -108,28 +109,28 @@ describe('CampeonatoConfig', () => {
 
     it('deve aceitar rodada 38 para Brasileirão', () => {
       const config = obterCampeonatoConfig('brasileirao');
-      const fase = obterFaseConfig(config, 'fase-unica');
+      const fase = obterFaseConfig(config, 'fase-unica-campeonato-brasileiro-2026');
 
       expect(() => validarRodada(38, fase)).not.toThrow();
     });
 
     it('deve rejeitar rodada 39 para Brasileirão', () => {
       const config = obterCampeonatoConfig('brasileirao');
-      const fase = obterFaseConfig(config, 'fase-unica');
+      const fase = obterFaseConfig(config, 'fase-unica-campeonato-brasileiro-2026');
 
       expect(() => validarRodada(39, fase)).toThrow(RodadaForaDoLimiteError);
     });
 
     it('deve rejeitar rodada 0', () => {
       const config = obterCampeonatoConfig('brasileirao');
-      const fase = obterFaseConfig(config, 'fase-unica');
+      const fase = obterFaseConfig(config, 'fase-unica-campeonato-brasileiro-2026');
 
       expect(() => validarRodada(0, fase)).toThrow(RodadaForaDoLimiteError);
     });
 
     it('deve rejeitar rodada negativa', () => {
       const config = obterCampeonatoConfig('brasileirao');
-      const fase = obterFaseConfig(config, 'fase-unica');
+      const fase = obterFaseConfig(config, 'fase-unica-campeonato-brasileiro-2026');
 
       expect(() => validarRodada(-1, fase)).toThrow(RodadaForaDoLimiteError);
     });

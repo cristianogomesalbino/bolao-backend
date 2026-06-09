@@ -214,7 +214,7 @@ describe('JogoService — importação multi-campeonato', () => {
     it('deve lançar RodadaForaDoLimiteError para rodada > 38 no Brasileirão', async () => {
       const dto: ImportarJogosDto = {
         campeonatoSlug: 'brasileirao',
-        faseSlug: 'fase-unica',
+        faseSlug: 'fase-unica-campeonato-brasileiro-2026',
         rodada: 39,
         faseId: 'fase-banco-1',
       };
@@ -242,7 +242,7 @@ describe('JogoService — importação multi-campeonato', () => {
     it('deve importar jogos do Brasileirão com sucesso', async () => {
       const dto: ImportarJogosDto = {
         campeonatoSlug: 'brasileirao',
-        faseSlug: 'fase-unica',
+        faseSlug: 'fase-unica-campeonato-brasileiro-2026',
         rodada: 10,
         faseId: 'fase-banco-1',
       };
@@ -255,7 +255,7 @@ describe('JogoService — importação multi-campeonato', () => {
       // Importar pela primeira vez
       const dto: ImportarJogosDto = {
         campeonatoSlug: 'brasileirao',
-        faseSlug: 'fase-unica',
+        faseSlug: 'fase-unica-campeonato-brasileiro-2026',
         rodada: 10,
         faseId: 'fase-banco-1',
       };

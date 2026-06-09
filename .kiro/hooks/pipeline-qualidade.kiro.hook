@@ -1,0 +1,13 @@
+{
+  "enabled": true,
+  "name": "Pipeline de Qualidade",
+  "description": "Trigger manual: executa linter + code review + correções em sequência. Clique ▶️ após commitar.",
+  "version": "1",
+  "when": {
+    "type": "userTriggered"
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Execute o pipeline de qualidade completo em 3 etapas sequenciais:\n\n---\n\n## ETAPA 1 — Linter (Validação TypeScript)\n\n1. Execute `git diff HEAD~1 --name-only` para listar arquivos modificados no último commit.\n2. Para cada arquivo `.ts` modificado, use `getDiagnostics` para verificar erros.\n3. Se encontrar erros de Prettier (mensagens com 'Replace', 'Insert' ou 'Delete'), corrija a formatação imediatamente.\n4. Se encontrar erros de compilação ('Cannot find name', 'Module not found', 'Property does not exist'), corrija imediatamente.\n5. Se encontrar warnings de optional chaining ou complexidade cognitiva, corrija-os.\n\n---\n\n## ETAPA 2 — Code Review (QA Sênior)\n\n1. Execute `git log -1 --pretty=format:\"%H %s\" HEAD` para identificar o commit.\n2. Execute `git diff HEAD~1` para obter o diff completo.\n3. Execute `git branch --show-current` para o nome da branch.\n4. Para cada arquivo modificado (.ts), analise:\n   - Segurança (process.env direto, queryRaw, rotas expostas)\n   - Arquitetura (Repository Pattern, Presenter, Guards, DI)\n   - Tipagem (any, params sem tipo, status HTTP literais)\n   - Performance (N+1, batch, paginação)\n   - Clean Code (early returns, métodos longos, código morto)\n   - Testes (cenários cobertos, Vitest)\n   - Consistência (pt-BR, ApiProperty, nomenclatura)\n5. Gere o relatório em `docs/code-review/code-review-feature-{branch}.md` (remova prefixos feature/ ou fix/).\n6. Use formato [CR-XXX] para cada issue. Inclua código corrigido.\n7. Resumo final: qualidade, risco de deploy, top 3 problemas.\n\n## Referências\n- `.kiro/steering/coding-conventions.md`\n- `.kiro/steering/project-overview.md`\n\n---\n\n## ETAPA 3 — Correções (Dev Sênior)\n\nPara cada item do code review gerado na Etapa 2:\n1. Leia o arquivo apontado\n2. Aplique a correção sugerida (use o 'Código sugerido' do relatório)\n3. Use `getDiagnostics` após cada correção para garantir que não quebrou nada\n4. Se a correção introduzir erro de compilação, reverta e anote no relatório como 'Não aplicado — motivo: ...'\n\n---\n\n## Regras Gerais\n- ✅ Seja conservador: na dúvida, não aplique\n- ✅ Sempre valide com getDiagnostics após corrigir\n- ❌ Não altere lógica de negócio — apenas clean code, performance e segurança\n- ❌ Não descreva o que o código faz — foque em problemas\n- ✅ Ao finalizar, informe: 'Pipeline concluído — X issues encontradas, Y corrigidas, Z não aplicadas'"
+  }
+}

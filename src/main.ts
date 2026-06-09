@@ -13,6 +13,7 @@ async function bootstrap() {
     origin: [
       'http://localhost:3003',
       'https://bolao-frontend-beige.vercel.app',
+      'https://bolao-app-beige.vercel.app',
     ],
     credentials: true,
   });
