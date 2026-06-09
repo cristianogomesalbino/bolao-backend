@@ -1,5 +1,5 @@
 {
-  "enabled": true,
+  "enabled": false,
   "name": "Linter — Validação TypeScript",
   "description": "Após qualquer escrita em arquivo .ts, verifica erros de TypeScript e Prettier usando getDiagnostics e corrige automaticamente.",
   "version": "1",

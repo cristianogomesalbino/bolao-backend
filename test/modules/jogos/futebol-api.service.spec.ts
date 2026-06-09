@@ -115,8 +115,8 @@ describe('FutebolApiService', () => {
 
       await service.buscarJogosPorIds([999], config);
 
-      // Brasileirão tem 1 fase com 38 rodadas
-      expect(fetchMock).toHaveBeenCalledTimes(38);
+      // Brasileirão tem 2 fases com 38 rodadas cada = 76
+      expect(fetchMock).toHaveBeenCalledTimes(76);
     });
   });
 

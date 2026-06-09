@@ -678,11 +678,11 @@ describe('JogoService — Property-Based Tests', () => {
         }));
 
         const r1 = await svc.importarJogos(
-          { campeonatoSlug: 'brasileirao', faseSlug: 'fase-unica', rodada: 1, faseId: 'fase-pc' } as any,
+          { campeonatoSlug: 'brasileirao', faseSlug: 'fase-unica-campeonato-brasileiro-2026', rodada: 1, faseId: 'fase-pc' } as any,
           userId,
         );
         const r2 = await svc.importarJogos(
-          { campeonatoSlug: 'brasileirao', faseSlug: 'fase-unica', rodada: 1, faseId: 'fase-pc' } as any,
+          { campeonatoSlug: 'brasileirao', faseSlug: 'fase-unica-campeonato-brasileiro-2026', rodada: 1, faseId: 'fase-pc' } as any,
           userId,
         );
 
