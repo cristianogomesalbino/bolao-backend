@@ -134,6 +134,16 @@ export class PalpiteService {
 
     const total = palpites.length;
 
+    // Status de palpite de todos os membros do grupo
+    const usuariosQuePalpitaram = new Set(palpites.map((p) => p.usuarioId));
+    const palpitaram = membros
+      .filter((m) => usuariosQuePalpitaram.has(m.usuario.id))
+      .map((m) => m.usuario.nome);
+    const membrosStatus = membros.map((m) => ({
+      nome: m.usuario.nome,
+      palpitou: usuariosQuePalpitaram.has(m.usuario.id),
+    }));
+
     return {
       total,
       vitoriaCasa,
@@ -142,6 +152,8 @@ export class PalpiteService {
       percentualCasa: total > 0 ? Math.round((vitoriaCasa / total) * 100) : 0,
       percentualEmpate: total > 0 ? Math.round((empate / total) * 100) : 0,
       percentualFora: total > 0 ? Math.round((vitoriaFora / total) * 100) : 0,
+      palpitaram,
+      membrosStatus,
     };
   }
 
