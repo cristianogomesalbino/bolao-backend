@@ -175,7 +175,8 @@ async function bootstrap() {
       : undefined,
   });
 
-  await app.listen(3002);
+  const port = process.env.PORT || 3002;
+  await app.listen(port, '0.0.0.0');
 }
 
 bootstrap();
