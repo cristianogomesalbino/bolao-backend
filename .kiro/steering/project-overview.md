@@ -87,11 +87,44 @@ EM_ANDAMENTO → CANCELADO
 ## Importação de Jogos (API Externa)
 
 - Fonte: API do ge.globo.com (pública, sem chave)
+- URL base: `https://api.globoesporte.globo.com/tabela/{campeonatoId}/fase/{faseSlug}/rodada/{rodada}/jogos/`
 - Horários retornados em BRT (sem timezone) — convertidos para UTC com `-03:00`
 - Jogos sem data (`data_realizacao: null`) são importados como ADIADO
 - Validação: datas antes de 2020 são tratadas como inválidas → status ADIADO
-- Sincronização de placares: atualiza status e placar de jogos com fonteResultado = API_EXTERNA
 - Times são criados automaticamente na primeira importação (com escudo da API)
+
+### Campeonatos Suportados
+
+| Slug | campeonatoId (GE) | Fases |
+|------|-------------------|-------|
+| `brasileirao` | `d1a37fa4-e948-43a6-ba53-ab24ab3a45b1` | 1 fase (PONTOS_CORRIDOS, 38 rodadas) |
+| `copa-do-mundo-2026` | `b5ff9c28-476e-4816-a699-7645acc94cd0` | 12 grupos + eliminatórias |
+
+### Arquitetura da Copa do Mundo no Banco
+
+- A "Fase de Grupos" da Copa na API externa (`fase-de-grupos-copa-do-mundo-2026`) é uma única fase que retorna jogos de TODOS os 12 grupos juntos por rodada
+- No banco, cada grupo é uma `Fase` separada (Grupo A, Grupo B, ..., Grupo L) com `tipo = PONTOS_CORRIDOS`
+- As fases eliminatórias (32 Avos, Oitavas, etc.) são `tipo = MATA_MATA`
+- A importação distribui os jogos para a fase correta via `externoId` do jogo na API
+- A sincronização detecta automaticamente múltiplas fases do mesmo tipo na mesma temporada e sincroniza TODAS de uma vez (não precisa chamar individualmente por grupo)
+
+### Sincronização de Placares
+
+- Endpoint: `POST /fases/:faseId/jogos/sincronizar`
+- Body: `{ campeonatoSlug, faseSlug }`
+- **Comportamento multi-grupo:** ao sincronizar uma fase que pertence a uma temporada com múltiplas fases do mesmo tipo (ex: 12 grupos da Copa), o sistema automaticamente sincroniza TODAS as fases equivalentes — basta passar qualquer `faseId` dos grupos
+- Filtra jogos com `fonteResultado = API_EXTERNA` e `status != FINALIZADO/CANCELADO`
+- Limite de rodada: sincroniza até `rodadaAtual + 1` (evita buscar rodadas futuras distantes)
+- Detecta mudança de horário e atualiza `dataHora`
+- Jogo adiado que recebe data na API → volta para AGENDADO com `foiAdiado = true`
+- Suporte a pênaltis (jogos mata-mata da Copa)
+- Fallback: se API externa indisponível, calcula status internamente (baseado em horário)
+
+### Frontend Admin (Tela de Importação)
+
+- Rota: `/admin/importar`
+- Ao selecionar "Copa do Mundo 2026" + "Fase de Grupos": o frontend envia o `faseId` do primeiro grupo encontrado (Grupo A), mas o backend sincroniza todos os grupos automaticamente
+- Para fases eliminatórias: precisa selecionar a fase destino específica no banco
 
 ## Endpoint de Listagem de Jogos
 
