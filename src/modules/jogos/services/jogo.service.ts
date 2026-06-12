@@ -665,16 +665,26 @@ export class JogoService {
     );
     if (existentePorSigla) {
       // Se já existe time com essa sigla mas externoId diferente, criar com sigla diferenciada
-      if (existentePorSigla.externoId && existentePorSigla.externoId !== timeData.externoId) {
+      if (
+        existentePorSigla.externoId &&
+        existentePorSigla.externoId !== timeData.externoId
+      ) {
         const siglaUnica = `${timeData.sigla}-${timeData.externoId}`;
-        const novo = await this.timeRepo.criar({ ...timeData, sigla: siglaUnica });
+        const novo = await this.timeRepo.criar({
+          ...timeData,
+          sigla: siglaUnica,
+        });
         cache.set(timeData.externoId, novo);
         return novo;
       }
       // Mesmo time sem externoId — vincular externoId + escudo
       const updateData: Record<string, any> = { externoId: timeData.externoId };
-      if (timeData.escudo && !existentePorSigla.escudo) updateData.escudo = timeData.escudo;
-      const atualizado = await this.timeRepo.atualizar(existentePorSigla.id, updateData);
+      if (timeData.escudo && !existentePorSigla.escudo)
+        updateData.escudo = timeData.escudo;
+      const atualizado = await this.timeRepo.atualizar(
+        existentePorSigla.id,
+        updateData,
+      );
       cache.set(timeData.externoId, atualizado);
       return atualizado;
     }
@@ -691,6 +701,11 @@ export class JogoService {
     campeonatoSlug: string,
     faseSlug: string,
   ) {
+    const inicioTotal = Date.now();
+    this.logger.log(
+      `[SYNC] Iniciando sincronização: fase=${faseId}, campeonato=${campeonatoSlug}, faseSlug=${faseSlug}`,
+    );
+
     const fase = await this.faseRepo.buscarPorId(faseId);
     if (!fase) {
       throw new FaseNaoEncontradaError();
@@ -699,7 +714,22 @@ export class JogoService {
     const config = obterCampeonatoConfig(campeonatoSlug);
     const faseSlugCompleto = config.buildFaseSlug(faseSlug);
 
-    const jogos = await this.jogoRepo.buscarPorFase(faseId);
+    // Detectar se há múltiplas fases do mesmo tipo na temporada (ex: grupos da Copa)
+    const fasesParaSync = await this.obterFasesParaSync(fase);
+    const faseIds = fasesParaSync.map((f: any) => f.id);
+
+    this.logger.log(
+      `[SYNC] Fases para sincronizar: ${faseIds.length} (${fasesParaSync.map((f: any) => f.nome).join(', ')})`,
+    );
+
+    // Buscar jogos de todas as fases relevantes
+    const jogosPromises = faseIds.map((id: string) =>
+      this.jogoRepo.buscarPorFase(id),
+    );
+    const jogosArrays = await Promise.all(jogosPromises);
+    const jogos = jogosArrays.flat();
+    this.logger.log(`[SYNC] Total jogos nas fases: ${jogos.length}`);
+
     const jogosComExterno = jogos.filter(
       (j: any) =>
         j.externoId != null &&
@@ -708,29 +738,51 @@ export class JogoService {
         j.status !== 'CANCELADO',
     );
 
+    this.logger.log(
+      `[SYNC] Jogos com externoId pendentes: ${jogosComExterno.length}`,
+    );
+
     if (jogosComExterno.length === 0) {
+      this.logger.log('[SYNC] Nenhum jogo para sincronizar');
       return { sincronizados: 0 };
     }
 
-    const rodadaAtual = await this.obterRodadaAtual(faseId);
-    const limiteRodada = (rodadaAtual ?? 1) + 1;
+    // Calcular limite de rodada baseado na menor rodada atual entre todas as fases
+    const rodadasAtuais = await Promise.all(
+      faseIds.map((id: string) => this.obterRodadaAtual(id)),
+    );
+    const rodadaAtual = rodadasAtuais
+      .filter((r): r is number => r != null)
+      .reduce((min, r) => Math.min(min, r), Infinity);
+    const rodadaEfetiva = rodadaAtual === Infinity ? 1 : rodadaAtual;
+    const limiteRodada = rodadaEfetiva + 1;
     const jogosParaSync = jogosComExterno.filter(
       (j: any) => j.rodada == null || j.rodada <= limiteRodada,
     );
 
+    this.logger.log(
+      `[SYNC] rodadaAtual=${rodadaEfetiva}, limiteRodada=${limiteRodada}, jogosParaSync=${jogosParaSync.length}`,
+    );
+
     if (jogosParaSync.length === 0) {
+      this.logger.log('[SYNC] Nenhum jogo dentro do limite de rodada');
       return { sincronizados: 0 };
     }
 
+    const inicioApi = Date.now();
     const { jogoApiMap, apiDisponivel } = await this.buscarJogosParaSync(
       jogosParaSync,
       config.campeonatoId,
       faseSlugCompleto,
     );
+    this.logger.log(
+      `[SYNC] API respondeu em ${Date.now() - inicioApi}ms — jogos encontrados na API: ${jogoApiMap.size}, apiDisponivel=${apiDisponivel}`,
+    );
 
     let sincronizados = 0;
     const jogosAtualizados: any[] = [];
 
+    const inicioProcessamento = Date.now();
     for (const jogo of jogosParaSync) {
       const resultado = await this.processarJogoSync(
         jogo,
@@ -754,7 +806,39 @@ export class JogoService {
       }
     }
 
+    this.logger.log(
+      `[SYNC] Processamento de ${jogosParaSync.length} jogos em ${Date.now() - inicioProcessamento}ms — sincronizados=${sincronizados}`,
+    );
+    this.logger.log(
+      `[SYNC] Sincronização completa em ${Date.now() - inicioTotal}ms`,
+    );
+
     return { sincronizados, jogosAtualizados };
+  }
+
+  private async obterFasesParaSync(fase: {
+    temporadaId: string;
+    tipo: string;
+  }): Promise<{ id: string; nome: string; tipo: string }[]> {
+    // Buscar todas as fases da mesma temporada com o mesmo tipo
+    const todasFases = await this.faseRepo.buscarPorTemporada(fase.temporadaId);
+    const fasesDoMesmoTipo = (
+      todasFases as { id: string; nome: string; tipo: string }[]
+    ).filter((f) => f.tipo === fase.tipo);
+
+    // Se há múltiplas fases do mesmo tipo (ex: 12 grupos da Copa), sincronizar todas
+    if (fasesDoMesmoTipo.length > 1) {
+      return fasesDoMesmoTipo;
+    }
+
+    // Caso contrário, sincronizar apenas a fase solicitada
+    return [
+      {
+        id: (fase as any).id as string,
+        nome: (fase as any).nome as string,
+        tipo: fase.tipo,
+      },
+    ];
   }
 
   private async buscarJogosParaSync(
