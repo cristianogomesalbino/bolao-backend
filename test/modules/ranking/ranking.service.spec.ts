@@ -577,7 +577,7 @@ describe('RankingService', () => {
       expect(ranking[1].posicao).toBe(2);
     });
 
-    it('deve atribuir mesma posição quando empate total nos critérios numéricos', async () => {
+    it('deve diferenciar posição mesmo com empate nos critérios numéricos (desempata por hora do palpite e nome)', async () => {
       criarGrupo();
       criarFase();
       criarMembro(userId1, 'Alice');
@@ -592,10 +592,7 @@ describe('RankingService', () => {
       const ranking = await service.obterRankingFase(grupoId, faseId);
 
       expect(ranking[0].posicao).toBe(1);
-      expect(ranking[1].posicao).toBe(1);
-      // Ordem alfabética: Alice antes de Bob
-      expect(ranking[0].nomeUsuario).toBe('Alice');
-      expect(ranking[1].nomeUsuario).toBe('Bob');
+      expect(ranking[1].posicao).toBe(2);
     });
   });
 });

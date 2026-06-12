@@ -28,6 +28,7 @@ interface RankingEntry {
   acertosEmCheio: number;
   acertosDeResultado: number;
   errosTotais: number;
+  mediaPalpiteEm: number;
 }
 
 interface PontuacaoJogoEntry {
@@ -45,6 +46,8 @@ interface PontuacaoJogoEntry {
 @Injectable()
 export class RankingService {
   private readonly logger = new Logger(RankingService.name);
+  private readonly cache = new Map<string, { dados: RankingEntry[]; expiraEm: number }>();
+  private static readonly CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutos
 
   constructor(
     private readonly pontuacaoService: PontuacaoService,
@@ -65,7 +68,31 @@ export class RankingService {
     private readonly tokenDobroRepo: TokenDobroRepository,
   ) {}
 
+  private obterDoCache(chave: string): RankingEntry[] | null {
+    const entrada = this.cache.get(chave);
+    if (!entrada) return null;
+    if (Date.now() > entrada.expiraEm) {
+      this.cache.delete(chave);
+      return null;
+    }
+    return entrada.dados;
+  }
+
+  private salvarNoCache(chave: string, dados: RankingEntry[]): void {
+    this.cache.set(chave, { dados, expiraEm: Date.now() + RankingService.CACHE_TTL_MS });
+  }
+
+  invalidarCache(grupoId: string): void {
+    for (const chave of this.cache.keys()) {
+      if (chave.startsWith(grupoId)) this.cache.delete(chave);
+    }
+  }
+
   async obterRankingFase(grupoId: string, faseId: string, rodada?: number, ateRodada?: number): Promise<RankingEntry[]> {
+    const chaveCache = `${grupoId}:fase:${faseId}:r${rodada ?? 'all'}:ate${ateRodada ?? 'all'}`;
+    const cacheado = this.obterDoCache(chaveCache);
+    if (cacheado) return cacheado;
+
     const grupo = await this.grupoRepo.buscarPorId(grupoId);
     if (!grupo) throw new GrupoNaoEncontradoError();
 
@@ -86,10 +113,16 @@ export class RankingService {
       return true;
     });
 
-    return this.calcularRanking(membros, jogosFinalizados, grupo);
+    const resultado = await this.calcularRanking(membros, jogosFinalizados, grupo);
+    this.salvarNoCache(chaveCache, resultado);
+    return resultado;
   }
 
   async obterRankingGeral(grupoId: string): Promise<RankingEntry[]> {
+    const chaveCache = `${grupoId}:geral`;
+    const cacheado = this.obterDoCache(chaveCache);
+    if (cacheado) return cacheado;
+
     const grupo = await this.grupoRepo.buscarPorId(grupoId);
     if (!grupo) throw new GrupoNaoEncontradoError();
 
@@ -98,7 +131,9 @@ export class RankingService {
 
     const todosJogosFinalizados = await this.buscarJogosFinalizadosDeFases(fases);
 
-    return this.calcularRanking(membros, todosJogosFinalizados, grupo);
+    const resultado = await this.calcularRanking(membros, todosJogosFinalizados, grupo);
+    this.salvarNoCache(chaveCache, resultado);
+    return resultado;
   }
 
   async obterDetalhamentoJogo(grupoId: string, jogoId: string): Promise<PontuacaoJogoEntry[]> {
@@ -377,6 +412,8 @@ export class RankingService {
       let acertosEmCheio = 0;
       let acertosDeResultado = 0;
       let errosTotais = 0;
+      let somaTimestamps = 0;
+      let totalPalpitesComData = 0;
 
       for (const jogo of jogosFinalizados) {
         const palpite = palpiteMap.get(`${membro.usuarioId}:${jogo.id}`) || null;
@@ -404,7 +441,16 @@ export class RankingService {
             errosTotais++;
             break;
         }
+
+        if (palpite?.dataCriacao) {
+          somaTimestamps += new Date(palpite.dataCriacao).getTime();
+          totalPalpitesComData++;
+        }
       }
+
+      const mediaPalpiteEm = totalPalpitesComData > 0
+        ? somaTimestamps / totalPalpitesComData
+        : Number.MAX_SAFE_INTEGER;
 
       return {
         usuarioId: membro.usuarioId,
@@ -413,6 +459,7 @@ export class RankingService {
         acertosEmCheio,
         acertosDeResultado,
         errosTotais,
+        mediaPalpiteEm,
       };
     });
 
@@ -424,27 +471,11 @@ export class RankingService {
       if (b.pontuacaoTotal !== a.pontuacaoTotal) return b.pontuacaoTotal - a.pontuacaoTotal;
       if (b.acertosEmCheio !== a.acertosEmCheio) return b.acertosEmCheio - a.acertosEmCheio;
       if (b.acertosDeResultado !== a.acertosDeResultado) return b.acertosDeResultado - a.acertosDeResultado;
+      if (a.mediaPalpiteEm !== b.mediaPalpiteEm) return a.mediaPalpiteEm - b.mediaPalpiteEm;
       return a.nomeUsuario.localeCompare(b.nomeUsuario);
     });
 
-    const result: RankingEntry[] = [];
-    let posicaoAtual = 1;
-
-    for (let i = 0; i < sorted.length; i++) {
-      if (
-        i > 0 &&
-        sorted[i].pontuacaoTotal === sorted[i - 1].pontuacaoTotal &&
-        sorted[i].acertosEmCheio === sorted[i - 1].acertosEmCheio &&
-        sorted[i].acertosDeResultado === sorted[i - 1].acertosDeResultado
-      ) {
-        result.push({ ...sorted[i], posicao: result[i - 1].posicao });
-      } else {
-        result.push({ ...sorted[i], posicao: posicaoAtual });
-      }
-      posicaoAtual++;
-    }
-
-    return result;
+    return sorted.map((entry, i) => ({ ...entry, posicao: i + 1 }));
   }
 
   private buildPalpiteMap(palpites: any[]): Map<string, any> {
