@@ -2,6 +2,7 @@ export class JogoPresenter {
   static toHttpResumido(jogo: any) {
     return {
       id: jogo.id,
+      faseId: jogo.faseId,
       rodada: jogo.rodada,
       status: jogo.status,
       dataHora: jogo.dataHora,
