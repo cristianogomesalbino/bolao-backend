@@ -11,7 +11,7 @@ API REST para gerenciamento de bolões de campeonatos de futebol.
 - NestJS 11 com TypeScript
 - Prisma ORM 6 com PostgreSQL (Supabase)
 - Vitest 4 para testes unitários
-- Autenticação JWT (access token 7d + refresh token 7d) com guard global via APP_GUARD
+- Autenticação JWT (access token 15m + refresh token 7d) com guard global via APP_GUARD
 - Swagger em `/docs`
 - Repository Pattern (interfaces + Prisma impl + InMemory impl)
 - Domain Errors para erros de negócio tipados
@@ -150,3 +150,51 @@ EM_ANDAMENTO → CANCELADO
 
 O projeto usa português brasileiro para nomes de entidades, DTOs, mensagens de erro e endpoints.
 Nomes de classes, decorators e padrões do NestJS seguem inglês (Controller, Service, Module, Guard).
+
+## Endpoints Adicionais (não listados acima)
+
+### Jogos
+- `POST /jogos/importar` — importar jogos da API externa (SUPER_ADMIN). `faseId` vem no body (não na URL)
+- `PATCH /jogos/:id/resetar-fonte` — resetar `fonteResultado` para API_EXTERNA
+- `GET /jogos/:id` — buscar jogo por ID
+- `PATCH /jogos/:id` — atualizar dados de um jogo
+- `PATCH /jogos/:id/finalizar` — finalizar jogo com placar
+- `GET /classificacao?season=` — classificação do Brasileirão via API externa (FutebolApiService)
+
+### Palpites
+- `POST /jogos/:jogoId/palpites` — criar palpite
+- `PATCH /palpites/:id` — atualizar palpite
+- `DELETE /palpites/:id` — excluir palpite
+- `GET /jogos/:jogoId/meu-palpite` — buscar meu palpite por jogo
+- `GET /meus-palpites?temporadaId=` — listar todos os meus palpites
+- `POST /meus-palpites/por-jogos` — batch: buscar meus palpites para múltiplos jogos
+- `POST /palpites/lote` — criar palpites em lote
+- `GET /grupos/:grupoId/jogos/:jogoId/palpites` — listar palpites do grupo num jogo
+- `GET /grupos/:grupoId/jogos/:jogoId/palpites/estatisticas` — distribuição de palpites
+
+### Ranking
+- `GET /grupos/:grupoId/ranking/geral` — ranking geral do grupo
+- `GET /grupos/:grupoId/ranking/fases/:faseId?rodada=&ateRodada=` — ranking por fase/rodada
+- `GET /grupos/:grupoId/ranking/jogos/:jogoId` — detalhamento de pontuação por jogo
+- `GET /grupos/:grupoId/painel-rodada/:faseId` — painel da rodada
+
+### Usuários
+- `PATCH /usuarios/me/grupo-favorito` — definir grupo favorito
+
+## Services Especializados
+
+- `PontuacaoService` — cálculo de pontos (cheio 3pts, resultado 1pt, erro 0pts, dobrado ×2)
+- `FutebolApiService` — integração com API ge.globo.com + fallback campeonato-brasileiro-api
+- `PainelRodadaService` — agregação de dados para painel da rodada
+- `TokenDobroService` — gerenciamento de fichas de palpite dobrado
+- `PalpiteDobradoService` — operações de palpite dobrado
+
+## Ranking — Critérios de Desempate
+
+1. Pontuação total (desc)
+2. Acertos em cheio (desc)
+3. Acertos de resultado (desc)
+4. Média da hora do palpite — `mediaPalpiteEm` (quem palpitou mais cedo, asc)
+5. Nome alfabético (asc) — fallback final
+
+Cache: 5 minutos em memória (Map-based, TTL 300.000ms)
