@@ -924,6 +924,17 @@ export class JogoService {
     }
 
     if (novoStatus !== jogo.status || jogoApi) {
+      // Verificar se realmente há mudança antes de atualizar
+      const statusMudou = updateData.status !== jogo.status;
+      const placarMudou =
+        updateData.golsCasa !== undefined &&
+        (updateData.golsCasa !== jogo.golsCasa || updateData.golsFora !== jogo.golsFora);
+      const horarioMudou = horarioAlterado;
+
+      if (!statusMudou && !placarMudou && !horarioMudou) {
+        return { atualizado: false };
+      }
+
       await this.jogoRepo.atualizar(jogo.id, updateData);
       return {
         atualizado: true,
