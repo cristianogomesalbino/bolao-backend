@@ -1,9 +1,16 @@
-import { IsNotEmpty, IsString } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { IsOptional, IsString } from 'class-validator';
+import { ApiPropertyOptional } from '@nestjs/swagger';
 
+/**
+ * @deprecated O refresh token agora é lido do cookie HttpOnly.
+ * Este DTO é mantido apenas para retrocompatibilidade temporária.
+ * Será removido em versão futura.
+ */
 export class RefreshDto {
-  @ApiProperty()
+  @ApiPropertyOptional({
+    description: 'Deprecated — refresh token agora é lido do cookie HttpOnly.',
+  })
   @IsString({ message: 'Refresh token deve ser uma string.' })
-  @IsNotEmpty({ message: 'Refresh token é obrigatório.' })
-  refreshToken: string;
+  @IsOptional()
+  refreshToken?: string;
 }
