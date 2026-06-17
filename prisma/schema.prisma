@@ -251,3 +251,28 @@ enum MotivoTokenDobro {
   ATIVACAO_DOBRO
   CANCELAMENTO_DOBRO
 }
+
+model LogSincronizacao {
+  id               String              @id @default(uuid())
+  campeonatoSlug   String
+  fasesIds         String[]
+  totalJogos       Int
+  sincronizados    Int
+  erros            Int                 @default(0)
+  status           StatusSincronizacao
+  mensagem         String?
+  duracaoMs        Int
+  dataCriacao      DateTime            @default(now())
+  detalhes         Json?
+
+  @@index([campeonatoSlug])
+  @@index([dataCriacao])
+  @@index([status])
+}
+
+enum StatusSincronizacao {
+  SUCESSO
+  PARCIAL
+  ERRO
+  SEM_JOGOS
+}
