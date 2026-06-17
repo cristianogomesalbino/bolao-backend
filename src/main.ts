@@ -5,12 +5,16 @@ import { PrismaExceptionFilter } from './common/filters/prisma-exception.filter'
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { DomainExceptionFilter } from './common/filters/domain-exception.filter';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import cookieParser from 'cookie-parser';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  app.use(cookieParser());
+
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3003';
   app.enableCors({
-    origin: true,
+    origin: frontendUrl,
     credentials: true,
   });
 

@@ -8,7 +8,12 @@ export const AUTH = {
     ACCESS_EXPIRATION: '15m',
     REFRESH_EXPIRATION: '7d',
     REFRESH_EXPIRATION_MS: 7 * 24 * 60 * 60 * 1000,
+    REFRESH_EXPIRATION_SECONDS: 7 * 24 * 60 * 60, // 604800s = 7 dias
     RECUPERACAO_EXPIRATION_MS: 60 * 60 * 1000, // 1 hora
+  },
+  COOKIE: {
+    REFRESH_TOKEN_NAME: 'refreshToken',
+    PATH: '/auth',
   },
   MENSAGENS: {
     CREDENCIAIS_INVALIDAS: 'Credenciais inválidas',
