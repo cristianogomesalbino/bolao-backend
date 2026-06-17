@@ -128,12 +128,24 @@ export function validarRodada(rodada: number, faseConfig: FaseConfig): void {
   }
 }
 
+// --- Constantes de sincronização automática ---
+
+export const SYNC = {
+  INTERVALO_COM_JOGOS_AO_VIVO_MS: 2 * 60 * 1000, // 2 minutos
+  INTERVALO_PROXIMO_JOGO_MS: 5 * 60 * 1000, // 5 minutos
+  INTERVALO_SEM_JOGOS_MS: 15 * 60 * 1000, // 15 minutos
+  ANTECEDENCIA_INICIO_MS: 5 * 60 * 1000, // 5 minutos antes do jogo começa a sincronizar
+  CRON_VERIFICACAO: '*/1 * * * *', // A cada 1 minuto verifica se deve sincronizar
+  LOG_REPOSITORY_TOKEN: 'LOG_SINCRONIZACAO_REPOSITORY',
+} as const;
+
 // --- Constantes do módulo ---
 
 export const JOGOS = {
   TAG: 'Jogos',
   FASE_REPOSITORY_TOKEN: 'FASE_REPOSITORY',
   JOGO_REPOSITORY_TOKEN: 'JOGO_REPOSITORY',
+  LOG_SINCRONIZACAO_REPOSITORY_TOKEN: 'LOG_SINCRONIZACAO_REPOSITORY',
   MENSAGENS: {
     FASE_NAO_ENCONTRADA: 'Fase não encontrada',
     JOGO_NAO_ENCONTRADO: 'Jogo não encontrado',
