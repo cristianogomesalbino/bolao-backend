@@ -105,4 +105,16 @@ export class InMemoryJogoRepository implements JogoRepository {
 
     return todos.length > 0 ? todos[0].rodada : null;
   }
+
+  async buscarPendentesSync(faseIds: string[], limiteRodada: number) {
+    return this.items.filter(
+      (j) =>
+        faseIds.includes(j.faseId) &&
+        j.externoId != null &&
+        j.fonteResultado === 'API_EXTERNA' &&
+        j.status !== 'FINALIZADO' &&
+        j.status !== 'CANCELADO' &&
+        (j.rodada == null || j.rodada <= limiteRodada),
+    );
+  }
 }
