@@ -722,42 +722,14 @@ export class JogoService {
       `[SYNC] Fases para sincronizar: ${faseIds.length} (${fasesParaSync.map((f: any) => f.nome).join(', ')})`,
     );
 
-    // Buscar jogos de todas as fases relevantes
-    const jogosPromises = faseIds.map((id: string) =>
-      this.jogoRepo.buscarPorFase(id),
-    );
-    const jogosArrays = await Promise.all(jogosPromises);
-    const jogos = jogosArrays.flat();
-    this.logger.log(`[SYNC] Total jogos nas fases: ${jogos.length}`);
-
-    const jogosComExterno = jogos.filter(
-      (j: any) =>
-        j.externoId != null &&
-        j.fonteResultado === 'API_EXTERNA' &&
-        j.status !== 'FINALIZADO' &&
-        j.status !== 'CANCELADO',
-    );
-
-    this.logger.log(
-      `[SYNC] Jogos com externoId pendentes: ${jogosComExterno.length}`,
-    );
-
-    if (jogosComExterno.length === 0) {
-      this.logger.log('[SYNC] Nenhum jogo para sincronizar');
-      return { sincronizados: 0 };
-    }
-
-    // Calcular limite de rodada baseado na menor rodada atual entre todas as fases
-    const rodadasAtuais = await Promise.all(
-      faseIds.map((id: string) => this.obterRodadaAtual(id)),
-    );
-    const rodadaAtual = rodadasAtuais
-      .filter((r): r is number => r != null)
-      .reduce((min, r) => Math.min(min, r), Infinity);
-    const rodadaEfetiva = rodadaAtual === Infinity ? 1 : rodadaAtual;
+    // Calcular rodada atual (1 query) e buscar jogos pendentes em uma única query
+    const rodadaAtual = await this.obterRodadaAtual(faseIds[0]);
+    const rodadaEfetiva = rodadaAtual ?? 1;
     const limiteRodada = rodadaEfetiva + 1;
-    const jogosParaSync = jogosComExterno.filter(
-      (j: any) => j.rodada == null || j.rodada <= limiteRodada,
+
+    const jogosParaSync = await this.jogoRepo.buscarPendentesSync(
+      faseIds,
+      limiteRodada,
     );
 
     this.logger.log(
@@ -765,8 +737,8 @@ export class JogoService {
     );
 
     if (jogosParaSync.length === 0) {
-      this.logger.log('[SYNC] Nenhum jogo dentro do limite de rodada');
-      return { sincronizados: 0 };
+      this.logger.log('[SYNC] Nenhum jogo para sincronizar');
+      return { sincronizados: 0, jogosAtualizados: [] };
     }
 
     const inicioApi = Date.now();
@@ -791,7 +763,7 @@ export class JogoService {
       );
       if (resultado.atualizado) {
         sincronizados++;
-        jogosAtualizados.push({
+        const info = {
           id: jogo.id,
           timeCasa: jogo.timeCasa?.sigla || jogo.timeCasa?.nome,
           timeFora: jogo.timeFora?.sigla || jogo.timeFora?.nome,
@@ -802,7 +774,12 @@ export class JogoService {
           horarioAlterado: resultado.horarioAlterado || false,
           horarioAnterior: resultado.horarioAnterior || null,
           horarioNovo: resultado.horarioNovo || null,
-        });
+        };
+        jogosAtualizados.push(info);
+
+        this.logger.log(
+          `[SYNC] ⚽ ${info.timeCasa} ${info.golsCasa ?? '?'} x ${info.golsFora ?? '?'} ${info.timeFora} → ${info.status}${info.horarioAlterado ? ' (horário alterado)' : ''}`,
+        );
       }
     }
 
@@ -928,7 +905,8 @@ export class JogoService {
       const statusMudou = updateData.status !== jogo.status;
       const placarMudou =
         updateData.golsCasa !== undefined &&
-        (updateData.golsCasa !== jogo.golsCasa || updateData.golsFora !== jogo.golsFora);
+        (updateData.golsCasa !== jogo.golsCasa ||
+          updateData.golsFora !== jogo.golsFora);
       const horarioMudou = horarioAlterado;
 
       if (!statusMudou && !placarMudou && !horarioMudou) {

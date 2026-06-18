@@ -13,4 +13,5 @@ export interface JogoRepository {
   contarAdiadosPorTemporada(temporadaId: string): Promise<number>;
   buscarTodosPorTemporada(temporadaId: string): Promise<any[]>;
   buscarRodadaAtual(faseId: string): Promise<number | null>;
+  buscarPendentesSync(faseIds: string[], limiteRodada: number): Promise<any[]>;
 }

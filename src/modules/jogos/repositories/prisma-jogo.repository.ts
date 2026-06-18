@@ -114,4 +114,21 @@ export class PrismaJogoRepository implements JogoRepository {
     });
     return ultimo?.rodada ?? null;
   }
+
+  buscarPendentesSync(faseIds: string[], limiteRodada: number) {
+    return this.prisma.jogo.findMany({
+      where: {
+        faseId: { in: faseIds },
+        externoId: { not: null },
+        fonteResultado: 'API_EXTERNA',
+        status: { notIn: ['FINALIZADO', 'CANCELADO'] },
+        OR: [
+          { rodada: null },
+          { rodada: { lte: limiteRodada } },
+        ],
+      },
+      include: { timeCasa: true, timeFora: true },
+      orderBy: { dataHora: 'asc' },
+    });
+  }
 }
