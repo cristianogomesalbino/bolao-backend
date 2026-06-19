@@ -1,6 +1,5 @@
 import { Inject, Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { SchedulerRegistry } from '@nestjs/schedule';
 import { JogoService } from './jogo.service';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { JOGOS, SYNC, CAMPEONATO_CONFIGS } from '../jogos.constants';
@@ -37,7 +36,6 @@ export class SincronizacaoAutomaticaService implements OnModuleInit {
   constructor(
     private readonly jogoService: JogoService,
     private readonly configService: ConfigService,
-    private readonly schedulerRegistry: SchedulerRegistry,
     private readonly prisma: PrismaService,
     @Inject(JOGOS.LOG_SINCRONIZACAO_REPOSITORY_TOKEN)
     private readonly logRepo: LogSincronizacaoRepository,
@@ -62,55 +60,78 @@ export class SincronizacaoAutomaticaService implements OnModuleInit {
       `Sincronização automática HABILITADA para: ${this.campeonatosPermitidos.join(', ')}`,
     );
 
-    const interval = setInterval(
-      () => this.verificarEExecutar(),
-      60 * 1000,
-    );
-    this.schedulerRegistry.addInterval('sync-automatica-verificacao', interval);
-
     // Verificação inicial após 10s para o app estabilizar
-    setTimeout(() => this.verificarEExecutar(), 10 * 1000);
+    setTimeout(() => this.verificacaoInicial(), 10 * 1000);
   }
 
-  private async verificarEExecutar(): Promise<void> {
-    if (this.sincronizando) return;
+  private proximoTimeout: NodeJS.Timeout | null = null;
 
+  private async verificacaoInicial(): Promise<void> {
     try {
-      const agora = Date.now();
-      const intervaloNecessario = this.calcularIntervalo();
-      const tempoDesdeUltimaSync = agora - this.estado.ultimaSincronizacao;
+      const { jogosEmAndamento, proximoJogo } = await this.detectarEstadoJogos();
+      this.estado.temJogosEmAndamento = jogosEmAndamento > 0;
+      this.estado.proximoJogoEm = proximoJogo?.dataHora
+        ? new Date(proximoJogo.dataHora).getTime() - Date.now()
+        : null;
 
-      if (tempoDesdeUltimaSync < intervaloNecessario) {
-        return;
+      // Se há jogos em andamento, sincronizar imediatamente
+      if (this.estado.temJogosEmAndamento) {
+        this.logger.log('[SYNC-AUTO] Jogos em andamento detectados no startup — sincronizando');
+        await this.executarSincronizacao();
       }
-
-      await this.executarSincronizacao();
     } catch (error) {
-      this.logger.error('[SYNC-AUTO] Erro na verificação', error);
+      this.logger.error('[SYNC-AUTO] Erro na verificação inicial', error);
     }
+
+    this.agendarProximaExecucao();
   }
 
-  private calcularIntervalo(): number {
+  private agendarProximaExecucao(): void {
+    if (this.proximoTimeout) {
+      clearTimeout(this.proximoTimeout);
+      this.proximoTimeout = null;
+    }
+
+    const atraso = this.calcularProximoAtraso();
+    this.proximoTimeout = setTimeout(() => this.ciclo(), atraso);
+  }
+
+  private calcularProximoAtraso(): number {
     // Jogos em andamento → 2 minutos
     if (this.estado.temJogosEmAndamento) {
       return SYNC.INTERVALO_COM_JOGOS_AO_VIVO_MS;
     }
 
-    // Próximo jogo em menos de 5 minutos → 2 minutos (pré-início)
-    if (
-      this.estado.proximoJogoEm !== null &&
-      this.estado.proximoJogoEm <= SYNC.ANTECEDENCIA_INICIO_MS
-    ) {
+    // Próximo jogo existe → calcular tempo até ativar
+    if (this.estado.proximoJogoEm === null) {
+      // Sem jogos próximos → verificar a cada 30 minutos se surgiu algo
+      return 30 * 60 * 1000;
+    }
+
+    const tempoAteAtivar = this.estado.proximoJogoEm - SYNC.ANTECEDENCIA_INICIO_MS;
+
+    // Já está dentro da janela de antecedência
+    if (tempoAteAtivar <= 0) {
       return SYNC.INTERVALO_COM_JOGOS_AO_VIVO_MS;
     }
 
-    // Há próximo jogo no dia → 5 minutos
-    if (this.estado.proximoJogoEm !== null) {
-      return SYNC.INTERVALO_PROXIMO_JOGO_MS;
+    // Agenda pra acordar exatamente antes do jogo (máx 30min pra re-checar)
+    return Math.min(tempoAteAtivar, 30 * 60 * 1000);
+  }
+
+  private async ciclo(): Promise<void> {
+    if (this.sincronizando) {
+      this.agendarProximaExecucao();
+      return;
     }
 
-    // Sem jogos próximos → 15 minutos
-    return SYNC.INTERVALO_SEM_JOGOS_MS;
+    try {
+      await this.executarSincronizacao();
+    } catch (error) {
+      this.logger.error('[SYNC-AUTO] Erro no ciclo', error);
+    }
+
+    this.agendarProximaExecucao();
   }
 
   private async executarSincronizacao(): Promise<void> {
@@ -118,8 +139,6 @@ export class SincronizacaoAutomaticaService implements OnModuleInit {
     const inicio = Date.now();
 
     try {
-      this.logger.log('[SYNC-AUTO] Iniciando ciclo de sincronização');
-
       // Detectar estado atual dos jogos
       const { jogosEmAndamento, proximoJogo } = await this.detectarEstadoJogos();
       const temJogosEmAndamento = jogosEmAndamento > 0;
@@ -155,10 +174,6 @@ export class SincronizacaoAutomaticaService implements OnModuleInit {
             proximoJogoEm,
             ultimaSincronizacao: Date.now(),
           };
-
-          this.logger.log(
-            `[SYNC-AUTO] Sem jogos para sincronizar | próximo jogo em ${proximoJogoEm ? Math.round(proximoJogoEm / 60000) + 'min' : 'indefinido'}`,
-          );
           return;
         }
 
@@ -197,9 +212,11 @@ export class SincronizacaoAutomaticaService implements OnModuleInit {
       };
 
       const duracao = Date.now() - inicio;
-      this.logger.log(
-        `[SYNC-AUTO] Ciclo completo em ${duracao}ms | emAndamento=${this.estado.temJogosEmAndamento} | proximoJogoEm=${this.estado.proximoJogoEm ? Math.round(this.estado.proximoJogoEm / 60000) + 'min' : 'nenhum'}`,
-      );
+      if (this.estado.temJogosEmAndamento) {
+        this.logger.log(
+          `[SYNC-AUTO] Ciclo em ${duracao}ms | emAndamento=${estadoPosSync.jogosEmAndamento} | proximoJogoEm=${this.estado.proximoJogoEm ? Math.round(this.estado.proximoJogoEm / 60000) + 'min' : 'nenhum'}`,
+        );
+      }
     } catch (error) {
       this.logger.error('[SYNC-AUTO] Erro no ciclo de sincronização', error);
       this.estado.ultimaSincronizacao = Date.now();
@@ -470,9 +487,11 @@ export class SincronizacaoAutomaticaService implements OnModuleInit {
       detalhes: detalhes.length > 0 ? detalhes : undefined,
     });
 
-    this.logger.log(
-      `[SYNC-AUTO] ${campeonatoSlug}: ${totalSincronizados}/${totalJogos} sincronizados, ${totalErros} erros, ${Date.now() - inicio}ms`,
-    );
+    if (totalSincronizados > 0 || totalErros > 0) {
+      this.logger.log(
+        `[SYNC-AUTO] ${campeonatoSlug}: ${totalSincronizados}/${totalJogos} sincronizados, ${totalErros} erros, ${Date.now() - inicio}ms`,
+      );
+    }
   }
 
   private async registrarLog(data: {
@@ -519,8 +538,8 @@ export class SincronizacaoAutomaticaService implements OnModuleInit {
 
   // Forçar execução manual (para admin)
   async forcarSincronizacao(): Promise<void> {
-    this.estado.ultimaSincronizacao = 0;
     await this.executarSincronizacao();
+    this.agendarProximaExecucao();
   }
 
   private determinarStatusSync(
