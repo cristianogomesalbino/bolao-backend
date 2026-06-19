@@ -913,6 +913,11 @@ export class JogoService {
         return { atualizado: false };
       }
 
+      // Log de transições de status importantes
+      if (statusMudou) {
+        this.logarTransicaoStatus(jogo, updateData);
+      }
+
       await this.jogoRepo.atualizar(jogo.id, updateData);
       return {
         atualizado: true,
@@ -926,6 +931,22 @@ export class JogoService {
     }
 
     return { atualizado: false };
+  }
+
+  private logarTransicaoStatus(jogo: any, updateData: any): void {
+    const timeCasa = jogo.timeCasa?.sigla || jogo.timeCasa?.nome || '?';
+    const timeFora = jogo.timeFora?.sigla || jogo.timeFora?.nome || '?';
+
+    if (jogo.status === 'AGENDADO' && updateData.status === 'EM_ANDAMENTO') {
+      this.logger.log(`[SYNC] 🟢 INÍCIO: ${timeCasa} x ${timeFora} — jogo começou`);
+      return;
+    }
+
+    if (jogo.status === 'EM_ANDAMENTO' && updateData.status === 'FINALIZADO') {
+      this.logger.log(
+        `[SYNC] 🏁 FIM: ${timeCasa} ${updateData.golsCasa ?? '?'} x ${updateData.golsFora ?? '?'} ${timeFora} — jogo encerrado`,
+      );
+    }
   }
 
   private detectarMudancaHorario(
