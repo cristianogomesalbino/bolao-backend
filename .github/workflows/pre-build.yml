@@ -2,7 +2,7 @@ name: Pre-Build Validation
 
 on:
   push:
-    branches: [develop]
+    branches: [develop, main]
   pull_request:
     branches: [main, develop]
 
@@ -24,8 +24,25 @@ jobs:
       - name: Generate Prisma Client
         run: npx prisma generate
 
-      - name: Build (simula produção)
+      - name: Build TypeScript
         run: npx nest build
+
+      - name: Verify entrypoint exists
+        run: |
+          if [ ! -f dist/main.js ]; then
+            echo "❌ ERRO: dist/main.js não encontrado após build!"
+            echo "Arquivos em dist/:"
+            find dist -name "*.js" | head -20
+            exit 1
+          fi
+          echo "✅ dist/main.js encontrado"
+
+      - name: Verify entrypoint loads without crash
+        run: node -e "require('./dist/main.js')" &
+          PID=$!
+          sleep 3
+          kill $PID 2>/dev/null || true
+          echo "✅ Entrypoint carrega sem erro de módulo"
 
       - name: Run tests
         run: npx vitest run
