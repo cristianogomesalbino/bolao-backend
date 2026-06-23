@@ -63,12 +63,62 @@ export class PrismaJogoRepository implements JogoRepository {
     return this.prisma.jogo.findMany({ where: { grupoIdaVolta } });
   }
 
-  buscarProximoJogoPorTemporada(temporadaId: string) {
+  async buscarProximoJogoPorTemporada(temporadaId: string) {
+    // Prioridade 1: jogos em andamento
+    const emAndamento = await this.prisma.jogo.findFirst({
+      where: {
+        fase: { temporadaId },
+        status: 'EM_ANDAMENTO',
+      },
+      include: { fase: true, timeCasa: true, timeFora: true },
+      orderBy: { dataHora: 'asc' },
+    });
+
+    if (emAndamento) return emAndamento;
+
+    // Prioridade 2: próximo agendado
     return this.prisma.jogo.findFirst({
       where: {
         fase: { temporadaId },
         status: 'AGENDADO',
         dataHora: { gt: new Date() },
+      },
+      include: { fase: true, timeCasa: true, timeFora: true },
+      orderBy: { dataHora: 'asc' },
+    });
+  }
+
+  async buscarProximosJogosPorTemporada(temporadaId: string) {
+    // Prioridade 1: jogos em andamento agora
+    const emAndamento = await this.prisma.jogo.findMany({
+      where: {
+        fase: { temporadaId },
+        status: 'EM_ANDAMENTO',
+      },
+      include: { fase: true, timeCasa: true, timeFora: true },
+      orderBy: { dataHora: 'asc' },
+    });
+
+    if (emAndamento.length > 0) return emAndamento;
+
+    // Prioridade 2: próximos jogos agendados (mesmo horário)
+    const primeiro = await this.prisma.jogo.findFirst({
+      where: {
+        fase: { temporadaId },
+        status: 'AGENDADO',
+        dataHora: { gt: new Date() },
+      },
+      orderBy: { dataHora: 'asc' },
+      select: { dataHora: true },
+    });
+
+    if (!primeiro?.dataHora) return [];
+
+    return this.prisma.jogo.findMany({
+      where: {
+        fase: { temporadaId },
+        status: 'AGENDADO',
+        dataHora: primeiro.dataHora,
       },
       include: { fase: true, timeCasa: true, timeFora: true },
       orderBy: { dataHora: 'asc' },
