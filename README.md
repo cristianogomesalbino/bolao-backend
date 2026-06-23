@@ -321,11 +321,16 @@ Regras de domínio:
 ## Testes
 
 ```bash
-docker exec bolao-backend-dev npx vitest run       # testes unitários
-docker exec bolao-backend-dev npx vitest run --coverage  # cobertura
+# Via Docker (ambiente completo)
+docker exec bolao-backend-dev npx vitest run
+docker exec bolao-backend-dev npx vitest run --coverage
+
+# Direto no host (testes unitários usam InMemory repos, não precisam de banco)
+npx vitest run
 ```
 
-> Todos os comandos rodam dentro do Docker. Nunca executar npm/npx diretamente na máquina host.
+Framework: Vitest 4 com instanciação direta (sem TestingModule).  
+Mocks: `vi.fn()` para controllers, InMemory repositories para services.
 
 ## Roadmap
 
