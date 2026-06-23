@@ -39,8 +39,7 @@ export class PalpiteService {
   async criar(jogoId: string, dto: CriarPalpiteDto, usuarioId: string) {
     const jogo = await this.jogoRepo.buscarPorId(jogoId);
     if (!jogo) throw new JogoNaoEncontradoError();
-    if (jogo.status !== 'AGENDADO' && jogo.status !== 'ADIADO')
-      throw new JogoNaoAceitaPalpitesError();
+    this.validarJogoAceitaPalpites(jogo);
 
     const existente = await this.palpiteRepo.buscarPorUsuarioEJogo(usuarioId, jogoId);
     if (existente) throw new PalpiteJaExisteError();
@@ -57,8 +56,7 @@ export class PalpiteService {
     const palpite = await this.buscarEValidarOwnership(id, usuarioId);
 
     const jogo = await this.jogoRepo.buscarPorId(palpite.jogoId);
-    if (jogo.status !== 'AGENDADO' && jogo.status !== 'ADIADO')
-      throw new JogoNaoAceitaPalpitesError();
+    this.validarJogoAceitaPalpites(jogo);
 
     return this.palpiteRepo.atualizar(id, {
       golsCasa: dto.golsCasa,
@@ -70,8 +68,7 @@ export class PalpiteService {
     const palpite = await this.buscarEValidarOwnership(id, usuarioId);
 
     const jogo = await this.jogoRepo.buscarPorId(palpite.jogoId);
-    if (jogo.status !== 'AGENDADO' && jogo.status !== 'ADIADO')
-      throw new JogoNaoAceitaPalpitesError();
+    this.validarJogoAceitaPalpites(jogo);
 
     await this.palpiteRepo.remover(id);
   }
@@ -214,5 +211,11 @@ export class PalpiteService {
     if (!palpite) throw new PalpiteNaoEncontradoError();
     if (palpite.usuarioId !== usuarioId) throw new PalpiteNaoPertenceAoUsuarioError();
     return palpite;
+  }
+
+  private validarJogoAceitaPalpites(jogo: { status: string }): void {
+    if (jogo.status !== 'AGENDADO' && jogo.status !== 'ADIADO') {
+      throw new JogoNaoAceitaPalpitesError();
+    }
   }
 }

@@ -144,7 +144,7 @@ export class RankingService {
     if (!jogo) throw new JogoNaoEncontradoError();
 
     const membros = await this.grupoUsuarioRepo.listarPorGrupoComUsuario(grupoId);
-    const usuarioIds = membros.map((m: any) => m.usuarioId);
+    const usuarioIds = this.extrairUsuarioIds(membros);
 
     const palpites = await this.palpiteRepo.listarPorJogoEUsuarios(jogoId, usuarioIds);
     const palpiteMap = new Map(palpites.map((p: any) => [p.usuarioId, p]));
@@ -234,7 +234,7 @@ export class RankingService {
       .sort((a: Date, b: Date) => a.getTime() - b.getTime())[0];
 
     const membros = await this.grupoUsuarioRepo.listarPorGrupoComUsuario(grupoId);
-    const usuarioIds = membros.map((m: any) => m.usuarioId);
+    const usuarioIds = this.extrairUsuarioIds(membros);
     const jogoIds = jogosNaoCancelados.map((j: any) => j.id);
 
     const palpites = await this.palpiteRepo.listarPorJogosEUsuarios(jogoIds, usuarioIds);
@@ -261,27 +261,13 @@ export class RankingService {
 
       if (!todosPalpitesAntesDoPrimeiroJogo) continue;
 
-      const tokenExistente = await this.tokenDobroRepo.buscarPorChave(
-        membro.usuarioId,
-        grupoId,
-        'PALPITES_COMPLETOS',
-        faseId,
-      );
-
-      if (!tokenExistente) {
-        await this.tokenDobroService.concederToken(
-          membro.usuarioId,
-          grupoId,
-          'PALPITES_COMPLETOS',
-          faseId,
-        );
-      }
+      await this.concederTokenSeNaoExiste(membro.usuarioId, grupoId, 'PALPITES_COMPLETOS', faseId);
     }
   }
 
   private async processarPontuacaoJogoParaGrupo(jogo: any, fase: any, grupo: any): Promise<void> {
     const membros = await this.grupoUsuarioRepo.listarPorGrupoComUsuario(grupo.id);
-    const usuarioIds = membros.map((m: any) => m.usuarioId);
+    const usuarioIds = this.extrairUsuarioIds(membros);
 
     const palpites = await this.palpiteRepo.listarPorJogoEUsuarios(jogo.id, usuarioIds);
     const palpiteMap = new Map(palpites.map((p: any) => [p.usuarioId, p]));
@@ -320,21 +306,7 @@ export class RankingService {
 
       if (resultado.categoriaAcerto !== 'ACERTO_EM_CHEIO') continue;
 
-      const tokenExistente = await this.tokenDobroRepo.buscarPorChave(
-        membro.usuarioId,
-        grupoId,
-        'ACERTO_EM_CHEIO',
-        jogo.id,
-      );
-
-      if (!tokenExistente) {
-        await this.tokenDobroService.concederToken(
-          membro.usuarioId,
-          grupoId,
-          'ACERTO_EM_CHEIO',
-          jogo.id,
-        );
-      }
+      await this.concederTokenSeNaoExiste(membro.usuarioId, grupoId, 'ACERTO_EM_CHEIO', jogo.id);
     }
   }
 
@@ -350,39 +322,11 @@ export class RankingService {
     const ultimos = ranking.filter((r) => r.posicao === ultimaPosicao);
 
     for (const membro of primeiros) {
-      const tokenExistente = await this.tokenDobroRepo.buscarPorChave(
-        membro.usuarioId,
-        grupo.id,
-        'PRIMEIRO_RANKING',
-        faseId,
-      );
-
-      if (!tokenExistente) {
-        await this.tokenDobroService.concederToken(
-          membro.usuarioId,
-          grupo.id,
-          'PRIMEIRO_RANKING',
-          faseId,
-        );
-      }
+      await this.concederTokenSeNaoExiste(membro.usuarioId, grupo.id, 'PRIMEIRO_RANKING', faseId);
     }
 
     for (const membro of ultimos) {
-      const tokenExistente = await this.tokenDobroRepo.buscarPorChave(
-        membro.usuarioId,
-        grupo.id,
-        'ULTIMO_RANKING',
-        faseId,
-      );
-
-      if (!tokenExistente) {
-        await this.tokenDobroService.concederToken(
-          membro.usuarioId,
-          grupo.id,
-          'ULTIMO_RANKING',
-          faseId,
-        );
-      }
+      await this.concederTokenSeNaoExiste(membro.usuarioId, grupo.id, 'ULTIMO_RANKING', faseId);
     }
   }
 
@@ -393,7 +337,7 @@ export class RankingService {
   ): Promise<RankingEntry[]> {
     if (membros.length === 0) return [];
 
-    const usuarioIds = membros.map((m: any) => m.usuarioId);
+    const usuarioIds = this.extrairUsuarioIds(membros);
     const jogoIds = jogosFinalizados.map((j: any) => j.id);
 
     const palpites = jogoIds.length > 0
@@ -501,5 +445,26 @@ export class RankingService {
       todosJogos.push(...jogos.filter((j: any) => j.status === 'FINALIZADO'));
     }
     return todosJogos;
+  }
+
+  private extrairUsuarioIds(membros: any[]): string[] {
+    return membros.map((m: any) => m.usuarioId);
+  }
+
+  private async concederTokenSeNaoExiste(
+    usuarioId: string,
+    grupoId: string,
+    motivo: 'PALPITES_COMPLETOS' | 'ACERTO_EM_CHEIO' | 'ULTIMO_RANKING' | 'PRIMEIRO_RANKING',
+    referenciaId: string,
+  ): Promise<void> {
+    const tokenExistente = await this.tokenDobroRepo.buscarPorChave(
+      usuarioId,
+      grupoId,
+      motivo,
+      referenciaId,
+    );
+    if (!tokenExistente) {
+      await this.tokenDobroService.concederToken(usuarioId, grupoId, motivo, referenciaId);
+    }
   }
 }

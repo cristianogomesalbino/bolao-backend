@@ -702,9 +702,6 @@ export class JogoService {
     faseSlug: string,
   ) {
     const inicioTotal = Date.now();
-    this.logger.log(
-      `[SYNC] Iniciando sincronização: fase=${faseId}, campeonato=${campeonatoSlug}, faseSlug=${faseSlug}`,
-    );
 
     const fase = await this.faseRepo.buscarPorId(faseId);
     if (!fase) {
@@ -718,10 +715,6 @@ export class JogoService {
     const fasesParaSync = await this.obterFasesParaSync(fase);
     const faseIds = fasesParaSync.map((f: any) => f.id);
 
-    this.logger.log(
-      `[SYNC] Fases para sincronizar: ${faseIds.length} (${fasesParaSync.map((f: any) => f.nome).join(', ')})`,
-    );
-
     // Calcular rodada atual (1 query) e buscar jogos pendentes em uma única query
     const rodadaAtual = await this.obterRodadaAtual(faseIds[0]);
     const rodadaEfetiva = rodadaAtual ?? 1;
@@ -732,12 +725,7 @@ export class JogoService {
       limiteRodada,
     );
 
-    this.logger.log(
-      `[SYNC] rodadaAtual=${rodadaEfetiva}, limiteRodada=${limiteRodada}, jogosParaSync=${jogosParaSync.length}`,
-    );
-
     if (jogosParaSync.length === 0) {
-      this.logger.log('[SYNC] Nenhum jogo para sincronizar');
       return { sincronizados: 0, jogosAtualizados: [] };
     }
 
@@ -747,14 +735,11 @@ export class JogoService {
       config.campeonatoId,
       faseSlugCompleto,
     );
-    this.logger.log(
-      `[SYNC] API respondeu em ${Date.now() - inicioApi}ms — jogos encontrados na API: ${jogoApiMap.size}, apiDisponivel=${apiDisponivel}`,
-    );
+    const tempoApi = Date.now() - inicioApi;
 
     let sincronizados = 0;
     const jogosAtualizados: any[] = [];
 
-    const inicioProcessamento = Date.now();
     for (const jogo of jogosParaSync) {
       const resultado = await this.processarJogoSync(
         jogo,
@@ -763,7 +748,7 @@ export class JogoService {
       );
       if (resultado.atualizado) {
         sincronizados++;
-        const info = {
+        jogosAtualizados.push({
           id: jogo.id,
           timeCasa: jogo.timeCasa?.sigla || jogo.timeCasa?.nome,
           timeFora: jogo.timeFora?.sigla || jogo.timeFora?.nome,
@@ -774,21 +759,30 @@ export class JogoService {
           horarioAlterado: resultado.horarioAlterado || false,
           horarioAnterior: resultado.horarioAnterior || null,
           horarioNovo: resultado.horarioNovo || null,
-        };
-        jogosAtualizados.push(info);
-
-        this.logger.log(
-          `[SYNC] ⚽ ${info.timeCasa} ${info.golsCasa ?? '?'} x ${info.golsFora ?? '?'} ${info.timeFora} → ${info.status}${info.horarioAlterado ? ' (horário alterado)' : ''}`,
-        );
+        });
       }
     }
 
-    this.logger.log(
-      `[SYNC] Processamento de ${jogosParaSync.length} jogos em ${Date.now() - inicioProcessamento}ms — sincronizados=${sincronizados}`,
-    );
-    this.logger.log(
-      `[SYNC] Sincronização completa em ${Date.now() - inicioTotal}ms`,
-    );
+    const tempoTotal = Date.now() - inicioTotal;
+    const fasesNomes = fasesParaSync.map((f: any) => f.nome).join(', ');
+
+    // Log consolidado: 1 linha com todas as informações relevantes
+    if (sincronizados > 0) {
+      const resumoJogos = jogosAtualizados
+        .map((j) => `${j.timeCasa} ${j.golsCasa ?? '?'}x${j.golsFora ?? '?'} ${j.timeFora} (${j.status === 'FINALIZADO' ? '🏁' : '⚽'})`)
+        .join(' | ');
+      this.logger.log(
+        `[SYNC] ${campeonatoSlug} R${rodadaEfetiva} | ${sincronizados}/${jogosParaSync.length} atualizados | ${fasesNomes} | API ${tempoApi}ms | Total ${tempoTotal}ms | ${resumoJogos}`,
+      );
+    } else {
+      this.logger.log(
+        `[SYNC] ${campeonatoSlug} R${rodadaEfetiva} | 0/${jogosParaSync.length} atualizados | ${faseIds.length} fases | ${tempoTotal}ms`,
+      );
+    }
+
+    if (!apiDisponivel) {
+      this.logger.warn(`[SYNC] API externa indisponível — fallback interno utilizado`);
+    }
 
     return { sincronizados, jogosAtualizados };
   }
@@ -934,18 +928,12 @@ export class JogoService {
   }
 
   private logarTransicaoStatus(jogo: any, updateData: any): void {
-    const timeCasa = jogo.timeCasa?.sigla || jogo.timeCasa?.nome || '?';
-    const timeFora = jogo.timeFora?.sigla || jogo.timeFora?.nome || '?';
-
+    // Transições de status são logadas no resumo consolidado do sincronizarPlacares
+    // Aqui apenas registra transições especiais que merecem destaque individual
     if (jogo.status === 'AGENDADO' && updateData.status === 'EM_ANDAMENTO') {
-      this.logger.log(`[SYNC] 🟢 INÍCIO: ${timeCasa} x ${timeFora} — jogo começou`);
-      return;
-    }
-
-    if (jogo.status === 'EM_ANDAMENTO' && updateData.status === 'FINALIZADO') {
-      this.logger.log(
-        `[SYNC] 🏁 FIM: ${timeCasa} ${updateData.golsCasa ?? '?'} x ${updateData.golsFora ?? '?'} ${timeFora} — jogo encerrado`,
-      );
+      const timeCasa = jogo.timeCasa?.sigla || '?';
+      const timeFora = jogo.timeFora?.sigla || '?';
+      this.logger.log(`[SYNC] 🟢 ${timeCasa} x ${timeFora} — jogo iniciou`);
     }
   }
 
