@@ -15,7 +15,10 @@ export class PrismaJogoRepository implements JogoRepository {
   }
 
   buscarPorId(id: string) {
-    return this.prisma.jogo.findUnique({ where: { id }, include: { fase: true, timeCasa: true, timeFora: true } });
+    return this.prisma.jogo.findUnique({
+      where: { id },
+      include: { fase: true, timeCasa: true, timeFora: true },
+    });
   }
 
   buscarPorIds(ids: string[]) {
@@ -138,7 +141,11 @@ export class PrismaJogoRepository implements JogoRepository {
     return this.prisma.jogo.findMany({
       where: { fase: { temporadaId } },
       include: { fase: true, timeCasa: true, timeFora: true },
-      orderBy: [{ fase: { ordem: 'asc' } }, { rodada: 'asc' }, { dataHora: 'asc' }],
+      orderBy: [
+        { fase: { ordem: 'asc' } },
+        { rodada: 'asc' },
+        { dataHora: 'asc' },
+      ],
     });
   }
 
@@ -169,16 +176,29 @@ export class PrismaJogoRepository implements JogoRepository {
     return this.prisma.jogo.findMany({
       where: {
         faseId: { in: faseIds },
-        externoId: { not: null },
         fonteResultado: 'API_EXTERNA',
         status: { notIn: ['FINALIZADO', 'CANCELADO'] },
-        OR: [
-          { rodada: null },
-          { rodada: { lte: limiteRodada } },
-        ],
+        OR: [{ rodada: null }, { rodada: { lte: limiteRodada } }],
       },
       include: { timeCasa: true, timeFora: true },
       orderBy: { dataHora: 'asc' },
+    });
+  }
+
+  buscarJogosComTimePlaceholder(
+    temporadaId: string,
+    placeholderTimeId: string,
+  ) {
+    return this.prisma.jogo.findMany({
+      where: {
+        fase: { temporadaId },
+        OR: [
+          { timeCasaId: placeholderTimeId },
+          { timeForaId: placeholderTimeId },
+        ],
+      },
+      include: { timeCasa: true, timeFora: true, fase: true },
+      orderBy: [{ fase: { ordem: 'asc' } }, { rodada: 'asc' }],
     });
   }
 }

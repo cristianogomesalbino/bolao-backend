@@ -273,7 +273,6 @@ export class SincronizacaoAutomaticaService implements OnModuleInit {
       by: ['faseId'],
       where: {
         fonteResultado: 'API_EXTERNA',
-        externoId: { not: null },
         OR: [
           { status: 'EM_ANDAMENTO' },
           {
@@ -370,8 +369,8 @@ export class SincronizacaoAutomaticaService implements OnModuleInit {
 
     const nomeLower = fase.nome.toLowerCase();
     const mapeamento: [string, string][] = [
-      ['32avos', '32'],
-      ['32avos', 'trinta e dois'],
+      ['segunda-fase', '16 avos'],
+      ['segunda-fase', 'segunda fase'],
       ['oitavas', 'oitavas'],
       ['quartas', 'quartas'],
       ['semifinais', 'semi'],
