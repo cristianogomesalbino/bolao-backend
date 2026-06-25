@@ -77,12 +77,13 @@ export class TemporadasService {
     const temporada = await this.temporadaRepo.buscarPorId(temporadaId);
     if (!temporada) throw new TemporadaNaoEncontradaError();
 
-    const [proximoJogo, totalAdiados] = await Promise.all([
+    const [proximoJogo, proximosJogos, totalAdiados] = await Promise.all([
       this.jogoRepo.buscarProximoJogoPorTemporada(temporadaId),
+      this.jogoRepo.buscarProximosJogosPorTemporada(temporadaId),
       this.jogoRepo.contarAdiadosPorTemporada(temporadaId),
     ]);
 
-    return { proximoJogo, totalAdiados };
+    return { proximoJogo, proximosJogos, totalAdiados };
   }
 
   async buscarJogosTemporada(temporadaId: string) {

@@ -23,16 +23,20 @@ API REST para gerenciamento de bolões de campeonatos de futebol.
 
 ## Ambiente de Desenvolvimento (Docker)
 
-O projeto roda 100% dentro de Docker. **NUNCA executar comandos npm/npx diretamente na máquina host.**
+O projeto roda 100% dentro de Docker. **NUNCA executar comandos npm/npx diretamente na máquina host** para operações que dependem do banco (migrations, seeds, etc.).
+
+**Exceção:** Testes unitários (`npx vitest run`) podem rodar no host — usam InMemory repositories, não precisam de banco.
 
 - Instalar pacotes: `sh dev npm install <pacote>`
-- Rodar testes: `sh dev npx vitest run`
+- Rodar testes (via Docker): `sh dev npx vitest run`
+- Rodar testes (direto no host): `npx vitest run`
 - Rodar qualquer comando npm: `sh dev npm <comando>`
 - Rodar qualquer comando npx: `sh dev npx <comando>`
 - Logs: `sh dev logs`
 - Parar: `sh dev stop`
 - Timezone dos containers: `America/Sao_Paulo` (BRT)
 - Logging HTTP automático via `LoggerMiddleware` (método, URL, status, tempo)
+- Logging de sincronização: formato consolidado 1 linha por sync (campeonato, rodada, resultado, timings, jogos atualizados)
 
 ## Estrutura de Módulos
 
@@ -185,6 +189,7 @@ Nomes de classes, decorators e padrões do NestJS seguem inglês (Controller, Se
 
 - `PontuacaoService` — cálculo de pontos (cheio 3pts, resultado 1pt, erro 0pts, dobrado ×2)
 - `FutebolApiService` — integração com API ge.globo.com + fallback campeonato-brasileiro-api
+- `SincronizacaoAutomaticaService` — scheduling adaptativo de sync (2min ao vivo, dorme sem jogos, acorda com antecedência)
 - `PainelRodadaService` — agregação de dados para painel da rodada
 - `TokenDobroService` — gerenciamento de fichas de palpite dobrado
 - `PalpiteDobradoService` — operações de palpite dobrado
