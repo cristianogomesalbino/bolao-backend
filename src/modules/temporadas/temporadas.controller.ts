@@ -45,7 +45,7 @@ export class TemporadasController {
   }
 
   @ApiOperation({
-    summary: 'Busca dados da temporada (próximo jogo + total adiados)',
+    summary: 'Busca dados da temporada (próximos jogos + total adiados)',
   })
   @ApiResponse({ status: 200, description: 'Dados da temporada' })
   @ApiNotFoundResponse({ description: 'Temporada não encontrada' })
@@ -54,7 +54,7 @@ export class TemporadasController {
     @Param('temporadaId', new ParseUUIDCustomPipe('temporadaId'))
     temporadaId: string,
   ) {
-    const { proximoJogo, totalAdiados } =
+    const { proximoJogo, proximosJogos, totalAdiados } =
       await this.temporadasService.buscarDadosTemporada(temporadaId);
 
     return {
@@ -64,6 +64,10 @@ export class TemporadasController {
             jogo: JogoPresenter.toHttp(proximoJogo),
           }
         : null,
+      proximosJogos: proximosJogos.map((j) => ({
+        fase: FasePresenter.toHttp(j.fase),
+        jogo: JogoPresenter.toHttp(j),
+      })),
       totalAdiados,
     };
   }

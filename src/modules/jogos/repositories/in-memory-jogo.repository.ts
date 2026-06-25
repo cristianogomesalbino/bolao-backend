@@ -61,6 +61,22 @@ export class InMemoryJogoRepository implements JogoRepository {
 
   async buscarProximoJogoPorTemporada(temporadaId: string) {
     const agora = Date.now();
+
+    // Prioridade 1: jogos em andamento
+    const emAndamento = this.items
+      .filter(
+        (j) =>
+          j.fase?.temporadaId === temporadaId &&
+          j.status === 'EM_ANDAMENTO',
+      )
+      .sort(
+        (a, b) =>
+          new Date(a.dataHora).getTime() - new Date(b.dataHora).getTime(),
+      );
+
+    if (emAndamento.length > 0) return emAndamento[0];
+
+    // Prioridade 2: próximo agendado
     const candidatos = this.items
       .filter(
         (j) =>
@@ -74,6 +90,44 @@ export class InMemoryJogoRepository implements JogoRepository {
           new Date(a.dataHora).getTime() - new Date(b.dataHora).getTime(),
       );
     return candidatos[0] ?? null;
+  }
+
+  async buscarProximosJogosPorTemporada(temporadaId: string) {
+    // Prioridade 1: jogos em andamento agora
+    const emAndamento = this.items
+      .filter(
+        (j) =>
+          j.fase?.temporadaId === temporadaId &&
+          j.status === 'EM_ANDAMENTO',
+      )
+      .sort(
+        (a, b) =>
+          new Date(a.dataHora).getTime() - new Date(b.dataHora).getTime(),
+      );
+
+    if (emAndamento.length > 0) return emAndamento;
+
+    // Prioridade 2: próximos jogos agendados (mesmo horário)
+    const agora = Date.now();
+    const candidatos = this.items
+      .filter(
+        (j) =>
+          j.fase?.temporadaId === temporadaId &&
+          j.status === 'AGENDADO' &&
+          j.dataHora &&
+          new Date(j.dataHora).getTime() > agora,
+      )
+      .sort(
+        (a, b) =>
+          new Date(a.dataHora).getTime() - new Date(b.dataHora).getTime(),
+      );
+
+    if (candidatos.length === 0) return [];
+
+    const primeiroHorario = new Date(candidatos[0].dataHora).getTime();
+    return candidatos.filter(
+      (j) => new Date(j.dataHora).getTime() === primeiroHorario,
+    );
   }
 
   async contarAdiadosPorTemporada(temporadaId: string) {
