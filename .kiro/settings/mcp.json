@@ -1,16 +1,18 @@
 {
   "mcpServers": {
     "postgres-mcp": {
-      "command": "/usr/local/bin/npx",
+      "command": "uvx",
       "args": [
-        "-y",
-        "@modelcontextprotocol/server-postgres",
-        "postgresql://postgres.rzpfdmhdozsefkchdyem:4pp-B0l40%40%23%40%23@aws-1-sa-east-1.pooler.supabase.com:5432/postgres"
+        "postgres-mcp",
+        "--access-mode=unrestricted"
       ],
-      "env": {},
+      "env": {
+        "DATABASE_URI": "postgresql://postgres.rzpfdmhdozsefkchdyem:4pp-B0l40%40%23%40%23@aws-1-sa-east-1.pooler.supabase.com:5432/postgres"
+      },
       "disabled": false,
       "autoApprove": [
-        "query"
+        "query",
+        "execute_sql"
       ]
     }
   }

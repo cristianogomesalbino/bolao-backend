@@ -41,7 +41,9 @@ describe('JogoService — sincronização multi-campeonato', () => {
       mapearStatus: vi.fn(),
     } as any;
 
-    service = new JogoService(jogoRepo, faseRepo, futebolApiService, timeRepo);
+    service = new JogoService(jogoRepo, faseRepo, futebolApiService, timeRepo, {
+      preencherProximaFaseEliminatoria: vi.fn().mockResolvedValue(undefined),
+    } as any);
   });
 
   function criarJogoNoBanco(overrides: any = {}) {
