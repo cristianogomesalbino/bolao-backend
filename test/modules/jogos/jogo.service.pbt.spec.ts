@@ -67,7 +67,7 @@ describe('JogoService — Property-Based Tests', () => {
       normalizarJogo: vi.fn(),
       mapearStatus: vi.fn(),
     } as any;
-    service = new JogoService(jogoRepo, faseRepo, futebolApiService, timeRepo);
+    service = new JogoService(jogoRepo, faseRepo, futebolApiService, timeRepo, { preencherProximaFaseEliminatoria: vi.fn() } as any);
   });
 
   // Generators reutilizáveis
@@ -632,7 +632,7 @@ describe('JogoService — Property-Based Tests', () => {
       normalizarJogo: vi.fn(),
       mapearStatus: vi.fn(),
     } as any;
-    const svc = new JogoService(jogoRepo, faseRepo, mockApi, timeRepo);
+    const svc = new JogoService(jogoRepo, faseRepo, mockApi, timeRepo, { preencherProximaFaseEliminatoria: vi.fn() } as any);
 
     await fc.assert(
       fc.asyncProperty(fc.integer({ min: 1, max: 5 }), async (n) => {
@@ -704,7 +704,7 @@ describe('JogoService — Property-Based Tests', () => {
       normalizarJogo: vi.fn(),
       mapearStatus: vi.fn(),
     } as any;
-    const svc = new JogoService(jogoRepo, faseRepo, mockApi, timeRepo);
+    const svc = new JogoService(jogoRepo, faseRepo, mockApi, timeRepo, { preencherProximaFaseEliminatoria: vi.fn() } as any);
 
     jogoRepo.items = [];
     await jogoRepo.criar({

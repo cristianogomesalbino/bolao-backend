@@ -4,6 +4,7 @@ import { JogoController } from './controllers/jogo.controller';
 import { SincronizacaoController } from './controllers/sincronizacao.controller';
 import { FaseService } from './services/fase.service';
 import { JogoService } from './services/jogo.service';
+import { ChaveamentoService } from './services/chaveamento.service';
 import { FutebolApiService } from './services/futebol-api.service';
 import { SincronizacaoAutomaticaService } from './services/sincronizacao-automatica.service';
 import { JOGOS } from './jogos.constants';
@@ -19,6 +20,7 @@ import { TimesModule } from '../times/times.module';
   providers: [
     FaseService,
     JogoService,
+    ChaveamentoService,
     FutebolApiService,
     SincronizacaoAutomaticaService,
     {

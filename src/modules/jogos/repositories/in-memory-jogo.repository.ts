@@ -17,7 +17,11 @@ export class InMemoryJogoRepository implements JogoRepository {
   async atualizar(id: string, data: any) {
     const index = this.items.findIndex((j) => j.id === id);
     if (index === -1) return null;
-    this.items[index] = { ...this.items[index], ...data, atualizadoEm: new Date() };
+    this.items[index] = {
+      ...this.items[index],
+      ...data,
+      atualizadoEm: new Date(),
+    };
     return this.items[index];
   }
 
@@ -30,19 +34,33 @@ export class InMemoryJogoRepository implements JogoRepository {
   }
 
   async buscarPorExternoIds(externoIds: string[]) {
-    return this.items.filter((j) => j.externoId && externoIds.includes(j.externoId));
+    return this.items.filter(
+      (j) => j.externoId && externoIds.includes(j.externoId),
+    );
   }
 
   async buscarPorFase(faseId: string, rodada?: number) {
     return this.items
-      .filter((j) => j.faseId === faseId && (rodada === undefined || j.rodada === rodada))
-      .sort((a, b) => new Date(a.dataHora).getTime() - new Date(b.dataHora).getTime());
+      .filter(
+        (j) =>
+          j.faseId === faseId && (rodada === undefined || j.rodada === rodada),
+      )
+      .sort(
+        (a, b) =>
+          new Date(a.dataHora).getTime() - new Date(b.dataHora).getTime(),
+      );
   }
 
   async buscarPorFaseAteRodada(faseId: string, ateRodada: number) {
     return this.items
-      .filter((j) => j.faseId === faseId && j.rodada !== null && j.rodada <= ateRodada)
-      .sort((a, b) => new Date(a.dataHora).getTime() - new Date(b.dataHora).getTime());
+      .filter(
+        (j) =>
+          j.faseId === faseId && j.rodada !== null && j.rodada <= ateRodada,
+      )
+      .sort(
+        (a, b) =>
+          new Date(a.dataHora).getTime() - new Date(b.dataHora).getTime(),
+      );
   }
 
   async buscarPorFaseEStatus(faseId: string, status: string) {
@@ -66,8 +84,7 @@ export class InMemoryJogoRepository implements JogoRepository {
     const emAndamento = this.items
       .filter(
         (j) =>
-          j.fase?.temporadaId === temporadaId &&
-          j.status === 'EM_ANDAMENTO',
+          j.fase?.temporadaId === temporadaId && j.status === 'EM_ANDAMENTO',
       )
       .sort(
         (a, b) =>
@@ -97,8 +114,7 @@ export class InMemoryJogoRepository implements JogoRepository {
     const emAndamento = this.items
       .filter(
         (j) =>
-          j.fase?.temporadaId === temporadaId &&
-          j.status === 'EM_ANDAMENTO',
+          j.fase?.temporadaId === temporadaId && j.status === 'EM_ANDAMENTO',
       )
       .sort(
         (a, b) =>
@@ -164,11 +180,22 @@ export class InMemoryJogoRepository implements JogoRepository {
     return this.items.filter(
       (j) =>
         faseIds.includes(j.faseId) &&
-        j.externoId != null &&
         j.fonteResultado === 'API_EXTERNA' &&
         j.status !== 'FINALIZADO' &&
         j.status !== 'CANCELADO' &&
         (j.rodada == null || j.rodada <= limiteRodada),
+    );
+  }
+
+  async buscarJogosComTimePlaceholder(
+    temporadaId: string,
+    placeholderTimeId: string,
+  ) {
+    // InMemory não tem relação com temporada via fase, simplifica buscando por timeId
+    return this.items.filter(
+      (j) =>
+        j.timeCasaId === placeholderTimeId ||
+        j.timeForaId === placeholderTimeId,
     );
   }
 }
