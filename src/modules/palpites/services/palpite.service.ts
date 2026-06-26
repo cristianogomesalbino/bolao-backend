@@ -41,7 +41,10 @@ export class PalpiteService {
     if (!jogo) throw new JogoNaoEncontradoError();
     this.validarJogoAceitaPalpites(jogo);
 
-    const existente = await this.palpiteRepo.buscarPorUsuarioEJogo(usuarioId, jogoId);
+    const existente = await this.palpiteRepo.buscarPorUsuarioEJogo(
+      usuarioId,
+      jogoId,
+    );
     if (existente) throw new PalpiteJaExisteError();
 
     return this.palpiteRepo.criar({
@@ -84,11 +87,18 @@ export class PalpiteService {
     return this.palpiteRepo.buscarPorUsuarioEJogos(usuarioId, jogoIds);
   }
 
-  async listarMeusPalpites(usuarioId: string, filtros?: { temporadaId?: string }) {
+  async listarMeusPalpites(
+    usuarioId: string,
+    filtros?: { temporadaId?: string },
+  ) {
     return this.palpiteRepo.listarPorUsuario(usuarioId, filtros);
   }
 
-  async listarPorJogoNoGrupo(jogoId: string, grupoId: string, usuarioId: string) {
+  async listarPorJogoNoGrupo(
+    jogoId: string,
+    grupoId: string,
+    usuarioId: string,
+  ) {
     const jogo = await this.jogoRepo.buscarPorId(jogoId);
     if (!jogo) throw new JogoNaoEncontradoError();
 
@@ -101,7 +111,10 @@ export class PalpiteService {
       return this.palpiteRepo.listarPorJogoEUsuarios(jogoId, membrosIds);
     }
 
-    const meuPalpite = await this.palpiteRepo.buscarPorUsuarioEJogo(usuarioId, jogoId);
+    const meuPalpite = await this.palpiteRepo.buscarPorUsuarioEJogo(
+      usuarioId,
+      jogoId,
+    );
     return meuPalpite ? [meuPalpite] : [];
   }
 
@@ -166,20 +179,37 @@ export class PalpiteService {
     const jogosMap = new Map(jogos.map((j) => [j.id, j]));
     const existentesSet = new Set(palpitesExistentes.map((p) => p.jogoId));
 
-    const resultados: { jogoId: string; sucesso: boolean; palpite?: any; erro?: string }[] = [];
+    const resultados: {
+      jogoId: string;
+      sucesso: boolean;
+      palpite?: any;
+      erro?: string;
+    }[] = [];
 
     for (const item of palpites) {
       const jogo = jogosMap.get(item.jogoId);
       if (!jogo) {
-        resultados.push({ jogoId: item.jogoId, sucesso: false, erro: JOGOS.MENSAGENS.JOGO_NAO_ENCONTRADO });
+        resultados.push({
+          jogoId: item.jogoId,
+          sucesso: false,
+          erro: JOGOS.MENSAGENS.JOGO_NAO_ENCONTRADO,
+        });
         continue;
       }
       if (jogo.status !== 'AGENDADO' && jogo.status !== 'ADIADO') {
-        resultados.push({ jogoId: item.jogoId, sucesso: false, erro: PALPITES.MENSAGENS.JOGO_NAO_ACEITA_PALPITES });
+        resultados.push({
+          jogoId: item.jogoId,
+          sucesso: false,
+          erro: PALPITES.MENSAGENS.JOGO_NAO_ACEITA_PALPITES,
+        });
         continue;
       }
       if (existentesSet.has(item.jogoId)) {
-        resultados.push({ jogoId: item.jogoId, sucesso: false, erro: PALPITES.MENSAGENS.PALPITE_JA_EXISTE });
+        resultados.push({
+          jogoId: item.jogoId,
+          sucesso: false,
+          erro: PALPITES.MENSAGENS.PALPITE_JA_EXISTE,
+        });
         continue;
       }
 
@@ -209,7 +239,8 @@ export class PalpiteService {
   private async buscarEValidarOwnership(id: string, usuarioId: string) {
     const palpite = await this.palpiteRepo.buscarPorId(id);
     if (!palpite) throw new PalpiteNaoEncontradoError();
-    if (palpite.usuarioId !== usuarioId) throw new PalpiteNaoPertenceAoUsuarioError();
+    if (palpite.usuarioId !== usuarioId)
+      throw new PalpiteNaoPertenceAoUsuarioError();
     return palpite;
   }
 

@@ -92,7 +92,10 @@ async function bootstrap() {
   const isDev = process.env.NODE_ENV !== 'production';
 
   SwaggerModule.setup('docs', app, document, {
-    swaggerOptions: { defaultModelsExpandDepth: -1, persistAuthorization: true },
+    swaggerOptions: {
+      defaultModelsExpandDepth: -1,
+      persistAuthorization: true,
+    },
     customJsStr: isDev
       ? `
       (function() {

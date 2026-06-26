@@ -57,7 +57,7 @@ describe('RankingController', () => {
       processarPontuacaoJogo: vi.fn().mockResolvedValue(undefined),
     };
 
-    controller = new RankingController(mockService as any);
+    controller = new RankingController(mockService);
   });
 
   describe('obterRankingGeral', () => {
@@ -70,21 +70,30 @@ describe('RankingController', () => {
     it('deve aplicar RankingPresenter na resposta', async () => {
       const result = await controller.obterRankingGeral(grupoId);
 
-      expect(result).toEqual(rankingMock.map((e) => RankingPresenter.toHttp(e)));
+      expect(result).toEqual(
+        rankingMock.map((e) => RankingPresenter.toHttp(e)),
+      );
     });
-  }); 
+  });
 
   describe('obterRankingFase', () => {
     it('deve delegar para rankingService.obterRankingFase', async () => {
       await controller.obterRankingFase(grupoId, faseId);
 
-      expect(mockService.obterRankingFase).toHaveBeenCalledWith(grupoId, faseId, undefined, undefined);
+      expect(mockService.obterRankingFase).toHaveBeenCalledWith(
+        grupoId,
+        faseId,
+        undefined,
+        undefined,
+      );
     });
 
     it('deve aplicar RankingPresenter na resposta', async () => {
       const result = await controller.obterRankingFase(grupoId, faseId);
 
-      expect(result).toEqual(rankingMock.map((e) => RankingPresenter.toHttp(e)));
+      expect(result).toEqual(
+        rankingMock.map((e) => RankingPresenter.toHttp(e)),
+      );
     });
   });
 
@@ -92,13 +101,18 @@ describe('RankingController', () => {
     it('deve delegar para rankingService.obterDetalhamentoJogo', async () => {
       await controller.obterDetalhamentoJogo(grupoId, jogoId);
 
-      expect(mockService.obterDetalhamentoJogo).toHaveBeenCalledWith(grupoId, jogoId);
+      expect(mockService.obterDetalhamentoJogo).toHaveBeenCalledWith(
+        grupoId,
+        jogoId,
+      );
     });
 
     it('deve aplicar PontuacaoJogoPresenter na resposta', async () => {
       const result = await controller.obterDetalhamentoJogo(grupoId, jogoId);
 
-      expect(result).toEqual(detalhamentoMock.map((e) => PontuacaoJogoPresenter.toHttp(e)));
+      expect(result).toEqual(
+        detalhamentoMock.map((e) => PontuacaoJogoPresenter.toHttp(e)),
+      );
     });
   });
 
@@ -112,7 +126,9 @@ describe('RankingController', () => {
     it('deve retornar mensagem de sucesso', async () => {
       const result = await controller.processarPontuacaoJogo(grupoId, jogoId);
 
-      expect(result).toEqual({ mensagem: RANKING.MENSAGENS.PONTUACAO_PROCESSADA });
+      expect(result).toEqual({
+        mensagem: RANKING.MENSAGENS.PONTUACAO_PROCESSADA,
+      });
     });
   });
 });

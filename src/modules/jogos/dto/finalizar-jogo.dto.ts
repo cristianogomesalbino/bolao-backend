@@ -1,9 +1,4 @@
-import {
-  IsInt,
-  Min,
-  IsBoolean,
-  IsOptional,
-} from 'class-validator';
+import { IsInt, Min, IsBoolean, IsOptional } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class FinalizarJogoDto {

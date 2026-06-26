@@ -43,6 +43,7 @@ describe('JogoService — sincronização multi-campeonato', () => {
 
     service = new JogoService(jogoRepo, faseRepo, futebolApiService, timeRepo, {
       preencherProximaFaseEliminatoria: vi.fn().mockResolvedValue(undefined),
+      propagarVencedoresParaProximaFase: vi.fn().mockResolvedValue(undefined),
     } as any);
   });
 
@@ -88,8 +89,12 @@ describe('JogoService — sincronização multi-campeonato', () => {
         penaltisCasa: null,
         penaltisFora: null,
       };
-      (futebolApiService.buscarJogosPorRodadas as any).mockResolvedValue([{ raw: true }]);
-      (futebolApiService.normalizarJogo as any).mockReturnValue(jogoApiNormalizado);
+      (futebolApiService.buscarJogosPorRodadas as any).mockResolvedValue([
+        { raw: true },
+      ]);
+      (futebolApiService.normalizarJogo as any).mockReturnValue(
+        jogoApiNormalizado,
+      );
 
       const result = await service.sincronizarPlacares(
         'fase-sync-1',
@@ -115,8 +120,12 @@ describe('JogoService — sincronização multi-campeonato', () => {
         penaltisCasa: 4,
         penaltisFora: 2,
       };
-      (futebolApiService.buscarJogosPorRodadas as any).mockResolvedValue([{ raw: true }]);
-      (futebolApiService.normalizarJogo as any).mockReturnValue(jogoApiNormalizado);
+      (futebolApiService.buscarJogosPorRodadas as any).mockResolvedValue([
+        { raw: true },
+      ]);
+      (futebolApiService.normalizarJogo as any).mockReturnValue(
+        jogoApiNormalizado,
+      );
 
       const result = await service.sincronizarPlacares(
         'fase-sync-1',
@@ -143,8 +152,12 @@ describe('JogoService — sincronização multi-campeonato', () => {
         penaltisCasa: null,
         penaltisFora: null,
       };
-      (futebolApiService.buscarJogosPorRodadas as any).mockResolvedValue([{ raw: true }]);
-      (futebolApiService.normalizarJogo as any).mockReturnValue(jogoApiNormalizado);
+      (futebolApiService.buscarJogosPorRodadas as any).mockResolvedValue([
+        { raw: true },
+      ]);
+      (futebolApiService.normalizarJogo as any).mockReturnValue(
+        jogoApiNormalizado,
+      );
 
       const result = await service.sincronizarPlacares(
         'fase-sync-1',
@@ -226,9 +239,8 @@ describe('JogoService — sincronização multi-campeonato', () => {
     });
 
     it('deve lançar CampeonatoNaoSuportadoError para campeonatoSlug inválido', async () => {
-      const { CampeonatoNaoSuportadoError } = await import(
-        '@src/common/errors/domain-errors'
-      );
+      const { CampeonatoNaoSuportadoError } =
+        await import('@src/common/errors/domain-errors');
       await expect(
         service.sincronizarPlacares('fase-sync-1', 'invalido', 'qualquer'),
       ).rejects.toThrow(CampeonatoNaoSuportadoError);

@@ -103,20 +103,33 @@ describe('PalpiteDobradoService — Property-Based Tests', () => {
   // Valida: Requisito 11.1
   it('Propriedade 11: ativação decrementa saldo e cria registro', async () => {
     await fc.assert(
-      fc.asyncProperty(fc.integer({ min: 1, max: 10 }), async (tokensIniciais) => {
-        palpiteDobradoRepo.items = [];
-        tokenDobroRepo.items = [];
-        await concederTokens(tokensIniciais);
+      fc.asyncProperty(
+        fc.integer({ min: 1, max: 10 }),
+        async (tokensIniciais) => {
+          palpiteDobradoRepo.items = [];
+          tokenDobroRepo.items = [];
+          await concederTokens(tokensIniciais);
 
-        const saldoAntes = await tokenDobroService.calcularSaldo(userId, grupoId);
-        await service.ativarDobro(grupoId, jogoAgendadoId, userId);
-        const saldoDepois = await tokenDobroService.calcularSaldo(userId, grupoId);
+          const saldoAntes = await tokenDobroService.calcularSaldo(
+            userId,
+            grupoId,
+          );
+          await service.ativarDobro(grupoId, jogoAgendadoId, userId);
+          const saldoDepois = await tokenDobroService.calcularSaldo(
+            userId,
+            grupoId,
+          );
 
-        expect(saldoDepois).toBe(saldoAntes - 1);
+          expect(saldoDepois).toBe(saldoAntes - 1);
 
-        const dobro = await palpiteDobradoRepo.buscarPorChave(userId, jogoAgendadoId, grupoId);
-        expect(dobro).not.toBeNull();
-      }),
+          const dobro = await palpiteDobradoRepo.buscarPorChave(
+            userId,
+            jogoAgendadoId,
+            grupoId,
+          );
+          expect(dobro).not.toBeNull();
+        },
+      ),
       { numRuns: 50 },
     );
   });
@@ -125,22 +138,35 @@ describe('PalpiteDobradoService — Property-Based Tests', () => {
   // Valida: Requisito 12.1
   it('Propriedade 12: desativação incrementa saldo e remove registro', async () => {
     await fc.assert(
-      fc.asyncProperty(fc.integer({ min: 1, max: 10 }), async (tokensIniciais) => {
-        palpiteDobradoRepo.items = [];
-        tokenDobroRepo.items = [];
-        await concederTokens(tokensIniciais);
+      fc.asyncProperty(
+        fc.integer({ min: 1, max: 10 }),
+        async (tokensIniciais) => {
+          palpiteDobradoRepo.items = [];
+          tokenDobroRepo.items = [];
+          await concederTokens(tokensIniciais);
 
-        await service.ativarDobro(grupoId, jogoAgendadoId, userId);
-        const saldoAposAtivar = await tokenDobroService.calcularSaldo(userId, grupoId);
+          await service.ativarDobro(grupoId, jogoAgendadoId, userId);
+          const saldoAposAtivar = await tokenDobroService.calcularSaldo(
+            userId,
+            grupoId,
+          );
 
-        await service.desativarDobro(grupoId, jogoAgendadoId, userId);
-        const saldoAposDesativar = await tokenDobroService.calcularSaldo(userId, grupoId);
+          await service.desativarDobro(grupoId, jogoAgendadoId, userId);
+          const saldoAposDesativar = await tokenDobroService.calcularSaldo(
+            userId,
+            grupoId,
+          );
 
-        expect(saldoAposDesativar).toBe(saldoAposAtivar + 1);
+          expect(saldoAposDesativar).toBe(saldoAposAtivar + 1);
 
-        const dobro = await palpiteDobradoRepo.buscarPorChave(userId, jogoAgendadoId, grupoId);
-        expect(dobro).toBeNull();
-      }),
+          const dobro = await palpiteDobradoRepo.buscarPorChave(
+            userId,
+            jogoAgendadoId,
+            grupoId,
+          );
+          expect(dobro).toBeNull();
+        },
+      ),
       { numRuns: 50 },
     );
   });
@@ -149,19 +175,28 @@ describe('PalpiteDobradoService — Property-Based Tests', () => {
   // Valida: Requisitos 11.1, 12.1
   it('Propriedade 13: ativar e desativar preserva saldo original', async () => {
     await fc.assert(
-      fc.asyncProperty(fc.integer({ min: 1, max: 10 }), async (tokensIniciais) => {
-        palpiteDobradoRepo.items = [];
-        tokenDobroRepo.items = [];
-        await concederTokens(tokensIniciais);
+      fc.asyncProperty(
+        fc.integer({ min: 1, max: 10 }),
+        async (tokensIniciais) => {
+          palpiteDobradoRepo.items = [];
+          tokenDobroRepo.items = [];
+          await concederTokens(tokensIniciais);
 
-        const saldoOriginal = await tokenDobroService.calcularSaldo(userId, grupoId);
+          const saldoOriginal = await tokenDobroService.calcularSaldo(
+            userId,
+            grupoId,
+          );
 
-        await service.ativarDobro(grupoId, jogoAgendadoId, userId);
-        await service.desativarDobro(grupoId, jogoAgendadoId, userId);
+          await service.ativarDobro(grupoId, jogoAgendadoId, userId);
+          await service.desativarDobro(grupoId, jogoAgendadoId, userId);
 
-        const saldoFinal = await tokenDobroService.calcularSaldo(userId, grupoId);
-        expect(saldoFinal).toBe(saldoOriginal);
-      }),
+          const saldoFinal = await tokenDobroService.calcularSaldo(
+            userId,
+            grupoId,
+          );
+          expect(saldoFinal).toBe(saldoOriginal);
+        },
+      ),
       { numRuns: 50 },
     );
   });
@@ -169,7 +204,10 @@ describe('PalpiteDobradoService — Property-Based Tests', () => {
   // Feature: modulo-palpites, Property 14: Rejeição por status do jogo
   // Valida: Requisitos 11.2, 12.2
   it('Propriedade 14: ativar dobro em jogo não AGENDADO rejeita', async () => {
-    const arbJogoNaoAgendado = fc.constantFrom('jogo-em-andamento', 'jogo-finalizado');
+    const arbJogoNaoAgendado = fc.constantFrom(
+      'jogo-em-andamento',
+      'jogo-finalizado',
+    );
 
     await fc.assert(
       fc.asyncProperty(arbJogoNaoAgendado, async (jogoId) => {
@@ -198,17 +236,20 @@ describe('PalpiteDobradoService — Property-Based Tests', () => {
   // Valida: Requisitos 11.4, 15.1, 15.2
   it('Propriedade 16: dobro duplicado rejeita com DobroJaAtivoError', async () => {
     await fc.assert(
-      fc.asyncProperty(fc.integer({ min: 2, max: 10 }), async (tokensIniciais) => {
-        palpiteDobradoRepo.items = [];
-        tokenDobroRepo.items = [];
-        await concederTokens(tokensIniciais);
+      fc.asyncProperty(
+        fc.integer({ min: 2, max: 10 }),
+        async (tokensIniciais) => {
+          palpiteDobradoRepo.items = [];
+          tokenDobroRepo.items = [];
+          await concederTokens(tokensIniciais);
 
-        await service.ativarDobro(grupoId, jogoAgendadoId, userId);
+          await service.ativarDobro(grupoId, jogoAgendadoId, userId);
 
-        await expect(
-          service.ativarDobro(grupoId, jogoAgendadoId, userId),
-        ).rejects.toThrow(DobroJaAtivoError);
-      }),
+          await expect(
+            service.ativarDobro(grupoId, jogoAgendadoId, userId),
+          ).rejects.toThrow(DobroJaAtivoError);
+        },
+      ),
       { numRuns: 50 },
     );
   });
@@ -217,25 +258,28 @@ describe('PalpiteDobradoService — Property-Based Tests', () => {
   // Valida: Requisitos 11.5, 10.7
   it('Propriedade 17: grupo sem dobro habilitado rejeita ativação', async () => {
     await fc.assert(
-      fc.asyncProperty(fc.integer({ min: 1, max: 10 }), async (tokensIniciais) => {
-        palpiteDobradoRepo.items = [];
-        tokenDobroRepo.items = [];
+      fc.asyncProperty(
+        fc.integer({ min: 1, max: 10 }),
+        async (tokensIniciais) => {
+          palpiteDobradoRepo.items = [];
+          tokenDobroRepo.items = [];
 
-        // Conceder tokens no grupo sem dobro
-        for (let i = 0; i < tokensIniciais; i++) {
-          await tokenDobroRepo.criar({
-            usuarioId: userId,
-            grupoId: 'grupo-sem-dobro',
-            tipo: 'CONCESSAO',
-            motivo: 'ACERTO_EM_CHEIO',
-            referenciaId: `ref-${i}`,
-          });
-        }
+          // Conceder tokens no grupo sem dobro
+          for (let i = 0; i < tokensIniciais; i++) {
+            await tokenDobroRepo.criar({
+              usuarioId: userId,
+              grupoId: 'grupo-sem-dobro',
+              tipo: 'CONCESSAO',
+              motivo: 'ACERTO_EM_CHEIO',
+              referenciaId: `ref-${i}`,
+            });
+          }
 
-        await expect(
-          service.ativarDobro('grupo-sem-dobro', jogoAgendadoId, userId),
-        ).rejects.toThrow(GrupoNaoPermiteDobroError);
-      }),
+          await expect(
+            service.ativarDobro('grupo-sem-dobro', jogoAgendadoId, userId),
+          ).rejects.toThrow(GrupoNaoPermiteDobroError);
+        },
+      ),
       { numRuns: 50 },
     );
   });
@@ -257,7 +301,10 @@ describe('PalpiteDobradoService — Property-Based Tests', () => {
             usuarioId: userId,
             grupoId,
             tipo: sequencia[i],
-            motivo: sequencia[i] === 'CONCESSAO' ? 'ACERTO_EM_CHEIO' : 'ATIVACAO_DOBRO',
+            motivo:
+              sequencia[i] === 'CONCESSAO'
+                ? 'ACERTO_EM_CHEIO'
+                : 'ATIVACAO_DOBRO',
             referenciaId: `ref-${i}`,
           });
         }
@@ -283,19 +330,30 @@ describe('PalpiteDobradoService — Property-Based Tests', () => {
     );
 
     await fc.assert(
-      fc.asyncProperty(fc.uuid(), fc.uuid(), arbMotivo, fc.uuid(), async (uid, gid, motivo, refId) => {
-        tokenDobroRepo.items = [];
+      fc.asyncProperty(
+        fc.uuid(),
+        fc.uuid(),
+        arbMotivo,
+        fc.uuid(),
+        async (uid, gid, motivo, refId) => {
+          tokenDobroRepo.items = [];
 
-        const token = await tokenDobroService.concederToken(uid, gid, motivo, refId);
+          const token = await tokenDobroService.concederToken(
+            uid,
+            gid,
+            motivo,
+            refId,
+          );
 
-        expect(token.usuarioId).toBe(uid);
-        expect(token.grupoId).toBe(gid);
-        expect(token.tipo).toBe('CONCESSAO');
-        expect(token.motivo).toBe(motivo);
-        expect(token.referenciaId).toBe(refId);
-        expect(token.dataCriacao).toBeDefined();
-        expect(token.id).toBeDefined();
-      }),
+          expect(token.usuarioId).toBe(uid);
+          expect(token.grupoId).toBe(gid);
+          expect(token.tipo).toBe('CONCESSAO');
+          expect(token.motivo).toBe(motivo);
+          expect(token.referenciaId).toBe(refId);
+          expect(token.dataCriacao).toBeDefined();
+          expect(token.id).toBeDefined();
+        },
+      ),
       { numRuns: 100 },
     );
   });
@@ -304,28 +362,37 @@ describe('PalpiteDobradoService — Property-Based Tests', () => {
   // Valida: Requisito 9.4
   it('Propriedade 24: desabilitar dobro preserva tokens mas impede ativações', async () => {
     await fc.assert(
-      fc.asyncProperty(fc.integer({ min: 1, max: 5 }), async (tokensIniciais) => {
-        palpiteDobradoRepo.items = [];
-        tokenDobroRepo.items = [];
-        await concederTokens(tokensIniciais);
+      fc.asyncProperty(
+        fc.integer({ min: 1, max: 5 }),
+        async (tokensIniciais) => {
+          palpiteDobradoRepo.items = [];
+          tokenDobroRepo.items = [];
+          await concederTokens(tokensIniciais);
 
-        const saldoAntes = await tokenDobroService.calcularSaldo(userId, grupoId);
+          const saldoAntes = await tokenDobroService.calcularSaldo(
+            userId,
+            grupoId,
+          );
 
-        // Desabilitar dobro no grupo
-        await service.atualizarConfiguracaoDobro(grupoId, false);
+          // Desabilitar dobro no grupo
+          await service.atualizarConfiguracaoDobro(grupoId, false);
 
-        // Saldo preservado
-        const saldoDepois = await tokenDobroService.calcularSaldo(userId, grupoId);
-        expect(saldoDepois).toBe(saldoAntes);
+          // Saldo preservado
+          const saldoDepois = await tokenDobroService.calcularSaldo(
+            userId,
+            grupoId,
+          );
+          expect(saldoDepois).toBe(saldoAntes);
 
-        // Ativação bloqueada
-        await expect(
-          service.ativarDobro(grupoId, jogoAgendadoId, userId),
-        ).rejects.toThrow(GrupoNaoPermiteDobroError);
+          // Ativação bloqueada
+          await expect(
+            service.ativarDobro(grupoId, jogoAgendadoId, userId),
+          ).rejects.toThrow(GrupoNaoPermiteDobroError);
 
-        // Reabilitar pra não afetar outros testes
-        await service.atualizarConfiguracaoDobro(grupoId, true);
-      }),
+          // Reabilitar pra não afetar outros testes
+          await service.atualizarConfiguracaoDobro(grupoId, true);
+        },
+      ),
       { numRuns: 50 },
     );
   });

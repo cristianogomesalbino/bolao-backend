@@ -44,7 +44,8 @@ export class PainelRodadaService {
       throw new FaseNaoEncontradaError();
     }
 
-    const rodadaFiltro = rodada ?? await this.jogoRepo.buscarRodadaAtual(faseId) ?? undefined;
+    const rodadaFiltro =
+      rodada ?? (await this.jogoRepo.buscarRodadaAtual(faseId)) ?? undefined;
     const jogos = await this.jogoRepo.buscarPorFase(faseId, rodadaFiltro);
     const jogoIds = jogos.map((j) => j.id);
 
@@ -54,9 +55,7 @@ export class PainelRodadaService {
       this.tokenDobroRepo.calcularSaldo(usuarioId, grupoId),
     ]);
 
-    const palpitesPorJogo = new Map(
-      palpites.map((p) => [p.jogoId, p]),
-    );
+    const palpitesPorJogo = new Map(palpites.map((p) => [p.jogoId, p]));
     const dobrosSet = new Set(
       dobros.filter((d) => jogoIds.includes(d.jogoId)).map((d) => d.jogoId),
     );
@@ -73,14 +72,23 @@ export class PainelRodadaService {
         golsFora: jogo.golsFora,
         rodada: jogo.rodada,
         meuPalpite: meuPalpite
-          ? { id: meuPalpite.id, golsCasa: meuPalpite.golsCasa, golsFora: meuPalpite.golsFora }
+          ? {
+              id: meuPalpite.id,
+              golsCasa: meuPalpite.golsCasa,
+              golsFora: meuPalpite.golsFora,
+            }
           : null,
         dobrado: dobrosSet.has(jogo.id),
       };
     });
 
     return {
-      fase: { id: fase.id, nome: fase.nome, tipo: fase.tipo, ordem: fase.ordem },
+      fase: {
+        id: fase.id,
+        nome: fase.nome,
+        tipo: fase.tipo,
+        ordem: fase.ordem,
+      },
       saldoTokensDobro: saldo,
       permitirPalpiteDobrado: grupo.permitirPalpiteDobrado,
       jogos: jogosEnriquecidos,

@@ -1,4 +1,14 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  UseGuards,
+  Query,
+} from '@nestjs/common';
 import { GruposService } from './grupos.service';
 import { CriarGrupoDto } from './dto/create-grupo.dto';
 import { UpdateGrupoDto } from './dto/update-grupo.dto';
@@ -34,14 +44,34 @@ export class GruposController {
     @Body() criarGrupoDto: CriarGrupoDto,
     @CurrentUser() user: { id: string },
   ) {
-    return GrupoPresenter.toHttp(await this.gruposService.criar(criarGrupoDto, user.id));
+    return GrupoPresenter.toHttp(
+      await this.gruposService.criar(criarGrupoDto, user.id),
+    );
   }
 
   @ApiOperation({ summary: 'Listar grupos com filtros opcionais' })
-  @ApiResponse({ status: 200, description: 'Lista de grupos retornada com sucesso.' })
-  @ApiQuery({ name: 'membro', required: false, type: Boolean, description: 'Filtrar apenas grupos onde o usuário é membro' })
-  @ApiQuery({ name: 'privado', required: false, type: Boolean, description: 'Filtrar por visibilidade (false = apenas públicos)' })
-  @ApiQuery({ name: 'busca', required: false, type: String, description: 'Busca por nome do grupo (parcial, case-insensitive)' })
+  @ApiResponse({
+    status: 200,
+    description: 'Lista de grupos retornada com sucesso.',
+  })
+  @ApiQuery({
+    name: 'membro',
+    required: false,
+    type: Boolean,
+    description: 'Filtrar apenas grupos onde o usuário é membro',
+  })
+  @ApiQuery({
+    name: 'privado',
+    required: false,
+    type: Boolean,
+    description: 'Filtrar por visibilidade (false = apenas públicos)',
+  })
+  @ApiQuery({
+    name: 'busca',
+    required: false,
+    type: String,
+    description: 'Busca por nome do grupo (parcial, case-insensitive)',
+  })
   @Get()
   async buscarGrupos(
     @Query() filtros: FiltrarGruposDto,
@@ -76,7 +106,9 @@ export class GruposController {
     @Param('grupoId', new ParseUUIDCustomPipe('grupoId')) grupoId: string,
     @Body() updateGrupoDto: UpdateGrupoDto,
   ) {
-    return GrupoPresenter.toHttp(await this.gruposService.atualizar(grupoId, updateGrupoDto));
+    return GrupoPresenter.toHttp(
+      await this.gruposService.atualizar(grupoId, updateGrupoDto),
+    );
   }
 
   @ApiOperation({ summary: 'Alterar status (ativo/inativo) do grupo' })
@@ -90,7 +122,9 @@ export class GruposController {
     @Param('grupoId', new ParseUUIDCustomPipe('grupoId')) grupoId: string,
     @Body() updateStatusGrupoDto: UpdateStatusGrupoDto,
   ) {
-    return GrupoPresenter.toHttp(await this.gruposService.atualizarStatus(grupoId, updateStatusGrupoDto));
+    return GrupoPresenter.toHttp(
+      await this.gruposService.atualizarStatus(grupoId, updateStatusGrupoDto),
+    );
   }
 
   @ApiOperation({ summary: 'Exclui um grupo inativo' })
@@ -116,6 +150,9 @@ export class GruposController {
     @Param('grupoId', new ParseUUIDCustomPipe('grupoId')) grupoId: string,
   ) {
     const grupo = await this.gruposService.regenerarCodigoConvite(grupoId);
-    return { codigoConvite: grupo.codigoConvite, mensagem: GRUPOS.MENSAGENS.CONVITE_REGENERADO };
+    return {
+      codigoConvite: grupo.codigoConvite,
+      mensagem: GRUPOS.MENSAGENS.CONVITE_REGENERADO,
+    };
   }
 }

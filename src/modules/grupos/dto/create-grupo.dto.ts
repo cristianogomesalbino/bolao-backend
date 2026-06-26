@@ -1,4 +1,14 @@
-import { IsString, IsNotEmpty, IsDefined, IsBoolean, IsUUID, IsOptional, IsInt, Length, Max } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsDefined,
+  IsBoolean,
+  IsUUID,
+  IsOptional,
+  IsInt,
+  Length,
+  Max,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { GRUPOS } from '../grupos.constants';
@@ -11,7 +21,10 @@ export class CriarGrupoDto {
   @Length(3, 100, { message: 'Deve ter entre 3 e 100 caracteres.' })
   nome: string;
 
-  @ApiProperty({ description: 'ID da temporada', example: '550e8400-e29b-41d4-a716-446655440000' })
+  @ApiProperty({
+    description: 'ID da temporada',
+    example: '550e8400-e29b-41d4-a716-446655440000',
+  })
   @IsDefined({ message: 'O campo é obrigatório.' })
   @IsUUID('4', { message: 'Deve ser um UUID válido.' })
   temporadaId: string;
@@ -21,25 +34,39 @@ export class CriarGrupoDto {
   @IsBoolean({ message: 'Deve ser verdadeiro ou falso.' })
   privado: boolean;
 
-  @ApiPropertyOptional({ description: 'Permitir palpite automático', example: false })
+  @ApiPropertyOptional({
+    description: 'Permitir palpite automático',
+    example: false,
+  })
   @IsOptional()
   @IsBoolean({ message: 'Deve ser verdadeiro ou falso.' })
   permitirPalpiteAutomatico?: boolean;
 
-  @ApiPropertyOptional({ description: 'Máximo de participantes', example: GRUPOS.MAX_PARTICIPANTES_DEFAULT })
+  @ApiPropertyOptional({
+    description: 'Máximo de participantes',
+    example: GRUPOS.MAX_PARTICIPANTES_DEFAULT,
+  })
   @IsOptional()
   @Type(() => Number)
   @IsInt({ message: 'Deve ser do tipo número inteiro.' })
-  @Max(GRUPOS.MAX_PARTICIPANTES_DEFAULT, { message: `O grupo pode ter no máximo ${GRUPOS.MAX_PARTICIPANTES_DEFAULT} participantes.` })
+  @Max(GRUPOS.MAX_PARTICIPANTES_DEFAULT, {
+    message: `O grupo pode ter no máximo ${GRUPOS.MAX_PARTICIPANTES_DEFAULT} participantes.`,
+  })
   maxParticipantes?: number;
 
-  @ApiPropertyOptional({ description: 'Ícone do grupo (emoji ou URL)', example: '⚽' })
+  @ApiPropertyOptional({
+    description: 'Ícone do grupo (emoji ou URL)',
+    example: '⚽',
+  })
   @IsOptional()
   @IsString({ message: 'Deve ser um texto.' })
   @Length(1, 255, { message: 'Deve ter entre 1 e 255 caracteres.' })
   icone?: string;
 
-  @ApiPropertyOptional({ description: 'Habilitar palpite dobrado no grupo', example: false })
+  @ApiPropertyOptional({
+    description: 'Habilitar palpite dobrado no grupo',
+    example: false,
+  })
   @IsOptional()
   @IsBoolean({ message: 'Deve ser verdadeiro ou falso.' })
   permitirPalpiteDobrado?: boolean;

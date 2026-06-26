@@ -3,7 +3,12 @@ import { UsuarioRepository } from './usuario.repository.interface';
 export class InMemoryUsuarioRepository implements UsuarioRepository {
   items: any[] = [];
 
-  async criar(data: { nome: string; email: string; senha: string; ativo: boolean }) {
+  async criar(data: {
+    nome: string;
+    email: string;
+    senha: string;
+    ativo: boolean;
+  }) {
     const usuario = {
       id: crypto.randomUUID(),
       nome: data.nome,
@@ -30,7 +35,15 @@ export class InMemoryUsuarioRepository implements UsuarioRepository {
     return this.items.filter((u) => u.ativo === filtros.ativo);
   }
 
-  async atualizar(id: string, data: Partial<{ nome: string; email: string; senha: string; grupoFavoritoId: string | null }>) {
+  async atualizar(
+    id: string,
+    data: Partial<{
+      nome: string;
+      email: string;
+      senha: string;
+      grupoFavoritoId: string | null;
+    }>,
+  ) {
     const index = this.items.findIndex((u) => u.id === id);
     if (index === -1) return null;
     this.items[index] = {

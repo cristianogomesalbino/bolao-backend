@@ -42,7 +42,8 @@ export class SincronizacaoAutomaticaService implements OnModuleInit {
   ) {
     this.habilitada =
       this.configService.get<string>('SYNC_AUTOMATICA_HABILITADA') === 'true';
-    const campeonatos = this.configService.get<string>('SYNC_CAMPEONATOS') ?? '';
+    const campeonatos =
+      this.configService.get<string>('SYNC_CAMPEONATOS') ?? '';
     this.campeonatosPermitidos = campeonatos
       ? campeonatos.split(',').map((s) => s.trim())
       : Object.keys(CAMPEONATO_CONFIGS);
@@ -68,7 +69,8 @@ export class SincronizacaoAutomaticaService implements OnModuleInit {
 
   private async verificacaoInicial(): Promise<void> {
     try {
-      const { jogosEmAndamento, proximoJogo } = await this.detectarEstadoJogos();
+      const { jogosEmAndamento, proximoJogo } =
+        await this.detectarEstadoJogos();
       this.estado.temJogosEmAndamento = jogosEmAndamento > 0;
       this.estado.proximoJogoEm = proximoJogo?.dataHora
         ? new Date(proximoJogo.dataHora).getTime() - Date.now()
@@ -76,7 +78,9 @@ export class SincronizacaoAutomaticaService implements OnModuleInit {
 
       // Se há jogos em andamento, sincronizar imediatamente
       if (this.estado.temJogosEmAndamento) {
-        this.logger.log('[SYNC-AUTO] Jogos em andamento detectados no startup — sincronizando');
+        this.logger.log(
+          '[SYNC-AUTO] Jogos em andamento detectados no startup — sincronizando',
+        );
         await this.executarSincronizacao();
       }
     } catch (error) {
@@ -108,7 +112,8 @@ export class SincronizacaoAutomaticaService implements OnModuleInit {
       return 30 * 60 * 1000;
     }
 
-    const tempoAteAtivar = this.estado.proximoJogoEm - SYNC.ANTECEDENCIA_INICIO_MS;
+    const tempoAteAtivar =
+      this.estado.proximoJogoEm - SYNC.ANTECEDENCIA_INICIO_MS;
 
     // Já está dentro da janela de antecedência
     if (tempoAteAtivar <= 0) {
@@ -140,7 +145,8 @@ export class SincronizacaoAutomaticaService implements OnModuleInit {
 
     try {
       // Detectar estado atual dos jogos
-      const { jogosEmAndamento, proximoJogo } = await this.detectarEstadoJogos();
+      const { jogosEmAndamento, proximoJogo } =
+        await this.detectarEstadoJogos();
       const temJogosEmAndamento = jogosEmAndamento > 0;
 
       let proximoJogoEm: number | null = null;
@@ -152,7 +158,8 @@ export class SincronizacaoAutomaticaService implements OnModuleInit {
       // ou se há próximo jogo dentro da antecedência
       const deveSincronizar =
         temJogosEmAndamento ||
-        (proximoJogoEm !== null && proximoJogoEm <= SYNC.ANTECEDENCIA_INICIO_MS);
+        (proximoJogoEm !== null &&
+          proximoJogoEm <= SYNC.ANTECEDENCIA_INICIO_MS);
 
       if (!deveSincronizar) {
         // Verificar se há jogos adiados que precisam de checagem periódica
@@ -164,7 +171,8 @@ export class SincronizacaoAutomaticaService implements OnModuleInit {
           },
         });
 
-        const tempoDesdeUltimaSync = Date.now() - this.estado.ultimaSincronizacao;
+        const tempoDesdeUltimaSync =
+          Date.now() - this.estado.ultimaSincronizacao;
         const deveVerificarAdiados =
           temAdiados > 0 && tempoDesdeUltimaSync >= SYNC.INTERVALO_SEM_JOGOS_MS;
 
@@ -258,7 +266,9 @@ export class SincronizacaoAutomaticaService implements OnModuleInit {
 
     return {
       jogosEmAndamento: emAndamento + jogosAtrasados,
-      proximoJogo: proximoJogo?.dataHora ? { dataHora: proximoJogo.dataHora } : null,
+      proximoJogo: proximoJogo?.dataHora
+        ? { dataHora: proximoJogo.dataHora }
+        : null,
     };
   }
 
@@ -301,8 +311,13 @@ export class SincronizacaoAutomaticaService implements OnModuleInit {
     const resultado: FaseParaSync[] = [];
 
     for (const fase of fases) {
-      const campeonatoSlug = this.resolverCampeonatoSlug(fase.temporada?.campeonato?.nome);
-      if (!campeonatoSlug || !this.campeonatosPermitidos.includes(campeonatoSlug)) {
+      const campeonatoSlug = this.resolverCampeonatoSlug(
+        fase.temporada?.campeonato?.nome,
+      );
+      if (
+        !campeonatoSlug ||
+        !this.campeonatosPermitidos.includes(campeonatoSlug)
+      ) {
         continue;
       }
 
@@ -321,7 +336,9 @@ export class SincronizacaoAutomaticaService implements OnModuleInit {
     return resultado;
   }
 
-  private resolverCampeonatoSlug(nomeCampeonato?: string | null): string | null {
+  private resolverCampeonatoSlug(
+    nomeCampeonato?: string | null,
+  ): string | null {
     if (!nomeCampeonato) return null;
 
     const nomeLower = nomeCampeonato.toLowerCase();
@@ -360,11 +377,13 @@ export class SincronizacaoAutomaticaService implements OnModuleInit {
   }
 
   private resolverFaseSlugCopa(
-    config: typeof CAMPEONATO_CONFIGS[string],
+    config: (typeof CAMPEONATO_CONFIGS)[string],
     fase: { nome: string; tipo: string },
   ): string | null {
     if (fase.tipo === 'PONTOS_CORRIDOS') {
-      return config.fases.find((f) => f.tipo === 'PONTOS_CORRIDOS')?.slug ?? null;
+      return (
+        config.fases.find((f) => f.tipo === 'PONTOS_CORRIDOS')?.slug ?? null
+      );
     }
 
     const nomeLower = fase.nome.toLowerCase();
@@ -379,12 +398,17 @@ export class SincronizacaoAutomaticaService implements OnModuleInit {
 
     for (const [slugParte, termo] of mapeamento) {
       if (nomeLower.includes(termo)) {
-        return config.fases.find((f) => f.slug.includes(slugParte))?.slug ?? null;
+        return (
+          config.fases.find((f) => f.slug.includes(slugParte))?.slug ?? null
+        );
       }
     }
 
     if (nomeLower.includes('final') && !nomeLower.includes('semi')) {
-      return config.fases.find((f) => f.slug === 'final-copa-do-mundo-2026')?.slug ?? null;
+      return (
+        config.fases.find((f) => f.slug === 'final-copa-do-mundo-2026')?.slug ??
+        null
+      );
     }
 
     return null;
@@ -439,7 +463,10 @@ export class SincronizacaoAutomaticaService implements OnModuleInit {
 
         totalSincronizados += resultado.sincronizados;
 
-        if (resultado.jogosAtualizados && resultado.jogosAtualizados.length > 0) {
+        if (
+          resultado.jogosAtualizados &&
+          resultado.jogosAtualizados.length > 0
+        ) {
           detalhes.push({
             faseId: fase.faseId,
             faseSlug: fase.faseSlug,

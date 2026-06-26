@@ -16,7 +16,11 @@ import { GrupoUsuarioModule } from '../grupo-usuario/grupo-usuario.module';
 
 @Module({
   imports: [JogosModule, GruposModule, GrupoUsuarioModule],
-  controllers: [PalpiteController, PalpiteDobradoController, PainelRodadaController],
+  controllers: [
+    PalpiteController,
+    PalpiteDobradoController,
+    PainelRodadaController,
+  ],
   providers: [
     PalpiteService,
     PalpiteDobradoService,

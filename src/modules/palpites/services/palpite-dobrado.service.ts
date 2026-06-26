@@ -37,14 +37,29 @@ export class PalpiteDobradoService {
     if (!jogo) throw new JogoNaoEncontradoError();
     if (jogo.status !== 'AGENDADO') throw new JogoNaoAceitaDobroError();
 
-    const existente = await this.palpiteDobradoRepo.buscarPorChave(usuarioId, jogoId, grupoId);
+    const existente = await this.palpiteDobradoRepo.buscarPorChave(
+      usuarioId,
+      jogoId,
+      grupoId,
+    );
     if (existente) throw new DobroJaAtivoError();
 
-    const saldo = await this.tokenDobroService.calcularSaldo(usuarioId, grupoId);
+    const saldo = await this.tokenDobroService.calcularSaldo(
+      usuarioId,
+      grupoId,
+    );
     if (saldo <= 0) throw new SemFichasDobroError();
 
-    const palpiteDobrado = await this.palpiteDobradoRepo.criar({ usuarioId, jogoId, grupoId });
-    await this.tokenDobroService.registrarUtilizacao(usuarioId, grupoId, jogoId);
+    const palpiteDobrado = await this.palpiteDobradoRepo.criar({
+      usuarioId,
+      jogoId,
+      grupoId,
+    });
+    await this.tokenDobroService.registrarUtilizacao(
+      usuarioId,
+      grupoId,
+      jogoId,
+    );
     return palpiteDobrado;
   }
 
@@ -53,18 +68,28 @@ export class PalpiteDobradoService {
     if (!jogo) throw new JogoNaoEncontradoError();
     if (jogo.status !== 'AGENDADO') throw new JogoNaoAceitaDobroError();
 
-    const existente = await this.palpiteDobradoRepo.buscarPorChave(usuarioId, jogoId, grupoId);
+    const existente = await this.palpiteDobradoRepo.buscarPorChave(
+      usuarioId,
+      jogoId,
+      grupoId,
+    );
     if (!existente) throw new DobroNaoEncontradoError();
 
     await this.palpiteDobradoRepo.remover(usuarioId, jogoId, grupoId);
-    await this.tokenDobroService.registrarCancelamento(usuarioId, grupoId, jogoId);
+    await this.tokenDobroService.registrarCancelamento(
+      usuarioId,
+      grupoId,
+      jogoId,
+    );
   }
 
   async atualizarConfiguracaoDobro(grupoId: string, habilitado: boolean) {
     const grupo = await this.grupoRepo.buscarPorId(grupoId);
     if (!grupo) throw new GrupoNaoEncontradoError();
 
-    return this.grupoRepo.atualizar(grupoId, { permitirPalpiteDobrado: habilitado });
+    return this.grupoRepo.atualizar(grupoId, {
+      permitirPalpiteDobrado: habilitado,
+    });
   }
 
   async listarMeusDobros(grupoId: string, usuarioId: string) {

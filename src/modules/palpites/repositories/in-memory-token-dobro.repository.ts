@@ -20,7 +20,9 @@ export class InMemoryTokenDobroRepository implements TokenDobroRepository {
   }
 
   async calcularSaldo(usuarioId: string, grupoId: string): Promise<number> {
-    const tokens = this.items.filter((t) => t.usuarioId === usuarioId && t.grupoId === grupoId);
+    const tokens = this.items.filter(
+      (t) => t.usuarioId === usuarioId && t.grupoId === grupoId,
+    );
     const concessoes = tokens.filter((t) => t.tipo === 'CONCESSAO').length;
     const utilizacoes = tokens.filter((t) => t.tipo === 'UTILIZACAO').length;
     return concessoes - utilizacoes;
@@ -32,9 +34,20 @@ export class InMemoryTokenDobroRepository implements TokenDobroRepository {
       .sort((a, b) => b.dataCriacao.getTime() - a.dataCriacao.getTime());
   }
 
-  async buscarPorChave(usuarioId: string, grupoId: string, motivo: string, referenciaId: string) {
-    return this.items.find(
-      (t) => t.usuarioId === usuarioId && t.grupoId === grupoId && t.motivo === motivo && t.referenciaId === referenciaId,
-    ) ?? null;
+  async buscarPorChave(
+    usuarioId: string,
+    grupoId: string,
+    motivo: string,
+    referenciaId: string,
+  ) {
+    return (
+      this.items.find(
+        (t) =>
+          t.usuarioId === usuarioId &&
+          t.grupoId === grupoId &&
+          t.motivo === motivo &&
+          t.referenciaId === referenciaId,
+      ) ?? null
+    );
   }
 }

@@ -11,7 +11,10 @@ import { UsuariosModule } from '../usuarios/usuarios.module';
   controllers: [GrupoUsuarioController],
   providers: [
     GrupoUsuarioService,
-    { provide: GRUPO_USUARIO.REPOSITORY_TOKEN, useClass: PrismaGrupoUsuarioRepository },
+    {
+      provide: GRUPO_USUARIO.REPOSITORY_TOKEN,
+      useClass: PrismaGrupoUsuarioRepository,
+    },
   ],
   exports: [GrupoUsuarioService, GRUPO_USUARIO.REPOSITORY_TOKEN],
 })

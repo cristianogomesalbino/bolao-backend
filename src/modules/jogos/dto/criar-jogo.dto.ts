@@ -30,7 +30,10 @@ export class CriarJogoDto {
     description: 'Data e hora do jogo',
     example: '2026-03-15T16:00:00.000Z',
   })
-  @IsDateString({}, { message: 'dataHora deve ser uma data válida no formato ISO 8601' })
+  @IsDateString(
+    {},
+    { message: 'dataHora deve ser uma data válida no formato ISO 8601' },
+  )
   @IsNotEmpty({ message: 'dataHora é obrigatório' })
   dataHora: string;
 

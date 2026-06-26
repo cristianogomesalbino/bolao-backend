@@ -1,5 +1,38 @@
+interface TimeRelacao {
+  id: string;
+  nome: string;
+  sigla: string;
+  escudo: string | null;
+}
+
+interface JogoData {
+  id: string;
+  faseId: string;
+  rodada: number;
+  timeCasaId: string;
+  timeForaId: string;
+  timeCasa?: TimeRelacao | null;
+  timeFora?: TimeRelacao | null;
+  dataHora: Date | null;
+  status: string;
+  foiAdiado: boolean;
+  golsCasa: number | null;
+  golsFora: number | null;
+  vencedorId: string | null;
+  dataCriacao: Date;
+  atualizadoEm: Date;
+  temProrrogacao?: boolean;
+  golsProrrogacaoCasa?: number | null;
+  golsProrrogacaoFora?: number | null;
+  temPenaltis?: boolean;
+  penaltisCasa?: number | null;
+  penaltisFora?: number | null;
+  ehJogoVolta?: boolean;
+  grupoIdaVolta?: string | null;
+}
+
 export class JogoPresenter {
-  static toHttpResumido(jogo: any) {
+  static toHttpResumido(jogo: JogoData) {
     return {
       id: jogo.id,
       faseId: jogo.faseId,
@@ -9,12 +42,26 @@ export class JogoPresenter {
       golsCasa: jogo.golsCasa,
       golsFora: jogo.golsFora,
       foiAdiado: jogo.foiAdiado,
-      timeCasa: jogo.timeCasa ? { id: jogo.timeCasa.id, nome: jogo.timeCasa.nome, sigla: jogo.timeCasa.sigla, escudo: jogo.timeCasa.escudo } : null,
-      timeFora: jogo.timeFora ? { id: jogo.timeFora.id, nome: jogo.timeFora.nome, sigla: jogo.timeFora.sigla, escudo: jogo.timeFora.escudo } : null,
+      timeCasa: jogo.timeCasa
+        ? {
+            id: jogo.timeCasa.id,
+            nome: jogo.timeCasa.nome,
+            sigla: jogo.timeCasa.sigla,
+            escudo: jogo.timeCasa.escudo,
+          }
+        : null,
+      timeFora: jogo.timeFora
+        ? {
+            id: jogo.timeFora.id,
+            nome: jogo.timeFora.nome,
+            sigla: jogo.timeFora.sigla,
+            escudo: jogo.timeFora.escudo,
+          }
+        : null,
     };
   }
 
-  static toHttp(jogo: any, tipoFase?: string) {
+  static toHttp(jogo: JogoData, tipoFase?: string) {
     const base = {
       id: jogo.id,
       faseId: jogo.faseId,
@@ -22,10 +69,20 @@ export class JogoPresenter {
       timeCasaId: jogo.timeCasaId,
       timeForaId: jogo.timeForaId,
       ...(jogo.timeCasa && {
-        timeCasa: { id: jogo.timeCasa.id, nome: jogo.timeCasa.nome, sigla: jogo.timeCasa.sigla, escudo: jogo.timeCasa.escudo },
+        timeCasa: {
+          id: jogo.timeCasa.id,
+          nome: jogo.timeCasa.nome,
+          sigla: jogo.timeCasa.sigla,
+          escudo: jogo.timeCasa.escudo,
+        },
       }),
       ...(jogo.timeFora && {
-        timeFora: { id: jogo.timeFora.id, nome: jogo.timeFora.nome, sigla: jogo.timeFora.sigla, escudo: jogo.timeFora.escudo },
+        timeFora: {
+          id: jogo.timeFora.id,
+          nome: jogo.timeFora.nome,
+          sigla: jogo.timeFora.sigla,
+          escudo: jogo.timeFora.escudo,
+        },
       }),
       dataHora: jogo.dataHora,
       status: jogo.status,

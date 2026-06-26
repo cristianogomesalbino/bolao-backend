@@ -1,5 +1,10 @@
 import { Controller, Post, Body, Res, Req } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBadRequestResponse } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBadRequestResponse,
+} from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { ConfigService } from '@nestjs/config';
 import { AuthService } from './auth.service';
@@ -48,9 +53,10 @@ export class AuthController {
   @Post('refresh')
   async refresh(
     @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
+    @Res({ passthrough: true }) _res: Response,
   ) {
-    const refreshToken = req.cookies?.[AUTH.COOKIE.REFRESH_TOKEN_NAME] as string | undefined;
+    const cookies = req.cookies as Record<string, string> | undefined;
+    const refreshToken = cookies?.[AUTH.COOKIE.REFRESH_TOKEN_NAME];
 
     if (!refreshToken) {
       throw new RefreshNaoFornecidoError();
@@ -64,11 +70,9 @@ export class AuthController {
   @ApiOperation({ summary: 'Fazer logout' })
   @ApiResponse({ status: 201, description: 'Logout realizado com sucesso.' })
   @Post('logout')
-  async logout(
-    @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
-  ) {
-    const refreshToken = req.cookies?.[AUTH.COOKIE.REFRESH_TOKEN_NAME] as string | undefined;
+  async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    const cookies = req.cookies as Record<string, string> | undefined;
+    const refreshToken = cookies?.[AUTH.COOKIE.REFRESH_TOKEN_NAME];
 
     if (!refreshToken) {
       throw new RefreshNaoFornecidoError();
@@ -82,7 +86,10 @@ export class AuthController {
   }
 
   @ApiOperation({ summary: 'Solicitar recuperação de senha' })
-  @ApiResponse({ status: 201, description: 'Instruções enviadas se o email existir.' })
+  @ApiResponse({
+    status: 201,
+    description: 'Instruções enviadas se o email existir.',
+  })
   @ApiBadRequestResponse({ description: 'Erro de validação.' })
   @Public()
   @Post('esqueci-senha')

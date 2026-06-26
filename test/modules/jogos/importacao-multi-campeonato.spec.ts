@@ -42,8 +42,18 @@ describe('JogoService — importação multi-campeonato', () => {
     golsFora: null,
     penaltisCasa: null,
     penaltisFora: null,
-    timeCasa: { externoId: '100', nome: 'Brasil', sigla: 'BRA', escudo: 'url-bra' },
-    timeFora: { externoId: '200', nome: 'Argentina', sigla: 'ARG', escudo: 'url-arg' },
+    timeCasa: {
+      externoId: '100',
+      nome: 'Brasil',
+      sigla: 'BRA',
+      escudo: 'url-bra',
+    },
+    timeFora: {
+      externoId: '200',
+      nome: 'Argentina',
+      sigla: 'ARG',
+      escudo: 'url-arg',
+    },
   };
 
   beforeEach(() => {
@@ -60,7 +70,10 @@ describe('JogoService — importação multi-campeonato', () => {
       mapearStatus: vi.fn(),
     } as any;
 
-    service = new JogoService(jogoRepo, faseRepo, futebolApiService, timeRepo, { preencherProximaFaseEliminatoria: vi.fn() } as any);
+    service = new JogoService(jogoRepo, faseRepo, futebolApiService, timeRepo, {
+      preencherProximaFaseEliminatoria: vi.fn(),
+      propagarVencedoresParaProximaFase: vi.fn(),
+    } as any);
   });
 
   describe('importação Copa do Mundo — fase de grupos', () => {
@@ -141,7 +154,9 @@ describe('JogoService — importação multi-campeonato', () => {
         penaltisCasa: 5,
         penaltisFora: 3,
       };
-      (futebolApiService.normalizarJogo as any).mockReturnValue(jogoComPenaltis);
+      (futebolApiService.normalizarJogo as any).mockReturnValue(
+        jogoComPenaltis,
+      );
 
       const dto: ImportarJogosDto = {
         campeonatoSlug: 'copa-do-mundo-2026',
@@ -270,7 +285,11 @@ describe('JogoService — importação multi-campeonato', () => {
 
   describe('tratamento de datas', () => {
     it('deve importar jogo sem data como ADIADO', async () => {
-      const jogoSemData = { ...jogoApiNormalizado, dataHora: null, status: 'ADIADO' };
+      const jogoSemData = {
+        ...jogoApiNormalizado,
+        dataHora: null,
+        status: 'ADIADO',
+      };
       (futebolApiService.normalizarJogo as any).mockReturnValue(jogoSemData);
 
       const dto: ImportarJogosDto = {
@@ -292,7 +311,9 @@ describe('JogoService — importação multi-campeonato', () => {
         dataHora: '1970-01-01T00:00:00.000Z',
         status: 'AGENDADO',
       };
-      (futebolApiService.normalizarJogo as any).mockReturnValue(jogoDataInvalida);
+      (futebolApiService.normalizarJogo as any).mockReturnValue(
+        jogoDataInvalida,
+      );
 
       const dto: ImportarJogosDto = {
         campeonatoSlug: 'copa-do-mundo-2026',

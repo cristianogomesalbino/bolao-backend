@@ -22,7 +22,15 @@ export class PrismaUsuarioRepository implements UsuarioRepository {
     return this.prisma.usuario.findMany({ where: { ativo: filtros.ativo } });
   }
 
-  atualizar(id: string, data: Partial<{ nome: string; email: string; senha: string; grupoFavoritoId: string | null }>) {
+  atualizar(
+    id: string,
+    data: Partial<{
+      nome: string;
+      email: string;
+      senha: string;
+      grupoFavoritoId: string | null;
+    }>,
+  ) {
     return this.prisma.usuario.update({ where: { id }, data });
   }
 

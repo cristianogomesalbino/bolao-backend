@@ -3,7 +3,12 @@ import { PalpiteRepository } from './palpite.repository.interface';
 export class InMemoryPalpiteRepository implements PalpiteRepository {
   items: any[] = [];
 
-  async criar(data: { usuarioId: string; jogoId: string; golsCasa: number; golsFora: number }) {
+  async criar(data: {
+    usuarioId: string;
+    jogoId: string;
+    golsCasa: number;
+    golsFora: number;
+  }) {
     const palpite = {
       id: crypto.randomUUID(),
       ...data,
@@ -17,7 +22,11 @@ export class InMemoryPalpiteRepository implements PalpiteRepository {
   async atualizar(id: string, data: { golsCasa: number; golsFora: number }) {
     const index = this.items.findIndex((p) => p.id === id);
     if (index === -1) return null;
-    this.items[index] = { ...this.items[index], ...data, atualizadoEm: new Date() };
+    this.items[index] = {
+      ...this.items[index],
+      ...data,
+      atualizadoEm: new Date(),
+    };
     return this.items[index];
   }
 
@@ -30,14 +39,23 @@ export class InMemoryPalpiteRepository implements PalpiteRepository {
   }
 
   async buscarPorUsuarioEJogo(usuarioId: string, jogoId: string) {
-    return this.items.find((p) => p.usuarioId === usuarioId && p.jogoId === jogoId) ?? null;
+    return (
+      this.items.find(
+        (p) => p.usuarioId === usuarioId && p.jogoId === jogoId,
+      ) ?? null
+    );
   }
 
   async buscarPorUsuarioEJogos(usuarioId: string, jogoIds: string[]) {
-    return this.items.filter((p) => p.usuarioId === usuarioId && jogoIds.includes(p.jogoId));
+    return this.items.filter(
+      (p) => p.usuarioId === usuarioId && jogoIds.includes(p.jogoId),
+    );
   }
 
-  async listarPorUsuario(usuarioId: string, filtros?: { temporadaId?: string }) {
+  async listarPorUsuario(
+    usuarioId: string,
+    filtros?: { temporadaId?: string },
+  ) {
     let resultado = this.items.filter((p) => p.usuarioId === usuarioId);
     if (filtros?.temporadaId) {
       resultado = resultado.filter(
@@ -48,14 +66,20 @@ export class InMemoryPalpiteRepository implements PalpiteRepository {
   }
 
   async listarPorJogoEUsuarios(jogoId: string, usuarioIds: string[]) {
-    return this.items.filter((p) => p.jogoId === jogoId && usuarioIds.includes(p.usuarioId));
+    return this.items.filter(
+      (p) => p.jogoId === jogoId && usuarioIds.includes(p.usuarioId),
+    );
   }
 
   async listarPorFaseEUsuario(faseId: string, usuarioId: string) {
-    return this.items.filter((p) => p.usuarioId === usuarioId && p.jogo?.faseId === faseId);
+    return this.items.filter(
+      (p) => p.usuarioId === usuarioId && p.jogo?.faseId === faseId,
+    );
   }
 
   async listarPorJogosEUsuarios(jogoIds: string[], usuarioIds: string[]) {
-    return this.items.filter((p) => jogoIds.includes(p.jogoId) && usuarioIds.includes(p.usuarioId));
+    return this.items.filter(
+      (p) => jogoIds.includes(p.jogoId) && usuarioIds.includes(p.usuarioId),
+    );
   }
 }

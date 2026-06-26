@@ -29,7 +29,10 @@ describe('AuthController', () => {
   let controller: AuthController;
 
   beforeEach(() => {
-    controller = new AuthController(mockAuthService as any, mockConfigService as any);
+    controller = new AuthController(
+      mockAuthService as any,
+      mockConfigService as any,
+    );
     vi.clearAllMocks();
   });
 
@@ -57,7 +60,10 @@ describe('AuthController', () => {
           path: '/',
         }),
       );
-      expect(mockAuthService.login).toHaveBeenCalledWith('joao@example.com', 'senha123');
+      expect(mockAuthService.login).toHaveBeenCalledWith(
+        'joao@example.com',
+        'senha123',
+      );
     });
 
     it('deve setar secure: false em ambiente de desenvolvimento', async () => {
@@ -86,20 +92,26 @@ describe('AuthController', () => {
       const result = await controller.refresh(req, res);
 
       expect(result).toEqual({ accessToken: 'new-token' });
-      expect(mockAuthService.refresh).toHaveBeenCalledWith('valid-cookie-token');
+      expect(mockAuthService.refresh).toHaveBeenCalledWith(
+        'valid-cookie-token',
+      );
     });
 
     it('deve lançar RefreshNaoFornecidoError se cookie não existe', async () => {
       const req = criarMockRequest({});
       const res = criarMockResponse();
 
-      await expect(controller.refresh(req, res)).rejects.toThrow(RefreshNaoFornecidoError);
+      await expect(controller.refresh(req, res)).rejects.toThrow(
+        RefreshNaoFornecidoError,
+      );
     });
   });
 
   describe('logout', () => {
     it('deve ler refresh token do cookie, chamar logout e limpar cookie', async () => {
-      mockAuthService.logout.mockResolvedValue({ mensagem: 'Logout realizado com sucesso' });
+      mockAuthService.logout.mockResolvedValue({
+        mensagem: 'Logout realizado com sucesso',
+      });
 
       const req = criarMockRequest({ refreshToken: 'valid-cookie-token' });
       const res = criarMockResponse();
@@ -121,22 +133,29 @@ describe('AuthController', () => {
       const req = criarMockRequest({});
       const res = criarMockResponse();
 
-      await expect(controller.logout(req, res)).rejects.toThrow(RefreshNaoFornecidoError);
+      await expect(controller.logout(req, res)).rejects.toThrow(
+        RefreshNaoFornecidoError,
+      );
     });
   });
 
   describe('esqueciSenha', () => {
     it('deve chamar authService.solicitarRecuperacao com o email', async () => {
       mockAuthService.solicitarRecuperacao.mockResolvedValue({
-        mensagem: 'Se o email estiver cadastrado, você receberá as instruções de recuperação',
+        mensagem:
+          'Se o email estiver cadastrado, você receberá as instruções de recuperação',
       });
 
-      const result = await controller.esqueciSenha({ email: 'joao@example.com' });
+      const result = await controller.esqueciSenha({
+        email: 'joao@example.com',
+      });
 
       expect(result.mensagem).toBe(
         'Se o email estiver cadastrado, você receberá as instruções de recuperação',
       );
-      expect(mockAuthService.solicitarRecuperacao).toHaveBeenCalledWith('joao@example.com');
+      expect(mockAuthService.solicitarRecuperacao).toHaveBeenCalledWith(
+        'joao@example.com',
+      );
     });
   });
 
@@ -153,7 +172,10 @@ describe('AuthController', () => {
       });
 
       expect(result.mensagem).toBe('Senha alterada com sucesso');
-      expect(mockAuthService.resetarSenha).toHaveBeenCalledWith('valid-token', 'novaSenha123');
+      expect(mockAuthService.resetarSenha).toHaveBeenCalledWith(
+        'valid-token',
+        'novaSenha123',
+      );
     });
   });
 });

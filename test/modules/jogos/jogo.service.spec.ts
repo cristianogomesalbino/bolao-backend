@@ -77,19 +77,25 @@ describe('JogoService', () => {
       mapearStatus: vi.fn(),
     } as any;
 
-    service = new JogoService(jogoRepo, faseRepo, futebolApiService, timeRepo, { preencherProximaFaseEliminatoria: vi.fn() } as any);
+    service = new JogoService(jogoRepo, faseRepo, futebolApiService, timeRepo, {
+      preencherProximaFaseEliminatoria: vi.fn(),
+      propagarVencedoresParaProximaFase: vi.fn(),
+    } as any);
   });
 
   // ==================== criar ====================
 
   describe('criar', () => {
     it('deve criar jogo com dados válidos — status AGENDADO, placar null, fonteResultado MANUAL', async () => {
-      const result = await service.criar({
-        faseId: 'fase-pc',
-        timeCasaId: 'time-a',
-        timeForaId: 'time-b',
-        dataHora: '2026-03-15T16:00:00.000Z',
-      }, userId);
+      const result = await service.criar(
+        {
+          faseId: 'fase-pc',
+          timeCasaId: 'time-a',
+          timeForaId: 'time-b',
+          dataHora: '2026-03-15T16:00:00.000Z',
+        },
+        userId,
+      );
 
       expect(result.status).toBe('AGENDADO');
       expect(result.golsCasa).toBeUndefined();
@@ -103,35 +109,44 @@ describe('JogoService', () => {
 
     it('deve lançar TimesIguaisError se times iguais', async () => {
       await expect(
-        service.criar({
-          faseId: 'fase-pc',
-          timeCasaId: 'time-a',
-          timeForaId: 'time-a',
-          dataHora: '2026-03-15T16:00:00.000Z',
-        }, userId),
+        service.criar(
+          {
+            faseId: 'fase-pc',
+            timeCasaId: 'time-a',
+            timeForaId: 'time-a',
+            dataHora: '2026-03-15T16:00:00.000Z',
+          },
+          userId,
+        ),
       ).rejects.toThrow(TimesIguaisError);
     });
 
     it('deve lançar FaseNaoEncontradaError se faseId inexistente', async () => {
       await expect(
-        service.criar({
-          faseId: 'inexistente',
-          timeCasaId: 'time-a',
-          timeForaId: 'time-b',
-          dataHora: '2026-03-15T16:00:00.000Z',
-        }, userId),
+        service.criar(
+          {
+            faseId: 'inexistente',
+            timeCasaId: 'time-a',
+            timeForaId: 'time-b',
+            dataHora: '2026-03-15T16:00:00.000Z',
+          },
+          userId,
+        ),
       ).rejects.toThrow(FaseNaoEncontradaError);
     });
 
     it('deve criar jogo em fase PONTOS_CORRIDOS com grupoIdaVolta null e ehJogoVolta false', async () => {
-      const result = await service.criar({
-        faseId: 'fase-pc',
-        timeCasaId: 'time-a',
-        timeForaId: 'time-b',
-        dataHora: '2026-03-15T16:00:00.000Z',
-        grupoIdaVolta: 'grupo-1',
-        ehJogoVolta: true,
-      }, userId);
+      const result = await service.criar(
+        {
+          faseId: 'fase-pc',
+          timeCasaId: 'time-a',
+          timeForaId: 'time-b',
+          dataHora: '2026-03-15T16:00:00.000Z',
+          grupoIdaVolta: 'grupo-1',
+          ehJogoVolta: true,
+        },
+        userId,
+      );
 
       expect(result.grupoIdaVolta).toBeNull();
       expect(result.ehJogoVolta).toBe(false);
@@ -139,26 +154,32 @@ describe('JogoService', () => {
 
     it('deve lançar JogoIdaNaoEncontradoError se jogo de volta sem jogo de ida', async () => {
       await expect(
-        service.criar({
-          faseId: 'fase-mm-iv',
-          timeCasaId: 'time-a',
-          timeForaId: 'time-b',
-          dataHora: '2026-03-15T16:00:00.000Z',
-          grupoIdaVolta: 'grupo-1',
-          ehJogoVolta: true,
-        }, userId),
+        service.criar(
+          {
+            faseId: 'fase-mm-iv',
+            timeCasaId: 'time-a',
+            timeForaId: 'time-b',
+            dataHora: '2026-03-15T16:00:00.000Z',
+            grupoIdaVolta: 'grupo-1',
+            ehJogoVolta: true,
+          },
+          userId,
+        ),
       ).rejects.toThrow(JogoIdaNaoEncontradoError);
     });
 
     it('deve lançar IdaVoltaNaoPermitidaError se jogo de volta em fase sem idaVolta', async () => {
       await expect(
-        service.criar({
-          faseId: 'fase-mm',
-          timeCasaId: 'time-a',
-          timeForaId: 'time-b',
-          dataHora: '2026-03-15T16:00:00.000Z',
-          ehJogoVolta: true,
-        }, userId),
+        service.criar(
+          {
+            faseId: 'fase-mm',
+            timeCasaId: 'time-a',
+            timeForaId: 'time-b',
+            dataHora: '2026-03-15T16:00:00.000Z',
+            ehJogoVolta: true,
+          },
+          userId,
+        ),
       ).rejects.toThrow(IdaVoltaNaoPermitidaError);
     });
   });
@@ -167,12 +188,15 @@ describe('JogoService', () => {
 
   describe('atualizar', () => {
     it('deve atualizar jogo AGENDADO com sucesso', async () => {
-      const jogo = await service.criar({
-        faseId: 'fase-pc',
-        timeCasaId: 'time-a',
-        timeForaId: 'time-b',
-        dataHora: '2026-03-15T16:00:00.000Z',
-      }, userId);
+      const jogo = await service.criar(
+        {
+          faseId: 'fase-pc',
+          timeCasaId: 'time-a',
+          timeForaId: 'time-b',
+          dataHora: '2026-03-15T16:00:00.000Z',
+        },
+        userId,
+      );
 
       const result = await service.atualizar(jogo.id, {
         dataHora: '2026-04-01T20:00:00.000Z',
@@ -182,12 +206,15 @@ describe('JogoService', () => {
     });
 
     it('deve lançar JogoFinalizadoError ao atualizar jogo FINALIZADO', async () => {
-      const jogo = await service.criar({
-        faseId: 'fase-pc',
-        timeCasaId: 'time-a',
-        timeForaId: 'time-b',
-        dataHora: '2026-03-15T16:00:00.000Z',
-      }, userId);
+      const jogo = await service.criar(
+        {
+          faseId: 'fase-pc',
+          timeCasaId: 'time-a',
+          timeForaId: 'time-b',
+          dataHora: '2026-03-15T16:00:00.000Z',
+        },
+        userId,
+      );
       await jogoRepo.atualizar(jogo.id, { status: 'FINALIZADO' });
 
       await expect(
@@ -196,12 +223,15 @@ describe('JogoService', () => {
     });
 
     it('deve lançar JogoCanceladoError ao atualizar jogo CANCELADO', async () => {
-      const jogo = await service.criar({
-        faseId: 'fase-pc',
-        timeCasaId: 'time-a',
-        timeForaId: 'time-b',
-        dataHora: '2026-03-15T16:00:00.000Z',
-      }, userId);
+      const jogo = await service.criar(
+        {
+          faseId: 'fase-pc',
+          timeCasaId: 'time-a',
+          timeForaId: 'time-b',
+          dataHora: '2026-03-15T16:00:00.000Z',
+        },
+        userId,
+      );
       await jogoRepo.atualizar(jogo.id, { status: 'CANCELADO' });
 
       await expect(
@@ -210,12 +240,15 @@ describe('JogoService', () => {
     });
 
     it('deve lançar TimesIguaisError ao atualizar com times iguais', async () => {
-      const jogo = await service.criar({
-        faseId: 'fase-pc',
-        timeCasaId: 'time-a',
-        timeForaId: 'time-b',
-        dataHora: '2026-03-15T16:00:00.000Z',
-      }, userId);
+      const jogo = await service.criar(
+        {
+          faseId: 'fase-pc',
+          timeCasaId: 'time-a',
+          timeForaId: 'time-b',
+          dataHora: '2026-03-15T16:00:00.000Z',
+        },
+        userId,
+      );
 
       await expect(
         service.atualizar(jogo.id, { timeCasaId: 'time-b' }),
@@ -224,17 +257,22 @@ describe('JogoService', () => {
 
     it('deve lançar JogoNaoEncontradoError ao atualizar jogo inexistente', async () => {
       await expect(
-        service.atualizar('inexistente', { dataHora: '2026-04-01T20:00:00.000Z' }),
+        service.atualizar('inexistente', {
+          dataHora: '2026-04-01T20:00:00.000Z',
+        }),
       ).rejects.toThrow(JogoNaoEncontradoError);
     });
 
     it('deve mudar fonteResultado para MANUAL ao atualizar jogo API_EXTERNA', async () => {
-      const jogo = await service.criar({
-        faseId: 'fase-pc',
-        timeCasaId: 'time-a',
-        timeForaId: 'time-b',
-        dataHora: '2026-03-15T16:00:00.000Z',
-      }, userId);
+      const jogo = await service.criar(
+        {
+          faseId: 'fase-pc',
+          timeCasaId: 'time-a',
+          timeForaId: 'time-b',
+          dataHora: '2026-03-15T16:00:00.000Z',
+        },
+        userId,
+      );
       await jogoRepo.atualizar(jogo.id, { fonteResultado: 'API_EXTERNA' });
 
       const result = await service.atualizar(jogo.id, {
@@ -249,25 +287,33 @@ describe('JogoService', () => {
 
   describe('transições de status', () => {
     it('AGENDADO → EM_ANDAMENTO deve ser válido', async () => {
-      const jogo = await service.criar({
-        faseId: 'fase-pc',
-        timeCasaId: 'time-a',
-        timeForaId: 'time-b',
-        dataHora: '2026-03-15T16:00:00.000Z',
-      }, userId);
+      const jogo = await service.criar(
+        {
+          faseId: 'fase-pc',
+          timeCasaId: 'time-a',
+          timeForaId: 'time-b',
+          dataHora: '2026-03-15T16:00:00.000Z',
+        },
+        userId,
+      );
 
-      const result = await service.atualizar(jogo.id, { status: 'EM_ANDAMENTO' });
+      const result = await service.atualizar(jogo.id, {
+        status: 'EM_ANDAMENTO',
+      });
 
       expect(result.status).toBe('EM_ANDAMENTO');
     });
 
     it('AGENDADO → CANCELADO deve ser válido', async () => {
-      const jogo = await service.criar({
-        faseId: 'fase-pc',
-        timeCasaId: 'time-a',
-        timeForaId: 'time-b',
-        dataHora: '2026-03-15T16:00:00.000Z',
-      }, userId);
+      const jogo = await service.criar(
+        {
+          faseId: 'fase-pc',
+          timeCasaId: 'time-a',
+          timeForaId: 'time-b',
+          dataHora: '2026-03-15T16:00:00.000Z',
+        },
+        userId,
+      );
 
       const result = await service.atualizar(jogo.id, { status: 'CANCELADO' });
 
@@ -275,12 +321,15 @@ describe('JogoService', () => {
     });
 
     it('EM_ANDAMENTO → FINALIZADO deve ser válido via atualizar', async () => {
-      const jogo = await service.criar({
-        faseId: 'fase-pc',
-        timeCasaId: 'time-a',
-        timeForaId: 'time-b',
-        dataHora: '2026-03-15T16:00:00.000Z',
-      }, userId);
+      const jogo = await service.criar(
+        {
+          faseId: 'fase-pc',
+          timeCasaId: 'time-a',
+          timeForaId: 'time-b',
+          dataHora: '2026-03-15T16:00:00.000Z',
+        },
+        userId,
+      );
       await jogoRepo.atualizar(jogo.id, { status: 'EM_ANDAMENTO' });
 
       const result = await service.atualizar(jogo.id, { status: 'FINALIZADO' });
@@ -299,12 +348,15 @@ describe('JogoService', () => {
 
   describe('finalização pontos corridos', () => {
     const criarJogoPC = () =>
-      service.criar({
-        faseId: 'fase-pc',
-        timeCasaId: 'time-a',
-        timeForaId: 'time-b',
-        dataHora: '2026-03-15T16:00:00.000Z',
-      }, userId);
+      service.criar(
+        {
+          faseId: 'fase-pc',
+          timeCasaId: 'time-a',
+          timeForaId: 'time-b',
+          dataHora: '2026-03-15T16:00:00.000Z',
+        },
+        userId,
+      );
 
     it('vitória casa (2x1) → vencedorId = timeCasaId', async () => {
       const jogo = await criarJogoPC();
@@ -372,12 +424,15 @@ describe('JogoService', () => {
 
   describe('finalização mata-mata', () => {
     const criarJogoMM = () =>
-      service.criar({
-        faseId: 'fase-mm',
-        timeCasaId: 'time-a',
-        timeForaId: 'time-b',
-        dataHora: '2026-03-15T16:00:00.000Z',
-      }, userId);
+      service.criar(
+        {
+          faseId: 'fase-mm',
+          timeCasaId: 'time-a',
+          timeForaId: 'time-b',
+          dataHora: '2026-03-15T16:00:00.000Z',
+        },
+        userId,
+      );
 
     it('sem empate (3x1) → vencedorId correto', async () => {
       const jogo = await criarJogoMM();
@@ -492,14 +547,17 @@ describe('JogoService', () => {
 
   describe('ida e volta', () => {
     it('finalizar jogo de ida → vencedorId null', async () => {
-      const jogoIda = await service.criar({
-        faseId: 'fase-mm-iv',
-        timeCasaId: 'time-a',
-        timeForaId: 'time-b',
-        dataHora: '2026-03-15T16:00:00.000Z',
-        grupoIdaVolta: 'grupo-1',
-        ehJogoVolta: false,
-      }, userId);
+      const jogoIda = await service.criar(
+        {
+          faseId: 'fase-mm-iv',
+          timeCasaId: 'time-a',
+          timeForaId: 'time-b',
+          dataHora: '2026-03-15T16:00:00.000Z',
+          grupoIdaVolta: 'grupo-1',
+          ehJogoVolta: false,
+        },
+        userId,
+      );
       await jogoRepo.atualizar(jogoIda.id, { status: 'EM_ANDAMENTO' });
 
       const result = await service.finalizar(jogoIda.id, {
@@ -513,27 +571,33 @@ describe('JogoService', () => {
 
     it('finalizar jogo de volta → vencedor por placar agregado', async () => {
       // Jogo de ida: time-a 2 x 1 time-b
-      const jogoIda = await service.criar({
-        faseId: 'fase-mm-iv',
-        timeCasaId: 'time-a',
-        timeForaId: 'time-b',
-        dataHora: '2026-03-15T16:00:00.000Z',
-        grupoIdaVolta: 'grupo-1',
-        ehJogoVolta: false,
-      }, userId);
+      const jogoIda = await service.criar(
+        {
+          faseId: 'fase-mm-iv',
+          timeCasaId: 'time-a',
+          timeForaId: 'time-b',
+          dataHora: '2026-03-15T16:00:00.000Z',
+          grupoIdaVolta: 'grupo-1',
+          ehJogoVolta: false,
+        },
+        userId,
+      );
       await jogoRepo.atualizar(jogoIda.id, { status: 'EM_ANDAMENTO' });
       await service.finalizar(jogoIda.id, { golsCasa: 2, golsFora: 1 });
 
       // Jogo de volta: time-b 3 x 0 time-a
       // Agregado: time-a = 2 + 0 = 2, time-b = 1 + 3 = 4
-      const jogoVolta = await service.criar({
-        faseId: 'fase-mm-iv',
-        timeCasaId: 'time-b',
-        timeForaId: 'time-a',
-        dataHora: '2026-03-20T16:00:00.000Z',
-        grupoIdaVolta: 'grupo-1',
-        ehJogoVolta: true,
-      }, userId);
+      const jogoVolta = await service.criar(
+        {
+          faseId: 'fase-mm-iv',
+          timeCasaId: 'time-b',
+          timeForaId: 'time-a',
+          dataHora: '2026-03-20T16:00:00.000Z',
+          grupoIdaVolta: 'grupo-1',
+          ehJogoVolta: true,
+        },
+        userId,
+      );
       await jogoRepo.atualizar(jogoVolta.id, { status: 'EM_ANDAMENTO' });
 
       const result = await service.finalizar(jogoVolta.id, {
@@ -545,23 +609,29 @@ describe('JogoService', () => {
     });
 
     it('finalizar jogo de volta com jogo de ida não finalizado → JogoIdaNaoEncontradoError', async () => {
-      const jogoIda = await service.criar({
-        faseId: 'fase-mm-iv',
-        timeCasaId: 'time-a',
-        timeForaId: 'time-b',
-        dataHora: '2026-03-15T16:00:00.000Z',
-        grupoIdaVolta: 'grupo-1',
-        ehJogoVolta: false,
-      }, userId);
+      const _jogoIda = await service.criar(
+        {
+          faseId: 'fase-mm-iv',
+          timeCasaId: 'time-a',
+          timeForaId: 'time-b',
+          dataHora: '2026-03-15T16:00:00.000Z',
+          grupoIdaVolta: 'grupo-1',
+          ehJogoVolta: false,
+        },
+        userId,
+      );
 
-      const jogoVolta = await service.criar({
-        faseId: 'fase-mm-iv',
-        timeCasaId: 'time-b',
-        timeForaId: 'time-a',
-        dataHora: '2026-03-20T16:00:00.000Z',
-        grupoIdaVolta: 'grupo-1',
-        ehJogoVolta: true,
-      }, userId);
+      const jogoVolta = await service.criar(
+        {
+          faseId: 'fase-mm-iv',
+          timeCasaId: 'time-b',
+          timeForaId: 'time-a',
+          dataHora: '2026-03-20T16:00:00.000Z',
+          grupoIdaVolta: 'grupo-1',
+          ehJogoVolta: true,
+        },
+        userId,
+      );
       await jogoRepo.atualizar(jogoVolta.id, { status: 'EM_ANDAMENTO' });
 
       await expect(
@@ -650,33 +720,43 @@ describe('JogoService', () => {
 
   describe('busca', () => {
     it('buscarPorFase retorna jogos ordenados por dataHora', async () => {
-      await service.criar({
-        faseId: 'fase-pc',
-        timeCasaId: 'time-a',
-        timeForaId: 'time-b',
-        dataHora: '2026-03-20T16:00:00.000Z',
-      }, userId);
-      await service.criar({
-        faseId: 'fase-pc',
-        timeCasaId: 'time-c',
-        timeForaId: 'time-d',
-        dataHora: '2026-03-15T16:00:00.000Z',
-      }, userId);
+      await service.criar(
+        {
+          faseId: 'fase-pc',
+          timeCasaId: 'time-a',
+          timeForaId: 'time-b',
+          dataHora: '2026-03-20T16:00:00.000Z',
+        },
+        userId,
+      );
+      await service.criar(
+        {
+          faseId: 'fase-pc',
+          timeCasaId: 'time-c',
+          timeForaId: 'time-d',
+          dataHora: '2026-03-15T16:00:00.000Z',
+        },
+        userId,
+      );
 
       const result = await service.buscarPorFase('fase-pc');
 
       expect(result).toHaveLength(2);
-      expect(new Date(result[0].dataHora).getTime())
-        .toBeLessThanOrEqual(new Date(result[1].dataHora).getTime());
+      expect(new Date(result[0].dataHora).getTime()).toBeLessThanOrEqual(
+        new Date(result[1].dataHora).getTime(),
+      );
     });
 
     it('buscarPorId existente', async () => {
-      const jogo = await service.criar({
-        faseId: 'fase-pc',
-        timeCasaId: 'time-a',
-        timeForaId: 'time-b',
-        dataHora: '2026-03-15T16:00:00.000Z',
-      }, userId);
+      const jogo = await service.criar(
+        {
+          faseId: 'fase-pc',
+          timeCasaId: 'time-a',
+          timeForaId: 'time-b',
+          dataHora: '2026-03-15T16:00:00.000Z',
+        },
+        userId,
+      );
 
       const result = await service.buscarPorId(jogo.id);
 
@@ -694,12 +774,15 @@ describe('JogoService', () => {
 
   describe('resetarFonte', () => {
     it('jogo com externoId → sucesso', async () => {
-      const jogo = await service.criar({
-        faseId: 'fase-pc',
-        timeCasaId: 'time-a',
-        timeForaId: 'time-b',
-        dataHora: '2026-03-15T16:00:00.000Z',
-      }, userId);
+      const jogo = await service.criar(
+        {
+          faseId: 'fase-pc',
+          timeCasaId: 'time-a',
+          timeForaId: 'time-b',
+          dataHora: '2026-03-15T16:00:00.000Z',
+        },
+        userId,
+      );
       await jogoRepo.atualizar(jogo.id, {
         externoId: '12345',
         fonteResultado: 'MANUAL',
@@ -711,12 +794,15 @@ describe('JogoService', () => {
     });
 
     it('jogo sem externoId → erro BadRequestException', async () => {
-      const jogo = await service.criar({
-        faseId: 'fase-pc',
-        timeCasaId: 'time-a',
-        timeForaId: 'time-b',
-        dataHora: '2026-03-15T16:00:00.000Z',
-      }, userId);
+      const jogo = await service.criar(
+        {
+          faseId: 'fase-pc',
+          timeCasaId: 'time-a',
+          timeForaId: 'time-b',
+          dataHora: '2026-03-15T16:00:00.000Z',
+        },
+        userId,
+      );
 
       await expect(service.resetarFonte(jogo.id)).rejects.toThrow(
         BadRequestException,

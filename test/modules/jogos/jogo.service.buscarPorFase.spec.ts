@@ -56,7 +56,11 @@ describe('JogoService — buscarPorFaseComDetalhes com filtro de rodada', () => 
     faseRepo = new InMemoryFaseRepository();
     timeRepo = new InMemoryTimeRepository();
     faseRepo.items = [{ ...fase }];
-    jogoRepo.items = [{ ...jogoRodada1 }, { ...jogoRodada1b }, { ...jogoRodada2 }];
+    jogoRepo.items = [
+      { ...jogoRodada1 },
+      { ...jogoRodada1b },
+      { ...jogoRodada2 },
+    ];
 
     const futebolApiService = {
       buscarJogosPorRodada: vi.fn(),
@@ -65,7 +69,10 @@ describe('JogoService — buscarPorFaseComDetalhes com filtro de rodada', () => 
       mapearStatus: vi.fn(),
     } as any;
 
-    service = new JogoService(jogoRepo, faseRepo, futebolApiService, timeRepo, { preencherProximaFaseEliminatoria: vi.fn() } as any);
+    service = new JogoService(jogoRepo, faseRepo, futebolApiService, timeRepo, {
+      preencherProximaFaseEliminatoria: vi.fn(),
+      propagarVencedoresParaProximaFase: vi.fn(),
+    } as any);
   });
 
   describe('buscarPorFase', () => {

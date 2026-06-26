@@ -26,8 +26,14 @@ import { UsuariosModule } from '../usuarios/usuarios.module';
     GroupRoleGuard,
     SelfOrAdminGuard,
     { provide: AUTH.EMAIL_SERVICE_TOKEN, useClass: ResendEmailService },
-    { provide: AUTH.REFRESH_TOKEN_REPOSITORY_TOKEN, useClass: PrismaRefreshTokenRepository },
-    { provide: AUTH.RECUPERACAO_SENHA_REPOSITORY_TOKEN, useClass: PrismaRecuperacaoSenhaRepository },
+    {
+      provide: AUTH.REFRESH_TOKEN_REPOSITORY_TOKEN,
+      useClass: PrismaRefreshTokenRepository,
+    },
+    {
+      provide: AUTH.RECUPERACAO_SENHA_REPOSITORY_TOKEN,
+      useClass: PrismaRecuperacaoSenhaRepository,
+    },
   ],
 })
 export class AuthModule {}

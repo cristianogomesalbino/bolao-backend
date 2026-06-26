@@ -54,9 +54,15 @@ export class InMemoryGrupoRepository implements GrupoRepository {
     }
 
     if (filtros.busca) {
-      const termo = filtros.busca.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      const termo = filtros.busca
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '');
       resultado = resultado.filter((g) => {
-        const nome = g.nome.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        const nome = g.nome
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '');
         return nome.includes(termo);
       });
     }
@@ -69,7 +75,10 @@ export class InMemoryGrupoRepository implements GrupoRepository {
       ...(filtros.usuarioId
         ? {
             usuarios: this.grupoUsuarios
-              .filter((gu) => gu.grupoId === g.id && gu.usuarioId === filtros.usuarioId)
+              .filter(
+                (gu) =>
+                  gu.grupoId === g.id && gu.usuarioId === filtros.usuarioId,
+              )
               .map((gu) => ({ role: gu.role })),
           }
         : {}),
@@ -90,7 +99,19 @@ export class InMemoryGrupoRepository implements GrupoRepository {
     return this.items.find((g) => g.codigoConvite === codigo) ?? null;
   }
 
-  async atualizar(id: string, data: Partial<{ nome: string; icone: string; privado: boolean; maxParticipantes: number; permitirPalpiteAutomatico: boolean; ativo: boolean; permitirPalpiteDobrado: boolean; codigoConvite: string }>) {
+  async atualizar(
+    id: string,
+    data: Partial<{
+      nome: string;
+      icone: string;
+      privado: boolean;
+      maxParticipantes: number;
+      permitirPalpiteAutomatico: boolean;
+      ativo: boolean;
+      permitirPalpiteDobrado: boolean;
+      codigoConvite: string;
+    }>,
+  ) {
     const index = this.items.findIndex((g) => g.id === id);
     if (index === -1) return null;
     this.items[index] = { ...this.items[index], ...data };

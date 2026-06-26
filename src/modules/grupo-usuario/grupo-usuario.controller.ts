@@ -41,8 +41,13 @@ export class GrupoUsuarioController {
   @ApiConflictResponse({ description: 'Já está no grupo.' })
   @ApiBadRequestResponse({ description: 'Grupo inativo ou limite atingido.' })
   @Post('entrar')
-  async entrar(@Body() dto: EntrarGrupoDto, @CurrentUser() user: { id: string }) {
-    return GrupoUsuarioPresenter.toHttp(await this.service.entrarPorConvite(dto.codigoConvite, user.id));
+  async entrar(
+    @Body() dto: EntrarGrupoDto,
+    @CurrentUser() user: { id: string },
+  ) {
+    return GrupoUsuarioPresenter.toHttp(
+      await this.service.entrarPorConvite(dto.codigoConvite, user.id),
+    );
   }
 
   @ApiOperation({ summary: 'Adicionar membro ao grupo por email (admin)' })
@@ -57,7 +62,9 @@ export class GrupoUsuarioController {
     @Param('grupoId', new ParseUUIDCustomPipe('grupoId')) grupoId: string,
     @Body() dto: AdicionarMembroDto,
   ) {
-    return GrupoUsuarioPresenter.toHttp(await this.service.adicionarPorEmail(grupoId, dto.email));
+    return GrupoUsuarioPresenter.toHttp(
+      await this.service.adicionarPorEmail(grupoId, dto.email),
+    );
   }
 
   @ApiOperation({ summary: 'Listar membros do grupo' })
@@ -102,9 +109,16 @@ export class GrupoUsuarioController {
   @ApiOperation({ summary: 'Alterar role de membro (apenas criador)' })
   @ApiResponse({ status: 200, description: 'Role alterado com sucesso.' })
   @ApiNotFoundResponse({ description: 'Usuário não está no grupo.' })
-  @ApiBadRequestResponse({ description: 'Apenas o criador pode alterar roles.' })
+  @ApiBadRequestResponse({
+    description: 'Apenas o criador pode alterar roles.',
+  })
   @ApiConflictResponse({ description: 'Membro já possui este role.' })
-  @ApiQuery({ name: 'transferir', required: false, type: Boolean, description: 'Transferir propriedade do grupo (apenas ao promover)' })
+  @ApiQuery({
+    name: 'transferir',
+    required: false,
+    type: Boolean,
+    description: 'Transferir propriedade do grupo (apenas ao promover)',
+  })
   @UseGuards(GroupRoleGuard)
   @GroupRoles(GRUPO_ROLE.ADMIN)
   @Patch(':grupoId/usuarios/:usuarioId/cargo')
@@ -116,6 +130,12 @@ export class GrupoUsuarioController {
     @Query('transferir') transferir?: string,
   ) {
     const transferirPropriedade = transferir === 'true';
-    return this.service.alterarRole(grupoId, usuarioId, dto.role, user.id, transferirPropriedade);
+    return this.service.alterarRole(
+      grupoId,
+      usuarioId,
+      dto.role,
+      user.id,
+      transferirPropriedade,
+    );
   }
 }

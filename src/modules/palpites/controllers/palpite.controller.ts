@@ -33,9 +33,7 @@ import { PalpitePresenter } from '../../../common/presenters';
 @ApiTags(PALPITES.TAG)
 @Controller()
 export class PalpiteController {
-  constructor(
-    private readonly palpiteService: PalpiteService,
-  ) {}
+  constructor(private readonly palpiteService: PalpiteService) {}
 
   @ApiOperation({ summary: 'Criar palpite para um jogo' })
   @ApiResponse({ status: 201, description: 'Palpite criado com sucesso.' })
@@ -48,7 +46,9 @@ export class PalpiteController {
     @Body() dto: CriarPalpiteDto,
     @CurrentUser() user: { id: string },
   ) {
-    return PalpitePresenter.toHttp(await this.palpiteService.criar(jogoId, dto, user.id));
+    return PalpitePresenter.toHttp(
+      await this.palpiteService.criar(jogoId, dto, user.id),
+    );
   }
 
   @ApiOperation({ summary: 'Editar palpite' })
@@ -61,7 +61,9 @@ export class PalpiteController {
     @Body() dto: AtualizarPalpiteDto,
     @CurrentUser() user: { id: string },
   ) {
-    return PalpitePresenter.toHttp(await this.palpiteService.atualizar(id, dto, user.id));
+    return PalpitePresenter.toHttp(
+      await this.palpiteService.atualizar(id, dto, user.id),
+    );
   }
 
   @ApiOperation({ summary: 'Excluir palpite' })
@@ -78,13 +80,19 @@ export class PalpiteController {
   }
 
   @ApiOperation({ summary: 'Buscar meu palpite por jogo' })
-  @ApiResponse({ status: 200, description: 'Palpite encontrado ou null se não existe.' })
+  @ApiResponse({
+    status: 200,
+    description: 'Palpite encontrado ou null se não existe.',
+  })
   @Get('jogos/:jogoId/meu-palpite')
   async buscarMeuPalpite(
     @Param('jogoId', new ParseUUIDCustomPipe('jogoId')) jogoId: string,
     @CurrentUser() user: { id: string },
   ) {
-    const palpite = await this.palpiteService.buscarMeuPalpitePorJogo(jogoId, user.id);
+    const palpite = await this.palpiteService.buscarMeuPalpitePorJogo(
+      jogoId,
+      user.id,
+    );
     return palpite ? PalpitePresenter.toHttp(palpite) : null;
   }
 
@@ -109,7 +117,9 @@ export class PalpiteController {
     @CurrentUser() user: { id: string },
     @Query('temporadaId') temporadaId?: string,
   ) {
-    const palpites = await this.palpiteService.listarMeusPalpites(user.id, { temporadaId });
+    const palpites = await this.palpiteService.listarMeusPalpites(user.id, {
+      temporadaId,
+    });
     return palpites.map((p) => PalpitePresenter.toHttpComJogo(p));
   }
 
@@ -124,7 +134,11 @@ export class PalpiteController {
     @Param('jogoId', new ParseUUIDCustomPipe('jogoId')) jogoId: string,
     @CurrentUser() user: { id: string },
   ) {
-    const palpites = await this.palpiteService.listarPorJogoNoGrupo(jogoId, grupoId, user.id);
+    const palpites = await this.palpiteService.listarPorJogoNoGrupo(
+      jogoId,
+      grupoId,
+      user.id,
+    );
     return palpites.map((p) => PalpitePresenter.toHttp(p));
   }
 
@@ -149,7 +163,10 @@ export class PalpiteController {
     @Body() dto: CriarPalpiteLoteDto,
     @CurrentUser() user: { id: string },
   ) {
-    const resultados = await this.palpiteService.criarLote(dto.palpites, user.id);
+    const resultados = await this.palpiteService.criarLote(
+      dto.palpites,
+      user.id,
+    );
     return resultados.map((r) => ({
       jogoId: r.jogoId,
       sucesso: r.sucesso,

@@ -5,7 +5,12 @@ interface TemporadaData {
   ano: number;
   campeonatoId: string;
   dataCriacao: Date;
-  campeonato?: { id: string; nome: string; dataCriacao: Date; atualizadoEm: Date } | null;
+  campeonato?: {
+    id: string;
+    nome: string;
+    dataCriacao: Date;
+    atualizadoEm: Date;
+  } | null;
 }
 
 export class TemporadaPresenter {
@@ -13,7 +18,9 @@ export class TemporadaPresenter {
     const nomeCampeonato = temporada.campeonato?.nome;
     return {
       id: temporada.id,
-      nome: nomeCampeonato ? `${nomeCampeonato} ${temporada.ano}` : `Temporada ${temporada.ano}`,
+      nome: nomeCampeonato
+        ? `${nomeCampeonato} ${temporada.ano}`
+        : `Temporada ${temporada.ano}`,
       ano: temporada.ano,
       campeonatoId: temporada.campeonatoId,
       dataCriacao: temporada.dataCriacao,

@@ -1,5 +1,15 @@
+interface TokenDobroData {
+  id: string;
+  usuarioId: string;
+  grupoId: string;
+  motivo: string;
+  referenciaId: string | null;
+  tipo: string;
+  dataCriacao: Date;
+}
+
 export class TokenDobroPresenter {
-  static toHttp(token: any) {
+  static toHttp(token: TokenDobroData) {
     return {
       id: token.id,
       usuarioId: token.usuarioId,

@@ -25,8 +25,12 @@ describe('UsuariosController', () => {
       criar: vi.fn().mockResolvedValue(usuarioMock),
       buscarPorId: vi.fn().mockResolvedValue(usuarioMock),
       atualizar: vi.fn().mockResolvedValue(usuarioMock),
-      remover: vi.fn().mockResolvedValue({ mensagem: 'Usuário desativado com sucesso' }),
-      definirGrupoFavorito: vi.fn().mockResolvedValue({ ...usuarioMock, grupoFavoritoId: 'grupo-1' }),
+      remover: vi
+        .fn()
+        .mockResolvedValue({ mensagem: 'Usuário desativado com sucesso' }),
+      definirGrupoFavorito: vi
+        .fn()
+        .mockResolvedValue({ ...usuarioMock, grupoFavoritoId: 'grupo-1' }),
     };
 
     controller = new UsuariosController(mockService);
@@ -48,7 +52,7 @@ describe('UsuariosController', () => {
   });
 
   it('buscarPorId deve chamar service.buscarPorId com param id', async () => {
-    const result = await controller.buscarPorId('user-2');
+    const _result = await controller.buscarPorId('user-2');
 
     expect(mockService.buscarPorId).toHaveBeenCalledWith('user-2');
   });
@@ -64,8 +68,13 @@ describe('UsuariosController', () => {
     const dto = { grupoId: 'grupo-1' };
     const result = await controller.definirGrupoFavorito(dto, user);
 
-    expect(mockService.definirGrupoFavorito).toHaveBeenCalledWith(userId, 'grupo-1');
-    expect(result).toEqual(UsuarioPresenter.toHttp({ ...usuarioMock, grupoFavoritoId: 'grupo-1' }));
+    expect(mockService.definirGrupoFavorito).toHaveBeenCalledWith(
+      userId,
+      'grupo-1',
+    );
+    expect(result).toEqual(
+      UsuarioPresenter.toHttp({ ...usuarioMock, grupoFavoritoId: 'grupo-1' }),
+    );
   });
 
   it('definirGrupoFavorito deve passar null quando grupoId é undefined', async () => {

@@ -10,7 +10,13 @@ export class PrismaTokenDobroRepository implements TokenDobroRepository {
     usuarioId: string;
     grupoId: string;
     tipo: 'CONCESSAO' | 'UTILIZACAO';
-    motivo: 'PALPITES_COMPLETOS' | 'ACERTO_EM_CHEIO' | 'ULTIMO_RANKING' | 'PRIMEIRO_RANKING' | 'ATIVACAO_DOBRO' | 'CANCELAMENTO_DOBRO';
+    motivo:
+      | 'PALPITES_COMPLETOS'
+      | 'ACERTO_EM_CHEIO'
+      | 'ULTIMO_RANKING'
+      | 'PRIMEIRO_RANKING'
+      | 'ATIVACAO_DOBRO'
+      | 'CANCELAMENTO_DOBRO';
     referenciaId: string;
   }) {
     return this.prisma.tokenDobro.create({ data });
@@ -23,7 +29,8 @@ export class PrismaTokenDobroRepository implements TokenDobroRepository {
       _count: true,
     });
     const concessoes = tokens.find((t) => t.tipo === 'CONCESSAO')?._count ?? 0;
-    const utilizacoes = tokens.find((t) => t.tipo === 'UTILIZACAO')?._count ?? 0;
+    const utilizacoes =
+      tokens.find((t) => t.tipo === 'UTILIZACAO')?._count ?? 0;
     return concessoes - utilizacoes;
   }
 
@@ -34,7 +41,12 @@ export class PrismaTokenDobroRepository implements TokenDobroRepository {
     });
   }
 
-  buscarPorChave(usuarioId: string, grupoId: string, motivo: string, referenciaId: string) {
+  buscarPorChave(
+    usuarioId: string,
+    grupoId: string,
+    motivo: string,
+    referenciaId: string,
+  ) {
     return this.prisma.tokenDobro.findFirst({
       where: { usuarioId, grupoId, motivo: motivo as any, referenciaId },
     });

@@ -16,7 +16,15 @@ describe('Presenters — Property-Based Tests', () => {
   // Feature: modulo-palpites, Property 10: Allowlist dos presenters
   // Valida: Requisitos 8.1, 8.2, 16.1, 16.2, 16.3
   it('PalpitePresenter.toHttp retorna apenas campos da allowlist', () => {
-    const allowlist = ['id', 'golsCasa', 'golsFora', 'jogoId', 'usuarioId', 'dataCriacao', 'atualizadoEm'];
+    const allowlist = [
+      'id',
+      'golsCasa',
+      'golsFora',
+      'jogoId',
+      'usuarioId',
+      'dataCriacao',
+      'atualizadoEm',
+    ];
 
     fc.assert(
       fc.property(arbExtras, (extras) => {
@@ -67,7 +75,15 @@ describe('Presenters — Property-Based Tests', () => {
   });
 
   it('TokenDobroPresenter.toHttp retorna apenas campos da allowlist', () => {
-    const allowlist = ['id', 'usuarioId', 'grupoId', 'motivo', 'referenciaId', 'tipo', 'dataCriacao'];
+    const allowlist = [
+      'id',
+      'usuarioId',
+      'grupoId',
+      'motivo',
+      'referenciaId',
+      'tipo',
+      'dataCriacao',
+    ];
 
     fc.assert(
       fc.property(arbExtras, (extras) => {
@@ -95,7 +111,15 @@ describe('Presenters — Property-Based Tests', () => {
   // Feature: modulo-jogos, Property 21: Presenter expõe apenas campos permitidos (allowlist)
   // Valida: Requisitos 8.3, 8.4, 14.4
   it('FasePresenter.toHttp retorna apenas campos da allowlist', () => {
-    const allowlist = ['id', 'nome', 'tipo', 'ordem', 'idaVolta', 'temporadaId', 'dataCriacao'];
+    const allowlist = [
+      'id',
+      'nome',
+      'tipo',
+      'ordem',
+      'idaVolta',
+      'temporadaId',
+      'dataCriacao',
+    ];
 
     fc.assert(
       fc.property(arbExtras, (extras) => {
@@ -122,11 +146,27 @@ describe('Presenters — Property-Based Tests', () => {
 
   it('JogoPresenter.toHttp retorna apenas campos da allowlist', () => {
     const allowlist = [
-      'id', 'faseId', 'rodada', 'timeCasaId', 'timeForaId', 'dataHora', 'status',
-      'foiAdiado', 'golsCasa', 'golsFora', 'temProrrogacao', 'golsProrrogacaoCasa', 'golsProrrogacaoFora',
-      'temPenaltis', 'penaltisCasa', 'penaltisFora', 'vencedorId',
-      'ehJogoVolta', 'grupoIdaVolta',
-      'dataCriacao', 'atualizadoEm',
+      'id',
+      'faseId',
+      'rodada',
+      'timeCasaId',
+      'timeForaId',
+      'dataHora',
+      'status',
+      'foiAdiado',
+      'golsCasa',
+      'golsFora',
+      'temProrrogacao',
+      'golsProrrogacaoCasa',
+      'golsProrrogacaoFora',
+      'temPenaltis',
+      'penaltisCasa',
+      'penaltisFora',
+      'vencedorId',
+      'ehJogoVolta',
+      'grupoIdaVolta',
+      'dataCriacao',
+      'atualizadoEm',
     ];
 
     fc.assert(

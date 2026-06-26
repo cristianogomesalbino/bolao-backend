@@ -63,8 +63,16 @@ describe('UsuariosService', () => {
 
   describe('listar', () => {
     it('deve retornar lista de usuários ativos', async () => {
-      await service.criar({ nome: 'João', email: 'joao@example.com', senha: 's' });
-      await service.criar({ nome: 'Maria', email: 'maria@example.com', senha: 's' });
+      await service.criar({
+        nome: 'João',
+        email: 'joao@example.com',
+        senha: 's',
+      });
+      await service.criar({
+        nome: 'Maria',
+        email: 'maria@example.com',
+        senha: 's',
+      });
 
       const result = await service.listar();
 
@@ -231,7 +239,11 @@ describe('UsuariosService', () => {
         email: 'joao@example.com',
         senha: 's',
       });
-      grupoUsuarioRepo.items.push({ usuarioId: criado.id, grupoId: 'grupo-1', role: 'MEMBER' });
+      grupoUsuarioRepo.items.push({
+        usuarioId: criado.id,
+        grupoId: 'grupo-1',
+        role: 'MEMBER',
+      });
 
       const result = await service.definirGrupoFavorito(criado.id, 'grupo-1');
 

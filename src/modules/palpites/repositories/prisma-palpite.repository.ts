@@ -6,7 +6,12 @@ import { PalpiteRepository } from './palpite.repository.interface';
 export class PrismaPalpiteRepository implements PalpiteRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  criar(data: { usuarioId: string; jogoId: string; golsCasa: number; golsFora: number }) {
+  criar(data: {
+    usuarioId: string;
+    jogoId: string;
+    golsCasa: number;
+    golsFora: number;
+  }) {
     return this.prisma.palpite.create({ data });
   }
 

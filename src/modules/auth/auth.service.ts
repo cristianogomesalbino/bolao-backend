@@ -46,9 +46,17 @@ export class AuthService {
 
     await this.refreshTokenRepo.removerPorUsuarioId(usuario.id);
 
-    const payload = { sub: usuario.id, email: usuario.email, perfil: usuario.perfil };
-    const accessToken = this.jwtService.sign(payload, { expiresIn: AUTH.TOKEN.ACCESS_EXPIRATION });
-    const refreshToken = this.jwtService.sign(payload, { expiresIn: AUTH.TOKEN.REFRESH_EXPIRATION });
+    const payload = {
+      sub: usuario.id,
+      email: usuario.email,
+      perfil: usuario.perfil,
+    };
+    const accessToken = this.jwtService.sign(payload, {
+      expiresIn: AUTH.TOKEN.ACCESS_EXPIRATION,
+    });
+    const refreshToken = this.jwtService.sign(payload, {
+      expiresIn: AUTH.TOKEN.REFRESH_EXPIRATION,
+    });
 
     await this.refreshTokenRepo.criar({
       token: refreshToken,
@@ -64,7 +72,8 @@ export class AuthService {
       throw new RefreshNaoFornecidoError();
     }
 
-    const tokenRegistro = await this.refreshTokenRepo.buscarPorToken(refreshToken);
+    const tokenRegistro =
+      await this.refreshTokenRepo.buscarPorToken(refreshToken);
 
     if (!tokenRegistro) {
       throw new RefreshInvalidoError();
@@ -82,8 +91,14 @@ export class AuthService {
       throw new UsuarioNaoEncontradoError();
     }
 
-    const payload = { sub: usuario.id, email: usuario.email, perfil: usuario.perfil };
-    const accessToken = this.jwtService.sign(payload, { expiresIn: AUTH.TOKEN.ACCESS_EXPIRATION });
+    const payload = {
+      sub: usuario.id,
+      email: usuario.email,
+      perfil: usuario.perfil,
+    };
+    const accessToken = this.jwtService.sign(payload, {
+      expiresIn: AUTH.TOKEN.ACCESS_EXPIRATION,
+    });
 
     return { accessToken };
   }
@@ -105,7 +120,9 @@ export class AuthService {
       await this.recuperacaoSenhaRepo.invalidarPorUsuarioId(usuario.id);
 
       const token = randomUUID();
-      const expiraEm = new Date(Date.now() + AUTH.TOKEN.RECUPERACAO_EXPIRATION_MS);
+      const expiraEm = new Date(
+        Date.now() + AUTH.TOKEN.RECUPERACAO_EXPIRATION_MS,
+      );
 
       await this.recuperacaoSenhaRepo.criar({
         token,
@@ -132,7 +149,9 @@ export class AuthService {
 
     const senhaHash = await bcrypt.hash(novaSenha, AUTH.BCRYPT_ROUNDS);
 
-    await this.usuarioRepo.atualizar(recuperacao.usuarioId, { senha: senhaHash });
+    await this.usuarioRepo.atualizar(recuperacao.usuarioId, {
+      senha: senhaHash,
+    });
     await this.recuperacaoSenhaRepo.marcarComoUsado(recuperacao.id);
     await this.refreshTokenRepo.removerPorUsuarioId(recuperacao.usuarioId);
 

@@ -29,9 +29,15 @@ describe('GrupoUsuarioController', () => {
         grupo: { id: 'grupo-1', nome: 'Bolão' },
       });
 
-      const result = await controller.entrar({ codigoConvite: 'ABC12345' }, user);
+      const result = await controller.entrar(
+        { codigoConvite: 'ABC12345' },
+        user,
+      );
 
-      expect(mockService.entrarPorConvite).toHaveBeenCalledWith('ABC12345', 'user-1');
+      expect(mockService.entrarPorConvite).toHaveBeenCalledWith(
+        'ABC12345',
+        'user-1',
+      );
       expect(result.role).toBe('MEMBER');
     });
   });
@@ -45,9 +51,14 @@ describe('GrupoUsuarioController', () => {
         usuario: { id: 'user-2', nome: 'Maria' },
       });
 
-      const result = await controller.adicionarMembro('grupo-1', { email: 'maria@test.com' } as any);
+      const result = await controller.adicionarMembro('grupo-1', {
+        email: 'maria@test.com',
+      } as any);
 
-      expect(mockService.adicionarPorEmail).toHaveBeenCalledWith('grupo-1', 'maria@test.com');
+      expect(mockService.adicionarPorEmail).toHaveBeenCalledWith(
+        'grupo-1',
+        'maria@test.com',
+      );
       expect(result.role).toBe('MEMBER');
     });
   });
@@ -67,7 +78,9 @@ describe('GrupoUsuarioController', () => {
 
   describe('sair', () => {
     it('deve chamar service.sair', async () => {
-      mockService.sair.mockResolvedValue({ mensagem: GRUPO_USUARIO.MENSAGENS.SAIU_DO_GRUPO });
+      mockService.sair.mockResolvedValue({
+        mensagem: GRUPO_USUARIO.MENSAGENS.SAIU_DO_GRUPO,
+      });
 
       const result = await controller.sair('grupo-1', user);
 
@@ -78,40 +91,89 @@ describe('GrupoUsuarioController', () => {
 
   describe('removerMembro', () => {
     it('deve chamar service.removerMembro', async () => {
-      mockService.removerMembro.mockResolvedValue({ mensagem: GRUPO_USUARIO.MENSAGENS.USUARIO_REMOVIDO });
+      mockService.removerMembro.mockResolvedValue({
+        mensagem: GRUPO_USUARIO.MENSAGENS.USUARIO_REMOVIDO,
+      });
 
       const result = await controller.removerMembro('grupo-1', 'user-2');
 
-      expect(mockService.removerMembro).toHaveBeenCalledWith('grupo-1', 'user-2');
+      expect(mockService.removerMembro).toHaveBeenCalledWith(
+        'grupo-1',
+        'user-2',
+      );
       expect(result.mensagem).toBe(GRUPO_USUARIO.MENSAGENS.USUARIO_REMOVIDO);
     });
   });
 
   describe('alterarRole', () => {
     it('deve promover membro sem transferir propriedade', async () => {
-      mockService.alterarRole.mockResolvedValue({ mensagem: GRUPO_USUARIO.MENSAGENS.ROLE_ALTERADO });
+      mockService.alterarRole.mockResolvedValue({
+        mensagem: GRUPO_USUARIO.MENSAGENS.ROLE_ALTERADO,
+      });
 
-      const result = await controller.alterarRole('grupo-1', 'user-2', { role: 'ADMIN' }, user, undefined);
+      const result = await controller.alterarRole(
+        'grupo-1',
+        'user-2',
+        { role: 'ADMIN' },
+        user,
+        undefined,
+      );
 
-      expect(mockService.alterarRole).toHaveBeenCalledWith('grupo-1', 'user-2', 'ADMIN', 'user-1', false);
+      expect(mockService.alterarRole).toHaveBeenCalledWith(
+        'grupo-1',
+        'user-2',
+        'ADMIN',
+        'user-1',
+        false,
+      );
       expect(result.mensagem).toBe(GRUPO_USUARIO.MENSAGENS.ROLE_ALTERADO);
     });
 
     it('deve promover membro com transferência de propriedade', async () => {
-      mockService.alterarRole.mockResolvedValue({ mensagem: GRUPO_USUARIO.MENSAGENS.PROPRIEDADE_TRANSFERIDA });
+      mockService.alterarRole.mockResolvedValue({
+        mensagem: GRUPO_USUARIO.MENSAGENS.PROPRIEDADE_TRANSFERIDA,
+      });
 
-      const result = await controller.alterarRole('grupo-1', 'user-2', { role: 'ADMIN' }, user, 'true');
+      const result = await controller.alterarRole(
+        'grupo-1',
+        'user-2',
+        { role: 'ADMIN' },
+        user,
+        'true',
+      );
 
-      expect(mockService.alterarRole).toHaveBeenCalledWith('grupo-1', 'user-2', 'ADMIN', 'user-1', true);
-      expect(result.mensagem).toBe(GRUPO_USUARIO.MENSAGENS.PROPRIEDADE_TRANSFERIDA);
+      expect(mockService.alterarRole).toHaveBeenCalledWith(
+        'grupo-1',
+        'user-2',
+        'ADMIN',
+        'user-1',
+        true,
+      );
+      expect(result.mensagem).toBe(
+        GRUPO_USUARIO.MENSAGENS.PROPRIEDADE_TRANSFERIDA,
+      );
     });
 
     it('deve rebaixar membro para MEMBER', async () => {
-      mockService.alterarRole.mockResolvedValue({ mensagem: GRUPO_USUARIO.MENSAGENS.ROLE_ALTERADO });
+      mockService.alterarRole.mockResolvedValue({
+        mensagem: GRUPO_USUARIO.MENSAGENS.ROLE_ALTERADO,
+      });
 
-      await controller.alterarRole('grupo-1', 'user-2', { role: 'MEMBER' }, user, undefined);
+      await controller.alterarRole(
+        'grupo-1',
+        'user-2',
+        { role: 'MEMBER' },
+        user,
+        undefined,
+      );
 
-      expect(mockService.alterarRole).toHaveBeenCalledWith('grupo-1', 'user-2', 'MEMBER', 'user-1', false);
+      expect(mockService.alterarRole).toHaveBeenCalledWith(
+        'grupo-1',
+        'user-2',
+        'MEMBER',
+        'user-1',
+        false,
+      );
     });
   });
 });

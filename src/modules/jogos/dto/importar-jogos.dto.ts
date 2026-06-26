@@ -1,4 +1,11 @@
-import { IsInt, IsUUID, IsNotEmpty, IsIn, IsString, Min } from 'class-validator';
+import {
+  IsInt,
+  IsUUID,
+  IsNotEmpty,
+  IsIn,
+  IsString,
+  Min,
+} from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { CAMPEONATO_SLUGS, type CampeonatoSlug } from '../jogos.constants';
 

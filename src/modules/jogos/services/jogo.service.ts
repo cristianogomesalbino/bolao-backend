@@ -5,6 +5,7 @@ import {
   obterFaseConfig,
   validarRodada,
 } from '../jogos.constants';
+import type { CampeonatoConfig } from '../jogos.constants';
 import { TIMES } from '../../times/time.constants';
 import type { JogoRepository } from '../repositories/jogo.repository.interface';
 import type { FaseRepository } from '../repositories/fase.repository.interface';
@@ -797,15 +798,76 @@ export class JogoService {
     );
     if (jogosFinalizedAgora.length > 0) {
       this.logger.log(
-        `[SYNC] 🏆 ${jogosFinalizedAgora.length} jogo(s) finalizado(s) — disparando preenchimento de chaveamento`,
+        `[SYNC] 🏆 ${jogosFinalizedAgora.length} jogo(s) finalizado(s) — disparando chaveamento`,
       );
       await this.chaveamentoService.preencherProximaFaseEliminatoria(
         fase.temporadaId,
         config,
       );
+      await this.chaveamentoService.propagarVencedoresParaProximaFase(
+        fase.temporadaId,
+      );
+    } else {
+      // Verificar se há jogos eliminatórios pendentes de criação
+      // (grupos podem ter sido finalizados em execuções anteriores)
+      await this.verificarChaveamentoPendente(fase.temporadaId, config);
     }
 
     return { sincronizados, jogosAtualizados };
+  }
+
+  /**
+   * Verifica se há jogos eliminatórios que deveriam ter sido criados
+   * (grupos finalizados em execuções anteriores da sync).
+   */
+  private async verificarChaveamentoPendente(
+    temporadaId: string,
+    config: CampeonatoConfig,
+  ): Promise<void> {
+    const todasFases = await this.faseRepo.buscarPorTemporada(temporadaId);
+    const fases = todasFases as { id: string; nome: string; tipo: string }[];
+
+    const fasesGrupos = fases.filter((f) => f.tipo === 'PONTOS_CORRIDOS');
+    const fasesEliminatorias = fases.filter((f) => f.tipo === 'MATA_MATA');
+
+    if (fasesGrupos.length === 0 || fasesEliminatorias.length === 0) return;
+
+    // Verificar se algum grupo terminou (6 jogos finalizados)
+    let algumGrupoTerminou = false;
+    for (const fase of fasesGrupos) {
+      const jogos = (await this.jogoRepo.buscarPorFase(fase.id)) as {
+        status: string;
+      }[];
+      const finalizados = jogos.filter((j) => j.status === 'FINALIZADO').length;
+      if (finalizados >= 6) {
+        algumGrupoTerminou = true;
+        break;
+      }
+    }
+
+    if (!algumGrupoTerminou) return;
+
+    // Verificar se a primeira fase eliminatória tem jogos
+    const primeiraEliminatoria = fasesEliminatorias[0];
+    if (!primeiraEliminatoria) return;
+
+    const jogosEliminatoria = (await this.jogoRepo.buscarPorFase(
+      primeiraEliminatoria.id,
+    )) as { id: string }[];
+
+    if (jogosEliminatoria.length > 0) return;
+
+    // Grupos terminaram mas jogos eliminatórios não existem — criar
+    this.logger.log(
+      '[SYNC] ⚠️ Grupos finalizados mas jogos eliminatórios ausentes — criando via chaveamento',
+    );
+    await this.chaveamentoService.preencherProximaFaseEliminatoria(
+      temporadaId,
+      config,
+    );
+    await this.chaveamentoService.propagarVencedoresParaProximaFase(
+      temporadaId,
+    );
   }
 
   private async obterFasesParaSync(fase: {
@@ -1036,7 +1098,7 @@ export class JogoService {
    * Para jogos criados manualmente (sem externoId), tenta parear com a API
    * usando rodada como critério. Usado em fases eliminatórias.
    */
-  private matchPorRodada(jogo: any, jogoApiMap: Map<string, any>): any | null {
+  private matchPorRodada(jogo: any, jogoApiMap: Map<string, any>): any {
     if (!jogo.rodada || !jogo.dataHora) return null;
 
     const dataLocal = new Date(jogo.dataHora).getTime();

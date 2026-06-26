@@ -13,7 +13,10 @@ export class InMemoryTimeRepository implements TimeRepository {
     return time;
   }
 
-  async atualizar(id: string, data: Partial<{ nome: string; sigla: string; escudo: string }>) {
+  async atualizar(
+    id: string,
+    data: Partial<{ nome: string; sigla: string; escudo: string }>,
+  ) {
     const index = this.items.findIndex((t) => t.id === id);
     if (index === -1) return null;
     this.items[index] = { ...this.items[index], ...data };
@@ -37,6 +40,8 @@ export class InMemoryTimeRepository implements TimeRepository {
   }
 
   async buscarPorExternoIds(externoIds: string[]) {
-    return this.items.filter((t) => t.externoId && externoIds.includes(t.externoId));
+    return this.items.filter(
+      (t) => t.externoId && externoIds.includes(t.externoId),
+    );
   }
 }

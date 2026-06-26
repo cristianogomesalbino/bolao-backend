@@ -80,7 +80,12 @@ describe('JogoController', () => {
 
   describe('finalizar', () => {
     it('deve chamar jogoService.finalizar e retornar via JogoPresenter', async () => {
-      const jogoFinalizado = { ...jogoData, status: 'FINALIZADO', golsCasa: 2, golsFora: 1 };
+      const jogoFinalizado = {
+        ...jogoData,
+        status: 'FINALIZADO',
+        golsCasa: 2,
+        golsFora: 1,
+      };
       mockJogoService.finalizar.mockResolvedValue(jogoFinalizado);
 
       const dto = { golsCasa: 2, golsFora: 1 };
@@ -93,7 +98,12 @@ describe('JogoController', () => {
 
   describe('listar', () => {
     it('deve chamar jogoService.buscarPorFaseComDetalhes e retornar fase + jogos', async () => {
-      const faseData = { id: 'fase-1', nome: 'Rodada 1', tipo: 'PONTOS_CORRIDOS', ordem: 1 };
+      const faseData = {
+        id: 'fase-1',
+        nome: 'Rodada 1',
+        tipo: 'PONTOS_CORRIDOS',
+        ordem: 1,
+      };
       mockJogoService.buscarPorFaseComDetalhes.mockResolvedValue({
         fase: faseData,
         jogos: [jogoData],
@@ -101,15 +111,29 @@ describe('JogoController', () => {
 
       const result = await controller.listar('fase-1');
 
-      expect(mockJogoService.buscarPorFaseComDetalhes).toHaveBeenCalledWith('fase-1', undefined, undefined);
+      expect(mockJogoService.buscarPorFaseComDetalhes).toHaveBeenCalledWith(
+        'fase-1',
+        undefined,
+        undefined,
+      );
       expect(result).toEqual({
-        fase: { id: 'fase-1', nome: 'Rodada 1', tipo: 'PONTOS_CORRIDOS', ordem: 1 },
+        fase: {
+          id: 'fase-1',
+          nome: 'Rodada 1',
+          tipo: 'PONTOS_CORRIDOS',
+          ordem: 1,
+        },
         jogos: [JogoPresenter.toHttp(jogoData, 'PONTOS_CORRIDOS')],
       });
     });
 
     it('deve passar rodada como número quando query param informado', async () => {
-      const faseData = { id: 'fase-1', nome: 'Rodada 1', tipo: 'PONTOS_CORRIDOS', ordem: 1 };
+      const faseData = {
+        id: 'fase-1',
+        nome: 'Rodada 1',
+        tipo: 'PONTOS_CORRIDOS',
+        ordem: 1,
+      };
       mockJogoService.buscarPorFaseComDetalhes.mockResolvedValue({
         fase: faseData,
         jogos: [jogoData],
@@ -117,7 +141,11 @@ describe('JogoController', () => {
 
       await controller.listar('fase-1', '3');
 
-      expect(mockJogoService.buscarPorFaseComDetalhes).toHaveBeenCalledWith('fase-1', 3, undefined);
+      expect(mockJogoService.buscarPorFaseComDetalhes).toHaveBeenCalledWith(
+        'fase-1',
+        3,
+        undefined,
+      );
     });
   });
 
@@ -129,7 +157,9 @@ describe('JogoController', () => {
       const result = await controller.buscarPorId('jogo-1');
 
       expect(mockJogoService.buscarPorId).toHaveBeenCalledWith('jogo-1');
-      expect(result).toEqual(JogoPresenter.toHttp(jogoComFase, 'PONTOS_CORRIDOS'));
+      expect(result).toEqual(
+        JogoPresenter.toHttp(jogoComFase, 'PONTOS_CORRIDOS'),
+      );
     });
   });
 
@@ -153,7 +183,9 @@ describe('JogoController', () => {
 
   describe('sincronizar', () => {
     it('deve chamar jogoService.sincronizarPlacares e retornar resultado', async () => {
-      mockJogoService.sincronizarPlacares.mockResolvedValue({ sincronizados: 3 });
+      mockJogoService.sincronizarPlacares.mockResolvedValue({
+        sincronizados: 3,
+      });
 
       const dto = {
         campeonatoSlug: 'brasileirao',
@@ -172,7 +204,11 @@ describe('JogoController', () => {
 
   describe('resetarFonte', () => {
     it('deve chamar jogoService.resetarFonte e retornar via JogoPresenter', async () => {
-      const jogoResetado = { ...jogoData, fonteResultado: 'API_EXTERNA', externoId: '12345' };
+      const jogoResetado = {
+        ...jogoData,
+        fonteResultado: 'API_EXTERNA',
+        externoId: '12345',
+      };
       mockJogoService.resetarFonte.mockResolvedValue(jogoResetado);
 
       const result = await controller.resetarFonte('jogo-1');

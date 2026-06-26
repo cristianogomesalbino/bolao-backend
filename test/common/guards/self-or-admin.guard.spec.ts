@@ -39,16 +39,12 @@ describe('SelfOrAdminGuard', () => {
       { id: 'user-2' },
     );
 
-    expect(() => guard.canActivate(context as any)).toThrow(
-      ForbiddenException,
-    );
+    expect(() => guard.canActivate(context as any)).toThrow(ForbiddenException);
   });
 
   it('deve lançar ForbiddenException se não há usuário autenticado', () => {
     const context = createMockContext(null, { id: 'user-1' });
 
-    expect(() => guard.canActivate(context as any)).toThrow(
-      ForbiddenException,
-    );
+    expect(() => guard.canActivate(context as any)).toThrow(ForbiddenException);
   });
 });

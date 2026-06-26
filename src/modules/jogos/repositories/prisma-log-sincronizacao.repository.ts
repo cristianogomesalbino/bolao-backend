@@ -33,7 +33,10 @@ export class PrismaLogSincronizacaoRepository implements LogSincronizacaoReposit
     }) as unknown as LogSincronizacao[];
   }
 
-  async buscarPorCampeonato(campeonatoSlug: string, limite = 10): Promise<LogSincronizacao[]> {
+  async buscarPorCampeonato(
+    campeonatoSlug: string,
+    limite = 10,
+  ): Promise<LogSincronizacao[]> {
     return this.prisma.logSincronizacao.findMany({
       where: { campeonatoSlug },
       orderBy: { dataCriacao: 'desc' },
@@ -41,7 +44,9 @@ export class PrismaLogSincronizacaoRepository implements LogSincronizacaoReposit
     }) as unknown as LogSincronizacao[];
   }
 
-  async buscarUltimaSincronizacao(campeonatoSlug: string): Promise<LogSincronizacao | null> {
+  async buscarUltimaSincronizacao(
+    campeonatoSlug: string,
+  ): Promise<LogSincronizacao | null> {
     return this.prisma.logSincronizacao.findFirst({
       where: { campeonatoSlug },
       orderBy: { dataCriacao: 'desc' },

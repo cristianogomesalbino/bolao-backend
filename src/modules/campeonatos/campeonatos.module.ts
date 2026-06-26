@@ -8,7 +8,10 @@ import { PrismaCampeonatoRepository } from './repositories/prisma-campeonato.rep
   controllers: [CampeonatosController],
   providers: [
     CampeonatosService,
-    { provide: CAMPEONATOS.REPOSITORY_TOKEN, useClass: PrismaCampeonatoRepository },
+    {
+      provide: CAMPEONATOS.REPOSITORY_TOKEN,
+      useClass: PrismaCampeonatoRepository,
+    },
   ],
   exports: [CAMPEONATOS.REPOSITORY_TOKEN],
 })

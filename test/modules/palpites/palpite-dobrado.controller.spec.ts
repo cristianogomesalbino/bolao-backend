@@ -1,6 +1,9 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { PalpiteDobradoController } from '@src/modules/palpites/controllers/palpite-dobrado.controller';
-import { PalpiteDobradoPresenter, TokenDobroPresenter } from '@src/common/presenters';
+import {
+  PalpiteDobradoPresenter,
+  TokenDobroPresenter,
+} from '@src/common/presenters';
 
 describe('PalpiteDobradoController', () => {
   let controller: PalpiteDobradoController;
@@ -43,27 +46,41 @@ describe('PalpiteDobradoController', () => {
       listarHistorico: vi.fn().mockResolvedValue([tokenMock]),
     };
 
-    controller = new PalpiteDobradoController(mockPalpiteDobradoService, mockTokenDobroService);
+    controller = new PalpiteDobradoController(
+      mockPalpiteDobradoService,
+      mockTokenDobroService,
+    );
   });
 
   it('ativarDobro deve chamar service e retornar via presenter', async () => {
     const result = await controller.ativarDobro(grupoId, jogoId, user);
 
-    expect(mockPalpiteDobradoService.ativarDobro).toHaveBeenCalledWith(grupoId, jogoId, userId);
+    expect(mockPalpiteDobradoService.ativarDobro).toHaveBeenCalledWith(
+      grupoId,
+      jogoId,
+      userId,
+    );
     expect(result).toEqual(PalpiteDobradoPresenter.toHttp(dobroMock));
   });
 
   it('desativarDobro deve chamar service e retornar mensagem', async () => {
     const result = await controller.desativarDobro(grupoId, jogoId, user);
 
-    expect(mockPalpiteDobradoService.desativarDobro).toHaveBeenCalledWith(grupoId, jogoId, userId);
+    expect(mockPalpiteDobradoService.desativarDobro).toHaveBeenCalledWith(
+      grupoId,
+      jogoId,
+      userId,
+    );
     expect(result.mensagem).toBeDefined();
   });
 
   it('consultarSaldo deve retornar saldo', async () => {
     const result = await controller.consultarSaldo(grupoId, user);
 
-    expect(mockTokenDobroService.calcularSaldo).toHaveBeenCalledWith(userId, grupoId);
+    expect(mockTokenDobroService.calcularSaldo).toHaveBeenCalledWith(
+      userId,
+      grupoId,
+    );
     expect(result.saldo).toBe(3);
   });
 
@@ -75,16 +92,23 @@ describe('PalpiteDobradoController', () => {
   });
 
   it('configurarDobro deve chamar service e retornar mensagem', async () => {
-    const result = await controller.configurarDobro(grupoId, { permitirPalpiteDobrado: true });
+    const result = await controller.configurarDobro(grupoId, {
+      permitirPalpiteDobrado: true,
+    });
 
-    expect(mockPalpiteDobradoService.atualizarConfiguracaoDobro).toHaveBeenCalledWith(grupoId, true);
+    expect(
+      mockPalpiteDobradoService.atualizarConfiguracaoDobro,
+    ).toHaveBeenCalledWith(grupoId, true);
     expect(result.mensagem).toBeDefined();
   });
 
   it('listarMeusDobros deve retornar array via presenter', async () => {
     const result = await controller.listarMeusDobros(grupoId, user);
 
-    expect(mockPalpiteDobradoService.listarMeusDobros).toHaveBeenCalledWith(grupoId, userId);
+    expect(mockPalpiteDobradoService.listarMeusDobros).toHaveBeenCalledWith(
+      grupoId,
+      userId,
+    );
     expect(result).toHaveLength(1);
     expect(result[0]).toEqual(PalpiteDobradoPresenter.toHttp(dobroMock));
   });

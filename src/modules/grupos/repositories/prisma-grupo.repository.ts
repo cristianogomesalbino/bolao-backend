@@ -60,7 +60,12 @@ export class PrismaGrupoRepository implements GrupoRepository {
         ...includeGrupo,
         _count: { select: { usuarios: true } },
         ...(filtros.usuarioId
-          ? { usuarios: { where: { usuarioId: filtros.usuarioId }, select: { role: true } } }
+          ? {
+              usuarios: {
+                where: { usuarioId: filtros.usuarioId },
+                select: { role: true },
+              },
+            }
           : {}),
       },
     });
@@ -84,7 +89,19 @@ export class PrismaGrupoRepository implements GrupoRepository {
     return this.prisma.grupo.findUnique({ where: { codigoConvite: codigo } });
   }
 
-  atualizar(id: string, data: Partial<{ nome: string; icone: string; privado: boolean; maxParticipantes: number; permitirPalpiteAutomatico: boolean; ativo: boolean; permitirPalpiteDobrado: boolean; codigoConvite: string }>) {
+  atualizar(
+    id: string,
+    data: Partial<{
+      nome: string;
+      icone: string;
+      privado: boolean;
+      maxParticipantes: number;
+      permitirPalpiteAutomatico: boolean;
+      ativo: boolean;
+      permitirPalpiteDobrado: boolean;
+      codigoConvite: string;
+    }>,
+  ) {
     return this.prisma.grupo.update({ where: { id }, data });
   }
 

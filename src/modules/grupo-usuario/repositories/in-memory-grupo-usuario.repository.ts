@@ -5,7 +5,10 @@ export class InMemoryGrupoUsuarioRepository implements GrupoUsuarioRepository {
   usuarios: any[] = [];
   grupos: any[] = [];
 
-  async criar(data: { usuarioId: string; grupoId: string; role: string }, include?: any) {
+  async criar(
+    data: { usuarioId: string; grupoId: string; role: string },
+    include?: any,
+  ) {
     const grupoUsuario: any = {
       usuarioId: data.usuarioId,
       grupoId: data.grupoId,
@@ -24,7 +27,11 @@ export class InMemoryGrupoUsuarioRepository implements GrupoUsuarioRepository {
     if (include?.usuario) {
       const usuario = this.usuarios.find((u) => u.id === data.usuarioId);
       result.usuario = usuario
-        ? { id: usuario.id, nome: usuario.nome, ...(usuario.email ? { email: usuario.email } : {}) }
+        ? {
+            id: usuario.id,
+            nome: usuario.nome,
+            ...(usuario.email ? { email: usuario.email } : {}),
+          }
         : null;
     }
 
@@ -32,9 +39,11 @@ export class InMemoryGrupoUsuarioRepository implements GrupoUsuarioRepository {
   }
 
   async buscarPorChave(usuarioId: string, grupoId: string) {
-    return this.items.find(
-      (gu) => gu.usuarioId === usuarioId && gu.grupoId === grupoId,
-    ) ?? null;
+    return (
+      this.items.find(
+        (gu) => gu.usuarioId === usuarioId && gu.grupoId === grupoId,
+      ) ?? null
+    );
   }
 
   async listarPorGrupo(grupoId: string) {

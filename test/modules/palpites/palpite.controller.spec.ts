@@ -30,7 +30,12 @@ describe('PalpiteController', () => {
       golsFora: null,
       foiAdiado: false,
       timeCasa: { id: 'time-a', nome: 'Flamengo', sigla: 'FLA', escudo: 'url' },
-      timeFora: { id: 'time-b', nome: 'Palmeiras', sigla: 'PAL', escudo: 'url' },
+      timeFora: {
+        id: 'time-b',
+        nome: 'Palmeiras',
+        sigla: 'PAL',
+        escudo: 'url',
+      },
     },
   };
 
@@ -59,16 +64,32 @@ describe('PalpiteController', () => {
   });
 
   it('criar deve chamar service e retornar via presenter', async () => {
-    const result = await controller.criar('jogo-1', { golsCasa: 2, golsFora: 1 }, user);
+    const result = await controller.criar(
+      'jogo-1',
+      { golsCasa: 2, golsFora: 1 },
+      user,
+    );
 
-    expect(mockService.criar).toHaveBeenCalledWith('jogo-1', { golsCasa: 2, golsFora: 1 }, userId);
+    expect(mockService.criar).toHaveBeenCalledWith(
+      'jogo-1',
+      { golsCasa: 2, golsFora: 1 },
+      userId,
+    );
     expect(result).toEqual(PalpitePresenter.toHttp(palpiteMock));
   });
 
   it('atualizar deve chamar service e retornar via presenter', async () => {
-    const result = await controller.atualizar('palpite-1', { golsCasa: 3, golsFora: 0 }, user);
+    const result = await controller.atualizar(
+      'palpite-1',
+      { golsCasa: 3, golsFora: 0 },
+      user,
+    );
 
-    expect(mockService.atualizar).toHaveBeenCalledWith('palpite-1', { golsCasa: 3, golsFora: 0 }, userId);
+    expect(mockService.atualizar).toHaveBeenCalledWith(
+      'palpite-1',
+      { golsCasa: 3, golsFora: 0 },
+      userId,
+    );
     expect(result.golsCasa).toBe(3);
   });
 
@@ -82,7 +103,10 @@ describe('PalpiteController', () => {
   it('buscarMeuPalpite deve chamar service e retornar via presenter', async () => {
     const result = await controller.buscarMeuPalpite('jogo-1', user);
 
-    expect(mockService.buscarMeuPalpitePorJogo).toHaveBeenCalledWith('jogo-1', userId);
+    expect(mockService.buscarMeuPalpitePorJogo).toHaveBeenCalledWith(
+      'jogo-1',
+      userId,
+    );
     expect(result).toEqual(PalpitePresenter.toHttp(palpiteMock));
   });
 
@@ -98,7 +122,10 @@ describe('PalpiteController', () => {
     const dto = { jogoIds: ['jogo-1', 'jogo-2'] };
     const result = await controller.buscarMeusPalpitesPorJogos(dto, user);
 
-    expect(mockService.buscarMeusPalpitesPorJogos).toHaveBeenCalledWith(['jogo-1', 'jogo-2'], userId);
+    expect(mockService.buscarMeusPalpitesPorJogos).toHaveBeenCalledWith(
+      ['jogo-1', 'jogo-2'],
+      userId,
+    );
     expect(result).toHaveLength(1);
     expect(result[0]).toEqual(PalpitePresenter.toHttp(palpiteMock));
   });
@@ -106,7 +133,9 @@ describe('PalpiteController', () => {
   it('listarMeusPalpites deve retornar array com jogo via presenter', async () => {
     const result = await controller.listarMeusPalpites(user);
 
-    expect(mockService.listarMeusPalpites).toHaveBeenCalledWith(userId, { temporadaId: undefined });
+    expect(mockService.listarMeusPalpites).toHaveBeenCalledWith(userId, {
+      temporadaId: undefined,
+    });
     expect(result).toHaveLength(1);
     expect(result[0].jogo).toBeDefined();
     expect(result[0].jogo.id).toBe('jogo-1');
@@ -116,20 +145,33 @@ describe('PalpiteController', () => {
   it('listarMeusPalpites deve passar temporadaId como filtro', async () => {
     await controller.listarMeusPalpites(user, 'temporada-1');
 
-    expect(mockService.listarMeusPalpites).toHaveBeenCalledWith(userId, { temporadaId: 'temporada-1' });
+    expect(mockService.listarMeusPalpites).toHaveBeenCalledWith(userId, {
+      temporadaId: 'temporada-1',
+    });
   });
 
   it('listarPorJogoNoGrupo deve chamar service sem buscar membros', async () => {
-    const result = await controller.listarPorJogoNoGrupo('grupo-1', 'jogo-1', user);
+    const result = await controller.listarPorJogoNoGrupo(
+      'grupo-1',
+      'jogo-1',
+      user,
+    );
 
-    expect(mockService.listarPorJogoNoGrupo).toHaveBeenCalledWith('jogo-1', 'grupo-1', userId);
+    expect(mockService.listarPorJogoNoGrupo).toHaveBeenCalledWith(
+      'jogo-1',
+      'grupo-1',
+      userId,
+    );
     expect(result).toHaveLength(1);
   });
 
   it('estatisticasPorJogo deve chamar service e retornar estatísticas', async () => {
     const result = await controller.estatisticasPorJogo('grupo-1', 'jogo-1');
 
-    expect(mockService.buscarEstatisticasPorJogo).toHaveBeenCalledWith('jogo-1', 'grupo-1');
+    expect(mockService.buscarEstatisticasPorJogo).toHaveBeenCalledWith(
+      'jogo-1',
+      'grupo-1',
+    );
     expect(result.total).toBe(10);
     expect(result.percentualCasa).toBe(50);
     expect(result.percentualEmpate).toBe(30);

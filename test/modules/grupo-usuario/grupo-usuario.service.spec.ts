@@ -179,7 +179,12 @@ describe('GrupoUsuarioService', () => {
       grupoRepo.items.push({ ...grupo });
       grupoUsuarioRepo.items.push(
         { usuarioId: userId, grupoId, role: 'ADMIN', dataCriacao: new Date() },
-        { usuarioId: userId2, grupoId, role: 'MEMBER', dataCriacao: new Date() },
+        {
+          usuarioId: userId2,
+          grupoId,
+          role: 'MEMBER',
+          dataCriacao: new Date(),
+        },
       );
       grupoUsuarioRepo.usuarios.push(
         { id: userId, nome: 'João' },
@@ -297,9 +302,9 @@ describe('GrupoUsuarioService', () => {
     });
 
     it('deve lançar GrupoNaoEncontradoError se grupo não existe', async () => {
-      await expect(service.removerMembro('inexistente', userId2)).rejects.toThrow(
-        GrupoNaoEncontradoError,
-      );
+      await expect(
+        service.removerMembro('inexistente', userId2),
+      ).rejects.toThrow(GrupoNaoEncontradoError);
     });
 
     it('deve lançar NotFoundException se usuário não está no grupo', async () => {
@@ -318,30 +323,56 @@ describe('GrupoUsuarioService', () => {
       grupoRepo.items.push({ ...grupo });
       grupoUsuarioRepo.items.push(
         { usuarioId: userId, grupoId, role: 'ADMIN', dataCriacao: new Date() },
-        { usuarioId: userId2, grupoId, role: 'MEMBER', dataCriacao: new Date() },
+        {
+          usuarioId: userId2,
+          grupoId,
+          role: 'MEMBER',
+          dataCriacao: new Date(),
+        },
       );
     });
 
     it('deve promover membro para ADMIN', async () => {
-      const result = await service.alterarRole(grupoId, userId2, 'ADMIN', userId);
+      const result = await service.alterarRole(
+        grupoId,
+        userId2,
+        'ADMIN',
+        userId,
+      );
 
       expect(result.mensagem).toContain('alterado');
-      const registro = grupoUsuarioRepo.items.find((i) => i.usuarioId === userId2);
+      const registro = grupoUsuarioRepo.items.find(
+        (i) => i.usuarioId === userId2,
+      );
       expect(registro.role).toBe('ADMIN');
     });
 
     it('deve rebaixar admin para MEMBER', async () => {
-      grupoUsuarioRepo.items.find((i) => i.usuarioId === userId2)!.role = 'ADMIN';
+      grupoUsuarioRepo.items.find((i) => i.usuarioId === userId2)!.role =
+        'ADMIN';
 
-      const result = await service.alterarRole(grupoId, userId2, 'MEMBER', userId);
+      const result = await service.alterarRole(
+        grupoId,
+        userId2,
+        'MEMBER',
+        userId,
+      );
 
       expect(result.mensagem).toContain('alterado');
-      const registro = grupoUsuarioRepo.items.find((i) => i.usuarioId === userId2);
+      const registro = grupoUsuarioRepo.items.find(
+        (i) => i.usuarioId === userId2,
+      );
       expect(registro.role).toBe('MEMBER');
     });
 
     it('deve transferir propriedade quando transferir=true e role=ADMIN', async () => {
-      const result = await service.alterarRole(grupoId, userId2, 'ADMIN', userId, true);
+      const result = await service.alterarRole(
+        grupoId,
+        userId2,
+        'ADMIN',
+        userId,
+        true,
+      );
 
       expect(result.mensagem).toContain('transferida');
       const grupoAtualizado = grupoRepo.items.find((g) => g.id === grupoId);

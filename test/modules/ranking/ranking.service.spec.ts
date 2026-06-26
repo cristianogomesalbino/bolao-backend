@@ -10,7 +10,10 @@ import { InMemoryGrupoUsuarioRepository } from '@src/modules/grupo-usuario/repos
 import { InMemoryGrupoRepository } from '@src/modules/grupos/repositories/in-memory-grupo.repository';
 import { InMemoryTokenDobroRepository } from '@src/modules/palpites/repositories/in-memory-token-dobro.repository';
 import { GrupoNaoEncontradoError } from '@src/common/errors/domain-errors/grupos.errors';
-import { FaseNaoEncontradaError, JogoNaoEncontradoError } from '@src/common/errors/domain-errors/jogos.errors';
+import {
+  FaseNaoEncontradaError,
+  JogoNaoEncontradoError,
+} from '@src/common/errors/domain-errors/jogos.errors';
 import { JogoNaoFinalizadoError } from '@src/common/errors/domain-errors/ranking.errors';
 
 describe('RankingService', () => {
@@ -30,7 +33,7 @@ describe('RankingService', () => {
   const faseId = 'fase-1';
   const userId1 = 'user-1';
   const userId2 = 'user-2';
-  const userId3 = 'user-3';
+  const _userId3 = 'user-3';
 
   function criarGrupo(overrides: any = {}) {
     const grupo = {
@@ -76,7 +79,12 @@ describe('RankingService', () => {
     grupoUsuarioRepo.usuarios.push({ id: usuarioId, nome });
   }
 
-  function criarPalpite(usuarioId: string, jogoId: string, golsCasa: number, golsFora: number) {
+  function criarPalpite(
+    usuarioId: string,
+    jogoId: string,
+    golsCasa: number,
+    golsFora: number,
+  ) {
     const palpite = {
       id: crypto.randomUUID(),
       usuarioId,
@@ -189,8 +197,8 @@ describe('RankingService', () => {
   describe('obterRankingGeral', () => {
     it('deve acumular pontuação de múltiplas fases', async () => {
       criarGrupo();
-      const fase1 = criarFase({ id: 'fase-1', ordem: 1 });
-      const fase2 = criarFase({ id: 'fase-2', ordem: 2 });
+      const _fase1 = criarFase({ id: 'fase-1', ordem: 1 });
+      const _fase2 = criarFase({ id: 'fase-2', ordem: 2 });
       criarMembro(userId1, 'Alice');
 
       const jogo1 = criarJogo({ faseId: 'fase-1', golsCasa: 2, golsFora: 1 });
@@ -209,9 +217,9 @@ describe('RankingService', () => {
     });
 
     it('deve lançar GrupoNaoEncontradoError se grupo inexistente', async () => {
-      await expect(
-        service.obterRankingGeral('inexistente'),
-      ).rejects.toThrow(GrupoNaoEncontradoError);
+      await expect(service.obterRankingGeral('inexistente')).rejects.toThrow(
+        GrupoNaoEncontradoError,
+      );
     });
   });
 
@@ -229,7 +237,10 @@ describe('RankingService', () => {
       criarPalpite(userId1, jogo.id, 2, 1); // acerto em cheio
       criarPalpite(userId2, jogo.id, 1, 0); // acerto resultado
 
-      const detalhamento = await service.obterDetalhamentoJogo(grupoId, jogo.id);
+      const detalhamento = await service.obterDetalhamentoJogo(
+        grupoId,
+        jogo.id,
+      );
 
       expect(detalhamento).toHaveLength(2);
 
@@ -250,10 +261,17 @@ describe('RankingService', () => {
       criarFase();
       criarMembro(userId1, 'Alice');
 
-      const jogo = criarJogo({ status: 'AGENDADO', golsCasa: null, golsFora: null });
+      const jogo = criarJogo({
+        status: 'AGENDADO',
+        golsCasa: null,
+        golsFora: null,
+      });
       criarPalpite(userId1, jogo.id, 2, 1);
 
-      const detalhamento = await service.obterDetalhamentoJogo(grupoId, jogo.id);
+      const detalhamento = await service.obterDetalhamentoJogo(
+        grupoId,
+        jogo.id,
+      );
 
       expect(detalhamento).toHaveLength(1);
       expect(detalhamento[0].categoriaAcerto).toBeNull();
@@ -271,7 +289,10 @@ describe('RankingService', () => {
       const jogo = criarJogo({ golsCasa: 2, golsFora: 1 });
       // Alice não fez palpite
 
-      const detalhamento = await service.obterDetalhamentoJogo(grupoId, jogo.id);
+      const detalhamento = await service.obterDetalhamentoJogo(
+        grupoId,
+        jogo.id,
+      );
 
       expect(detalhamento).toHaveLength(1);
       expect(detalhamento[0].golsCasaPalpite).toBeNull();
@@ -289,7 +310,10 @@ describe('RankingService', () => {
       criarPalpite(userId1, jogo.id, 2, 1);
       criarPalpiteDobrado(userId1, jogo.id);
 
-      const detalhamento = await service.obterDetalhamentoJogo(grupoId, jogo.id);
+      const detalhamento = await service.obterDetalhamentoJogo(
+        grupoId,
+        jogo.id,
+      );
 
       expect(detalhamento[0].dobrado).toBe(true);
       expect(detalhamento[0].multiplicador).toBe(2);
@@ -399,11 +423,15 @@ describe('RankingService', () => {
 
     it('deve lançar JogoNaoFinalizadoError se jogo não finalizado', async () => {
       criarFase();
-      const jogo = criarJogo({ status: 'AGENDADO', golsCasa: null, golsFora: null });
+      const jogo = criarJogo({
+        status: 'AGENDADO',
+        golsCasa: null,
+        golsFora: null,
+      });
 
-      await expect(
-        service.processarPontuacaoJogo(jogo.id),
-      ).rejects.toThrow(JogoNaoFinalizadoError);
+      await expect(service.processarPontuacaoJogo(jogo.id)).rejects.toThrow(
+        JogoNaoFinalizadoError,
+      );
     });
 
     it('erro em um grupo não deve propagar para outros', async () => {
@@ -425,7 +453,9 @@ describe('RankingService', () => {
       criarPalpite(userId1, jogo.id, 2, 1);
 
       // Não deve lançar erro
-      await expect(service.processarPontuacaoJogo(jogo.id)).resolves.not.toThrow();
+      await expect(
+        service.processarPontuacaoJogo(jogo.id),
+      ).resolves.not.toThrow();
     });
 
     it('deve aplicar multiplicador dobro corretamente no ranking', async () => {
@@ -447,7 +477,7 @@ describe('RankingService', () => {
       const bob = ranking.find((r) => r.usuarioId === userId2)!;
 
       expect(alice.pontuacaoTotal).toBe(2); // 1 * 2
-      expect(bob.pontuacaoTotal).toBe(1);    // 1 * 1
+      expect(bob.pontuacaoTotal).toBe(1); // 1 * 1
       expect(alice.posicao).toBe(1);
       expect(bob.posicao).toBe(2);
     });
@@ -458,11 +488,20 @@ describe('RankingService', () => {
       criarMembro(userId1, 'Alice');
 
       // Jogo finalizado em outra fase para trigger processamento
-      const fase2 = criarFase({ id: 'fase-2', ordem: 2 });
-      const jogoFinalizado = criarJogo({ faseId: 'fase-2', golsCasa: 1, golsFora: 0 });
+      const _fase2 = criarFase({ id: 'fase-2', ordem: 2 });
+      const jogoFinalizado = criarJogo({
+        faseId: 'fase-2',
+        golsCasa: 1,
+        golsFora: 0,
+      });
 
       // Fase 1 tem apenas jogo cancelado
-      criarJogo({ faseId: 'fase-1', status: 'CANCELADO', golsCasa: null, golsFora: null });
+      criarJogo({
+        faseId: 'fase-1',
+        status: 'CANCELADO',
+        golsCasa: null,
+        golsFora: null,
+      });
 
       criarPalpite(userId1, jogoFinalizado.id, 1, 0);
 
@@ -518,7 +557,11 @@ describe('RankingService', () => {
       criarFase();
       criarMembro(userId1, 'Alice');
 
-      const jogo = criarJogo({ status: 'AGENDADO', golsCasa: null, golsFora: null });
+      const jogo = criarJogo({
+        status: 'AGENDADO',
+        golsCasa: null,
+        golsFora: null,
+      });
       criarPalpite(userId1, jogo.id, 1, 0);
 
       await service.verificarPalpitesCompletos(faseId, grupoId);

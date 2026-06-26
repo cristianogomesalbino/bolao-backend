@@ -81,7 +81,11 @@ describe('PainelRodadaService', () => {
     jogoRepo = new InMemoryJogoRepository();
     faseRepo = new InMemoryFaseRepository();
     faseRepo.items = [{ ...fase }];
-    jogoRepo.items = [{ ...jogoRodada1 }, { ...jogoRodada1b }, { ...jogoRodada2 }];
+    jogoRepo.items = [
+      { ...jogoRodada1 },
+      { ...jogoRodada1b },
+      { ...jogoRodada2 },
+    ];
 
     grupoRepo = {
       buscarPorId: async (id: string) => (id === grupoId ? { ...grupo } : null),
@@ -116,7 +120,12 @@ describe('PainelRodadaService', () => {
   });
 
   it('deve incluir meuPalpite quando existe', async () => {
-    await palpiteRepo.criar({ usuarioId: userId, jogoId: 'jogo-1', golsCasa: 2, golsFora: 1 });
+    await palpiteRepo.criar({
+      usuarioId: userId,
+      jogoId: 'jogo-1',
+      golsCasa: 2,
+      golsFora: 1,
+    });
 
     const result = await service.obterPainelRodada(grupoId, faseId, userId, 1);
 
@@ -130,7 +139,11 @@ describe('PainelRodadaService', () => {
   });
 
   it('deve marcar dobrado=true quando palpite dobrado existe', async () => {
-    await palpiteDobradoRepo.criar({ usuarioId: userId, jogoId: 'jogo-1', grupoId });
+    await palpiteDobradoRepo.criar({
+      usuarioId: userId,
+      jogoId: 'jogo-1',
+      grupoId,
+    });
 
     const result = await service.obterPainelRodada(grupoId, faseId, userId, 1);
 
@@ -163,7 +176,11 @@ describe('PainelRodadaService', () => {
   });
 
   it('deve não incluir dobros de outro grupo', async () => {
-    await palpiteDobradoRepo.criar({ usuarioId: userId, jogoId: 'jogo-1', grupoId: 'outro-grupo' });
+    await palpiteDobradoRepo.criar({
+      usuarioId: userId,
+      jogoId: 'jogo-1',
+      grupoId: 'outro-grupo',
+    });
 
     const result = await service.obterPainelRodada(grupoId, faseId, userId, 1);
 
