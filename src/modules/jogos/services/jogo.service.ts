@@ -10,6 +10,7 @@ import type { JogoRepository } from '../repositories/jogo.repository.interface';
 import type { FaseRepository } from '../repositories/fase.repository.interface';
 import type { TimeRepository } from '../../times/repositories/time.repository.interface';
 import { FutebolApiService } from './futebol-api.service';
+import { ChaveamentoService } from './chaveamento.service';
 import { ErrorFactory } from '../../../common/errors/error.factory';
 import { CriarJogoDto } from '../dto/criar-jogo.dto';
 import { AtualizarJogoDto } from '../dto/atualizar-jogo.dto';
@@ -50,6 +51,7 @@ export class JogoService {
     private readonly futebolApiService: FutebolApiService,
     @Inject(TIMES.REPOSITORY_TOKEN)
     private readonly timeRepo: TimeRepository,
+    private readonly chaveamentoService: ChaveamentoService,
   ) {}
 
   async criar(dto: CriarJogoDto & { faseId: string }, userId: string) {
@@ -769,7 +771,10 @@ export class JogoService {
     // Log consolidado: 1 linha com todas as informações relevantes
     if (sincronizados > 0) {
       const resumoJogos = jogosAtualizados
-        .map((j) => `${j.timeCasa} ${j.golsCasa ?? '?'}x${j.golsFora ?? '?'} ${j.timeFora} (${j.status === 'FINALIZADO' ? '🏁' : '⚽'})`)
+        .map(
+          (j) =>
+            `${j.timeCasa} ${j.golsCasa ?? '?'}x${j.golsFora ?? '?'} ${j.timeFora} (${j.status === 'FINALIZADO' ? '🏁' : '⚽'})`,
+        )
         .join(' | ');
       this.logger.log(
         `[SYNC] ${campeonatoSlug} R${rodadaEfetiva} | ${sincronizados}/${jogosParaSync.length} atualizados | ${fasesNomes} | API ${tempoApi}ms | Total ${tempoTotal}ms | ${resumoJogos}`,
@@ -781,7 +786,23 @@ export class JogoService {
     }
 
     if (!apiDisponivel) {
-      this.logger.warn(`[SYNC] API externa indisponível — fallback interno utilizado`);
+      this.logger.warn(
+        `[SYNC] API externa indisponível — fallback interno utilizado`,
+      );
+    }
+
+    // Pós-sync: se algum jogo foi finalizado, tentar preencher próxima fase eliminatória
+    const jogosFinalizedAgora = jogosAtualizados.filter(
+      (j) => j.status === 'FINALIZADO',
+    );
+    if (jogosFinalizedAgora.length > 0) {
+      this.logger.log(
+        `[SYNC] 🏆 ${jogosFinalizedAgora.length} jogo(s) finalizado(s) — disparando preenchimento de chaveamento`,
+      );
+      await this.chaveamentoService.preencherProximaFaseEliminatoria(
+        fase.temporadaId,
+        config,
+      );
     }
 
     return { sincronizados, jogosAtualizados };
@@ -862,9 +883,28 @@ export class JogoService {
     horarioAnterior?: string | null;
     horarioNovo?: string | null;
   }> {
-    const jogoApi = jogoApiMap.get(jogo.externoId);
+    let jogoApi = jogoApiMap.get(jogo.externoId);
 
-    if (!jogoApi) {
+    // Jogos sem externoId (criados manualmente para mata-mata): match por horário
+    if (!jogoApi && !jogo.externoId) {
+      jogoApi = this.matchPorRodada(jogo, jogoApiMap);
+    }
+
+    // Vincular externoId se encontrou match
+    if (jogoApi && !jogo.externoId) {
+      await this.jogoRepo.atualizar(jogo.id, { externoId: jogoApi.externoId });
+      this.logger.log(
+        `[SYNC] 🔗 Jogo R${jogo.rodada} vinculado ao externoId ${jogoApi.externoId}`,
+      );
+    }
+
+    // Sem match e sem externoId — nada a fazer
+    if (!jogoApi && !jogo.externoId) {
+      return { atualizado: false };
+    }
+
+    // Sem match mas tem externoId — logar warning
+    if (!jogoApi && jogo.externoId) {
       this.logger.warn(
         apiDisponivel
           ? `Jogo externo ${jogo.externoId} não encontrado na API`
@@ -887,6 +927,13 @@ export class JogoService {
     const { horarioAlterado, horarioAnterior, horarioNovo } =
       this.detectarMudancaHorario(jogo, jogoApi, updateData);
 
+    // Detectar mudança de times (mata-mata: placeholder → time real)
+    const timesMudaram = await this.detectarEAtualizarTimes(
+      jogo,
+      jogoApi,
+      updateData,
+    );
+
     if (
       jogoApi &&
       (novoStatus === 'FINALIZADO' || novoStatus === 'EM_ANDAMENTO')
@@ -903,7 +950,7 @@ export class JogoService {
           updateData.golsFora !== jogo.golsFora);
       const horarioMudou = horarioAlterado;
 
-      if (!statusMudou && !placarMudou && !horarioMudou) {
+      if (!statusMudou && !placarMudou && !horarioMudou && !timesMudaram) {
         return { atualizado: false };
       }
 
@@ -935,6 +982,76 @@ export class JogoService {
       const timeFora = jogo.timeFora?.sigla || '?';
       this.logger.log(`[SYNC] 🟢 ${timeCasa} x ${timeFora} — jogo iniciou`);
     }
+  }
+
+  /**
+   * Detecta se a API atualizou os times de um jogo (placeholder → time real).
+   * Acontece nas fases eliminatórias quando um classificado é definido.
+   */
+  private async detectarEAtualizarTimes(
+    jogo: any,
+    jogoApi: any,
+    updateData: any,
+  ): Promise<boolean> {
+    if (!jogoApi?.timeCasa?.externoId || !jogoApi?.timeFora?.externoId) {
+      return false;
+    }
+
+    const externoIdCasaAtual = jogo.timeCasa?.externoId;
+    const externoIdForaAtual = jogo.timeFora?.externoId;
+    const externoIdCasaApi = jogoApi.timeCasa.externoId;
+    const externoIdForaApi = jogoApi.timeFora.externoId;
+
+    const casaMudou = externoIdCasaAtual !== externoIdCasaApi;
+    const foraMudou = externoIdForaAtual !== externoIdForaApi;
+
+    if (!casaMudou && !foraMudou) return false;
+
+    if (casaMudou) {
+      const timeCasa = await this.resolverOuCriarTime(
+        jogoApi.timeCasa,
+        new Map(),
+      );
+      updateData.timeCasaId = timeCasa.id;
+      this.logger.log(
+        `[SYNC] 🔄 Jogo ${jogo.id}: time casa atualizado → ${jogoApi.timeCasa.nome}`,
+      );
+    }
+
+    if (foraMudou) {
+      const timeFora = await this.resolverOuCriarTime(
+        jogoApi.timeFora,
+        new Map(),
+      );
+      updateData.timeForaId = timeFora.id;
+      this.logger.log(
+        `[SYNC] 🔄 Jogo ${jogo.id}: time fora atualizado → ${jogoApi.timeFora.nome}`,
+      );
+    }
+
+    return true;
+  }
+
+  /**
+   * Para jogos criados manualmente (sem externoId), tenta parear com a API
+   * usando rodada como critério. Usado em fases eliminatórias.
+   */
+  private matchPorRodada(jogo: any, jogoApiMap: Map<string, any>): any | null {
+    if (!jogo.rodada || !jogo.dataHora) return null;
+
+    const dataLocal = new Date(jogo.dataHora).getTime();
+
+    for (const [, jogoApi] of jogoApiMap) {
+      if (jogoApi._matched || !jogoApi.dataHora) continue;
+
+      const diffMs = Math.abs(dataLocal - new Date(jogoApi.dataHora).getTime());
+      if (diffMs > 30 * 60 * 1000) continue;
+
+      jogoApi._matched = true;
+      return jogoApi;
+    }
+
+    return null;
   }
 
   private detectarMudancaHorario(

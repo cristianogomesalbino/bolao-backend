@@ -15,4 +15,5 @@ export interface JogoRepository {
   buscarTodosPorTemporada(temporadaId: string): Promise<any[]>;
   buscarRodadaAtual(faseId: string): Promise<number | null>;
   buscarPendentesSync(faseIds: string[], limiteRodada: number): Promise<any[]>;
+  buscarJogosComTimePlaceholder(temporadaId: string, placeholderTimeId: string): Promise<any[]>;
 }
