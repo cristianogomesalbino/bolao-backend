@@ -139,7 +139,10 @@ export class GrupoUsuarioService {
     grupoId: string,
     maxParticipantes: number,
   ) {
-    const jaExiste = await this.grupoUsuarioRepo.buscarPorChave(usuarioId, grupoId);
+    const jaExiste = await this.grupoUsuarioRepo.buscarPorChave(
+      usuarioId,
+      grupoId,
+    );
 
     if (jaExiste) {
       throw new JaEstaNoGrupoError();
@@ -157,7 +160,10 @@ export class GrupoUsuarioService {
     grupoId: string,
     mensagem: string,
   ) {
-    const registro = await this.grupoUsuarioRepo.buscarPorChave(usuarioId, grupoId);
+    const registro = await this.grupoUsuarioRepo.buscarPorChave(
+      usuarioId,
+      grupoId,
+    );
 
     if (!registro) {
       throw ErrorFactory.notFound(mensagem);
@@ -195,10 +201,15 @@ export class GrupoUsuarioService {
       throw new NaoPodeAlterarRoleCriadorError();
     }
 
-    const registro = await this.grupoUsuarioRepo.buscarPorChave(usuarioId, grupoId);
+    const registro = await this.grupoUsuarioRepo.buscarPorChave(
+      usuarioId,
+      grupoId,
+    );
 
     if (!registro) {
-      throw ErrorFactory.notFound(GRUPO_USUARIO.MENSAGENS.USUARIO_NAO_ESTA_NO_GRUPO);
+      throw ErrorFactory.notFound(
+        GRUPO_USUARIO.MENSAGENS.USUARIO_NAO_ESTA_NO_GRUPO,
+      );
     }
 
     if (registro.role === novoRole) {

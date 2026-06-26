@@ -10,7 +10,6 @@ import {
   JogoNaoAceitaPalpitesError,
   PalpiteJaExisteError,
   PalpiteNaoPertenceAoUsuarioError,
-  PalpiteNaoEncontradoError,
 } from '@src/common/errors/domain-errors/palpites.errors';
 
 describe('PalpiteService — Property-Based Tests', () => {
@@ -73,11 +72,29 @@ describe('PalpiteService — Property-Based Tests', () => {
     ];
 
     faseRepo.items = [
-      { id: 'fase-1', temporadaId: 'temporada-1', nome: 'Fase 1', tipo: 'PONTOS_CORRIDOS', ordem: 1 },
+      {
+        id: 'fase-1',
+        temporadaId: 'temporada-1',
+        nome: 'Fase 1',
+        tipo: 'PONTOS_CORRIDOS',
+        ordem: 1,
+      },
     ];
 
     grupoRepo.items = [
-      { id: 'grupo-1', nome: 'Grupo 1', temporadaId: 'temporada-1', privado: false, codigoConvite: null, permitirPalpiteAutomatico: false, maxParticipantes: 50, permitirPalpiteDobrado: false, criadoPor: 'user-1', ativo: true, dataCriacao: new Date() },
+      {
+        id: 'grupo-1',
+        nome: 'Grupo 1',
+        temporadaId: 'temporada-1',
+        privado: false,
+        codigoConvite: null,
+        permitirPalpiteAutomatico: false,
+        maxParticipantes: 50,
+        permitirPalpiteDobrado: false,
+        criadoPor: 'user-1',
+        ativo: true,
+        dataCriacao: new Date(),
+      },
     ];
 
     grupoUsuarioRepo.usuarios = [
@@ -89,7 +106,13 @@ describe('PalpiteService — Property-Based Tests', () => {
       { usuarioId: 'user-2', grupoId: 'grupo-1', role: 'MEMBER' },
     ];
 
-    service = new PalpiteService(palpiteRepo, jogoRepo, grupoUsuarioRepo, faseRepo, grupoRepo);
+    service = new PalpiteService(
+      palpiteRepo,
+      jogoRepo,
+      grupoUsuarioRepo,
+      faseRepo,
+      grupoRepo,
+    );
   });
 
   const arbGols = fc.nat({ max: 20 });
@@ -98,17 +121,29 @@ describe('PalpiteService — Property-Based Tests', () => {
   // Valida: Requisitos 1.1, 4.1
   it('Propriedade 1: criar palpite e buscar retorna mesmos dados', async () => {
     await fc.assert(
-      fc.asyncProperty(arbGols, arbGols, fc.uuid(), async (golsCasa, golsFora, usuarioId) => {
-        palpiteRepo.items = [];
+      fc.asyncProperty(
+        arbGols,
+        arbGols,
+        fc.uuid(),
+        async (golsCasa, golsFora, usuarioId) => {
+          palpiteRepo.items = [];
 
-        const criado = await service.criar('jogo-agendado', { golsCasa, golsFora }, usuarioId);
-        const encontrado = await service.buscarMeuPalpitePorJogo('jogo-agendado', usuarioId);
+          const _criado = await service.criar(
+            'jogo-agendado',
+            { golsCasa, golsFora },
+            usuarioId,
+          );
+          const encontrado = await service.buscarMeuPalpitePorJogo(
+            'jogo-agendado',
+            usuarioId,
+          );
 
-        expect(encontrado.golsCasa).toBe(golsCasa);
-        expect(encontrado.golsFora).toBe(golsFora);
-        expect(encontrado.jogoId).toBe('jogo-agendado');
-        expect(encontrado.usuarioId).toBe(usuarioId);
-      }),
+          expect(encontrado.golsCasa).toBe(golsCasa);
+          expect(encontrado.golsFora).toBe(golsFora);
+          expect(encontrado.jogoId).toBe('jogo-agendado');
+          expect(encontrado.usuarioId).toBe(usuarioId);
+        },
+      ),
       { numRuns: 100 },
     );
   });
@@ -116,17 +151,26 @@ describe('PalpiteService — Property-Based Tests', () => {
   // Feature: modulo-palpites, Property 2: Rejeição por status do jogo
   // Valida: Requisitos 1.2, 2.2, 3.2
   it('Propriedade 2: operações rejeitadas quando jogo não é AGENDADO', async () => {
-    const arbStatusNaoAgendado = fc.constantFrom('jogo-em-andamento', 'jogo-finalizado', 'jogo-cancelado');
+    const arbStatusNaoAgendado = fc.constantFrom(
+      'jogo-em-andamento',
+      'jogo-finalizado',
+      'jogo-cancelado',
+    );
 
     await fc.assert(
-      fc.asyncProperty(arbStatusNaoAgendado, arbGols, arbGols, async (jogoId, gc, gf) => {
-        palpiteRepo.items = [];
+      fc.asyncProperty(
+        arbStatusNaoAgendado,
+        arbGols,
+        arbGols,
+        async (jogoId, gc, gf) => {
+          palpiteRepo.items = [];
 
-        // Criar deve rejeitar
-        await expect(
-          service.criar(jogoId, { golsCasa: gc, golsFora: gf }, 'user-1'),
-        ).rejects.toThrow(JogoNaoAceitaPalpitesError);
-      }),
+          // Criar deve rejeitar
+          await expect(
+            service.criar(jogoId, { golsCasa: gc, golsFora: gf }, 'user-1'),
+          ).rejects.toThrow(JogoNaoAceitaPalpitesError);
+        },
+      ),
       { numRuns: 100 },
     );
   });
@@ -135,15 +179,29 @@ describe('PalpiteService — Property-Based Tests', () => {
   // Valida: Requisitos 1.3, 7.1, 7.2
   it('Propriedade 3: segundo palpite para mesmo jogo e usuário rejeita', async () => {
     await fc.assert(
-      fc.asyncProperty(arbGols, arbGols, arbGols, arbGols, async (gc1, gf1, gc2, gf2) => {
-        palpiteRepo.items = [];
+      fc.asyncProperty(
+        arbGols,
+        arbGols,
+        arbGols,
+        arbGols,
+        async (gc1, gf1, gc2, gf2) => {
+          palpiteRepo.items = [];
 
-        await service.criar('jogo-agendado', { golsCasa: gc1, golsFora: gf1 }, 'user-1');
+          await service.criar(
+            'jogo-agendado',
+            { golsCasa: gc1, golsFora: gf1 },
+            'user-1',
+          );
 
-        await expect(
-          service.criar('jogo-agendado', { golsCasa: gc2, golsFora: gf2 }, 'user-1'),
-        ).rejects.toThrow(PalpiteJaExisteError);
-      }),
+          await expect(
+            service.criar(
+              'jogo-agendado',
+              { golsCasa: gc2, golsFora: gf2 },
+              'user-1',
+            ),
+          ).rejects.toThrow(PalpiteJaExisteError);
+        },
+      ),
       { numRuns: 100 },
     );
   });
@@ -152,15 +210,29 @@ describe('PalpiteService — Property-Based Tests', () => {
   // Valida: Requisito 2.1
   it('Propriedade 5: editar palpite atualiza dados corretamente', async () => {
     await fc.assert(
-      fc.asyncProperty(arbGols, arbGols, arbGols, arbGols, async (gc1, gf1, gc2, gf2) => {
-        palpiteRepo.items = [];
+      fc.asyncProperty(
+        arbGols,
+        arbGols,
+        arbGols,
+        arbGols,
+        async (gc1, gf1, gc2, gf2) => {
+          palpiteRepo.items = [];
 
-        const criado = await service.criar('jogo-agendado', { golsCasa: gc1, golsFora: gf1 }, 'user-1');
-        const atualizado = await service.atualizar(criado.id, { golsCasa: gc2, golsFora: gf2 }, 'user-1');
+          const criado = await service.criar(
+            'jogo-agendado',
+            { golsCasa: gc1, golsFora: gf1 },
+            'user-1',
+          );
+          const atualizado = await service.atualizar(
+            criado.id,
+            { golsCasa: gc2, golsFora: gf2 },
+            'user-1',
+          );
 
-        expect(atualizado.golsCasa).toBe(gc2);
-        expect(atualizado.golsFora).toBe(gf2);
-      }),
+          expect(atualizado.golsCasa).toBe(gc2);
+          expect(atualizado.golsFora).toBe(gf2);
+        },
+      ),
       { numRuns: 100 },
     );
   });
@@ -178,15 +250,19 @@ describe('PalpiteService — Property-Based Tests', () => {
           fc.pre(userA !== userB);
           palpiteRepo.items = [];
 
-          const criado = await service.criar('jogo-agendado', { golsCasa: gc, golsFora: gf }, userA);
+          const criado = await service.criar(
+            'jogo-agendado',
+            { golsCasa: gc, golsFora: gf },
+            userA,
+          );
 
           await expect(
             service.atualizar(criado.id, { golsCasa: 0, golsFora: 0 }, userB),
           ).rejects.toThrow(PalpiteNaoPertenceAoUsuarioError);
 
-          await expect(
-            service.remover(criado.id, userB),
-          ).rejects.toThrow(PalpiteNaoPertenceAoUsuarioError);
+          await expect(service.remover(criado.id, userB)).rejects.toThrow(
+            PalpiteNaoPertenceAoUsuarioError,
+          );
         },
       ),
       { numRuns: 100 },
@@ -200,10 +276,17 @@ describe('PalpiteService — Property-Based Tests', () => {
       fc.asyncProperty(arbGols, arbGols, async (gc, gf) => {
         palpiteRepo.items = [];
 
-        const criado = await service.criar('jogo-agendado', { golsCasa: gc, golsFora: gf }, 'user-1');
+        const criado = await service.criar(
+          'jogo-agendado',
+          { golsCasa: gc, golsFora: gf },
+          'user-1',
+        );
         await service.remover(criado.id, 'user-1');
 
-        const result = await service.buscarMeuPalpitePorJogo('jogo-agendado', 'user-1');
+        const result = await service.buscarMeuPalpitePorJogo(
+          'jogo-agendado',
+          'user-1',
+        );
         expect(result).toBeNull();
       }),
       { numRuns: 100 },
@@ -214,30 +297,60 @@ describe('PalpiteService — Property-Based Tests', () => {
   // Valida: Requisitos 5.1, 5.2
   it('Propriedade 8: jogo FINALIZADO mostra todos os palpites, senão só o próprio', async () => {
     await fc.assert(
-      fc.asyncProperty(arbGols, arbGols, arbGols, arbGols, async (gc1, gf1, gc2, gf2) => {
-        palpiteRepo.items = [];
+      fc.asyncProperty(
+        arbGols,
+        arbGols,
+        arbGols,
+        arbGols,
+        async (gc1, gf1, gc2, gf2) => {
+          palpiteRepo.items = [];
 
-        // Dois palpites no jogo finalizado
-        await palpiteRepo.criar({ usuarioId: 'user-1', jogoId: 'jogo-finalizado', golsCasa: gc1, golsFora: gf1 });
-        await palpiteRepo.criar({ usuarioId: 'user-2', jogoId: 'jogo-finalizado', golsCasa: gc2, golsFora: gf2 });
+          // Dois palpites no jogo finalizado
+          await palpiteRepo.criar({
+            usuarioId: 'user-1',
+            jogoId: 'jogo-finalizado',
+            golsCasa: gc1,
+            golsFora: gf1,
+          });
+          await palpiteRepo.criar({
+            usuarioId: 'user-2',
+            jogoId: 'jogo-finalizado',
+            golsCasa: gc2,
+            golsFora: gf2,
+          });
 
-        // Jogo FINALIZADO → todos visíveis
-        const todosFinalizado = await service.listarPorJogoNoGrupo(
-          'jogo-finalizado', 'grupo-1', 'user-1',
-        );
-        expect(todosFinalizado).toHaveLength(2);
+          // Jogo FINALIZADO → todos visíveis
+          const todosFinalizado = await service.listarPorJogoNoGrupo(
+            'jogo-finalizado',
+            'grupo-1',
+            'user-1',
+          );
+          expect(todosFinalizado).toHaveLength(2);
 
-        // Dois palpites no jogo agendado
-        await palpiteRepo.criar({ usuarioId: 'user-1', jogoId: 'jogo-agendado', golsCasa: gc1, golsFora: gf1 });
-        await palpiteRepo.criar({ usuarioId: 'user-2', jogoId: 'jogo-agendado', golsCasa: gc2, golsFora: gf2 });
+          // Dois palpites no jogo agendado
+          await palpiteRepo.criar({
+            usuarioId: 'user-1',
+            jogoId: 'jogo-agendado',
+            golsCasa: gc1,
+            golsFora: gf1,
+          });
+          await palpiteRepo.criar({
+            usuarioId: 'user-2',
+            jogoId: 'jogo-agendado',
+            golsCasa: gc2,
+            golsFora: gf2,
+          });
 
-        // Jogo AGENDADO → só o próprio
-        const apenasProprioAgendado = await service.listarPorJogoNoGrupo(
-          'jogo-agendado', 'grupo-1', 'user-1',
-        );
-        expect(apenasProprioAgendado).toHaveLength(1);
-        expect(apenasProprioAgendado[0].usuarioId).toBe('user-1');
-      }),
+          // Jogo AGENDADO → só o próprio
+          const apenasProprioAgendado = await service.listarPorJogoNoGrupo(
+            'jogo-agendado',
+            'grupo-1',
+            'user-1',
+          );
+          expect(apenasProprioAgendado).toHaveLength(1);
+          expect(apenasProprioAgendado[0].usuarioId).toBe('user-1');
+        },
+      ),
       { numRuns: 100 },
     );
   });
@@ -252,7 +365,11 @@ describe('PalpiteService — Property-Based Tests', () => {
       fc.asyncProperty(arbGols, arbGols, async (gc, gf) => {
         palpiteRepo.items = [];
 
-        const result = await service.criar('jogo-agendado', { golsCasa: gc, golsFora: gf }, 'user-1');
+        const result = await service.criar(
+          'jogo-agendado',
+          { golsCasa: gc, golsFora: gf },
+          'user-1',
+        );
 
         expect(result.golsCasa).toBe(gc);
         expect(result.golsFora).toBe(gf);
@@ -268,7 +385,11 @@ describe('PalpiteService — Property-Based Tests', () => {
       fc.asyncProperty(arbGols, arbGols, async (gc, gf) => {
         palpiteRepo.items = [];
 
-        await service.criar('jogo-agendado', { golsCasa: gc, golsFora: gf }, 'user-1');
+        await service.criar(
+          'jogo-agendado',
+          { golsCasa: gc, golsFora: gf },
+          'user-1',
+        );
 
         const result = await service.listarMeusPalpites('user-1');
         expect(result).toHaveLength(1);

@@ -25,7 +25,10 @@ import { GroupRoleGuard } from '../../../common/guards/group-role.guard';
 import { GroupRoles } from '../../../common/decorators/group-roles.decorator';
 import { PALPITES } from '../palpites.constants';
 import { GRUPO_ROLE } from '../../../common/constants/roles.constants';
-import { PalpiteDobradoPresenter, TokenDobroPresenter } from '../../../common/presenters';
+import {
+  PalpiteDobradoPresenter,
+  TokenDobroPresenter,
+} from '../../../common/presenters';
 
 @ApiTags(PALPITES.TAG)
 @Controller('grupos')
@@ -37,7 +40,9 @@ export class PalpiteDobradoController {
 
   @ApiOperation({ summary: 'Ativar palpite dobrado em um jogo' })
   @ApiResponse({ status: 201, description: 'Dobro ativado com sucesso.' })
-  @ApiBadRequestResponse({ description: 'Grupo não permite dobro ou sem fichas.' })
+  @ApiBadRequestResponse({
+    description: 'Grupo não permite dobro ou sem fichas.',
+  })
   @ApiConflictResponse({ description: 'Dobro já ativo para este jogo.' })
   @UseGuards(GroupRoleGuard)
   @GroupRoles(GRUPO_ROLE.ADMIN, GRUPO_ROLE.MEMBER)
@@ -90,7 +95,10 @@ export class PalpiteDobradoController {
     @Param('grupoId', new ParseUUIDCustomPipe('grupoId')) grupoId: string,
     @CurrentUser() user: { id: string },
   ) {
-    const historico = await this.tokenDobroService.listarHistorico(user.id, grupoId);
+    const historico = await this.tokenDobroService.listarHistorico(
+      user.id,
+      grupoId,
+    );
     return historico.map((t) => TokenDobroPresenter.toHttp(t));
   }
 
@@ -104,7 +112,10 @@ export class PalpiteDobradoController {
     @Param('grupoId', new ParseUUIDCustomPipe('grupoId')) grupoId: string,
     @Body() dto: ConfigurarDobroDto,
   ) {
-    await this.palpiteDobradoService.atualizarConfiguracaoDobro(grupoId, dto.permitirPalpiteDobrado);
+    await this.palpiteDobradoService.atualizarConfiguracaoDobro(
+      grupoId,
+      dto.permitirPalpiteDobrado,
+    );
     return { mensagem: PALPITES.MENSAGENS.CONFIGURACAO_ATUALIZADA };
   }
 
@@ -117,7 +128,10 @@ export class PalpiteDobradoController {
     @Param('grupoId', new ParseUUIDCustomPipe('grupoId')) grupoId: string,
     @CurrentUser() user: { id: string },
   ) {
-    const dobros = await this.palpiteDobradoService.listarMeusDobros(grupoId, user.id);
+    const dobros = await this.palpiteDobradoService.listarMeusDobros(
+      grupoId,
+      user.id,
+    );
     return dobros.map((d) => PalpiteDobradoPresenter.toHttp(d));
   }
 }

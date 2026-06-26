@@ -51,10 +51,7 @@ describe('GroupRoleGuard', () => {
     mockReflector.getAllAndOverride.mockReturnValue(['ADMIN']);
     mockPrisma.grupoUsuario.findUnique.mockResolvedValue(null);
 
-    const context = createMockContext(
-      { id: 'user-1' },
-      { grupoId: 'grupo-1' },
-    );
+    const context = createMockContext({ id: 'user-1' }, { grupoId: 'grupo-1' });
 
     await expect(guard.canActivate(context as any)).rejects.toThrow(
       ForbiddenException,
@@ -69,10 +66,7 @@ describe('GroupRoleGuard', () => {
       role: 'MEMBER',
     });
 
-    const context = createMockContext(
-      { id: 'user-1' },
-      { grupoId: 'grupo-1' },
-    );
+    const context = createMockContext({ id: 'user-1' }, { grupoId: 'grupo-1' });
 
     await expect(guard.canActivate(context as any)).rejects.toThrow(
       ForbiddenException,
@@ -87,10 +81,7 @@ describe('GroupRoleGuard', () => {
       role: 'ADMIN',
     });
 
-    const context = createMockContext(
-      { id: 'user-1' },
-      { grupoId: 'grupo-1' },
-    );
+    const context = createMockContext({ id: 'user-1' }, { grupoId: 'grupo-1' });
 
     const result = await guard.canActivate(context as any);
     expect(result).toBe(true);
@@ -104,10 +95,7 @@ describe('GroupRoleGuard', () => {
       role: 'MEMBER',
     });
 
-    const context = createMockContext(
-      { id: 'user-1' },
-      { grupoId: 'grupo-1' },
-    );
+    const context = createMockContext({ id: 'user-1' }, { grupoId: 'grupo-1' });
 
     const result = await guard.canActivate(context as any);
     expect(result).toBe(true);

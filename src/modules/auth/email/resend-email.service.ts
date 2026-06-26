@@ -12,7 +12,9 @@ export class ResendEmailService implements EmailService, OnModuleInit {
     const apiKey = process.env.RESEND_API_KEY;
 
     if (!apiKey) {
-      this.logger.warn('RESEND_API_KEY não configurada — emails não serão enviados');
+      this.logger.warn(
+        'RESEND_API_KEY não configurada — emails não serão enviados',
+      );
       return;
     }
 
@@ -22,7 +24,9 @@ export class ResendEmailService implements EmailService, OnModuleInit {
 
   async enviarRecuperacaoSenha(email: string, token: string): Promise<void> {
     if (!this.resend) {
-      this.logger.warn(`Email de recuperação não enviado para ${email} — RESEND_API_KEY ausente`);
+      this.logger.warn(
+        `Email de recuperação não enviado para ${email} — RESEND_API_KEY ausente`,
+      );
       return;
     }
 

@@ -8,12 +8,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
-  ApiQuery,
-} from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
 import { JogoService } from '../services/jogo.service';
 import { FutebolApiService } from '../services/futebol-api.service';
 import { CriarJogoDto } from '../dto/criar-jogo.dto';
@@ -70,8 +65,19 @@ export class JogoController {
 
   @ApiOperation({ summary: 'Listar jogos de uma fase' })
   @ApiResponse({ status: 200, description: 'Lista de jogos' })
-  @ApiQuery({ name: 'rodada', required: false, type: Number, description: 'Filtrar por rodada (default: rodada atual)' })
-  @ApiQuery({ name: 'status', required: false, type: String, description: 'Filtrar por status (AGENDADO, ADIADO, EM_ANDAMENTO, FINALIZADO, CANCELADO)' })
+  @ApiQuery({
+    name: 'rodada',
+    required: false,
+    type: Number,
+    description: 'Filtrar por rodada (default: rodada atual)',
+  })
+  @ApiQuery({
+    name: 'status',
+    required: false,
+    type: String,
+    description:
+      'Filtrar por status (AGENDADO, ADIADO, EM_ANDAMENTO, FINALIZADO, CANCELADO)',
+  })
   @Get('fases/:faseId/jogos')
   async listar(
     @Param('faseId', new ParseUUIDCustomPipe('faseId')) faseId: string,
@@ -79,9 +85,19 @@ export class JogoController {
     @Query('status') status?: string,
   ) {
     const rodadaNum = rodada ? Number.parseInt(rodada, 10) : undefined;
-    const { fase, jogos, rodadaAtual } = await this.jogoService.buscarPorFaseComDetalhes(faseId, rodadaNum, status);
+    const { fase, jogos, rodadaAtual } =
+      await this.jogoService.buscarPorFaseComDetalhes(
+        faseId,
+        rodadaNum,
+        status,
+      );
     return {
-      fase: { id: fase.id, nome: fase.nome, tipo: fase.tipo, ordem: fase.ordem },
+      fase: {
+        id: fase.id,
+        nome: fase.nome,
+        tipo: fase.tipo,
+        ordem: fase.ordem,
+      },
       rodadaAtual,
       jogos: jogos.map((j) => JogoPresenter.toHttp(j, fase.tipo)),
     };
@@ -90,16 +106,24 @@ export class JogoController {
   @ApiOperation({ summary: 'Buscar jogo por ID' })
   @ApiResponse({ status: 200, description: 'Jogo encontrado' })
   @Get('jogos/:id')
-  async buscarPorId(
-    @Param('id', new ParseUUIDCustomPipe('id')) id: string,
-  ) {
+  async buscarPorId(@Param('id', new ParseUUIDCustomPipe('id')) id: string) {
     const jogo = await this.jogoService.buscarPorId(id);
     return JogoPresenter.toHttp(jogo, jogo.fase?.tipo);
   }
 
-  @ApiOperation({ summary: 'Buscar classificação do Brasileirão via API externa' })
-  @ApiResponse({ status: 200, description: 'Classificação retornada com sucesso' })
-  @ApiQuery({ name: 'season', required: false, type: Number, description: 'Ano da temporada (default: ano atual)' })
+  @ApiOperation({
+    summary: 'Buscar classificação do Brasileirão via API externa',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Classificação retornada com sucesso',
+  })
+  @ApiQuery({
+    name: 'season',
+    required: false,
+    type: Number,
+    description: 'Ano da temporada (default: ano atual)',
+  })
   @Get('classificacao')
   async classificacao(@Query('season') season?: string) {
     const ano = season ? Number.parseInt(season, 10) : new Date().getFullYear();
@@ -117,8 +141,13 @@ export class JogoController {
     return this.jogoService.importarJogos(dto, user.id);
   }
 
-  @ApiOperation({ summary: 'Sincronizar placares via API externa (SUPER_ADMIN)' })
-  @ApiResponse({ status: 200, description: 'Placares sincronizados com sucesso' })
+  @ApiOperation({
+    summary: 'Sincronizar placares via API externa (SUPER_ADMIN)',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Placares sincronizados com sucesso',
+  })
   @UseGuards(SuperAdminGuard)
   @Post('fases/:faseId/jogos/sincronizar')
   async sincronizar(
@@ -135,9 +164,7 @@ export class JogoController {
   @ApiOperation({ summary: 'Resetar fonte de resultado para API_EXTERNA' })
   @ApiResponse({ status: 200, description: 'Fonte resetada com sucesso' })
   @Patch('jogos/:id/resetar-fonte')
-  async resetarFonte(
-    @Param('id', new ParseUUIDCustomPipe('id')) id: string,
-  ) {
+  async resetarFonte(@Param('id', new ParseUUIDCustomPipe('id')) id: string) {
     return JogoPresenter.toHttp(await this.jogoService.resetarFonte(id));
   }
 }

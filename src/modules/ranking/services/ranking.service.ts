@@ -46,7 +46,10 @@ interface PontuacaoJogoEntry {
 @Injectable()
 export class RankingService {
   private readonly logger = new Logger(RankingService.name);
-  private readonly cache = new Map<string, { dados: RankingEntry[]; expiraEm: number }>();
+  private readonly cache = new Map<
+    string,
+    { dados: RankingEntry[]; expiraEm: number }
+  >();
   private static readonly CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutos
 
   constructor(
@@ -79,7 +82,10 @@ export class RankingService {
   }
 
   private salvarNoCache(chave: string, dados: RankingEntry[]): void {
-    this.cache.set(chave, { dados, expiraEm: Date.now() + RankingService.CACHE_TTL_MS });
+    this.cache.set(chave, {
+      dados,
+      expiraEm: Date.now() + RankingService.CACHE_TTL_MS,
+    });
   }
 
   invalidarCache(grupoId: string): void {
@@ -88,7 +94,12 @@ export class RankingService {
     }
   }
 
-  async obterRankingFase(grupoId: string, faseId: string, rodada?: number, ateRodada?: number): Promise<RankingEntry[]> {
+  async obterRankingFase(
+    grupoId: string,
+    faseId: string,
+    rodada?: number,
+    ateRodada?: number,
+  ): Promise<RankingEntry[]> {
     const chaveCache = `${grupoId}:fase:${faseId}:r${rodada ?? 'all'}:ate${ateRodada ?? 'all'}`;
     const cacheado = this.obterDoCache(chaveCache);
     if (cacheado) return cacheado;
@@ -99,7 +110,8 @@ export class RankingService {
     const fase = await this.faseRepo.buscarPorId(faseId);
     if (!fase) throw new FaseNaoEncontradaError();
 
-    const membros = await this.grupoUsuarioRepo.listarPorGrupoComUsuario(grupoId);
+    const membros =
+      await this.grupoUsuarioRepo.listarPorGrupoComUsuario(grupoId);
 
     // ateRodada: busca todos os jogos da fase e filtra até a rodada
     // rodada: busca apenas jogos daquela rodada
@@ -113,7 +125,11 @@ export class RankingService {
       return true;
     });
 
-    const resultado = await this.calcularRanking(membros, jogosFinalizados, grupo);
+    const resultado = await this.calcularRanking(
+      membros,
+      jogosFinalizados,
+      grupo,
+    );
     this.salvarNoCache(chaveCache, resultado);
     return resultado;
   }
@@ -127,29 +143,45 @@ export class RankingService {
     if (!grupo) throw new GrupoNaoEncontradoError();
 
     const fases = await this.faseRepo.buscarPorTemporada(grupo.temporadaId);
-    const membros = await this.grupoUsuarioRepo.listarPorGrupoComUsuario(grupoId);
+    const membros =
+      await this.grupoUsuarioRepo.listarPorGrupoComUsuario(grupoId);
 
-    const todosJogosFinalizados = await this.buscarJogosFinalizadosDeFases(fases);
+    const todosJogosFinalizados =
+      await this.buscarJogosFinalizadosDeFases(fases);
 
-    const resultado = await this.calcularRanking(membros, todosJogosFinalizados, grupo);
+    const resultado = await this.calcularRanking(
+      membros,
+      todosJogosFinalizados,
+      grupo,
+    );
     this.salvarNoCache(chaveCache, resultado);
     return resultado;
   }
 
-  async obterDetalhamentoJogo(grupoId: string, jogoId: string): Promise<PontuacaoJogoEntry[]> {
+  async obterDetalhamentoJogo(
+    grupoId: string,
+    jogoId: string,
+  ): Promise<PontuacaoJogoEntry[]> {
     const grupo = await this.grupoRepo.buscarPorId(grupoId);
     if (!grupo) throw new GrupoNaoEncontradoError();
 
     const jogo = await this.jogoRepo.buscarPorId(jogoId);
     if (!jogo) throw new JogoNaoEncontradoError();
 
-    const membros = await this.grupoUsuarioRepo.listarPorGrupoComUsuario(grupoId);
+    const membros =
+      await this.grupoUsuarioRepo.listarPorGrupoComUsuario(grupoId);
     const usuarioIds = this.extrairUsuarioIds(membros);
 
-    const palpites = await this.palpiteRepo.listarPorJogoEUsuarios(jogoId, usuarioIds);
+    const palpites = await this.palpiteRepo.listarPorJogoEUsuarios(
+      jogoId,
+      usuarioIds,
+    );
     const palpiteMap = new Map(palpites.map((p: any) => [p.usuarioId, p]));
 
-    const dobrados = await this.palpiteDobradoRepo.listarPorJogosEGrupo([jogoId], grupoId);
+    const dobrados = await this.palpiteDobradoRepo.listarPorJogosEGrupo(
+      [jogoId],
+      grupoId,
+    );
     const dobradoSet = new Set(dobrados.map((d: any) => d.usuarioId));
 
     const jogoFinalizado = jogo.status === 'FINALIZADO';
@@ -173,7 +205,9 @@ export class RankingService {
       }
 
       const resultado = this.pontuacaoService.calcular(
-        palpite ? { golsCasa: palpite.golsCasa, golsFora: palpite.golsFora } : null,
+        palpite
+          ? { golsCasa: palpite.golsCasa, golsFora: palpite.golsFora }
+          : null,
         { golsCasa: jogo.golsCasa, golsFora: jogo.golsFora },
       );
 
@@ -220,12 +254,17 @@ export class RankingService {
     }
   }
 
-  async verificarPalpitesCompletos(faseId: string, grupoId: string): Promise<void> {
+  async verificarPalpitesCompletos(
+    faseId: string,
+    grupoId: string,
+  ): Promise<void> {
     const grupo = await this.grupoRepo.buscarPorId(grupoId);
     if (!grupo?.permitirPalpiteDobrado) return;
 
     const jogos = await this.jogoRepo.buscarPorFase(faseId);
-    const jogosNaoCancelados = jogos.filter((j: any) => j.status !== 'CANCELADO');
+    const jogosNaoCancelados = jogos.filter(
+      (j: any) => j.status !== 'CANCELADO',
+    );
 
     if (jogosNaoCancelados.length === 0) return;
 
@@ -233,11 +272,15 @@ export class RankingService {
       .map((j: any) => new Date(j.dataHora))
       .sort((a: Date, b: Date) => a.getTime() - b.getTime())[0];
 
-    const membros = await this.grupoUsuarioRepo.listarPorGrupoComUsuario(grupoId);
+    const membros =
+      await this.grupoUsuarioRepo.listarPorGrupoComUsuario(grupoId);
     const usuarioIds = this.extrairUsuarioIds(membros);
     const jogoIds = jogosNaoCancelados.map((j: any) => j.id);
 
-    const palpites = await this.palpiteRepo.listarPorJogosEUsuarios(jogoIds, usuarioIds);
+    const palpites = await this.palpiteRepo.listarPorJogosEUsuarios(
+      jogoIds,
+      usuarioIds,
+    );
 
     const palpitesPorUsuario = new Map<string, any[]>();
     for (const p of palpites) {
@@ -261,20 +304,39 @@ export class RankingService {
 
       if (!todosPalpitesAntesDoPrimeiroJogo) continue;
 
-      await this.concederTokenSeNaoExiste(membro.usuarioId, grupoId, 'PALPITES_COMPLETOS', faseId);
+      await this.concederTokenSeNaoExiste(
+        membro.usuarioId,
+        grupoId,
+        'PALPITES_COMPLETOS',
+        faseId,
+      );
     }
   }
 
-  private async processarPontuacaoJogoParaGrupo(jogo: any, fase: any, grupo: any): Promise<void> {
-    const membros = await this.grupoUsuarioRepo.listarPorGrupoComUsuario(grupo.id);
+  private async processarPontuacaoJogoParaGrupo(
+    jogo: any,
+    fase: any,
+    grupo: any,
+  ): Promise<void> {
+    const membros = await this.grupoUsuarioRepo.listarPorGrupoComUsuario(
+      grupo.id,
+    );
     const usuarioIds = this.extrairUsuarioIds(membros);
 
-    const palpites = await this.palpiteRepo.listarPorJogoEUsuarios(jogo.id, usuarioIds);
+    const palpites = await this.palpiteRepo.listarPorJogoEUsuarios(
+      jogo.id,
+      usuarioIds,
+    );
     const palpiteMap = new Map(palpites.map((p: any) => [p.usuarioId, p]));
 
     // Conceder TokenDobro por acerto em cheio
     if (grupo.permitirPalpiteDobrado) {
-      await this.concederTokensPorAcertoEmCheio(membros, palpiteMap, jogo, grupo.id);
+      await this.concederTokensPorAcertoEmCheio(
+        membros,
+        palpiteMap,
+        jogo,
+        grupo.id,
+      );
     }
 
     // Verificar se a fase encerrou
@@ -282,7 +344,9 @@ export class RankingService {
     const faseEncerrada = jogosDaFase.every(
       (j: any) => j.status === 'FINALIZADO' || j.status === 'CANCELADO',
     );
-    const temJogoFinalizado = jogosDaFase.some((j: any) => j.status === 'FINALIZADO');
+    const temJogoFinalizado = jogosDaFase.some(
+      (j: any) => j.status === 'FINALIZADO',
+    );
 
     if (faseEncerrada && temJogoFinalizado && grupo.permitirPalpiteDobrado) {
       await this.concederTokensPorPosicaoRanking(grupo, fase.id);
@@ -306,11 +370,19 @@ export class RankingService {
 
       if (resultado.categoriaAcerto !== 'ACERTO_EM_CHEIO') continue;
 
-      await this.concederTokenSeNaoExiste(membro.usuarioId, grupoId, 'ACERTO_EM_CHEIO', jogo.id);
+      await this.concederTokenSeNaoExiste(
+        membro.usuarioId,
+        grupoId,
+        'ACERTO_EM_CHEIO',
+        jogo.id,
+      );
     }
   }
 
-  private async concederTokensPorPosicaoRanking(grupo: any, faseId: string): Promise<void> {
+  private async concederTokensPorPosicaoRanking(
+    grupo: any,
+    faseId: string,
+  ): Promise<void> {
     const ranking = await this.obterRankingFase(grupo.id, faseId);
 
     if (ranking.length === 0) return;
@@ -322,11 +394,21 @@ export class RankingService {
     const ultimos = ranking.filter((r) => r.posicao === ultimaPosicao);
 
     for (const membro of primeiros) {
-      await this.concederTokenSeNaoExiste(membro.usuarioId, grupo.id, 'PRIMEIRO_RANKING', faseId);
+      await this.concederTokenSeNaoExiste(
+        membro.usuarioId,
+        grupo.id,
+        'PRIMEIRO_RANKING',
+        faseId,
+      );
     }
 
     for (const membro of ultimos) {
-      await this.concederTokenSeNaoExiste(membro.usuarioId, grupo.id, 'ULTIMO_RANKING', faseId);
+      await this.concederTokenSeNaoExiste(
+        membro.usuarioId,
+        grupo.id,
+        'ULTIMO_RANKING',
+        faseId,
+      );
     }
   }
 
@@ -340,82 +422,97 @@ export class RankingService {
     const usuarioIds = this.extrairUsuarioIds(membros);
     const jogoIds = jogosFinalizados.map((j: any) => j.id);
 
-    const palpites = jogoIds.length > 0
-      ? await this.palpiteRepo.listarPorJogosEUsuarios(jogoIds, usuarioIds)
-      : [];
+    const palpites =
+      jogoIds.length > 0
+        ? await this.palpiteRepo.listarPorJogosEUsuarios(jogoIds, usuarioIds)
+        : [];
 
-    const dobrados = jogoIds.length > 0 && grupo.permitirPalpiteDobrado
-      ? await this.palpiteDobradoRepo.listarPorJogosEGrupo(jogoIds, grupo.id)
-      : [];
+    const dobrados =
+      jogoIds.length > 0 && grupo.permitirPalpiteDobrado
+        ? await this.palpiteDobradoRepo.listarPorJogosEGrupo(jogoIds, grupo.id)
+        : [];
 
     const palpiteMap = this.buildPalpiteMap(palpites);
     const dobradoSet = this.buildDobradoSet(dobrados);
 
-    const entries: Omit<RankingEntry, 'posicao'>[] = membros.map((membro: any) => {
-      let pontuacaoTotal = 0;
-      let acertosEmCheio = 0;
-      let acertosDeResultado = 0;
-      let errosTotais = 0;
-      let somaTimestamps = 0;
-      let totalPalpitesComData = 0;
+    const entries: Omit<RankingEntry, 'posicao'>[] = membros.map(
+      (membro: any) => {
+        let pontuacaoTotal = 0;
+        let acertosEmCheio = 0;
+        let acertosDeResultado = 0;
+        let errosTotais = 0;
+        let somaTimestamps = 0;
+        let totalPalpitesComData = 0;
 
-      for (const jogo of jogosFinalizados) {
-        const palpite = palpiteMap.get(`${membro.usuarioId}:${jogo.id}`) || null;
-        const resultado = this.pontuacaoService.calcular(
-          palpite ? { golsCasa: palpite.golsCasa, golsFora: palpite.golsFora } : null,
-          { golsCasa: jogo.golsCasa, golsFora: jogo.golsFora },
-        );
+        for (const jogo of jogosFinalizados) {
+          const palpite =
+            palpiteMap.get(`${membro.usuarioId}:${jogo.id}`) || null;
+          const resultado = this.pontuacaoService.calcular(
+            palpite
+              ? { golsCasa: palpite.golsCasa, golsFora: palpite.golsFora }
+              : null,
+            { golsCasa: jogo.golsCasa, golsFora: jogo.golsFora },
+          );
 
-        const multiplicador =
-          grupo.permitirPalpiteDobrado && dobradoSet.has(`${membro.usuarioId}:${jogo.id}`)
-            ? RANKING.MULTIPLICADOR_DOBRO
-            : 1;
+          const multiplicador =
+            grupo.permitirPalpiteDobrado &&
+            dobradoSet.has(`${membro.usuarioId}:${jogo.id}`)
+              ? RANKING.MULTIPLICADOR_DOBRO
+              : 1;
 
-        const pontosFinais = (resultado.pontosBase ?? 0) * multiplicador;
-        pontuacaoTotal += pontosFinais;
+          const pontosFinais = (resultado.pontosBase ?? 0) * multiplicador;
+          pontuacaoTotal += pontosFinais;
 
-        switch (resultado.categoriaAcerto) {
-          case 'ACERTO_EM_CHEIO':
-            acertosEmCheio++;
-            break;
-          case 'ACERTO_DE_RESULTADO':
-            acertosDeResultado++;
-            break;
-          case 'ERRO_TOTAL':
-            errosTotais++;
-            break;
+          switch (resultado.categoriaAcerto) {
+            case 'ACERTO_EM_CHEIO':
+              acertosEmCheio++;
+              break;
+            case 'ACERTO_DE_RESULTADO':
+              acertosDeResultado++;
+              break;
+            case 'ERRO_TOTAL':
+              errosTotais++;
+              break;
+          }
+
+          if (palpite?.dataCriacao) {
+            somaTimestamps += new Date(palpite.dataCriacao).getTime();
+            totalPalpitesComData++;
+          }
         }
 
-        if (palpite?.dataCriacao) {
-          somaTimestamps += new Date(palpite.dataCriacao).getTime();
-          totalPalpitesComData++;
-        }
-      }
+        const mediaPalpiteEm =
+          totalPalpitesComData > 0
+            ? somaTimestamps / totalPalpitesComData
+            : Number.MAX_SAFE_INTEGER;
 
-      const mediaPalpiteEm = totalPalpitesComData > 0
-        ? somaTimestamps / totalPalpitesComData
-        : Number.MAX_SAFE_INTEGER;
-
-      return {
-        usuarioId: membro.usuarioId,
-        nomeUsuario: membro.usuario.nome,
-        pontuacaoTotal,
-        acertosEmCheio,
-        acertosDeResultado,
-        errosTotais,
-        mediaPalpiteEm,
-      };
-    });
+        return {
+          usuarioId: membro.usuarioId,
+          nomeUsuario: membro.usuario.nome,
+          pontuacaoTotal,
+          acertosEmCheio,
+          acertosDeResultado,
+          errosTotais,
+          mediaPalpiteEm,
+        };
+      },
+    );
 
     return this.ordenarEAtribuirPosicoes(entries);
   }
 
-  private ordenarEAtribuirPosicoes(entries: Omit<RankingEntry, 'posicao'>[]): RankingEntry[] {
+  private ordenarEAtribuirPosicoes(
+    entries: Omit<RankingEntry, 'posicao'>[],
+  ): RankingEntry[] {
     const sorted = [...entries].sort((a, b) => {
-      if (b.pontuacaoTotal !== a.pontuacaoTotal) return b.pontuacaoTotal - a.pontuacaoTotal;
-      if (b.acertosEmCheio !== a.acertosEmCheio) return b.acertosEmCheio - a.acertosEmCheio;
-      if (b.acertosDeResultado !== a.acertosDeResultado) return b.acertosDeResultado - a.acertosDeResultado;
-      if (a.mediaPalpiteEm !== b.mediaPalpiteEm) return a.mediaPalpiteEm - b.mediaPalpiteEm;
+      if (b.pontuacaoTotal !== a.pontuacaoTotal)
+        return b.pontuacaoTotal - a.pontuacaoTotal;
+      if (b.acertosEmCheio !== a.acertosEmCheio)
+        return b.acertosEmCheio - a.acertosEmCheio;
+      if (b.acertosDeResultado !== a.acertosDeResultado)
+        return b.acertosDeResultado - a.acertosDeResultado;
+      if (a.mediaPalpiteEm !== b.mediaPalpiteEm)
+        return a.mediaPalpiteEm - b.mediaPalpiteEm;
       return a.nomeUsuario.localeCompare(b.nomeUsuario);
     });
 
@@ -454,7 +551,11 @@ export class RankingService {
   private async concederTokenSeNaoExiste(
     usuarioId: string,
     grupoId: string,
-    motivo: 'PALPITES_COMPLETOS' | 'ACERTO_EM_CHEIO' | 'ULTIMO_RANKING' | 'PRIMEIRO_RANKING',
+    motivo:
+      | 'PALPITES_COMPLETOS'
+      | 'ACERTO_EM_CHEIO'
+      | 'ULTIMO_RANKING'
+      | 'PRIMEIRO_RANKING',
     referenciaId: string,
   ): Promise<void> {
     const tokenExistente = await this.tokenDobroRepo.buscarPorChave(
@@ -464,7 +565,12 @@ export class RankingService {
       referenciaId,
     );
     if (!tokenExistente) {
-      await this.tokenDobroService.concederToken(usuarioId, grupoId, motivo, referenciaId);
+      await this.tokenDobroService.concederToken(
+        usuarioId,
+        grupoId,
+        motivo,
+        referenciaId,
+      );
     }
   }
 }

@@ -1,5 +1,16 @@
+interface UsuarioData {
+  id: string;
+  nome: string;
+  email: string;
+  perfil: string;
+  ativo: boolean;
+  grupoFavoritoId: string | null;
+  dataCriacao: Date;
+  atualizadoEm: Date;
+}
+
 export class UsuarioPresenter {
-  static toHttp(usuario: any) {
+  static toHttp(usuario: UsuarioData) {
     return {
       id: usuario.id,
       nome: usuario.nome,

@@ -223,9 +223,9 @@ describe('GruposService', () => {
     });
 
     it('deve lançar GrupoNaoEncontradoError se grupo não existe', async () => {
-      await expect(service.buscarPorId('inexistente', 'user-1')).rejects.toThrow(
-        GrupoNaoEncontradoError,
-      );
+      await expect(
+        service.buscarPorId('inexistente', 'user-1'),
+      ).rejects.toThrow(GrupoNaoEncontradoError);
     });
 
     it('deve lançar GrupoNaoEncontradoError se grupo está inativo', async () => {
@@ -358,9 +358,9 @@ describe('GruposService', () => {
       );
       await grupoRepo.atualizar(created.id, { ativo: false });
 
-      await expect(
-        service.regenerarCodigoConvite(created.id),
-      ).rejects.toThrow(GrupoNaoEncontradoError);
+      await expect(service.regenerarCodigoConvite(created.id)).rejects.toThrow(
+        GrupoNaoEncontradoError,
+      );
     });
   });
 });

@@ -66,10 +66,22 @@ describe('PalpiteService — criarLote', () => {
     ];
 
     faseRepo.items = [
-      { id: 'fase-1', temporadaId: 'temporada-1', nome: 'Fase 1', tipo: 'PONTOS_CORRIDOS', ordem: 1 },
+      {
+        id: 'fase-1',
+        temporadaId: 'temporada-1',
+        nome: 'Fase 1',
+        tipo: 'PONTOS_CORRIDOS',
+        ordem: 1,
+      },
     ];
 
-    service = new PalpiteService(palpiteRepo, jogoRepo, grupoUsuarioRepo, faseRepo, grupoRepo);
+    service = new PalpiteService(
+      palpiteRepo,
+      jogoRepo,
+      grupoUsuarioRepo,
+      faseRepo,
+      grupoRepo,
+    );
   });
 
   it('deve criar múltiplos palpites com sucesso', async () => {
@@ -88,7 +100,12 @@ describe('PalpiteService — criarLote', () => {
 
   it('deve retornar erro parcial sem travar os demais', async () => {
     // Criar palpite existente pro jogo-1
-    await palpiteRepo.criar({ usuarioId: userId, jogoId: 'jogo-1', golsCasa: 1, golsFora: 0 });
+    await palpiteRepo.criar({
+      usuarioId: userId,
+      jogoId: 'jogo-1',
+      golsCasa: 1,
+      golsFora: 0,
+    });
 
     const palpites = [
       { jogoId: 'jogo-1', golsCasa: 2, golsFora: 1 }, // vai falhar — já existe
@@ -107,9 +124,7 @@ describe('PalpiteService — criarLote', () => {
   });
 
   it('deve retornar erro para jogo inexistente', async () => {
-    const palpites = [
-      { jogoId: 'inexistente', golsCasa: 1, golsFora: 0 },
-    ];
+    const palpites = [{ jogoId: 'inexistente', golsCasa: 1, golsFora: 0 }];
 
     const result = await service.criarLote(palpites, userId);
 

@@ -31,14 +31,19 @@ export class InMemoryLogSincronizacaoRepository implements LogSincronizacaoRepos
       .slice(0, limite);
   }
 
-  async buscarPorCampeonato(campeonatoSlug: string, limite = 10): Promise<LogSincronizacao[]> {
+  async buscarPorCampeonato(
+    campeonatoSlug: string,
+    limite = 10,
+  ): Promise<LogSincronizacao[]> {
     return [...this.items]
       .filter((l) => l.campeonatoSlug === campeonatoSlug)
       .sort((a, b) => b.dataCriacao.getTime() - a.dataCriacao.getTime())
       .slice(0, limite);
   }
 
-  async buscarUltimaSincronizacao(campeonatoSlug: string): Promise<LogSincronizacao | null> {
+  async buscarUltimaSincronizacao(
+    campeonatoSlug: string,
+  ): Promise<LogSincronizacao | null> {
     const logs = this.items
       .filter((l) => l.campeonatoSlug === campeonatoSlug)
       .sort((a, b) => b.dataCriacao.getTime() - a.dataCriacao.getTime());

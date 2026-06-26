@@ -85,7 +85,12 @@ describe('PalpiteDobradoService', () => {
   describe('ativarDobro', () => {
     it('deve ativar dobro com sucesso', async () => {
       // Conceder 1 token primeiro
-      await tokenDobroService.concederToken(userId, grupoId, 'ACERTO_EM_CHEIO', jogoId);
+      await tokenDobroService.concederToken(
+        userId,
+        grupoId,
+        'ACERTO_EM_CHEIO',
+        jogoId,
+      );
 
       const result = await service.ativarDobro(grupoId, jogoId, userId);
 
@@ -116,7 +121,12 @@ describe('PalpiteDobradoService', () => {
     });
 
     it('deve lançar JogoNaoAceitaDobroError se jogo não é AGENDADO', async () => {
-      await tokenDobroService.concederToken(userId, grupoId, 'ACERTO_EM_CHEIO', 'jogo-2');
+      await tokenDobroService.concederToken(
+        userId,
+        grupoId,
+        'ACERTO_EM_CHEIO',
+        'jogo-2',
+      );
 
       await expect(
         service.ativarDobro(grupoId, 'jogo-2', userId),
@@ -124,8 +134,18 @@ describe('PalpiteDobradoService', () => {
     });
 
     it('deve lançar DobroJaAtivoError se já existe dobro', async () => {
-      await tokenDobroService.concederToken(userId, grupoId, 'ACERTO_EM_CHEIO', jogoId);
-      await tokenDobroService.concederToken(userId, grupoId, 'PRIMEIRO_RANKING', 'fase-1');
+      await tokenDobroService.concederToken(
+        userId,
+        grupoId,
+        'ACERTO_EM_CHEIO',
+        jogoId,
+      );
+      await tokenDobroService.concederToken(
+        userId,
+        grupoId,
+        'PRIMEIRO_RANKING',
+        'fase-1',
+      );
       await service.ativarDobro(grupoId, jogoId, userId);
 
       await expect(
@@ -144,7 +164,12 @@ describe('PalpiteDobradoService', () => {
 
   describe('desativarDobro', () => {
     it('deve desativar dobro e devolver ficha', async () => {
-      await tokenDobroService.concederToken(userId, grupoId, 'ACERTO_EM_CHEIO', jogoId);
+      await tokenDobroService.concederToken(
+        userId,
+        grupoId,
+        'ACERTO_EM_CHEIO',
+        jogoId,
+      );
       await service.ativarDobro(grupoId, jogoId, userId);
 
       const saldoAntes = await tokenDobroService.calcularSaldo(userId, grupoId);
@@ -152,7 +177,10 @@ describe('PalpiteDobradoService', () => {
 
       await service.desativarDobro(grupoId, jogoId, userId);
 
-      const saldoDepois = await tokenDobroService.calcularSaldo(userId, grupoId);
+      const saldoDepois = await tokenDobroService.calcularSaldo(
+        userId,
+        grupoId,
+      );
       expect(saldoDepois).toBe(1);
     });
 
@@ -201,8 +229,18 @@ describe('PalpiteDobradoService', () => {
     });
 
     it('deve retornar dobros do usuário no grupo', async () => {
-      await tokenDobroService.concederToken(userId, grupoId, 'ACERTO_EM_CHEIO', jogoId);
-      await tokenDobroService.concederToken(userId, grupoId, 'PRIMEIRO_RANKING', 'fase-1');
+      await tokenDobroService.concederToken(
+        userId,
+        grupoId,
+        'ACERTO_EM_CHEIO',
+        jogoId,
+      );
+      await tokenDobroService.concederToken(
+        userId,
+        grupoId,
+        'PRIMEIRO_RANKING',
+        'fase-1',
+      );
       await service.ativarDobro(grupoId, jogoId, userId);
 
       const result = await service.listarMeusDobros(grupoId, userId);
@@ -215,11 +253,20 @@ describe('PalpiteDobradoService', () => {
 
     it('deve retornar apenas dobros do grupo solicitado', async () => {
       // Ativar dobro no grupo-1
-      await tokenDobroService.concederToken(userId, grupoId, 'ACERTO_EM_CHEIO', jogoId);
+      await tokenDobroService.concederToken(
+        userId,
+        grupoId,
+        'ACERTO_EM_CHEIO',
+        jogoId,
+      );
       await service.ativarDobro(grupoId, jogoId, userId);
 
       // Inserir dobro direto no outro grupo (simula outro contexto)
-      await palpiteDobradoRepo.criar({ usuarioId: userId, jogoId, grupoId: 'grupo-outro' });
+      await palpiteDobradoRepo.criar({
+        usuarioId: userId,
+        jogoId,
+        grupoId: 'grupo-outro',
+      });
 
       const result = await service.listarMeusDobros(grupoId, userId);
 

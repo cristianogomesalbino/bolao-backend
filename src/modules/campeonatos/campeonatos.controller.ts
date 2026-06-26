@@ -16,7 +16,9 @@ export class CampeonatosController {
   @ApiResponse({ status: 400, description: 'Dados inválidos' })
   @Post()
   async criarCampeonato(@Body() createCampeonatoDto: CreateCampeonatoDto) {
-    return CampeonatoPresenter.toHttp(await this.campeonatosService.criar(createCampeonatoDto));
+    return CampeonatoPresenter.toHttp(
+      await this.campeonatosService.criar(createCampeonatoDto),
+    );
   }
 
   @ApiOperation({ summary: 'Lista todos os campeonatos' })

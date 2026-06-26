@@ -7,7 +7,6 @@ import {
 } from '@nestjs/common';
 
 export class ErrorFactory {
-
   static badRequest(mensagem: string) {
     return new BadRequestException({
       erros: [

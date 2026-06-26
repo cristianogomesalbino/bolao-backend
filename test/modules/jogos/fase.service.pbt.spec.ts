@@ -16,7 +16,12 @@ describe('FaseService — Property-Based Tests', () => {
     faseRepo = new InMemoryFaseRepository();
     temporadaRepo = new InMemoryTemporadaRepository();
     temporadaRepo.items = [
-      { id: temporadaId, ano: 2026, campeonatoId: 'camp-1', dataCriacao: new Date() },
+      {
+        id: temporadaId,
+        ano: 2026,
+        campeonatoId: 'camp-1',
+        dataCriacao: new Date(),
+      },
     ];
     service = new FaseService(faseRepo, temporadaRepo);
   });
@@ -24,30 +29,38 @@ describe('FaseService — Property-Based Tests', () => {
   // Feature: modulo-jogos, Property 1: Round-trip de criação de Fase
   // Valida: Requisitos 1.1, 1.4
   it('Propriedade 1: criar fase e buscar por ID retorna mesmos dados', async () => {
-    const arbTipo = fc.constantFrom('PONTOS_CORRIDOS' as const, 'MATA_MATA' as const);
+    const arbTipo = fc.constantFrom(
+      'PONTOS_CORRIDOS' as const,
+      'MATA_MATA' as const,
+    );
     const arbNome = fc.string({ minLength: 1, maxLength: 50 });
     const arbOrdem = fc.integer({ min: 1, max: 100 });
 
     await fc.assert(
-      fc.asyncProperty(arbNome, arbTipo, arbOrdem, async (nome, tipo, ordem) => {
-        faseRepo.items = [];
+      fc.asyncProperty(
+        arbNome,
+        arbTipo,
+        arbOrdem,
+        async (nome, tipo, ordem) => {
+          faseRepo.items = [];
 
-        const criada = await service.criar({
-          temporadaId,
-          nome,
-          tipo,
-          ordem,
-          idaVolta: false,
-        });
+          const criada = await service.criar({
+            temporadaId,
+            nome,
+            tipo,
+            ordem,
+            idaVolta: false,
+          });
 
-        const encontrada = await service.buscarPorId(criada.id);
+          const encontrada = await service.buscarPorId(criada.id);
 
-        expect(encontrada.nome).toBe(nome);
-        expect(encontrada.tipo).toBe(tipo);
-        expect(encontrada.ordem).toBe(ordem);
-        expect(encontrada.idaVolta).toBe(false);
-        expect(encontrada.temporadaId).toBe(temporadaId);
-      }),
+          expect(encontrada.nome).toBe(nome);
+          expect(encontrada.tipo).toBe(tipo);
+          expect(encontrada.ordem).toBe(ordem);
+          expect(encontrada.idaVolta).toBe(false);
+          expect(encontrada.temporadaId).toBe(temporadaId);
+        },
+      ),
       { numRuns: 100 },
     );
   });

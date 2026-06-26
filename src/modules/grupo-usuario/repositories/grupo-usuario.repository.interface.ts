@@ -1,5 +1,8 @@
 export interface GrupoUsuarioRepository {
-  criar(data: { usuarioId: string; grupoId: string; role: string }, include?: any): Promise<any>;
+  criar(
+    data: { usuarioId: string; grupoId: string; role: string },
+    include?: any,
+  ): Promise<any>;
   buscarPorChave(usuarioId: string, grupoId: string): Promise<any>;
   listarPorGrupo(grupoId: string): Promise<any[]>;
   listarPorUsuario(usuarioId: string): Promise<any[]>;

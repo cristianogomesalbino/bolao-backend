@@ -1,5 +1,15 @@
+interface RankingEntry {
+  posicao: number;
+  usuarioId: string;
+  nomeUsuario: string;
+  pontuacaoTotal: number;
+  acertosEmCheio: number;
+  acertosDeResultado: number;
+  errosTotais: number;
+}
+
 export class RankingPresenter {
-  static toHttp(entry: any) {
+  static toHttp(entry: RankingEntry) {
     return {
       posicao: entry.posicao,
       usuarioId: entry.usuarioId,

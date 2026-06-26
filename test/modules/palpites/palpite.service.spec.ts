@@ -81,12 +81,36 @@ describe('PalpiteService', () => {
     ];
 
     faseRepo.items = [
-      { id: faseId, temporadaId, nome: 'Fase 1', tipo: 'PONTOS_CORRIDOS', ordem: 1 },
-      { id: 'fase-outra', temporadaId: 'temporada-outra', nome: 'Fase Outra', tipo: 'PONTOS_CORRIDOS', ordem: 1 },
+      {
+        id: faseId,
+        temporadaId,
+        nome: 'Fase 1',
+        tipo: 'PONTOS_CORRIDOS',
+        ordem: 1,
+      },
+      {
+        id: 'fase-outra',
+        temporadaId: 'temporada-outra',
+        nome: 'Fase Outra',
+        tipo: 'PONTOS_CORRIDOS',
+        ordem: 1,
+      },
     ];
 
     grupoRepo.items = [
-      { id: grupoId, nome: 'Grupo 1', temporadaId, privado: false, codigoConvite: null, permitirPalpiteAutomatico: false, maxParticipantes: 50, permitirPalpiteDobrado: false, criadoPor: userId, ativo: true, dataCriacao: new Date() },
+      {
+        id: grupoId,
+        nome: 'Grupo 1',
+        temporadaId,
+        privado: false,
+        codigoConvite: null,
+        permitirPalpiteAutomatico: false,
+        maxParticipantes: 50,
+        permitirPalpiteDobrado: false,
+        criadoPor: userId,
+        ativo: true,
+        dataCriacao: new Date(),
+      },
     ];
 
     grupoUsuarioRepo.usuarios = [
@@ -98,14 +122,24 @@ describe('PalpiteService', () => {
       { usuarioId: outroUserId, grupoId, role: 'MEMBER' },
     ];
 
-    service = new PalpiteService(palpiteRepo, jogoRepo, grupoUsuarioRepo, faseRepo, grupoRepo);
+    service = new PalpiteService(
+      palpiteRepo,
+      jogoRepo,
+      grupoUsuarioRepo,
+      faseRepo,
+      grupoRepo,
+    );
   });
 
   // ==================== criar ====================
 
   describe('criar', () => {
     it('deve criar palpite com dados válidos', async () => {
-      const result = await service.criar('jogo-1', { golsCasa: 2, golsFora: 1 }, userId);
+      const result = await service.criar(
+        'jogo-1',
+        { golsCasa: 2, golsFora: 1 },
+        userId,
+      );
 
       expect(result.golsCasa).toBe(2);
       expect(result.golsFora).toBe(1);
@@ -145,9 +179,17 @@ describe('PalpiteService', () => {
 
   describe('atualizar', () => {
     it('deve atualizar palpite com dados válidos', async () => {
-      const palpite = await service.criar('jogo-1', { golsCasa: 2, golsFora: 1 }, userId);
+      const palpite = await service.criar(
+        'jogo-1',
+        { golsCasa: 2, golsFora: 1 },
+        userId,
+      );
 
-      const result = await service.atualizar(palpite.id, { golsCasa: 3, golsFora: 0 }, userId);
+      const result = await service.atualizar(
+        palpite.id,
+        { golsCasa: 3, golsFora: 0 },
+        userId,
+      );
 
       expect(result.golsCasa).toBe(3);
       expect(result.golsFora).toBe(0);
@@ -160,10 +202,18 @@ describe('PalpiteService', () => {
     });
 
     it('deve lançar PalpiteNaoPertenceAoUsuarioError se outro usuário', async () => {
-      const palpite = await service.criar('jogo-1', { golsCasa: 2, golsFora: 1 }, userId);
+      const palpite = await service.criar(
+        'jogo-1',
+        { golsCasa: 2, golsFora: 1 },
+        userId,
+      );
 
       await expect(
-        service.atualizar(palpite.id, { golsCasa: 1, golsFora: 0 }, outroUserId),
+        service.atualizar(
+          palpite.id,
+          { golsCasa: 1, golsFora: 0 },
+          outroUserId,
+        ),
       ).rejects.toThrow(PalpiteNaoPertenceAoUsuarioError);
     });
 
@@ -185,7 +235,11 @@ describe('PalpiteService', () => {
 
   describe('remover', () => {
     it('deve remover palpite com sucesso', async () => {
-      const palpite = await service.criar('jogo-1', { golsCasa: 2, golsFora: 1 }, userId);
+      const palpite = await service.criar(
+        'jogo-1',
+        { golsCasa: 2, golsFora: 1 },
+        userId,
+      );
 
       await service.remover(palpite.id, userId);
 
@@ -194,17 +248,21 @@ describe('PalpiteService', () => {
     });
 
     it('deve lançar PalpiteNaoEncontradoError se palpite inexistente', async () => {
-      await expect(
-        service.remover('inexistente', userId),
-      ).rejects.toThrow(PalpiteNaoEncontradoError);
+      await expect(service.remover('inexistente', userId)).rejects.toThrow(
+        PalpiteNaoEncontradoError,
+      );
     });
 
     it('deve lançar PalpiteNaoPertenceAoUsuarioError se outro usuário', async () => {
-      const palpite = await service.criar('jogo-1', { golsCasa: 2, golsFora: 1 }, userId);
+      const palpite = await service.criar(
+        'jogo-1',
+        { golsCasa: 2, golsFora: 1 },
+        userId,
+      );
 
-      await expect(
-        service.remover(palpite.id, outroUserId),
-      ).rejects.toThrow(PalpiteNaoPertenceAoUsuarioError);
+      await expect(service.remover(palpite.id, outroUserId)).rejects.toThrow(
+        PalpiteNaoPertenceAoUsuarioError,
+      );
     });
 
     it('deve lançar JogoNaoAceitaPalpitesError se jogo não é AGENDADO', async () => {
@@ -215,9 +273,9 @@ describe('PalpiteService', () => {
         golsFora: 0,
       });
 
-      await expect(
-        service.remover(palpite.id, userId),
-      ).rejects.toThrow(JogoNaoAceitaPalpitesError);
+      await expect(service.remover(palpite.id, userId)).rejects.toThrow(
+        JogoNaoAceitaPalpitesError,
+      );
     });
   });
 
@@ -251,14 +309,20 @@ describe('PalpiteService', () => {
     it('deve retornar palpites do usuário para os jogos informados', async () => {
       await service.criar('jogo-1', { golsCasa: 2, golsFora: 1 }, userId);
 
-      const result = await service.buscarMeusPalpitesPorJogos(['jogo-1', 'jogo-2'], userId);
+      const result = await service.buscarMeusPalpitesPorJogos(
+        ['jogo-1', 'jogo-2'],
+        userId,
+      );
 
       expect(result).toHaveLength(1);
       expect(result[0].jogoId).toBe('jogo-1');
     });
 
     it('deve retornar lista vazia se não tem palpites', async () => {
-      const result = await service.buscarMeusPalpitesPorJogos(['jogo-1'], userId);
+      const result = await service.buscarMeusPalpitesPorJogos(
+        ['jogo-1'],
+        userId,
+      );
       expect(result).toHaveLength(0);
     });
 
@@ -274,7 +338,10 @@ describe('PalpiteService', () => {
       });
       await service.criar('jogo-4', { golsCasa: 0, golsFora: 0 }, userId);
 
-      const result = await service.buscarMeusPalpitesPorJogos(['jogo-1', 'jogo-4'], userId);
+      const result = await service.buscarMeusPalpitesPorJogos(
+        ['jogo-1', 'jogo-4'],
+        userId,
+      );
 
       expect(result).toHaveLength(2);
     });
@@ -282,7 +349,10 @@ describe('PalpiteService', () => {
     it('não deve retornar palpites de outro usuário', async () => {
       await service.criar('jogo-1', { golsCasa: 2, golsFora: 1 }, outroUserId);
 
-      const result = await service.buscarMeusPalpitesPorJogos(['jogo-1'], userId);
+      const result = await service.buscarMeusPalpitesPorJogos(
+        ['jogo-1'],
+        userId,
+      );
 
       expect(result).toHaveLength(0);
     });
@@ -292,8 +362,18 @@ describe('PalpiteService', () => {
 
   describe('buscarEstatisticasPorJogo', () => {
     it('deve calcular percentuais corretamente', async () => {
-      await palpiteRepo.criar({ usuarioId: userId, jogoId: 'jogo-3', golsCasa: 2, golsFora: 1 });
-      await palpiteRepo.criar({ usuarioId: outroUserId, jogoId: 'jogo-3', golsCasa: 0, golsFora: 1 });
+      await palpiteRepo.criar({
+        usuarioId: userId,
+        jogoId: 'jogo-3',
+        golsCasa: 2,
+        golsFora: 1,
+      });
+      await palpiteRepo.criar({
+        usuarioId: outroUserId,
+        jogoId: 'jogo-3',
+        golsCasa: 0,
+        golsFora: 1,
+      });
 
       const result = await service.buscarEstatisticasPorJogo('jogo-3', grupoId);
 
@@ -322,8 +402,18 @@ describe('PalpiteService', () => {
     });
 
     it('deve contar empates corretamente', async () => {
-      await palpiteRepo.criar({ usuarioId: userId, jogoId: 'jogo-3', golsCasa: 1, golsFora: 1 });
-      await palpiteRepo.criar({ usuarioId: outroUserId, jogoId: 'jogo-3', golsCasa: 0, golsFora: 0 });
+      await palpiteRepo.criar({
+        usuarioId: userId,
+        jogoId: 'jogo-3',
+        golsCasa: 1,
+        golsFora: 1,
+      });
+      await palpiteRepo.criar({
+        usuarioId: outroUserId,
+        jogoId: 'jogo-3',
+        golsCasa: 0,
+        golsFora: 0,
+      });
 
       const result = await service.buscarEstatisticasPorJogo('jogo-3', grupoId);
 
@@ -362,26 +452,58 @@ describe('PalpiteService', () => {
 
   describe('listarPorJogoNoGrupo', () => {
     it('jogo FINALIZADO deve retornar palpites de todos os membros', async () => {
-      await palpiteRepo.criar({ usuarioId: userId, jogoId: 'jogo-3', golsCasa: 2, golsFora: 1 });
-      await palpiteRepo.criar({ usuarioId: outroUserId, jogoId: 'jogo-3', golsCasa: 1, golsFora: 0 });
+      await palpiteRepo.criar({
+        usuarioId: userId,
+        jogoId: 'jogo-3',
+        golsCasa: 2,
+        golsFora: 1,
+      });
+      await palpiteRepo.criar({
+        usuarioId: outroUserId,
+        jogoId: 'jogo-3',
+        golsCasa: 1,
+        golsFora: 0,
+      });
 
-      const result = await service.listarPorJogoNoGrupo('jogo-3', grupoId, userId);
+      const result = await service.listarPorJogoNoGrupo(
+        'jogo-3',
+        grupoId,
+        userId,
+      );
 
       expect(result).toHaveLength(2);
     });
 
     it('jogo AGENDADO deve retornar apenas palpite do próprio usuário', async () => {
-      await palpiteRepo.criar({ usuarioId: userId, jogoId: 'jogo-1', golsCasa: 2, golsFora: 1 });
-      await palpiteRepo.criar({ usuarioId: outroUserId, jogoId: 'jogo-1', golsCasa: 1, golsFora: 0 });
+      await palpiteRepo.criar({
+        usuarioId: userId,
+        jogoId: 'jogo-1',
+        golsCasa: 2,
+        golsFora: 1,
+      });
+      await palpiteRepo.criar({
+        usuarioId: outroUserId,
+        jogoId: 'jogo-1',
+        golsCasa: 1,
+        golsFora: 0,
+      });
 
-      const result = await service.listarPorJogoNoGrupo('jogo-1', grupoId, userId);
+      const result = await service.listarPorJogoNoGrupo(
+        'jogo-1',
+        grupoId,
+        userId,
+      );
 
       expect(result).toHaveLength(1);
       expect(result[0].usuarioId).toBe(userId);
     });
 
     it('jogo AGENDADO sem palpite próprio deve retornar lista vazia', async () => {
-      const result = await service.listarPorJogoNoGrupo('jogo-1', grupoId, userId);
+      const result = await service.listarPorJogoNoGrupo(
+        'jogo-1',
+        grupoId,
+        userId,
+      );
 
       expect(result).toHaveLength(0);
     });
@@ -403,9 +525,10 @@ describe('PalpiteService', () => {
 
   describe('criarLote', () => {
     it('deve criar palpites em lote com sucesso', async () => {
-      const result = await service.criarLote([
-        { jogoId: 'jogo-1', golsCasa: 2, golsFora: 1 },
-      ], userId);
+      const result = await service.criarLote(
+        [{ jogoId: 'jogo-1', golsCasa: 2, golsFora: 1 }],
+        userId,
+      );
 
       expect(result).toHaveLength(1);
       expect(result[0].sucesso).toBe(true);
@@ -413,18 +536,20 @@ describe('PalpiteService', () => {
     });
 
     it('deve retornar erro para jogo inexistente no lote', async () => {
-      const result = await service.criarLote([
-        { jogoId: 'inexistente', golsCasa: 1, golsFora: 0 },
-      ], userId);
+      const result = await service.criarLote(
+        [{ jogoId: 'inexistente', golsCasa: 1, golsFora: 0 }],
+        userId,
+      );
 
       expect(result[0].sucesso).toBe(false);
       expect(result[0].erro).toBeDefined();
     });
 
     it('deve retornar erro para jogo que não aceita palpites', async () => {
-      const result = await service.criarLote([
-        { jogoId: 'jogo-2', golsCasa: 1, golsFora: 0 },
-      ], userId);
+      const result = await service.criarLote(
+        [{ jogoId: 'jogo-2', golsCasa: 1, golsFora: 0 }],
+        userId,
+      );
 
       expect(result[0].sucesso).toBe(false);
     });
@@ -432,9 +557,10 @@ describe('PalpiteService', () => {
     it('deve retornar erro para palpite duplicado no lote', async () => {
       await service.criar('jogo-1', { golsCasa: 2, golsFora: 1 }, userId);
 
-      const result = await service.criarLote([
-        { jogoId: 'jogo-1', golsCasa: 3, golsFora: 0 },
-      ], userId);
+      const result = await service.criarLote(
+        [{ jogoId: 'jogo-1', golsCasa: 3, golsFora: 0 }],
+        userId,
+      );
 
       expect(result[0].sucesso).toBe(false);
     });

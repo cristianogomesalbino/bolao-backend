@@ -1,13 +1,14 @@
-import {
-  Injectable,
-  CanActivate,
-  ExecutionContext,
-} from '@nestjs/common';
+import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import { Request } from 'express';
 import { PrismaService } from '../../prisma/prisma.service';
 import { GROUP_ROLES_KEY } from '../decorators/group-roles.decorator';
 import { ErrorFactory } from '../errors/error.factory';
 import { AUTH } from '../../modules/auth/auth.constants';
+
+interface AuthenticatedRequest extends Request {
+  user: { id: string; email: string; perfil: string };
+}
 
 @Injectable()
 export class GroupRoleGuard implements CanActivate {
@@ -26,9 +27,9 @@ export class GroupRoleGuard implements CanActivate {
       return true;
     }
 
-    const request = context.switchToHttp().getRequest();
+    const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
     const user = request.user;
-    const grupoId = request.params.grupoId;
+    const grupoId = request.params.grupoId as string;
 
     if (!grupoId) {
       throw ErrorFactory.forbidden(AUTH.MENSAGENS.GRUPO_NAO_INFORMADO);

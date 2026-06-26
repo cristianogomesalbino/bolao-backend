@@ -20,7 +20,11 @@ export class TokenDobroService {
   async concederToken(
     usuarioId: string,
     grupoId: string,
-    motivo: 'PALPITES_COMPLETOS' | 'ACERTO_EM_CHEIO' | 'ULTIMO_RANKING' | 'PRIMEIRO_RANKING',
+    motivo:
+      | 'PALPITES_COMPLETOS'
+      | 'ACERTO_EM_CHEIO'
+      | 'ULTIMO_RANKING'
+      | 'PRIMEIRO_RANKING',
     referenciaId: string,
   ) {
     return this.tokenDobroRepo.criar({
@@ -32,7 +36,11 @@ export class TokenDobroService {
     });
   }
 
-  async registrarUtilizacao(usuarioId: string, grupoId: string, referenciaId: string) {
+  async registrarUtilizacao(
+    usuarioId: string,
+    grupoId: string,
+    referenciaId: string,
+  ) {
     return this.tokenDobroRepo.criar({
       usuarioId,
       grupoId,
@@ -42,7 +50,11 @@ export class TokenDobroService {
     });
   }
 
-  async registrarCancelamento(usuarioId: string, grupoId: string, referenciaId: string) {
+  async registrarCancelamento(
+    usuarioId: string,
+    grupoId: string,
+    referenciaId: string,
+  ) {
     return this.tokenDobroRepo.criar({
       usuarioId,
       grupoId,

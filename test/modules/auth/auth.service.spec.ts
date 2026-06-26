@@ -76,29 +76,43 @@ describe('AuthService', () => {
 
       expect(result.accessToken).toBe('at');
       expect(result.refreshToken).toBe('rt');
-      expect(mockRefreshTokenRepo.removerPorUsuarioId).toHaveBeenCalledWith('user-1');
+      expect(mockRefreshTokenRepo.removerPorUsuarioId).toHaveBeenCalledWith(
+        'user-1',
+      );
     });
 
     it('deve lançar se usuário não existe', async () => {
       mockUsuarioRepo.buscarPorEmail.mockResolvedValue(null);
-      await expect(service.login('x@x.com', '1')).rejects.toThrow(CredenciaisInvalidasError);
+      await expect(service.login('x@x.com', '1')).rejects.toThrow(
+        CredenciaisInvalidasError,
+      );
     });
 
     it('deve lançar se usuário inativo', async () => {
-      mockUsuarioRepo.buscarPorEmail.mockResolvedValue({ ...mockUsuario, ativo: false });
-      await expect(service.login('joao@example.com', '1')).rejects.toThrow(CredenciaisInvalidasError);
+      mockUsuarioRepo.buscarPorEmail.mockResolvedValue({
+        ...mockUsuario,
+        ativo: false,
+      });
+      await expect(service.login('joao@example.com', '1')).rejects.toThrow(
+        CredenciaisInvalidasError,
+      );
     });
 
     it('deve lançar se senha inválida', async () => {
       mockUsuarioRepo.buscarPorEmail.mockResolvedValue(mockUsuario);
       (bcrypt.compare as any).mockResolvedValue(false);
-      await expect(service.login('joao@example.com', 'x')).rejects.toThrow(CredenciaisInvalidasError);
+      await expect(service.login('joao@example.com', 'x')).rejects.toThrow(
+        CredenciaisInvalidasError,
+      );
     });
   });
 
   describe('refresh', () => {
     it('deve retornar novo access token', async () => {
-      mockRefreshTokenRepo.buscarPorToken.mockResolvedValue({ token: 'v', usuarioId: 'user-1' });
+      mockRefreshTokenRepo.buscarPorToken.mockResolvedValue({
+        token: 'v',
+        usuarioId: 'user-1',
+      });
       mockJwt.verify.mockReturnValue({});
       mockUsuarioRepo.buscarPorId.mockResolvedValue(mockUsuario);
       mockJwt.sign.mockReturnValue('new-at');
@@ -106,7 +120,9 @@ describe('AuthService', () => {
     });
 
     it('deve lançar se vazio', async () => {
-      await expect(service.refresh('')).rejects.toThrow(RefreshNaoFornecidoError);
+      await expect(service.refresh('')).rejects.toThrow(
+        RefreshNaoFornecidoError,
+      );
     });
 
     it('deve lançar se não existe', async () => {
@@ -115,16 +131,26 @@ describe('AuthService', () => {
     });
 
     it('deve lançar se expirado', async () => {
-      mockRefreshTokenRepo.buscarPorToken.mockResolvedValue({ token: 'e', usuarioId: 'user-1' });
-      mockJwt.verify.mockImplementation(() => { throw new Error(); });
+      mockRefreshTokenRepo.buscarPorToken.mockResolvedValue({
+        token: 'e',
+        usuarioId: 'user-1',
+      });
+      mockJwt.verify.mockImplementation(() => {
+        throw new Error();
+      });
       await expect(service.refresh('e')).rejects.toThrow(RefreshExpiradoError);
     });
 
     it('deve lançar se usuário deletado', async () => {
-      mockRefreshTokenRepo.buscarPorToken.mockResolvedValue({ token: 'v', usuarioId: 'x' });
+      mockRefreshTokenRepo.buscarPorToken.mockResolvedValue({
+        token: 'v',
+        usuarioId: 'x',
+      });
       mockJwt.verify.mockReturnValue({});
       mockUsuarioRepo.buscarPorId.mockResolvedValue(null);
-      await expect(service.refresh('v')).rejects.toThrow(UsuarioNaoEncontradoError);
+      await expect(service.refresh('v')).rejects.toThrow(
+        UsuarioNaoEncontradoError,
+      );
     });
   });
 
@@ -136,14 +162,18 @@ describe('AuthService', () => {
     });
 
     it('deve lançar se vazio', async () => {
-      await expect(service.logout('')).rejects.toThrow(RefreshNaoFornecidoError);
+      await expect(service.logout('')).rejects.toThrow(
+        RefreshNaoFornecidoError,
+      );
     });
   });
 
   describe('solicitarRecuperacao', () => {
     it('deve criar token de recuperação para usuário ativo', async () => {
       mockUsuarioRepo.buscarPorEmail.mockResolvedValue(mockUsuario);
-      mockRecuperacaoSenhaRepo.invalidarPorUsuarioId.mockResolvedValue(undefined);
+      mockRecuperacaoSenhaRepo.invalidarPorUsuarioId.mockResolvedValue(
+        undefined,
+      );
       mockRecuperacaoSenhaRepo.criar.mockResolvedValue({});
       mockEmailService.enviarRecuperacaoSenha.mockResolvedValue(undefined);
 
@@ -161,18 +191,24 @@ describe('AuthService', () => {
 
     it('deve invalidar tokens anteriores não usados', async () => {
       mockUsuarioRepo.buscarPorEmail.mockResolvedValue(mockUsuario);
-      mockRecuperacaoSenhaRepo.invalidarPorUsuarioId.mockResolvedValue(undefined);
+      mockRecuperacaoSenhaRepo.invalidarPorUsuarioId.mockResolvedValue(
+        undefined,
+      );
       mockRecuperacaoSenhaRepo.criar.mockResolvedValue({});
 
       await service.solicitarRecuperacao('joao@example.com');
 
-      expect(mockRecuperacaoSenhaRepo.invalidarPorUsuarioId).toHaveBeenCalledWith('user-1');
+      expect(
+        mockRecuperacaoSenhaRepo.invalidarPorUsuarioId,
+      ).toHaveBeenCalledWith('user-1');
     });
 
     it('deve retornar mesma mensagem para email inexistente (sem vazar informação)', async () => {
       mockUsuarioRepo.buscarPorEmail.mockResolvedValue(null);
 
-      const result = await service.solicitarRecuperacao('naoexiste@example.com');
+      const result = await service.solicitarRecuperacao(
+        'naoexiste@example.com',
+      );
 
       expect(result.mensagem).toBe(
         'Se o email estiver cadastrado, você receberá as instruções de recuperação',
@@ -182,7 +218,10 @@ describe('AuthService', () => {
     });
 
     it('deve retornar mesma mensagem para usuário inativo (sem vazar informação)', async () => {
-      mockUsuarioRepo.buscarPorEmail.mockResolvedValue({ ...mockUsuario, ativo: false });
+      mockUsuarioRepo.buscarPorEmail.mockResolvedValue({
+        ...mockUsuario,
+        ativo: false,
+      });
 
       const result = await service.solicitarRecuperacao('joao@example.com');
 
@@ -203,7 +242,9 @@ describe('AuthService', () => {
     };
 
     it('deve resetar senha e invalidar token', async () => {
-      mockRecuperacaoSenhaRepo.buscarPorToken.mockResolvedValue(mockRecuperacao);
+      mockRecuperacaoSenhaRepo.buscarPorToken.mockResolvedValue(
+        mockRecuperacao,
+      );
       (bcrypt.hash as any).mockResolvedValue('new-hash');
       mockUsuarioRepo.atualizar.mockResolvedValue({});
       mockRecuperacaoSenhaRepo.marcarComoUsado.mockResolvedValue(undefined);
@@ -212,9 +253,15 @@ describe('AuthService', () => {
       const result = await service.resetarSenha('valid-token', 'novaSenha123');
 
       expect(result.mensagem).toBe('Senha alterada com sucesso');
-      expect(mockUsuarioRepo.atualizar).toHaveBeenCalledWith('user-1', { senha: 'new-hash' });
-      expect(mockRecuperacaoSenhaRepo.marcarComoUsado).toHaveBeenCalledWith('rec-1');
-      expect(mockRefreshTokenRepo.removerPorUsuarioId).toHaveBeenCalledWith('user-1');
+      expect(mockUsuarioRepo.atualizar).toHaveBeenCalledWith('user-1', {
+        senha: 'new-hash',
+      });
+      expect(mockRecuperacaoSenhaRepo.marcarComoUsado).toHaveBeenCalledWith(
+        'rec-1',
+      );
+      expect(mockRefreshTokenRepo.removerPorUsuarioId).toHaveBeenCalledWith(
+        'user-1',
+      );
     });
 
     it('deve lançar se token não existe', async () => {

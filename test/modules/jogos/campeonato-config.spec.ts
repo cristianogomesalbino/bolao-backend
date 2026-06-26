@@ -37,11 +37,15 @@ describe('CampeonatoConfig', () => {
     });
 
     it('deve lançar CampeonatoNaoSuportadoError para slug inválido', () => {
-      expect(() => obterCampeonatoConfig('invalido')).toThrow(CampeonatoNaoSuportadoError);
+      expect(() => obterCampeonatoConfig('invalido')).toThrow(
+        CampeonatoNaoSuportadoError,
+      );
     });
 
     it('deve lançar CampeonatoNaoSuportadoError para string vazia', () => {
-      expect(() => obterCampeonatoConfig('')).toThrow(CampeonatoNaoSuportadoError);
+      expect(() => obterCampeonatoConfig('')).toThrow(
+        CampeonatoNaoSuportadoError,
+      );
     });
   });
 
@@ -67,7 +71,9 @@ describe('CampeonatoConfig', () => {
     it('deve lançar FaseSlugInvalidaError para slug inexistente', () => {
       const config = obterCampeonatoConfig('copa-do-mundo-2026');
 
-      expect(() => obterFaseConfig(config, 'fase-invalida')).toThrow(FaseSlugInvalidaError);
+      expect(() => obterFaseConfig(config, 'fase-invalida')).toThrow(
+        FaseSlugInvalidaError,
+      );
     });
   });
 
@@ -109,28 +115,40 @@ describe('CampeonatoConfig', () => {
 
     it('deve aceitar rodada 38 para Brasileirão', () => {
       const config = obterCampeonatoConfig('brasileirao');
-      const fase = obterFaseConfig(config, 'fase-unica-campeonato-brasileiro-2026');
+      const fase = obterFaseConfig(
+        config,
+        'fase-unica-campeonato-brasileiro-2026',
+      );
 
       expect(() => validarRodada(38, fase)).not.toThrow();
     });
 
     it('deve rejeitar rodada 39 para Brasileirão', () => {
       const config = obterCampeonatoConfig('brasileirao');
-      const fase = obterFaseConfig(config, 'fase-unica-campeonato-brasileiro-2026');
+      const fase = obterFaseConfig(
+        config,
+        'fase-unica-campeonato-brasileiro-2026',
+      );
 
       expect(() => validarRodada(39, fase)).toThrow(RodadaForaDoLimiteError);
     });
 
     it('deve rejeitar rodada 0', () => {
       const config = obterCampeonatoConfig('brasileirao');
-      const fase = obterFaseConfig(config, 'fase-unica-campeonato-brasileiro-2026');
+      const fase = obterFaseConfig(
+        config,
+        'fase-unica-campeonato-brasileiro-2026',
+      );
 
       expect(() => validarRodada(0, fase)).toThrow(RodadaForaDoLimiteError);
     });
 
     it('deve rejeitar rodada negativa', () => {
       const config = obterCampeonatoConfig('brasileirao');
-      const fase = obterFaseConfig(config, 'fase-unica-campeonato-brasileiro-2026');
+      const fase = obterFaseConfig(
+        config,
+        'fase-unica-campeonato-brasileiro-2026',
+      );
 
       expect(() => validarRodada(-1, fase)).toThrow(RodadaForaDoLimiteError);
     });
@@ -147,8 +165,12 @@ describe('CampeonatoConfig', () => {
 
     it('fases da Copa devem ter maxRodadas corretos', () => {
       const config = CAMPEONATO_CONFIGS['copa-do-mundo-2026'];
-      const faseGrupos = config.fases.find((f) => f.slug === COPA_FASES.FASE_DE_GRUPOS);
-      const faseOitavas = config.fases.find((f) => f.slug === COPA_FASES.OITAVAS);
+      const faseGrupos = config.fases.find(
+        (f) => f.slug === COPA_FASES.FASE_DE_GRUPOS,
+      );
+      const faseOitavas = config.fases.find(
+        (f) => f.slug === COPA_FASES.OITAVAS,
+      );
       const faseFinal = config.fases.find((f) => f.slug === COPA_FASES.FINAL);
 
       expect(faseGrupos?.maxRodadas).toBe(3);
@@ -158,7 +180,9 @@ describe('CampeonatoConfig', () => {
 
     it('todas as fases eliminatórias devem ter tipo MATA_MATA', () => {
       const config = CAMPEONATO_CONFIGS['copa-do-mundo-2026'];
-      const eliminatorias = config.fases.filter((f) => f.slug !== COPA_FASES.FASE_DE_GRUPOS);
+      const eliminatorias = config.fases.filter(
+        (f) => f.slug !== COPA_FASES.FASE_DE_GRUPOS,
+      );
 
       for (const fase of eliminatorias) {
         expect(fase.tipo).toBe('MATA_MATA');

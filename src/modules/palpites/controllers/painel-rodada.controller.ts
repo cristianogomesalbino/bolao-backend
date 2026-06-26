@@ -13,9 +13,19 @@ import { GRUPO_ROLE } from '../../../common/constants/roles.constants';
 export class PainelRodadaController {
   constructor(private readonly painelRodadaService: PainelRodadaService) {}
 
-  @ApiOperation({ summary: 'Obter painel da rodada com jogos, palpites e dobros' })
-  @ApiResponse({ status: 200, description: 'Painel da rodada retornado com sucesso.' })
-  @ApiQuery({ name: 'rodada', required: false, type: Number, description: 'Filtrar por rodada' })
+  @ApiOperation({
+    summary: 'Obter painel da rodada com jogos, palpites e dobros',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Painel da rodada retornado com sucesso.',
+  })
+  @ApiQuery({
+    name: 'rodada',
+    required: false,
+    type: Number,
+    description: 'Filtrar por rodada',
+  })
   @UseGuards(GroupRoleGuard)
   @GroupRoles(GRUPO_ROLE.ADMIN, GRUPO_ROLE.MEMBER)
   @Get(':grupoId/painel-rodada/:faseId')
@@ -26,6 +36,11 @@ export class PainelRodadaController {
     @CurrentUser() user: { id: string },
   ) {
     const rodadaNum = rodada ? Number.parseInt(rodada, 10) : undefined;
-    return this.painelRodadaService.obterPainelRodada(grupoId, faseId, user.id, rodadaNum);
+    return this.painelRodadaService.obterPainelRodada(
+      grupoId,
+      faseId,
+      user.id,
+      rodadaNum,
+    );
   }
 }

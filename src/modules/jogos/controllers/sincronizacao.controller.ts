@@ -1,5 +1,18 @@
-import { Controller, Get, Headers, Post, Query, UseGuards } from '@nestjs/common';
-import { ApiOperation, ApiResponse, ApiTags, ApiQuery, ApiHeader } from '@nestjs/swagger';
+import {
+  Controller,
+  Get,
+  Headers,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
+import {
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+  ApiQuery,
+  ApiHeader,
+} from '@nestjs/swagger';
 import { SuperAdminGuard } from '../../../common/guards/super-admin.guard';
 import { Public } from '../../../common/decorators/public.decorator';
 import { SincronizacaoAutomaticaService } from '../services/sincronizacao-automatica.service';
@@ -43,12 +56,14 @@ export class SincronizacaoController {
 
   @ApiOperation({ summary: 'Forçar sincronização (SUPER_ADMIN ou API Key)' })
   @ApiResponse({ status: 200, description: 'Sincronização executada' })
-  @ApiHeader({ name: 'x-sync-api-key', required: false, description: 'API key para trigger externo' })
+  @ApiHeader({
+    name: 'x-sync-api-key',
+    required: false,
+    description: 'API key para trigger externo',
+  })
   @Public()
   @Post('forcar')
-  async forcarSincronizacao(
-    @Headers('x-sync-api-key') apiKey?: string,
-  ) {
+  async forcarSincronizacao(@Headers('x-sync-api-key') apiKey?: string) {
     // Validar acesso: ou via JWT (SUPER_ADMIN) ou via API key
     const syncApiKey = this.configService.get<string>('SYNC_API_KEY');
 

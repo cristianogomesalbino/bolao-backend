@@ -59,7 +59,9 @@ export class NaoPodeRemoverCriadorError extends DomainError {
 
 export class NaoPodeAlterarRoleCriadorError extends DomainError {
   readonly statusCode = 403;
-  constructor(mensagem = GRUPO_USUARIO.MENSAGENS.NAO_PODE_ALTERAR_ROLE_CRIADOR) {
+  constructor(
+    mensagem = GRUPO_USUARIO.MENSAGENS.NAO_PODE_ALTERAR_ROLE_CRIADOR,
+  ) {
     super(mensagem);
   }
 }

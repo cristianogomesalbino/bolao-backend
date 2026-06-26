@@ -8,7 +8,12 @@ describe('PainelRodadaController', () => {
   };
 
   const painelData = {
-    fase: { id: 'fase-1', nome: 'Brasileirão', tipo: 'PONTOS_CORRIDOS', ordem: 1 },
+    fase: {
+      id: 'fase-1',
+      nome: 'Brasileirão',
+      tipo: 'PONTOS_CORRIDOS',
+      ordem: 1,
+    },
     saldoTokensDobro: 2,
     permitirPalpiteDobrado: true,
     jogos: [
@@ -35,17 +40,34 @@ describe('PainelRodadaController', () => {
   it('deve chamar service.obterPainelRodada sem rodada', async () => {
     mockPainelRodadaService.obterPainelRodada.mockResolvedValue(painelData);
 
-    const result = await controller.obterPainelRodada('grupo-1', 'fase-1', undefined, { id: 'user-1' });
+    const result = await controller.obterPainelRodada(
+      'grupo-1',
+      'fase-1',
+      undefined,
+      { id: 'user-1' },
+    );
 
-    expect(mockPainelRodadaService.obterPainelRodada).toHaveBeenCalledWith('grupo-1', 'fase-1', 'user-1', undefined);
+    expect(mockPainelRodadaService.obterPainelRodada).toHaveBeenCalledWith(
+      'grupo-1',
+      'fase-1',
+      'user-1',
+      undefined,
+    );
     expect(result).toEqual(painelData);
   });
 
   it('deve passar rodada como número quando query param informado', async () => {
     mockPainelRodadaService.obterPainelRodada.mockResolvedValue(painelData);
 
-    await controller.obterPainelRodada('grupo-1', 'fase-1', '5', { id: 'user-1' });
+    await controller.obterPainelRodada('grupo-1', 'fase-1', '5', {
+      id: 'user-1',
+    });
 
-    expect(mockPainelRodadaService.obterPainelRodada).toHaveBeenCalledWith('grupo-1', 'fase-1', 'user-1', 5);
+    expect(mockPainelRodadaService.obterPainelRodada).toHaveBeenCalledWith(
+      'grupo-1',
+      'fase-1',
+      'user-1',
+      5,
+    );
   });
 });

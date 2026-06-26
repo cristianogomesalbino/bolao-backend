@@ -63,7 +63,12 @@ describe('ChaveamentoService', () => {
     );
   });
 
-  function criarJogoGrupo(timeCasaId: string, timeForaId: string, golsCasa: number, golsFora: number) {
+  function criarJogoGrupo(
+    timeCasaId: string,
+    timeForaId: string,
+    golsCasa: number,
+    golsFora: number,
+  ) {
     jogoRepo.items.push({
       id: crypto.randomUUID(),
       faseId: 'fase-grupo-e',
@@ -87,7 +92,11 @@ describe('ChaveamentoService', () => {
     });
   }
 
-  function criarJogo16Avos(rodada: number, timeCasaId: string, timeForaId: string) {
+  function criarJogo16Avos(
+    rodada: number,
+    timeCasaId: string,
+    timeForaId: string,
+  ) {
     const jogo = {
       id: crypto.randomUUID(),
       faseId: 'fase-16-avos',
@@ -197,14 +206,44 @@ describe('ChaveamentoService', () => {
       jogo.dataHora = new Date('2026-06-29T20:30:00Z');
 
       // Simular API retornando jogo com time definido
-      const jogoApiRaw = { id: 'ext-123', equipes: { mandante: { id: '999', nome_popular: 'Alemanha', sigla: 'ALE', escudo: null }, visitante: { id: '888', nome_popular: 'Bósnia', sigla: 'BOS', escudo: null } }, data_realizacao: '2026-06-29T17:30:00-03:00', transmissao: null };
-      vi.mocked(futebolApiService.buscarJogosPorRodadas).mockResolvedValue([jogoApiRaw]);
+      const jogoApiRaw = {
+        id: 'ext-123',
+        equipes: {
+          mandante: {
+            id: '999',
+            nome_popular: 'Alemanha',
+            sigla: 'ALE',
+            escudo: null,
+          },
+          visitante: {
+            id: '888',
+            nome_popular: 'Bósnia',
+            sigla: 'BOS',
+            escudo: null,
+          },
+        },
+        data_realizacao: '2026-06-29T17:30:00-03:00',
+        transmissao: null,
+      };
+      vi.mocked(futebolApiService.buscarJogosPorRodadas).mockResolvedValue([
+        jogoApiRaw,
+      ]);
       vi.mocked(futebolApiService.normalizarJogo).mockReturnValue({
         externoId: 'ext-123',
         dataHora: '2026-06-29T20:30:00.000Z',
         status: 'AGENDADO',
-        timeCasa: { externoId: '999', nome: 'Alemanha', sigla: 'ALE', escudo: null },
-        timeFora: { externoId: '888', nome: 'Bósnia', sigla: 'BOS', escudo: null },
+        timeCasa: {
+          externoId: '999',
+          nome: 'Alemanha',
+          sigla: 'ALE',
+          escudo: null,
+        },
+        timeFora: {
+          externoId: '888',
+          nome: 'Bósnia',
+          sigla: 'BOS',
+          escudo: null,
+        },
         golsCasa: null,
         golsFora: null,
         penaltisCasa: null,
@@ -212,8 +251,24 @@ describe('ChaveamentoService', () => {
       });
 
       // Criar times no repo para resolver
-      timeRepo.items.push({ id: 'ale-real-id', nome: 'Alemanha', sigla: 'ALE', externoId: '999', dataCriacao: new Date(), atualizadoEm: new Date(), escudo: null });
-      timeRepo.items.push({ id: 'bos-real-id', nome: 'Bósnia', sigla: 'BOS', externoId: '888', dataCriacao: new Date(), atualizadoEm: new Date(), escudo: null });
+      timeRepo.items.push({
+        id: 'ale-real-id',
+        nome: 'Alemanha',
+        sigla: 'ALE',
+        externoId: '999',
+        dataCriacao: new Date(),
+        atualizadoEm: new Date(),
+        escudo: null,
+      });
+      timeRepo.items.push({
+        id: 'bos-real-id',
+        nome: 'Bósnia',
+        sigla: 'BOS',
+        externoId: '888',
+        dataCriacao: new Date(),
+        atualizadoEm: new Date(),
+        escudo: null,
+      });
 
       await service.preencherProximaFaseEliminatoria(TEMPORADA_ID, config);
 
@@ -226,7 +281,9 @@ describe('ChaveamentoService', () => {
       simularGrupoECompleto();
       const jogo = criarJogo16Avos(3, TBD_ID, TBD_ID);
 
-      vi.mocked(futebolApiService.buscarJogosPorRodadas).mockRejectedValue(new Error('timeout'));
+      vi.mocked(futebolApiService.buscarJogosPorRodadas).mockRejectedValue(
+        new Error('timeout'),
+      );
 
       await service.preencherProximaFaseEliminatoria(TEMPORADA_ID, config);
 
@@ -234,5 +291,175 @@ describe('ChaveamentoService', () => {
       // Fallback: 1ºE resolvido via classificação
       expect(atualizado?.timeCasaId).toBe('ale-id');
     });
+  });
+});
+
+describe('ChaveamentoService - propagarVencedoresParaProximaFase (3º lugar e final)', () => {
+  let service: ChaveamentoService;
+  let jogoRepo: InMemoryJogoRepository;
+  let faseRepo: InMemoryFaseRepository;
+  let timeRepo: InMemoryTimeRepository;
+  let futebolApiService: FutebolApiService;
+
+  const TEMPORADA_ID = 'temp-copa-2026';
+
+  const faseSemis = {
+    id: 'fase-semis',
+    nome: 'Semifinais',
+    tipo: 'MATA_MATA',
+    ordem: 16,
+    idaVolta: false,
+    temporadaId: TEMPORADA_ID,
+    dataCriacao: new Date(),
+  };
+
+  const faseTerceiro = {
+    id: 'fase-terceiro',
+    nome: 'Disputa 3º Lugar',
+    tipo: 'MATA_MATA',
+    ordem: 17,
+    idaVolta: false,
+    temporadaId: TEMPORADA_ID,
+    dataCriacao: new Date(),
+  };
+
+  const faseFinal = {
+    id: 'fase-final',
+    nome: 'Final',
+    tipo: 'MATA_MATA',
+    ordem: 18,
+    idaVolta: false,
+    temporadaId: TEMPORADA_ID,
+    dataCriacao: new Date(),
+  };
+
+  beforeEach(() => {
+    jogoRepo = new InMemoryJogoRepository();
+    faseRepo = new InMemoryFaseRepository();
+    timeRepo = new InMemoryTimeRepository();
+    faseRepo.items = [{ ...faseSemis }, { ...faseTerceiro }, { ...faseFinal }];
+
+    // Time TBD
+    timeRepo.items.push({
+      id: TBD_ID,
+      nome: 'A Definir',
+      sigla: 'TBD',
+      escudo: null,
+      externoId: null,
+      dataCriacao: new Date(),
+      atualizadoEm: new Date(),
+    });
+
+    futebolApiService = {
+      buscarJogosPorRodada: vi.fn().mockResolvedValue([]),
+      buscarJogosPorRodadas: vi.fn().mockResolvedValue([]),
+      normalizarJogo: vi.fn(),
+      buscarJogosPorIds: vi.fn(),
+      mapearStatus: vi.fn(),
+    } as any;
+
+    service = new ChaveamentoService(
+      jogoRepo,
+      faseRepo,
+      timeRepo,
+      futebolApiService,
+    );
+  });
+
+  function criarJogoSemifinal(
+    rodada: number,
+    timeCasaId: string,
+    timeForaId: string,
+    vencedorId: string | null,
+    status = 'FINALIZADO',
+  ) {
+    jogoRepo.items.push({
+      id: `semi-${rodada}`,
+      faseId: 'fase-semis',
+      timeCasaId,
+      timeForaId,
+      dataHora: new Date('2026-07-14T19:00:00Z'),
+      rodada,
+      status,
+      golsCasa: vencedorId === timeCasaId ? 2 : 1,
+      golsFora: vencedorId === timeForaId ? 2 : 1,
+      vencedorId,
+      temProrrogacao: false,
+      temPenaltis: false,
+      penaltisCasa: null,
+      penaltisFora: null,
+      fonteResultado: 'API_EXTERNA',
+      externoId: null,
+      criadoPor: 'sistema-chaveamento',
+      dataCriacao: new Date(),
+      atualizadoEm: new Date(),
+    });
+  }
+
+  it('cria jogo de 3º lugar com PERDEDORES das semifinais', async () => {
+    // Semi 1: BRA vence ALE → perdedor = ALE
+    criarJogoSemifinal(1, 'bra-id', 'ale-id', 'bra-id');
+    // Semi 2: ARG vence FRA → perdedor = FRA
+    criarJogoSemifinal(2, 'arg-id', 'fra-id', 'arg-id');
+
+    await service.propagarVencedoresParaProximaFase(TEMPORADA_ID);
+
+    const jogoTerceiro = jogoRepo.items.find(
+      (j) => j.faseId === 'fase-terceiro',
+    );
+    expect(jogoTerceiro).toBeDefined();
+    // Perdedores: ALE (perdeu semi 1) e FRA (perdeu semi 2)
+    expect(jogoTerceiro?.timeCasaId).toBe('ale-id');
+    expect(jogoTerceiro?.timeForaId).toBe('fra-id');
+  });
+
+  it('cria jogo da final com VENCEDORES das semifinais', async () => {
+    // Semi 1: BRA vence ALE
+    criarJogoSemifinal(1, 'bra-id', 'ale-id', 'bra-id');
+    // Semi 2: ARG vence FRA
+    criarJogoSemifinal(2, 'arg-id', 'fra-id', 'arg-id');
+
+    await service.propagarVencedoresParaProximaFase(TEMPORADA_ID);
+
+    const jogoFinal = jogoRepo.items.find((j) => j.faseId === 'fase-final');
+    expect(jogoFinal).toBeDefined();
+    // Vencedores: BRA (venceu semi 1) e ARG (venceu semi 2)
+    expect(jogoFinal?.timeCasaId).toBe('bra-id');
+    expect(jogoFinal?.timeForaId).toBe('arg-id');
+  });
+
+  it('não cria jogos se semis não estão finalizadas', async () => {
+    criarJogoSemifinal(1, 'bra-id', 'ale-id', null, 'EM_ANDAMENTO');
+    criarJogoSemifinal(2, 'arg-id', 'fra-id', null, 'AGENDADO');
+
+    await service.propagarVencedoresParaProximaFase(TEMPORADA_ID);
+
+    const jogoTerceiro = jogoRepo.items.find(
+      (j) => j.faseId === 'fase-terceiro',
+    );
+    const jogoFinal = jogoRepo.items.find((j) => j.faseId === 'fase-final');
+    expect(jogoTerceiro).toBeUndefined();
+    expect(jogoFinal).toBeUndefined();
+  });
+
+  it('cria jogo parcial quando apenas 1 semi está finalizada', async () => {
+    criarJogoSemifinal(1, 'bra-id', 'ale-id', 'bra-id');
+    criarJogoSemifinal(2, 'arg-id', 'fra-id', null, 'AGENDADO');
+
+    await service.propagarVencedoresParaProximaFase(TEMPORADA_ID);
+
+    const jogoTerceiro = jogoRepo.items.find(
+      (j) => j.faseId === 'fase-terceiro',
+    );
+    expect(jogoTerceiro).toBeDefined();
+    // Perdedor da semi 1 (ALE) + TBD
+    expect(jogoTerceiro?.timeCasaId).toBe('ale-id');
+    expect(jogoTerceiro?.timeForaId).toBe(TBD_ID);
+
+    const jogoFinal = jogoRepo.items.find((j) => j.faseId === 'fase-final');
+    expect(jogoFinal).toBeDefined();
+    // Vencedor da semi 1 (BRA) + TBD
+    expect(jogoFinal?.timeCasaId).toBe('bra-id');
+    expect(jogoFinal?.timeForaId).toBe(TBD_ID);
   });
 });

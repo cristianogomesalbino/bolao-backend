@@ -1,5 +1,13 @@
+interface PalpiteDobradoData {
+  id: string;
+  usuarioId: string;
+  jogoId: string;
+  grupoId: string;
+  dataCriacao: Date;
+}
+
 export class PalpiteDobradoPresenter {
-  static toHttp(palpiteDobrado: any) {
+  static toHttp(palpiteDobrado: PalpiteDobradoData) {
     return {
       id: palpiteDobrado.id,
       usuarioId: palpiteDobrado.usuarioId,

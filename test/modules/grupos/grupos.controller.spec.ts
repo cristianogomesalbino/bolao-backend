@@ -61,7 +61,10 @@ describe('GruposController', () => {
     it('deve passar filtros para o service', async () => {
       mockService.buscarTodos.mockResolvedValue([]);
 
-      await controller.buscarGrupos({ membro: true, privado: false, busca: 'bolao' }, { id: 'user-1' });
+      await controller.buscarGrupos(
+        { membro: true, privado: false, busca: 'bolao' },
+        { id: 'user-1' },
+      );
 
       expect(mockService.buscarTodos).toHaveBeenCalledWith(
         { membro: true, privado: false, busca: 'bolao' },
@@ -72,43 +75,69 @@ describe('GruposController', () => {
 
   describe('buscarGrupoPorId', () => {
     it('deve retornar grupo completo via presenter quando é membro', async () => {
-      mockService.buscarPorId.mockResolvedValue({ ...grupoData, ehMembro: true });
+      mockService.buscarPorId.mockResolvedValue({
+        ...grupoData,
+        ehMembro: true,
+      });
 
-      const result = await controller.buscarGrupoPorId('grupo-1', { id: 'user-1' });
+      const result = await controller.buscarGrupoPorId('grupo-1', {
+        id: 'user-1',
+      });
 
       expect(mockService.buscarPorId).toHaveBeenCalledWith('grupo-1', 'user-1');
-      expect(result).toEqual(GrupoPresenter.toHttpMembro({ ...grupoData, ehMembro: true }));
+      expect(result).toEqual(
+        GrupoPresenter.toHttpMembro({ ...grupoData, ehMembro: true }),
+      );
       expect(result).toHaveProperty('codigoConvite', 'ABCD1234');
     });
 
     it('deve retornar dados básicos quando não é membro', async () => {
-      mockService.buscarPorId.mockResolvedValue({ ...grupoData, ehMembro: false });
+      mockService.buscarPorId.mockResolvedValue({
+        ...grupoData,
+        ehMembro: false,
+      });
 
-      const result = await controller.buscarGrupoPorId('grupo-1', { id: 'user-2' });
+      const result = await controller.buscarGrupoPorId('grupo-1', {
+        id: 'user-2',
+      });
 
-      expect(result).toEqual(GrupoPresenter.toHttpBasico({ ...grupoData, ehMembro: false }));
+      expect(result).toEqual(
+        GrupoPresenter.toHttpBasico({ ...grupoData, ehMembro: false }),
+      );
       expect(result).not.toHaveProperty('codigoConvite');
     });
   });
 
   describe('atualizarGrupo', () => {
     it('deve chamar service.atualizar e retornar via presenter', async () => {
-      mockService.atualizar.mockResolvedValue({ ...grupoData, nome: 'Novo Nome' });
+      mockService.atualizar.mockResolvedValue({
+        ...grupoData,
+        nome: 'Novo Nome',
+      });
 
-      const result = await controller.atualizarGrupo('grupo-1', { nome: 'Novo Nome' } as any);
+      const result = await controller.atualizarGrupo('grupo-1', {
+        nome: 'Novo Nome',
+      } as any);
 
-      expect(mockService.atualizar).toHaveBeenCalledWith('grupo-1', { nome: 'Novo Nome' });
+      expect(mockService.atualizar).toHaveBeenCalledWith('grupo-1', {
+        nome: 'Novo Nome',
+      });
       expect(result.nome).toBe('Novo Nome');
     });
   });
 
   describe('regenerarConvite', () => {
     it('deve chamar service.regenerarCodigoConvite e retornar novo código', async () => {
-      mockService.regenerarCodigoConvite.mockResolvedValue({ ...grupoData, codigoConvite: 'NOVO1234' });
+      mockService.regenerarCodigoConvite.mockResolvedValue({
+        ...grupoData,
+        codigoConvite: 'NOVO1234',
+      });
 
       const result = await controller.regenerarConvite('grupo-1');
 
-      expect(mockService.regenerarCodigoConvite).toHaveBeenCalledWith('grupo-1');
+      expect(mockService.regenerarCodigoConvite).toHaveBeenCalledWith(
+        'grupo-1',
+      );
       expect(result.codigoConvite).toBe('NOVO1234');
       expect(result.mensagem).toBe(GRUPOS.MENSAGENS.CONVITE_REGENERADO);
     });
@@ -116,7 +145,9 @@ describe('GruposController', () => {
 
   describe('removerGrupo', () => {
     it('deve chamar service.remover', async () => {
-      mockService.remover.mockResolvedValue({ mensagem: GRUPOS.MENSAGENS.GRUPO_EXCLUIDO });
+      mockService.remover.mockResolvedValue({
+        mensagem: GRUPOS.MENSAGENS.GRUPO_EXCLUIDO,
+      });
 
       const result = await controller.removerGrupo('grupo-1');
 

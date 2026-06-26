@@ -11,7 +11,9 @@ export class FutebolApiService implements OnModuleInit {
   private readonly logger = new Logger(FutebolApiService.name);
 
   onModuleInit() {
-    this.logger.log('Integração com API de futebol (ge.globo.com) inicializada');
+    this.logger.log(
+      'Integração com API de futebol (ge.globo.com) inicializada',
+    );
   }
 
   async buscarClassificacao(season: number): Promise<any[]> {
@@ -29,7 +31,9 @@ export class FutebolApiService implements OnModuleInit {
       const response = await fetch(url, { method: 'GET' });
 
       if (!response.ok) {
-        this.logger.warn(`Classificação GE indisponível: status ${response.status}`);
+        this.logger.warn(
+          `Classificação GE indisponível: status ${response.status}`,
+        );
         return [];
       }
 
@@ -105,7 +109,10 @@ export class FutebolApiService implements OnModuleInit {
     return this.fetchJogos(url);
   }
 
-  async buscarJogosPorIds(ids: number[], config: CampeonatoConfig): Promise<any[]> {
+  async buscarJogosPorIds(
+    ids: number[],
+    config: CampeonatoConfig,
+  ): Promise<any[]> {
     if (ids.length === 0) return [];
 
     const idsSet = new Set(ids);
@@ -183,7 +190,10 @@ export class FutebolApiService implements OnModuleInit {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 10000);
 
-      const response = await fetch(url, { method: 'GET', signal: controller.signal });
+      const response = await fetch(url, {
+        method: 'GET',
+        signal: controller.signal,
+      });
       clearTimeout(timeout);
 
       if (!response.ok) {
@@ -208,7 +218,9 @@ export class FutebolApiService implements OnModuleInit {
     const dataHoraBrt = jogo.data_realizacao;
     let dataHoraUtc: string | null = null;
     if (dataHoraBrt) {
-      const jaTemTimezone = /[Zz]$|[+-]\d{2}:\d{2}$|[+-]\d{4}$/.test(dataHoraBrt.trim());
+      const jaTemTimezone = /[Zz]$|[+-]\d{2}:\d{2}$|[+-]\d{4}$/.test(
+        dataHoraBrt.trim(),
+      );
       dataHoraUtc = jaTemTimezone
         ? new Date(dataHoraBrt).toISOString()
         : new Date(`${dataHoraBrt}-03:00`).toISOString();

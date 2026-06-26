@@ -30,7 +30,11 @@ describe('FutebolApiService', () => {
         json: () => Promise.resolve([]),
       });
 
-      await service.buscarJogosPorRodada(BRASILEIRAO_CAMPEONATO_ID, faseSlug, 5);
+      await service.buscarJogosPorRodada(
+        BRASILEIRAO_CAMPEONATO_ID,
+        faseSlug,
+        5,
+      );
 
       const urlChamada = fetchMock.mock.calls[0][0];
       expect(urlChamada).toBe(
@@ -45,7 +49,11 @@ describe('FutebolApiService', () => {
         json: () => Promise.resolve([]),
       });
 
-      await service.buscarJogosPorRodada(COPA_DO_MUNDO_CAMPEONATO_ID, faseSlug, 2);
+      await service.buscarJogosPorRodada(
+        COPA_DO_MUNDO_CAMPEONATO_ID,
+        faseSlug,
+        2,
+      );
 
       const urlChamada = fetchMock.mock.calls[0][0];
       expect(urlChamada).toBe(
@@ -60,7 +68,11 @@ describe('FutebolApiService', () => {
         json: () => Promise.resolve(jogosApi),
       });
 
-      const result = await service.buscarJogosPorRodada('camp-id', 'fase-slug', 1);
+      const result = await service.buscarJogosPorRodada(
+        'camp-id',
+        'fase-slug',
+        1,
+      );
 
       expect(result).toEqual(jogosApi);
     });
@@ -132,7 +144,11 @@ describe('FutebolApiService', () => {
         json: () => Promise.resolve([{ id: 1 }]),
       });
 
-      const result = await service.buscarJogosPorRodadas('camp-id', 'fase', [1, 2, 3]);
+      const result = await service.buscarJogosPorRodadas(
+        'camp-id',
+        'fase',
+        [1, 2, 3],
+      );
 
       expect(fetchMock).toHaveBeenCalledTimes(3);
       expect(result).toHaveLength(3);
@@ -152,8 +168,18 @@ describe('FutebolApiService', () => {
       id: 12345,
       data_realizacao: '2026-06-15 16:00',
       equipes: {
-        mandante: { id: 100, nome_popular: 'Brasil', sigla: 'BRA', escudo: 'url-bra' },
-        visitante: { id: 200, nome_popular: 'Argentina', sigla: 'ARG', escudo: 'url-arg' },
+        mandante: {
+          id: 100,
+          nome_popular: 'Brasil',
+          sigla: 'BRA',
+          escudo: 'url-bra',
+        },
+        visitante: {
+          id: 200,
+          nome_popular: 'Argentina',
+          sigla: 'ARG',
+          escudo: 'url-arg',
+        },
       },
       placar_oficial_mandante: null,
       placar_oficial_visitante: null,

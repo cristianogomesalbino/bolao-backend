@@ -107,7 +107,10 @@ export class UsuariosService {
     }
 
     // Validar que o usuário pertence ao grupo
-    const membro = await this.grupoUsuarioRepo.buscarPorChave(usuarioId, grupoId);
+    const membro = await this.grupoUsuarioRepo.buscarPorChave(
+      usuarioId,
+      grupoId,
+    );
 
     if (!membro) {
       throw ErrorFactory.badRequest('Usuário não pertence ao grupo');

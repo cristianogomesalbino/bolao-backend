@@ -1,9 +1,4 @@
-import {
-  IsDateString,
-  IsString,
-  IsIn,
-  IsOptional,
-} from 'class-validator';
+import { IsDateString, IsString, IsIn, IsOptional } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class AtualizarJogoDto {
@@ -11,7 +6,10 @@ export class AtualizarJogoDto {
     description: 'Data e hora do jogo',
     example: '2026-03-15T16:00:00.000Z',
   })
-  @IsDateString({}, { message: 'dataHora deve ser uma data válida no formato ISO 8601' })
+  @IsDateString(
+    {},
+    { message: 'dataHora deve ser uma data válida no formato ISO 8601' },
+  )
   @IsOptional()
   dataHora?: string;
 
@@ -37,7 +35,8 @@ export class AtualizarJogoDto {
     example: 'EM_ANDAMENTO',
   })
   @IsIn(['AGENDADO', 'ADIADO', 'EM_ANDAMENTO', 'FINALIZADO', 'CANCELADO'], {
-    message: 'status deve ser AGENDADO, ADIADO, EM_ANDAMENTO, FINALIZADO ou CANCELADO',
+    message:
+      'status deve ser AGENDADO, ADIADO, EM_ANDAMENTO, FINALIZADO ou CANCELADO',
   })
   @IsOptional()
   status?: 'AGENDADO' | 'ADIADO' | 'EM_ANDAMENTO' | 'FINALIZADO' | 'CANCELADO';

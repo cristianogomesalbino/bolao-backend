@@ -67,16 +67,20 @@ describe('JogoService — Property-Based Tests', () => {
       normalizarJogo: vi.fn(),
       mapearStatus: vi.fn(),
     } as any;
-    service = new JogoService(jogoRepo, faseRepo, futebolApiService, timeRepo, { preencherProximaFaseEliminatoria: vi.fn() } as any);
+    service = new JogoService(jogoRepo, faseRepo, futebolApiService, timeRepo, {
+      preencherProximaFaseEliminatoria: vi.fn(),
+      propagarVencedoresParaProximaFase: vi.fn(),
+    } as any);
   });
 
   // Generators reutilizáveis
-  const arbTimePar = fc
-    .tuple(fc.uuid(), fc.uuid())
-    .filter(([a, b]) => a !== b);
+  const arbTimePar = fc.tuple(fc.uuid(), fc.uuid()).filter(([a, b]) => a !== b);
 
   const arbDataHora = fc
-    .integer({ min: new Date('2026-01-01').getTime(), max: new Date('2027-12-31').getTime() })
+    .integer({
+      min: new Date('2026-01-01').getTime(),
+      max: new Date('2027-12-31').getTime(),
+    })
     .map((ts) => new Date(ts));
 
   const arbPlacar = fc.nat({ max: 15 });
@@ -86,22 +90,29 @@ describe('JogoService — Property-Based Tests', () => {
   // Valida: Requisitos 2.1, 2.6, 11.3
   it('Propriedade 4: jogo criado tem status AGENDADO, placar null, fonteResultado MANUAL', async () => {
     await fc.assert(
-      fc.asyncProperty(arbTimePar, arbDataHora, async ([timeCasa, timeFora], dataHora) => {
-        jogoRepo.items = [];
+      fc.asyncProperty(
+        arbTimePar,
+        arbDataHora,
+        async ([timeCasa, timeFora], dataHora) => {
+          jogoRepo.items = [];
 
-        const jogo = await service.criar({
-          faseId: 'fase-pc',
-          timeCasaId: timeCasa,
-          timeForaId: timeFora,
-          dataHora: dataHora.toISOString(),
-        }, userId);
+          const jogo = await service.criar(
+            {
+              faseId: 'fase-pc',
+              timeCasaId: timeCasa,
+              timeForaId: timeFora,
+              dataHora: dataHora.toISOString(),
+            },
+            userId,
+          );
 
-        expect(jogo.status).toBe('AGENDADO');
-        expect(jogo.golsCasa).toBeUndefined();
-        expect(jogo.golsFora).toBeUndefined();
-        expect(jogo.fonteResultado).toBe('MANUAL');
-        expect(jogo.criadoPor).toBe(userId);
-      }),
+          expect(jogo.status).toBe('AGENDADO');
+          expect(jogo.golsCasa).toBeUndefined();
+          expect(jogo.golsFora).toBeUndefined();
+          expect(jogo.fonteResultado).toBe('MANUAL');
+          expect(jogo.criadoPor).toBe(userId);
+        },
+      ),
       { numRuns: 100 },
     );
   });
@@ -113,12 +124,15 @@ describe('JogoService — Property-Based Tests', () => {
     await fc.assert(
       fc.asyncProperty(fc.uuid(), arbDataHora, async (timeId, dataHora) => {
         await expect(
-          service.criar({
-            faseId: 'fase-pc',
-            timeCasaId: timeId,
-            timeForaId: timeId,
-            dataHora: dataHora.toISOString(),
-          }, userId),
+          service.criar(
+            {
+              faseId: 'fase-pc',
+              timeCasaId: timeId,
+              timeForaId: timeId,
+              dataHora: dataHora.toISOString(),
+            },
+            userId,
+          ),
         ).rejects.toThrow(TimesIguaisError);
       }),
       { numRuns: 100 },
@@ -138,14 +152,17 @@ describe('JogoService — Property-Based Tests', () => {
         async ([timeCasa, timeFora], dataHora, grupoIdaVolta, ehJogoVolta) => {
           jogoRepo.items = [];
 
-          const jogo = await service.criar({
-            faseId: 'fase-pc',
-            timeCasaId: timeCasa,
-            timeForaId: timeFora,
-            dataHora: dataHora.toISOString(),
-            grupoIdaVolta: grupoIdaVolta ?? undefined,
-            ehJogoVolta,
-          }, userId);
+          const jogo = await service.criar(
+            {
+              faseId: 'fase-pc',
+              timeCasaId: timeCasa,
+              timeForaId: timeFora,
+              dataHora: dataHora.toISOString(),
+              grupoIdaVolta: grupoIdaVolta ?? undefined,
+              ehJogoVolta,
+            },
+            userId,
+          );
 
           expect(jogo.grupoIdaVolta).toBeNull();
           expect(jogo.ehJogoVolta).toBe(false);
@@ -162,23 +179,31 @@ describe('JogoService — Property-Based Tests', () => {
     const arbStatusTerminal = fc.constantFrom('FINALIZADO', 'CANCELADO');
 
     await fc.assert(
-      fc.asyncProperty(arbStatusTerminal, arbDataHora, async (status, novaData) => {
-        jogoRepo.items = [];
+      fc.asyncProperty(
+        arbStatusTerminal,
+        arbDataHora,
+        async (status, novaData) => {
+          jogoRepo.items = [];
 
-        const jogo = await service.criar({
-          faseId: 'fase-pc',
-          timeCasaId: 'time-a',
-          timeForaId: 'time-b',
-          dataHora: '2026-03-15T16:00:00.000Z',
-        }, userId);
-        await jogoRepo.atualizar(jogo.id, { status });
+          const jogo = await service.criar(
+            {
+              faseId: 'fase-pc',
+              timeCasaId: 'time-a',
+              timeForaId: 'time-b',
+              dataHora: '2026-03-15T16:00:00.000Z',
+            },
+            userId,
+          );
+          await jogoRepo.atualizar(jogo.id, { status });
 
-        const ErroEsperado = status === 'FINALIZADO' ? JogoFinalizadoError : JogoCanceladoError;
+          const ErroEsperado =
+            status === 'FINALIZADO' ? JogoFinalizadoError : JogoCanceladoError;
 
-        await expect(
-          service.atualizar(jogo.id, { dataHora: novaData.toISOString() }),
-        ).rejects.toThrow(ErroEsperado);
-      }),
+          await expect(
+            service.atualizar(jogo.id, { dataHora: novaData.toISOString() }),
+          ).rejects.toThrow(ErroEsperado);
+        },
+      ),
       { numRuns: 100 },
     );
   });
@@ -191,12 +216,15 @@ describe('JogoService — Property-Based Tests', () => {
       fc.asyncProperty(arbPlacar, arbPlacar, async (golsCasa, golsFora) => {
         jogoRepo.items = [];
 
-        const jogo = await service.criar({
-          faseId: 'fase-pc',
-          timeCasaId: 'time-a',
-          timeForaId: 'time-b',
-          dataHora: '2026-03-15T16:00:00.000Z',
-        }, userId);
+        const jogo = await service.criar(
+          {
+            faseId: 'fase-pc',
+            timeCasaId: 'time-a',
+            timeForaId: 'time-b',
+            dataHora: '2026-03-15T16:00:00.000Z',
+          },
+          userId,
+        );
         await jogoRepo.atualizar(jogo.id, { status: 'EM_ANDAMENTO' });
 
         const result = await service.finalizar(jogo.id, { golsCasa, golsFora });
@@ -219,27 +247,36 @@ describe('JogoService — Property-Based Tests', () => {
   // Valida: Requisito 4.2
   it('Propriedade 9: prorrogação/pênaltis em PONTOS_CORRIDOS sempre rejeita', async () => {
     await fc.assert(
-      fc.asyncProperty(arbPlacar, arbPlacar, arbPlacar, arbPlacar, async (gc, gf, gpc, gpf) => {
-        jogoRepo.items = [];
+      fc.asyncProperty(
+        arbPlacar,
+        arbPlacar,
+        arbPlacar,
+        arbPlacar,
+        async (gc, gf, gpc, gpf) => {
+          jogoRepo.items = [];
 
-        const jogo = await service.criar({
-          faseId: 'fase-pc',
-          timeCasaId: 'time-a',
-          timeForaId: 'time-b',
-          dataHora: '2026-03-15T16:00:00.000Z',
-        }, userId);
-        await jogoRepo.atualizar(jogo.id, { status: 'EM_ANDAMENTO' });
+          const jogo = await service.criar(
+            {
+              faseId: 'fase-pc',
+              timeCasaId: 'time-a',
+              timeForaId: 'time-b',
+              dataHora: '2026-03-15T16:00:00.000Z',
+            },
+            userId,
+          );
+          await jogoRepo.atualizar(jogo.id, { status: 'EM_ANDAMENTO' });
 
-        await expect(
-          service.finalizar(jogo.id, {
-            golsCasa: gc,
-            golsFora: gf,
-            temProrrogacao: true,
-            golsProrrogacaoCasa: gpc,
-            golsProrrogacaoFora: gpf,
-          }),
-        ).rejects.toThrow(ProrrogacaoNaoPermitidaError);
-      }),
+          await expect(
+            service.finalizar(jogo.id, {
+              golsCasa: gc,
+              golsFora: gf,
+              temProrrogacao: true,
+              golsProrrogacaoCasa: gpc,
+              golsProrrogacaoFora: gpf,
+            }),
+          ).rejects.toThrow(ProrrogacaoNaoPermitidaError);
+        },
+      ),
       { numRuns: 100 },
     );
   });
@@ -251,23 +288,33 @@ describe('JogoService — Property-Based Tests', () => {
     const arbNegativo = fc.integer({ min: -100, max: -1 });
 
     await fc.assert(
-      fc.asyncProperty(arbNegativo, arbPlacar, fc.boolean(), async (neg, pos, casaNeg) => {
-        jogoRepo.items = [];
+      fc.asyncProperty(
+        arbNegativo,
+        arbPlacar,
+        fc.boolean(),
+        async (neg, pos, casaNeg) => {
+          jogoRepo.items = [];
 
-        const jogo = await service.criar({
-          faseId: 'fase-pc',
-          timeCasaId: 'time-a',
-          timeForaId: 'time-b',
-          dataHora: '2026-03-15T16:00:00.000Z',
-        }, userId);
-        await jogoRepo.atualizar(jogo.id, { status: 'EM_ANDAMENTO' });
+          const jogo = await service.criar(
+            {
+              faseId: 'fase-pc',
+              timeCasaId: 'time-a',
+              timeForaId: 'time-b',
+              dataHora: '2026-03-15T16:00:00.000Z',
+            },
+            userId,
+          );
+          await jogoRepo.atualizar(jogo.id, { status: 'EM_ANDAMENTO' });
 
-        const dto = casaNeg
-          ? { golsCasa: neg, golsFora: pos }
-          : { golsCasa: pos, golsFora: neg };
+          const dto = casaNeg
+            ? { golsCasa: neg, golsFora: pos }
+            : { golsCasa: pos, golsFora: neg };
 
-        await expect(service.finalizar(jogo.id, dto)).rejects.toThrow(PlacarInvalidoError);
-      }),
+          await expect(service.finalizar(jogo.id, dto)).rejects.toThrow(
+            PlacarInvalidoError,
+          );
+        },
+      ),
       { numRuns: 100 },
     );
   });
@@ -277,30 +324,31 @@ describe('JogoService — Property-Based Tests', () => {
   // Valida: Requisitos 5.1, 5.6, 7.2
   it('Propriedade 11: vencedor em mata-mata segue cascata TN → prorrogação → pênaltis', async () => {
     await fc.assert(
-      fc.asyncProperty(
-        arbPlacar,
-        arbPlacar,
-        async (golsCasa, golsFora) => {
-          fc.pre(golsCasa !== golsFora);
+      fc.asyncProperty(arbPlacar, arbPlacar, async (golsCasa, golsFora) => {
+        fc.pre(golsCasa !== golsFora);
 
-          jogoRepo.items = [];
+        jogoRepo.items = [];
 
-          const jogo = await service.criar({
+        const jogo = await service.criar(
+          {
             faseId: 'fase-mm',
             timeCasaId: 'time-a',
             timeForaId: 'time-b',
             dataHora: '2026-03-15T16:00:00.000Z',
-          }, userId);
-          await jogoRepo.atualizar(jogo.id, { status: 'EM_ANDAMENTO' });
+          },
+          userId,
+        );
+        await jogoRepo.atualizar(jogo.id, { status: 'EM_ANDAMENTO' });
 
-          const result = await service.finalizar(jogo.id, { golsCasa, golsFora });
+        const result = await service.finalizar(jogo.id, { golsCasa, golsFora });
 
-          expect(result.status).toBe('FINALIZADO');
-          const esperado = golsCasa > golsFora ? 'time-a' : 'time-b';
-          expect(result.vencedorId).toBe(esperado);
-          expect(result.vencedorId === 'time-a' || result.vencedorId === 'time-b').toBe(true);
-        },
-      ),
+        expect(result.status).toBe('FINALIZADO');
+        const esperado = golsCasa > golsFora ? 'time-a' : 'time-b';
+        expect(result.vencedorId).toBe(esperado);
+        expect(
+          result.vencedorId === 'time-a' || result.vencedorId === 'time-b',
+        ).toBe(true);
+      }),
       { numRuns: 100 },
     );
   });
@@ -313,12 +361,15 @@ describe('JogoService — Property-Based Tests', () => {
       fc.asyncProperty(arbPlacar, async (gols) => {
         jogoRepo.items = [];
 
-        const jogo = await service.criar({
-          faseId: 'fase-mm',
-          timeCasaId: 'time-a',
-          timeForaId: 'time-b',
-          dataHora: '2026-03-15T16:00:00.000Z',
-        }, userId);
+        const jogo = await service.criar(
+          {
+            faseId: 'fase-mm',
+            timeCasaId: 'time-a',
+            timeForaId: 'time-b',
+            dataHora: '2026-03-15T16:00:00.000Z',
+          },
+          userId,
+        );
         await jogoRepo.atualizar(jogo.id, { status: 'EM_ANDAMENTO' });
 
         await expect(
@@ -334,33 +385,32 @@ describe('JogoService — Property-Based Tests', () => {
   // Valida: Requisitos 5.7, 5.8, 5.9
   it('Propriedade 13: prorrogação exige empate no TN, pênaltis exige empate na prorrogação', async () => {
     await fc.assert(
-      fc.asyncProperty(
-        arbPlacar,
-        arbPlacar,
-        async (golsCasa, golsFora) => {
-          fc.pre(golsCasa !== golsFora);
+      fc.asyncProperty(arbPlacar, arbPlacar, async (golsCasa, golsFora) => {
+        fc.pre(golsCasa !== golsFora);
 
-          jogoRepo.items = [];
+        jogoRepo.items = [];
 
-          const jogo = await service.criar({
+        const jogo = await service.criar(
+          {
             faseId: 'fase-mm',
             timeCasaId: 'time-a',
             timeForaId: 'time-b',
             dataHora: '2026-03-15T16:00:00.000Z',
-          }, userId);
-          await jogoRepo.atualizar(jogo.id, { status: 'EM_ANDAMENTO' });
+          },
+          userId,
+        );
+        await jogoRepo.atualizar(jogo.id, { status: 'EM_ANDAMENTO' });
 
-          await expect(
-            service.finalizar(jogo.id, {
-              golsCasa,
-              golsFora,
-              temProrrogacao: true,
-              golsProrrogacaoCasa: 1,
-              golsProrrogacaoFora: 0,
-            }),
-          ).rejects.toThrow(ProrrogacaoNaoPermitidaError);
-        },
-      ),
+        await expect(
+          service.finalizar(jogo.id, {
+            golsCasa,
+            golsFora,
+            temProrrogacao: true,
+            golsProrrogacaoCasa: 1,
+            golsProrrogacaoFora: 0,
+          }),
+        ).rejects.toThrow(ProrrogacaoNaoPermitidaError);
+      }),
       { numRuns: 100 },
     );
   });
@@ -395,7 +445,11 @@ describe('JogoService — Property-Based Tests', () => {
   // Feature: modulo-jogos, Property 17: Jogo não finalizado tem placares null
   // Valida: Requisito 9.6
   it('Propriedade 17: calcularVencedor retorna null para jogo não finalizado', async () => {
-    const arbStatusNaoFinal = fc.constantFrom('AGENDADO', 'EM_ANDAMENTO', 'CANCELADO');
+    const arbStatusNaoFinal = fc.constantFrom(
+      'AGENDADO',
+      'EM_ANDAMENTO',
+      'CANCELADO',
+    );
 
     await fc.assert(
       fc.property(arbStatusNaoFinal, arbPlacar, arbPlacar, (status, gc, gf) => {
@@ -421,12 +475,15 @@ describe('JogoService — Property-Based Tests', () => {
       fc.asyncProperty(arbPlacar, arbPlacar, async (golsCasa, golsFora) => {
         jogoRepo.items = [];
 
-        const jogo = await service.criar({
-          faseId: 'fase-pc',
-          timeCasaId: 'time-a',
-          timeForaId: 'time-b',
-          dataHora: '2026-03-15T16:00:00.000Z',
-        }, userId);
+        const jogo = await service.criar(
+          {
+            faseId: 'fase-pc',
+            timeCasaId: 'time-a',
+            timeForaId: 'time-b',
+            dataHora: '2026-03-15T16:00:00.000Z',
+          },
+          userId,
+        );
         await jogoRepo.atualizar(jogo.id, { status: 'EM_ANDAMENTO' });
 
         const result = await service.finalizar(jogo.id, { golsCasa, golsFora });
@@ -461,7 +518,9 @@ describe('JogoService — Property-Based Tests', () => {
       fc.property(arbPar, ([atual, novo]) => {
         const permitidas = transicoes[atual] ?? [];
         if (permitidas.includes(novo)) {
-          expect(() => service.validarTransicaoStatus(atual, novo)).not.toThrow();
+          expect(() =>
+            service.validarTransicaoStatus(atual, novo),
+          ).not.toThrow();
         } else {
           expect(() => service.validarTransicaoStatus(atual, novo)).toThrow(
             TransicaoStatusInvalidaError,
@@ -517,11 +576,19 @@ describe('JogoService — Property-Based Tests', () => {
   // Valida: Requisito 15.3
   it('Propriedade 29: com statusApi fornecido, usa mapearStatus em vez de fallback', () => {
     const arbStatusNaoFinal = fc.constantFrom('AGENDADO', 'EM_ANDAMENTO');
-    const arbStatusApi = fc.constantFrom('AGENDADO', 'EM_ANDAMENTO', 'FINALIZADO', 'CANCELADO');
+    const arbStatusApi = fc.constantFrom(
+      'AGENDADO',
+      'EM_ANDAMENTO',
+      'FINALIZADO',
+      'CANCELADO',
+    );
 
     fc.assert(
       fc.property(arbStatusNaoFinal, arbStatusApi, (statusAtual, statusApi) => {
-        const jogo = { status: statusAtual, dataHora: new Date('2026-06-15T16:00:00Z') };
+        const jogo = {
+          status: statusAtual,
+          dataHora: new Date('2026-06-15T16:00:00Z'),
+        };
         const result = service.definirStatusFinal(jogo, statusApi);
         const esperado = service.mapearStatusExterno(statusApi);
         expect(result).toBe(esperado);
@@ -537,13 +604,22 @@ describe('JogoService — Property-Based Tests', () => {
     const agora = Date.now();
     const duasHoras = 2 * 60 * 60 * 1000;
 
-    const jogoFuturo = { status: 'AGENDADO', dataHora: new Date(agora + 3600000) };
+    const jogoFuturo = {
+      status: 'AGENDADO',
+      dataHora: new Date(agora + 3600000),
+    };
     expect(service.calcularStatusInterno(jogoFuturo)).toBe('AGENDADO');
 
-    const jogoRecente = { status: 'AGENDADO', dataHora: new Date(agora - 3600000) };
+    const jogoRecente = {
+      status: 'AGENDADO',
+      dataHora: new Date(agora - 3600000),
+    };
     expect(service.calcularStatusInterno(jogoRecente)).toBe('EM_ANDAMENTO');
 
-    const jogoAntigo = { status: 'AGENDADO', dataHora: new Date(agora - duasHoras - 60000) };
+    const jogoAntigo = {
+      status: 'AGENDADO',
+      dataHora: new Date(agora - duasHoras - 60000),
+    };
     expect(service.calcularStatusInterno(jogoAntigo)).toBe('FINALIZADO');
   });
 
@@ -555,17 +631,23 @@ describe('JogoService — Property-Based Tests', () => {
       fc.asyncProperty(arbPlacar, arbPlacar, async (golsCasa, golsFora) => {
         jogoRepo.items = [];
 
-        const jogoIda = await service.criar({
-          faseId: 'fase-mm-iv',
-          timeCasaId: 'time-a',
-          timeForaId: 'time-b',
-          dataHora: '2026-03-15T16:00:00.000Z',
-          grupoIdaVolta: 'grupo-pbt',
-          ehJogoVolta: false,
-        }, userId);
+        const jogoIda = await service.criar(
+          {
+            faseId: 'fase-mm-iv',
+            timeCasaId: 'time-a',
+            timeForaId: 'time-b',
+            dataHora: '2026-03-15T16:00:00.000Z',
+            grupoIdaVolta: 'grupo-pbt',
+            ehJogoVolta: false,
+          },
+          userId,
+        );
         await jogoRepo.atualizar(jogoIda.id, { status: 'EM_ANDAMENTO' });
 
-        const result = await service.finalizar(jogoIda.id, { golsCasa, golsFora });
+        const result = await service.finalizar(jogoIda.id, {
+          golsCasa,
+          golsFora,
+        });
 
         expect(result.status).toBe('FINALIZADO');
         expect(result.vencedorId).toBeNull();
@@ -580,7 +662,10 @@ describe('JogoService — Property-Based Tests', () => {
   it('Propriedade 15: vencedor do jogo de volta por placar agregado', async () => {
     await fc.assert(
       fc.asyncProperty(
-        arbPlacar, arbPlacar, arbPlacar, arbPlacar,
+        arbPlacar,
+        arbPlacar,
+        arbPlacar,
+        arbPlacar,
         async (idaCasa, idaFora, voltaCasa, voltaFora) => {
           const golsTimeA = idaCasa + voltaFora;
           const golsTimeB = idaFora + voltaCasa;
@@ -588,28 +673,40 @@ describe('JogoService — Property-Based Tests', () => {
 
           jogoRepo.items = [];
 
-          const jogoIda = await service.criar({
-            faseId: 'fase-mm-iv',
-            timeCasaId: 'time-a',
-            timeForaId: 'time-b',
-            dataHora: '2026-03-15T16:00:00.000Z',
-            grupoIdaVolta: 'grupo-pbt',
-            ehJogoVolta: false,
-          }, userId);
+          const jogoIda = await service.criar(
+            {
+              faseId: 'fase-mm-iv',
+              timeCasaId: 'time-a',
+              timeForaId: 'time-b',
+              dataHora: '2026-03-15T16:00:00.000Z',
+              grupoIdaVolta: 'grupo-pbt',
+              ehJogoVolta: false,
+            },
+            userId,
+          );
           await jogoRepo.atualizar(jogoIda.id, { status: 'EM_ANDAMENTO' });
-          await service.finalizar(jogoIda.id, { golsCasa: idaCasa, golsFora: idaFora });
+          await service.finalizar(jogoIda.id, {
+            golsCasa: idaCasa,
+            golsFora: idaFora,
+          });
 
-          const jogoVolta = await service.criar({
-            faseId: 'fase-mm-iv',
-            timeCasaId: 'time-b',
-            timeForaId: 'time-a',
-            dataHora: '2026-03-20T16:00:00.000Z',
-            grupoIdaVolta: 'grupo-pbt',
-            ehJogoVolta: true,
-          }, userId);
+          const jogoVolta = await service.criar(
+            {
+              faseId: 'fase-mm-iv',
+              timeCasaId: 'time-b',
+              timeForaId: 'time-a',
+              dataHora: '2026-03-20T16:00:00.000Z',
+              grupoIdaVolta: 'grupo-pbt',
+              ehJogoVolta: true,
+            },
+            userId,
+          );
           await jogoRepo.atualizar(jogoVolta.id, { status: 'EM_ANDAMENTO' });
 
-          const result = await service.finalizar(jogoVolta.id, { golsCasa: voltaCasa, golsFora: voltaFora });
+          const result = await service.finalizar(jogoVolta.id, {
+            golsCasa: voltaCasa,
+            golsFora: voltaFora,
+          });
 
           if (golsTimeA > golsTimeB) {
             expect(result.vencedorId).toBe('time-a');
@@ -632,7 +729,10 @@ describe('JogoService — Property-Based Tests', () => {
       normalizarJogo: vi.fn(),
       mapearStatus: vi.fn(),
     } as any;
-    const svc = new JogoService(jogoRepo, faseRepo, mockApi, timeRepo, { preencherProximaFaseEliminatoria: vi.fn() } as any);
+    const svc = new JogoService(jogoRepo, faseRepo, mockApi, timeRepo, {
+      preencherProximaFaseEliminatoria: vi.fn(),
+      propagarVencedoresParaProximaFase: vi.fn(),
+    } as any);
 
     await fc.assert(
       fc.asyncProperty(fc.integer({ min: 1, max: 5 }), async (n) => {
@@ -646,8 +746,18 @@ describe('JogoService — Property-Based Tests', () => {
           placar_penaltis_mandante: null,
           placar_penaltis_visitante: null,
           equipes: {
-            mandante: { id: 100 + i, nome_popular: `Time ${100 + i}`, sigla: `T${100 + i}`, escudo: null },
-            visitante: { id: 200 + i, nome_popular: `Time ${200 + i}`, sigla: `T${200 + i}`, escudo: null },
+            mandante: {
+              id: 100 + i,
+              nome_popular: `Time ${100 + i}`,
+              sigla: `T${100 + i}`,
+              escudo: null,
+            },
+            visitante: {
+              id: 200 + i,
+              nome_popular: `Time ${200 + i}`,
+              sigla: `T${200 + i}`,
+              escudo: null,
+            },
           },
           transmissao: { broadcast: { id: 'PRE_JOGO' } },
           jogo_ja_comecou: false,
@@ -678,11 +788,21 @@ describe('JogoService — Property-Based Tests', () => {
         }));
 
         const r1 = await svc.importarJogos(
-          { campeonatoSlug: 'brasileirao', faseSlug: 'fase-unica-campeonato-brasileiro-2026', rodada: 1, faseId: 'fase-pc' } as any,
+          {
+            campeonatoSlug: 'brasileirao',
+            faseSlug: 'fase-unica-campeonato-brasileiro-2026',
+            rodada: 1,
+            faseId: 'fase-pc',
+          } as any,
           userId,
         );
         const r2 = await svc.importarJogos(
-          { campeonatoSlug: 'brasileirao', faseSlug: 'fase-unica-campeonato-brasileiro-2026', rodada: 1, faseId: 'fase-pc' } as any,
+          {
+            campeonatoSlug: 'brasileirao',
+            faseSlug: 'fase-unica-campeonato-brasileiro-2026',
+            rodada: 1,
+            faseId: 'fase-pc',
+          } as any,
           userId,
         );
 
@@ -704,25 +824,38 @@ describe('JogoService — Property-Based Tests', () => {
       normalizarJogo: vi.fn(),
       mapearStatus: vi.fn(),
     } as any;
-    const svc = new JogoService(jogoRepo, faseRepo, mockApi, timeRepo, { preencherProximaFaseEliminatoria: vi.fn() } as any);
+    const svc = new JogoService(jogoRepo, faseRepo, mockApi, timeRepo, {
+      preencherProximaFaseEliminatoria: vi.fn(),
+      propagarVencedoresParaProximaFase: vi.fn(),
+    } as any);
 
     jogoRepo.items = [];
     await jogoRepo.criar({
-      faseId: 'fase-pc', timeCasaId: 'time-a', timeForaId: 'time-b',
-      dataHora: new Date('2026-06-15T16:00:00Z'), status: 'EM_ANDAMENTO',
-      fonteResultado: 'MANUAL', externoId: '9999', criadoPor: userId,
-      ehJogoVolta: false, grupoIdaVolta: null, temProrrogacao: false, temPenaltis: false,
+      faseId: 'fase-pc',
+      timeCasaId: 'time-a',
+      timeForaId: 'time-b',
+      dataHora: new Date('2026-06-15T16:00:00Z'),
+      status: 'EM_ANDAMENTO',
+      fonteResultado: 'MANUAL',
+      externoId: '9999',
+      criadoPor: userId,
+      ehJogoVolta: false,
+      grupoIdaVolta: null,
+      temProrrogacao: false,
+      temPenaltis: false,
     });
 
-    mockApi.buscarJogosPorIds.mockResolvedValue([{
-      id: 9999,
-      data_realizacao: '2026-06-15T16:00:00Z',
-      placar_oficial_mandante: 3,
-      placar_oficial_visitante: 1,
-      equipes: { mandante: { id: 1 }, visitante: { id: 2 } },
-      transmissao: { broadcast: { id: 'ENCERRADA' } },
-      jogo_ja_comecou: true,
-    }]);
+    mockApi.buscarJogosPorIds.mockResolvedValue([
+      {
+        id: 9999,
+        data_realizacao: '2026-06-15T16:00:00Z',
+        placar_oficial_mandante: 3,
+        placar_oficial_visitante: 1,
+        equipes: { mandante: { id: 1 }, visitante: { id: 2 } },
+        transmissao: { broadcast: { id: 'ENCERRADA' } },
+        jogo_ja_comecou: true,
+      },
+    ]);
     mockApi.normalizarJogo.mockReturnValue({
       externoId: '9999',
       dataHora: '2026-06-15T16:00:00Z',
@@ -735,7 +868,11 @@ describe('JogoService — Property-Based Tests', () => {
       penaltisFora: null,
     });
 
-    await svc.sincronizarPlacares('fase-pc', 'brasileirao', 'fase-unica-campeonato-brasileiro-2026');
+    await svc.sincronizarPlacares(
+      'fase-pc',
+      'brasileirao',
+      'fase-unica-campeonato-brasileiro-2026',
+    );
     expect(jogoRepo.items[0].fonteResultado).toBe('MANUAL');
   });
 
@@ -746,13 +883,23 @@ describe('JogoService — Property-Based Tests', () => {
     await fc.assert(
       fc.asyncProperty(arbDataHora, async (novaData) => {
         jogoRepo.items = [];
-        const jogo = await service.criar({
-          faseId: 'fase-pc', timeCasaId: 'time-a', timeForaId: 'time-b',
-          dataHora: '2026-03-15T16:00:00.000Z',
-        }, userId);
-        await jogoRepo.atualizar(jogo.id, { fonteResultado: 'API_EXTERNA', externoId: '123' });
+        const jogo = await service.criar(
+          {
+            faseId: 'fase-pc',
+            timeCasaId: 'time-a',
+            timeForaId: 'time-b',
+            dataHora: '2026-03-15T16:00:00.000Z',
+          },
+          userId,
+        );
+        await jogoRepo.atualizar(jogo.id, {
+          fonteResultado: 'API_EXTERNA',
+          externoId: '123',
+        });
 
-        const result = await service.atualizar(jogo.id, { dataHora: novaData.toISOString() });
+        const result = await service.atualizar(jogo.id, {
+          dataHora: novaData.toISOString(),
+        });
         expect(result.fonteResultado).toBe('MANUAL');
       }),
       { numRuns: 100 },
@@ -767,14 +914,30 @@ describe('JogoService — Property-Based Tests', () => {
       fc.asyncProperty(arbTimePar, arbDataHora, async ([tc, tf], dh) => {
         jogoRepo.items = [];
         await jogoRepo.criar({
-          faseId: 'fase-pc', timeCasaId: 'imp-a', timeForaId: 'imp-b',
-          dataHora: new Date('2026-06-15T16:00:00Z'), status: 'AGENDADO',
-          fonteResultado: 'API_EXTERNA', externoId: '5555', criadoPor: userId,
-          ehJogoVolta: false, grupoIdaVolta: null, temProrrogacao: false, temPenaltis: false,
+          faseId: 'fase-pc',
+          timeCasaId: 'imp-a',
+          timeForaId: 'imp-b',
+          dataHora: new Date('2026-06-15T16:00:00Z'),
+          status: 'AGENDADO',
+          fonteResultado: 'API_EXTERNA',
+          externoId: '5555',
+          criadoPor: userId,
+          ehJogoVolta: false,
+          grupoIdaVolta: null,
+          temProrrogacao: false,
+          temPenaltis: false,
         });
         const antes = { ...jogoRepo.items[0] };
 
-        await service.criar({ faseId: 'fase-pc', timeCasaId: tc, timeForaId: tf, dataHora: dh.toISOString() }, userId);
+        await service.criar(
+          {
+            faseId: 'fase-pc',
+            timeCasaId: tc,
+            timeForaId: tf,
+            dataHora: dh.toISOString(),
+          },
+          userId,
+        );
 
         expect(jogoRepo.items[0].fonteResultado).toBe(antes.fonteResultado);
         expect(jogoRepo.items[0].externoId).toBe(antes.externoId);
@@ -788,11 +951,19 @@ describe('JogoService — Property-Based Tests', () => {
   // Valida: Requisito 14.5
   it('Propriedade 27: resetarFonte muda MANUAL para API_EXTERNA', async () => {
     jogoRepo.items = [];
-    const jogo = await service.criar({
-      faseId: 'fase-pc', timeCasaId: 'time-a', timeForaId: 'time-b',
-      dataHora: '2026-03-15T16:00:00.000Z',
-    }, userId);
-    await jogoRepo.atualizar(jogo.id, { fonteResultado: 'MANUAL', externoId: '12345' });
+    const jogo = await service.criar(
+      {
+        faseId: 'fase-pc',
+        timeCasaId: 'time-a',
+        timeForaId: 'time-b',
+        dataHora: '2026-03-15T16:00:00.000Z',
+      },
+      userId,
+    );
+    await jogoRepo.atualizar(jogo.id, {
+      fonteResultado: 'MANUAL',
+      externoId: '12345',
+    });
 
     const result = await service.resetarFonte(jogo.id);
     expect(result.fonteResultado).toBe('API_EXTERNA');

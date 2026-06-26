@@ -1,5 +1,20 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBadRequestResponse, ApiNotFoundResponse } from '@nestjs/swagger';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  UseGuards,
+} from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBadRequestResponse,
+  ApiNotFoundResponse,
+} from '@nestjs/swagger';
 import { UsuariosService } from './usuarios.service';
 import { CriarUsuarioDto } from './dto/criar-usuario.dto';
 import { AtualizarUsuarioDto } from './dto/atualizar-usuario.dto';
@@ -22,18 +37,25 @@ export class UsuariosController {
   @Public()
   @Post()
   async criarUsuario(@Body() criarUsuarioDto: CriarUsuarioDto) {
-    return UsuarioPresenter.toHttp(await this.usuariosService.criar(criarUsuarioDto));
+    return UsuarioPresenter.toHttp(
+      await this.usuariosService.criar(criarUsuarioDto),
+    );
   }
 
   @ApiOperation({ summary: 'Buscar perfil do usuário autenticado' })
   @ApiResponse({ status: 200, description: 'Perfil retornado com sucesso.' })
   @Get('me')
   async buscarPerfil(@CurrentUser() user: { id: string }) {
-    return UsuarioPresenter.toHttp(await this.usuariosService.buscarPorId(user.id));
+    return UsuarioPresenter.toHttp(
+      await this.usuariosService.buscarPorId(user.id),
+    );
   }
 
   @ApiOperation({ summary: 'Definir grupo favorito' })
-  @ApiResponse({ status: 200, description: 'Grupo favorito definido com sucesso.' })
+  @ApiResponse({
+    status: 200,
+    description: 'Grupo favorito definido com sucesso.',
+  })
   @ApiBadRequestResponse({ description: 'Usuário não pertence ao grupo.' })
   @Patch('me/grupo-favorito')
   async definirGrupoFavorito(
@@ -41,7 +63,10 @@ export class UsuariosController {
     @CurrentUser() user: { id: string },
   ) {
     return UsuarioPresenter.toHttp(
-      await this.usuariosService.definirGrupoFavorito(user.id, dto.grupoId ?? null),
+      await this.usuariosService.definirGrupoFavorito(
+        user.id,
+        dto.grupoId ?? null,
+      ),
     );
   }
 
@@ -50,9 +75,7 @@ export class UsuariosController {
   @ApiNotFoundResponse({ description: 'Usuário não encontrado.' })
   @UseGuards(SelfOrAdminGuard)
   @Get(':id')
-  async buscarPorId(
-    @Param('id', new ParseUUIDCustomPipe('id')) id: string,
-  ) {
+  async buscarPorId(@Param('id', new ParseUUIDCustomPipe('id')) id: string) {
     return UsuarioPresenter.toHttp(await this.usuariosService.buscarPorId(id));
   }
 
@@ -65,7 +88,9 @@ export class UsuariosController {
     @Param('id', new ParseUUIDCustomPipe('id')) id: string,
     @Body() atualizarUsuarioDto: AtualizarUsuarioDto,
   ) {
-    return UsuarioPresenter.toHttp(await this.usuariosService.atualizar(id, atualizarUsuarioDto));
+    return UsuarioPresenter.toHttp(
+      await this.usuariosService.atualizar(id, atualizarUsuarioDto),
+    );
   }
 
   @ApiOperation({ summary: 'Remover usuário' })
@@ -73,9 +98,7 @@ export class UsuariosController {
   @ApiNotFoundResponse({ description: 'Usuário não encontrado.' })
   @UseGuards(SelfOrAdminGuard)
   @Delete(':id')
-  removerUsuario(
-    @Param('id', new ParseUUIDCustomPipe('id')) id: string,
-  ) {
+  removerUsuario(@Param('id', new ParseUUIDCustomPipe('id')) id: string) {
     return this.usuariosService.remover(id);
   }
 }

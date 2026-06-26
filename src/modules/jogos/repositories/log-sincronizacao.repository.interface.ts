@@ -29,6 +29,11 @@ export interface CriarLogSincronizacaoData {
 export interface LogSincronizacaoRepository {
   criar(data: CriarLogSincronizacaoData): Promise<LogSincronizacao>;
   buscarRecentes(limite?: number): Promise<LogSincronizacao[]>;
-  buscarPorCampeonato(campeonatoSlug: string, limite?: number): Promise<LogSincronizacao[]>;
-  buscarUltimaSincronizacao(campeonatoSlug: string): Promise<LogSincronizacao | null>;
+  buscarPorCampeonato(
+    campeonatoSlug: string,
+    limite?: number,
+  ): Promise<LogSincronizacao[]>;
+  buscarUltimaSincronizacao(
+    campeonatoSlug: string,
+  ): Promise<LogSincronizacao | null>;
 }

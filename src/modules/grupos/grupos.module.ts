@@ -14,7 +14,10 @@ import { PrismaGrupoUsuarioRepository } from '../grupo-usuario/repositories/pris
   providers: [
     GruposService,
     { provide: GRUPOS.REPOSITORY_TOKEN, useClass: PrismaGrupoRepository },
-    { provide: GRUPO_USUARIO.REPOSITORY_TOKEN, useClass: PrismaGrupoUsuarioRepository },
+    {
+      provide: GRUPO_USUARIO.REPOSITORY_TOKEN,
+      useClass: PrismaGrupoUsuarioRepository,
+    },
   ],
   exports: [GRUPOS.REPOSITORY_TOKEN],
 })

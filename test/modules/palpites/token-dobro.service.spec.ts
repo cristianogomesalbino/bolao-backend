@@ -24,7 +24,12 @@ describe('TokenDobroService', () => {
 
     it('deve retornar saldo correto após concessões', async () => {
       await service.concederToken(userId, grupoId, 'ACERTO_EM_CHEIO', 'jogo-1');
-      await service.concederToken(userId, grupoId, 'PRIMEIRO_RANKING', 'fase-1');
+      await service.concederToken(
+        userId,
+        grupoId,
+        'PRIMEIRO_RANKING',
+        'fase-1',
+      );
 
       const saldo = await service.calcularSaldo(userId, grupoId);
       expect(saldo).toBe(2);
@@ -32,7 +37,12 @@ describe('TokenDobroService', () => {
 
     it('deve retornar saldo correto após concessão e utilização', async () => {
       await service.concederToken(userId, grupoId, 'ACERTO_EM_CHEIO', 'jogo-1');
-      await service.concederToken(userId, grupoId, 'PRIMEIRO_RANKING', 'fase-1');
+      await service.concederToken(
+        userId,
+        grupoId,
+        'PRIMEIRO_RANKING',
+        'fase-1',
+      );
       await service.registrarUtilizacao(userId, grupoId, 'jogo-2');
 
       const saldo = await service.calcularSaldo(userId, grupoId);
@@ -50,7 +60,12 @@ describe('TokenDobroService', () => {
 
     it('saldo deve ser independente por grupo', async () => {
       await service.concederToken(userId, grupoId, 'ACERTO_EM_CHEIO', 'jogo-1');
-      await service.concederToken(userId, 'grupo-2', 'PRIMEIRO_RANKING', 'fase-1');
+      await service.concederToken(
+        userId,
+        'grupo-2',
+        'PRIMEIRO_RANKING',
+        'fase-1',
+      );
 
       const saldoGrupo1 = await service.calcularSaldo(userId, grupoId);
       const saldoGrupo2 = await service.calcularSaldo(userId, 'grupo-2');
@@ -79,7 +94,12 @@ describe('TokenDobroService', () => {
 
     it('deve retornar histórico apenas do grupo solicitado', async () => {
       await service.concederToken(userId, grupoId, 'ACERTO_EM_CHEIO', 'jogo-1');
-      await service.concederToken(userId, 'grupo-2', 'PRIMEIRO_RANKING', 'fase-1');
+      await service.concederToken(
+        userId,
+        'grupo-2',
+        'PRIMEIRO_RANKING',
+        'fase-1',
+      );
 
       const historico = await service.listarHistorico(userId, grupoId);
 
@@ -92,7 +112,12 @@ describe('TokenDobroService', () => {
 
   describe('concederToken', () => {
     it('deve criar token com tipo CONCESSAO e motivo correto', async () => {
-      const token = await service.concederToken(userId, grupoId, 'PALPITES_COMPLETOS', 'fase-1');
+      const token = await service.concederToken(
+        userId,
+        grupoId,
+        'PALPITES_COMPLETOS',
+        'fase-1',
+      );
 
       expect(token.tipo).toBe('CONCESSAO');
       expect(token.motivo).toBe('PALPITES_COMPLETOS');
@@ -106,7 +131,11 @@ describe('TokenDobroService', () => {
 
   describe('registrarUtilizacao', () => {
     it('deve criar token com tipo UTILIZACAO e motivo ATIVACAO_DOBRO', async () => {
-      const token = await service.registrarUtilizacao(userId, grupoId, 'jogo-1');
+      const token = await service.registrarUtilizacao(
+        userId,
+        grupoId,
+        'jogo-1',
+      );
 
       expect(token.tipo).toBe('UTILIZACAO');
       expect(token.motivo).toBe('ATIVACAO_DOBRO');
@@ -117,7 +146,11 @@ describe('TokenDobroService', () => {
 
   describe('registrarCancelamento', () => {
     it('deve criar token com tipo CONCESSAO e motivo CANCELAMENTO_DOBRO', async () => {
-      const token = await service.registrarCancelamento(userId, grupoId, 'jogo-1');
+      const token = await service.registrarCancelamento(
+        userId,
+        grupoId,
+        'jogo-1',
+      );
 
       expect(token.tipo).toBe('CONCESSAO');
       expect(token.motivo).toBe('CANCELAMENTO_DOBRO');
