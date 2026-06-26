@@ -71,3 +71,7 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
 # steering dev
 .kiro/steering/ambiente-dev.md
+
+# Kiro Skills (não versionar — são locais)
+.kiro/steering/senior-backend-dev/
+.kiro/steering/senior-qa/
