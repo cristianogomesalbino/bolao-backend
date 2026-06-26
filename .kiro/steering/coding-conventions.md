@@ -170,17 +170,30 @@ Não usar `"campo": "geral"`. O campo `campo` é opcional — omitir quando não
 
 ## Qualidade de Código (Lint/Sonar)
 
-- **SEMPRE verificar diagnostics após criar/editar arquivo .ts** — usar getDiagnostics e corrigir erros de Prettier e warnings corrigíveis
+- **SEMPRE verificar diagnostics após criar/editar arquivo .ts** — usar getDiagnostics e corrigir TODOS os erros (não apenas warnings). Zero errors é obrigatório antes de considerar o código pronto
 - **SEMPRE usar optional chaining** quando acessar propriedades de objetos possivelmente null/undefined
-- **SEMPRE manter complexidade cognitiva ≤ 15** — se ultrapassar, extrair helpers privados
-- **NUNCA usar `any` em código novo** — tipar tudo. Em código legado sendo editado, tipar o que tocar
+- **SEMPRE manter complexidade cognitiva ≤ 15** — se ultrapassar, extrair helpers privados. NÃO aceitar "vou resolver depois"
+- **NUNCA usar `any` em código novo** — tipar tudo com interfaces próprias. Parâmetros de métodos, retornos, variáveis locais. Se recebe `any` de um repository, fazer cast com `as TipoEsperado` imediatamente
 - **NUNCA commitar com erros de Prettier** — formatação deve estar correta antes de qualquer commit
+- **NUNCA aninhar ifs** — máximo 1 nível dentro de um `if`. Se precisar de `if` dentro de `if`, extrair em método privado ou usar early return
+- **SEMPRE executar `getDiagnostics` ANTES de declarar que o código está pronto** — é a etapa final obrigatória
 - **Ao criar código novo, seguir estes padrões para evitar issues de Sonar:**
   - Usar `?.` em vez de `&& obj.prop` (S6582)
   - Marcar membros como `readonly` quando não são reatribuídos (S2933)
   - Remover imports não utilizados (S1128)
   - Não criar classes vazias (S2094)
   - Não duplicar imports do mesmo módulo (S3863)
+
+## Protocolo de Validação (obrigatório em TODA entrega)
+
+1. **getDiagnostics** em cada arquivo criado/editado — 0 errors obrigatório
+2. **Rodar testes** (`npx vitest run`) — 0 falhas obrigatório
+3. **Verificar container Docker** — `Nest application successfully started` sem erros
+4. Se getDiagnostics retorna warnings de complexidade ou `any`:
+   - Complexidade > 15: extrair helper ANTES de entregar
+   - `any` em código novo: tipar ANTES de entregar
+   - `any` em código legado tocado: aplicar regra dos 10%
+5. **Nunca declarar "pronto" sem rodar os 4 passos acima**
 
 ## Redução Gradual de Dívida Técnica (Regra dos 10%)
 
@@ -195,6 +208,21 @@ Não usar `"campo": "geral"`. O campo `campo` é opcional — omitir quando não
 - **Não quebrar funcionalidade** — ao tipar, garantir que os 3 arquivos (interface + Prisma + InMemory) estão alinhados
 - **Documentar no commit** — mencionar "redução de dívida técnica" quando aplicável
 - **Meta:** zero erros de lint em código novo. Código legado deve ser tipado ao ser editado.
+
+## Segurança — Arquivos Sensíveis
+
+- **NUNCA commitar arquivos com credentials/tokens/senhas** — connection strings, API keys, tokens de acesso
+- **Arquivos que NUNCA devem ir pro git:**
+  - `.kiro/settings/mcp.json` (contém connection strings de banco)
+  - `.env` (já no gitignore, mas validar)
+  - Qualquer arquivo com senhas, tokens ou chaves de API em texto puro
+- **SEMPRE verificar `.gitignore` ANTES de criar arquivos com dados sensíveis** — se o path não está ignorado, adicionar ANTES de criar o arquivo
+- **NUNCA colocar credentials em arquivos de configuração que são trackeados** — usar variáveis de ambiente ou referências a secrets
+- **Se criar um arquivo MCP, Docker ou de configuração que requer credentials:**
+  1. Verificar se o path está no `.gitignore`
+  2. Se não está, adicionar ao `.gitignore` ANTES de criar
+  3. Usar variáveis de ambiente (`${}`) ou referências a secrets em vez de valores literais
+- **Se detectar que um arquivo sensível foi commitado:** alertar IMEDIATAMENTE o usuário para rotacionar as credenciais
 
 ## Testes
 
