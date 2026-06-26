@@ -797,11 +797,14 @@ export class JogoService {
     );
     if (jogosFinalizedAgora.length > 0) {
       this.logger.log(
-        `[SYNC] 🏆 ${jogosFinalizedAgora.length} jogo(s) finalizado(s) — disparando preenchimento de chaveamento`,
+        `[SYNC] 🏆 ${jogosFinalizedAgora.length} jogo(s) finalizado(s) — disparando chaveamento`,
       );
       await this.chaveamentoService.preencherProximaFaseEliminatoria(
         fase.temporadaId,
         config,
+      );
+      await this.chaveamentoService.propagarVencedoresParaProximaFase(
+        fase.temporadaId,
       );
     }
 

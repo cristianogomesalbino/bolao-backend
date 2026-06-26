@@ -43,6 +43,7 @@ describe('JogoService — sincronização multi-campeonato', () => {
 
     service = new JogoService(jogoRepo, faseRepo, futebolApiService, timeRepo, {
       preencherProximaFaseEliminatoria: vi.fn().mockResolvedValue(undefined),
+      propagarVencedoresParaProximaFase: vi.fn().mockResolvedValue(undefined),
     } as any);
   });
 

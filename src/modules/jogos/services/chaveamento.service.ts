@@ -1,5 +1,13 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import { JOGOS, COPA_CHAVEAMENTO_16AVOS } from '../jogos.constants';
+import {
+  JOGOS,
+  COPA_CHAVEAMENTO_16AVOS,
+  COPA_BRACKET_OITAVAS,
+  COPA_BRACKET_QUARTAS,
+  COPA_BRACKET_SEMIS,
+  COPA_BRACKET_FINAL,
+  COPA_BRACKET_TERCEIRO,
+} from '../jogos.constants';
 import { TIMES } from '../../times/time.constants';
 import type { JogoRepository } from '../repositories/jogo.repository.interface';
 import type { FaseRepository } from '../repositories/fase.repository.interface';
@@ -14,6 +22,29 @@ interface ClassificacaoTime {
   pontos: number;
   sg: number;
   gp: number;
+}
+
+interface FaseBasica {
+  id: string;
+  nome: string;
+  tipo: string;
+  ordem: number;
+}
+
+interface JogoOrigem {
+  id: string;
+  rodada: number | null;
+  status: string;
+  vencedorId: string | null;
+  timeCasaId: string;
+  timeForaId: string;
+}
+
+interface JogoDestino {
+  id: string;
+  rodada: number | null;
+  timeCasaId: string;
+  timeForaId: string;
 }
 
 interface JogoComRelacoes {
@@ -66,6 +97,10 @@ export class ChaveamentoService {
     temporadaId: string,
     config: CampeonatoConfig,
   ): Promise<void> {
+    // Criar/atualizar jogos de eliminatórias conforme times são classificados
+    await this.criarOuAtualizarJogosEliminatorios(temporadaId, config);
+
+    // Tentar enriquecer via API do GE (externoId, horários mais precisos)
     const jogosComTBD = (await this.jogoRepo.buscarJogosComTimePlaceholder(
       temporadaId,
       TBD_ID,
@@ -100,6 +135,389 @@ export class ChaveamentoService {
     if (restantes.length === 0) return;
 
     await this.preencherViaClassificacao(restantes, temporadaId);
+  }
+
+  /**
+   * Tenta importar jogos da próxima fase eliminatória vazia via API do GE.
+   * Se a API não tem dados, cria jogos sob demanda conforme times são classificados.
+   */
+  private async criarOuAtualizarJogosEliminatorios(
+    temporadaId: string,
+    _config: CampeonatoConfig,
+  ): Promise<void> {
+    const fase16Avos = await this.buscarFase16Avos(temporadaId);
+    if (!fase16Avos) return;
+
+    const classificacao = await this.calcularClassificacaoGrupos(temporadaId);
+    if (!classificacao) return;
+
+    const tbdId = await this.garantirTimeTBD();
+
+    const jogosExistentes = (await this.jogoRepo.buscarPorFase(
+      fase16Avos.id,
+    )) as {
+      id: string;
+      rodada: number | null;
+      timeCasaId: string;
+      timeForaId: string;
+    }[];
+    const jogosPorRodada = new Map<number, (typeof jogosExistentes)[0]>();
+    for (const j of jogosExistentes) {
+      if (j.rodada) jogosPorRodada.set(j.rodada, j);
+    }
+
+    const siglaMap = await this.montarMapaSiglas(classificacao);
+    let criados = 0;
+    let atualizados = 0;
+
+    for (const entrada of COPA_CHAVEAMENTO_16AVOS) {
+      const resultado = await this.processarEntradaChaveamento(
+        entrada,
+        fase16Avos.id,
+        classificacao,
+        jogosPorRodada,
+        tbdId,
+      );
+      criados += resultado.criado ? 1 : 0;
+      atualizados += resultado.atualizado ? 1 : 0;
+    }
+
+    if (criados > 0 || atualizados > 0) {
+      const resumo = this.montarResumoChaveamento(classificacao, siglaMap);
+      this.logger.log(
+        `🏗️ ${criados} criados, ${atualizados} atualizados | ${resumo}`,
+      );
+    }
+  }
+
+  private async buscarFase16Avos(
+    temporadaId: string,
+  ): Promise<{ id: string; nome: string } | null> {
+    const fases = await this.faseRepo.buscarPorTemporada(temporadaId);
+    return (
+      (fases as FaseBasica[]).find(
+        (f) =>
+          f.tipo === 'MATA_MATA' && f.nome.toLowerCase().includes('16 avos'),
+      ) ?? null
+    );
+  }
+
+  private async garantirTimeTBD(): Promise<string> {
+    const timeTBD =
+      ((await this.timeRepo.buscarPorSigla('TBD')) as {
+        id: string;
+      } | null) ??
+      ((await this.timeRepo.criar({
+        nome: 'A Definir',
+        sigla: 'TBD',
+        escudo: null,
+        externoId: null,
+      })) as { id: string });
+    return timeTBD.id;
+  }
+
+  private async processarEntradaChaveamento(
+    entrada: { rodada: number; casa: string; fora: string; dataHora: string },
+    faseId: string,
+    classificacao: ClassificacaoMap,
+    jogosPorRodada: Map<
+      number,
+      { id: string; timeCasaId: string; timeForaId: string }
+    >,
+    tbdId: string,
+  ): Promise<{ criado: boolean; atualizado: boolean }> {
+    const timeCasaId = this.resolverPosicao(entrada.casa, classificacao);
+    const timeForaId = this.resolverPosicao(entrada.fora, classificacao);
+
+    if (!timeCasaId && !timeForaId) return { criado: false, atualizado: false };
+
+    const jogoExistente = jogosPorRodada.get(entrada.rodada);
+
+    if (!jogoExistente) {
+      await this.jogoRepo.criar({
+        faseId,
+        timeCasaId: timeCasaId ?? tbdId,
+        timeForaId: timeForaId ?? tbdId,
+        dataHora: new Date(entrada.dataHora),
+        rodada: entrada.rodada,
+        status: 'AGENDADO',
+        golsCasa: null,
+        golsFora: null,
+        temProrrogacao: false,
+        golsProrrogacaoCasa: null,
+        golsProrrogacaoFora: null,
+        temPenaltis: false,
+        penaltisCasa: null,
+        penaltisFora: null,
+        vencedorId: null,
+        ehJogoVolta: false,
+        grupoIdaVolta: null,
+        fonteResultado: 'API_EXTERNA',
+        externoId: null,
+        criadoPor: 'sistema-chaveamento',
+      });
+      return { criado: true, atualizado: false };
+    }
+
+    // Jogo existe — atualizar TBD se agora temos o time
+    const updateData: Record<string, string> = {};
+    if (jogoExistente.timeCasaId === tbdId && timeCasaId) {
+      updateData.timeCasaId = timeCasaId;
+    }
+    if (jogoExistente.timeForaId === tbdId && timeForaId) {
+      updateData.timeForaId = timeForaId;
+    }
+    if (Object.keys(updateData).length === 0)
+      return { criado: false, atualizado: false };
+
+    await this.jogoRepo.atualizar(jogoExistente.id, updateData);
+    return { criado: false, atualizado: true };
+  }
+
+  private montarResumoChaveamento(
+    classificacao: ClassificacaoMap,
+    siglaMap: Map<string, string>,
+  ): string {
+    const partes: string[] = [];
+    for (const entrada of COPA_CHAVEAMENTO_16AVOS) {
+      const casaId = this.resolverPosicao(entrada.casa, classificacao);
+      const foraId = this.resolverPosicao(entrada.fora, classificacao);
+      const casa = casaId ? (siglaMap.get(casaId) ?? '?') : entrada.casa;
+      const fora = foraId ? (siglaMap.get(foraId) ?? '?') : entrada.fora;
+      if (casaId || foraId) {
+        partes.push(`R${entrada.rodada}: ${casa} x ${fora}`);
+      }
+    }
+    return partes.join(' | ');
+  }
+
+  /**
+   * Propaga vencedores de uma fase para a próxima usando o bracket.
+   * Chamado após qualquer jogo de mata-mata ser finalizado.
+   */
+  async propagarVencedoresParaProximaFase(temporadaId: string): Promise<void> {
+    const fases = await this.faseRepo.buscarPorTemporada(temporadaId);
+    const fasesMataMata = (fases as FaseBasica[])
+      .filter((f) => f.tipo === 'MATA_MATA')
+      .sort((a, b) => a.ordem - b.ordem);
+
+    if (fasesMataMata.length < 2) return;
+
+    const tbdId = await this.garantirTimeTBD();
+
+    const faseSemis = fasesMataMata.find((f) =>
+      f.nome.toLowerCase().includes('semi'),
+    );
+    const faseTerceiro = fasesMataMata.find(
+      (f) =>
+        f.nome.toLowerCase().includes('3') ||
+        f.nome.toLowerCase().includes('terceiro'),
+    );
+    const faseFinal = fasesMataMata.find(
+      (f) =>
+        f.nome.toLowerCase().includes('final') &&
+        !f.nome.toLowerCase().includes('semi'),
+    );
+
+    for (let i = 0; i < fasesMataMata.length - 1; i++) {
+      const faseAtual = fasesMataMata[i];
+      const faseProxima = fasesMataMata[i + 1];
+
+      // 3º lugar e final são alimentados pelas semis, não pela fase anterior no array
+      const ehTerceiroLugar = faseProxima.id === faseTerceiro?.id;
+      const ehFinal = faseProxima.id === faseFinal?.id;
+
+      if (ehTerceiroLugar || ehFinal) continue;
+
+      const bracket = this.obterBracketParaFase(faseProxima.nome);
+      if (!bracket) continue;
+
+      await this.propagarEntresFases(
+        faseAtual.id,
+        faseProxima.id,
+        bracket,
+        tbdId,
+        false,
+      );
+    }
+
+    // 3º lugar: perdedores das semifinais
+    if (faseSemis && faseTerceiro) {
+      const bracket = this.obterBracketParaFase(faseTerceiro.nome);
+      if (bracket) {
+        await this.propagarEntresFases(
+          faseSemis.id,
+          faseTerceiro.id,
+          bracket,
+          tbdId,
+          true,
+        );
+      }
+    }
+
+    // Final: vencedores das semifinais
+    if (faseSemis && faseFinal) {
+      const bracket = this.obterBracketParaFase(faseFinal.nome);
+      if (bracket) {
+        await this.propagarEntresFases(
+          faseSemis.id,
+          faseFinal.id,
+          bracket,
+          tbdId,
+          false,
+        );
+      }
+    }
+  }
+
+  private obterBracketParaFase(nomeFase: string):
+    | {
+        rodada: number;
+        casaOrigem: number;
+        foraOrigem: number;
+        dataHora: string;
+      }[]
+    | null {
+    const nome = nomeFase.toLowerCase();
+    if (nome.includes('oitavas')) return COPA_BRACKET_OITAVAS;
+    if (nome.includes('quartas')) return COPA_BRACKET_QUARTAS;
+    if (nome.includes('semi')) return COPA_BRACKET_SEMIS;
+    if (nome.includes('3') || nome.includes('terceiro'))
+      return COPA_BRACKET_TERCEIRO;
+    if (nome.includes('final') && !nome.includes('semi'))
+      return COPA_BRACKET_FINAL;
+    return null;
+  }
+
+  private async propagarEntresFases(
+    faseOrigemId: string,
+    faseDestinoId: string,
+    bracket: {
+      rodada: number;
+      casaOrigem: number;
+      foraOrigem: number;
+      dataHora: string;
+    }[],
+    tbdId: string,
+    usarPerdedores: boolean,
+  ): Promise<void> {
+    const jogosOrigem = (await this.jogoRepo.buscarPorFase(
+      faseOrigemId,
+    )) as JogoOrigem[];
+    const jogosDestino = (await this.jogoRepo.buscarPorFase(
+      faseDestinoId,
+    )) as JogoDestino[];
+
+    const origemPorRodada = new Map(jogosOrigem.map((j) => [j.rodada, j]));
+    const destinoPorRodada = new Map(jogosDestino.map((j) => [j.rodada, j]));
+
+    for (const entrada of bracket) {
+      await this.processarEntradaBracket(
+        entrada,
+        faseDestinoId,
+        origemPorRodada,
+        destinoPorRodada,
+        tbdId,
+        usarPerdedores,
+      );
+    }
+  }
+
+  private async processarEntradaBracket(
+    entrada: {
+      rodada: number;
+      casaOrigem: number;
+      foraOrigem: number;
+      dataHora: string;
+    },
+    faseDestinoId: string,
+    origemPorRodada: Map<number | null, JogoOrigem>,
+    destinoPorRodada: Map<number | null, JogoDestino>,
+    tbdId: string,
+    usarPerdedores: boolean,
+  ): Promise<void> {
+    const jogoCasa = origemPorRodada.get(entrada.casaOrigem);
+    const jogoFora = origemPorRodada.get(entrada.foraOrigem);
+
+    const classificadoCasa = this.obterClassificado(jogoCasa, usarPerdedores);
+    const classificadoFora = this.obterClassificado(jogoFora, usarPerdedores);
+
+    if (!classificadoCasa && !classificadoFora) return;
+
+    const jogoDestino = destinoPorRodada.get(entrada.rodada);
+
+    if (!jogoDestino) {
+      await this.criarJogoProximaFase(
+        faseDestinoId,
+        entrada,
+        classificadoCasa,
+        classificadoFora,
+        tbdId,
+      );
+      this.logger.log(`🏗️ Jogo R${entrada.rodada} criado na próxima fase`);
+      return;
+    }
+
+    // Atualizar TBD com classificado
+    const updateData: Record<string, string> = {};
+    if (jogoDestino.timeCasaId === tbdId && classificadoCasa) {
+      updateData.timeCasaId = classificadoCasa;
+    }
+    if (jogoDestino.timeForaId === tbdId && classificadoFora) {
+      updateData.timeForaId = classificadoFora;
+    }
+    if (Object.keys(updateData).length > 0) {
+      await this.jogoRepo.atualizar(jogoDestino.id, updateData);
+    }
+  }
+
+  /**
+   * Retorna o time classificado de um jogo finalizado.
+   * Se usarPerdedores=true, retorna o time que NÃO é o vencedor.
+   */
+  private obterClassificado(
+    jogo: JogoOrigem | undefined,
+    usarPerdedores: boolean,
+  ): string | null {
+    if (jogo?.status !== 'FINALIZADO' || !jogo?.vencedorId) return null;
+
+    if (!usarPerdedores) return jogo.vencedorId;
+
+    // Perdedor = o time que não é o vencedor
+    return jogo.vencedorId === jogo.timeCasaId
+      ? jogo.timeForaId
+      : jogo.timeCasaId;
+  }
+
+  private async criarJogoProximaFase(
+    faseId: string,
+    entrada: { rodada: number; dataHora: string },
+    vencedorCasa: string | null,
+    vencedorFora: string | null,
+    tbdId: string,
+  ): Promise<void> {
+    await this.jogoRepo.criar({
+      faseId,
+      timeCasaId: vencedorCasa ?? tbdId,
+      timeForaId: vencedorFora ?? tbdId,
+      dataHora: new Date(entrada.dataHora),
+      rodada: entrada.rodada,
+      status: 'AGENDADO',
+      golsCasa: null,
+      golsFora: null,
+      temProrrogacao: false,
+      golsProrrogacaoCasa: null,
+      golsProrrogacaoFora: null,
+      temPenaltis: false,
+      penaltisCasa: null,
+      penaltisFora: null,
+      vencedorId: null,
+      ehJogoVolta: false,
+      grupoIdaVolta: null,
+      fonteResultado: 'API_EXTERNA',
+      externoId: null,
+      criadoPor: 'sistema-chaveamento',
+    });
   }
 
   private async tentarPreencherViaApi(
@@ -235,8 +653,10 @@ export class ChaveamentoService {
 
     const siglaMap = new Map<string, string>();
     for (const timeId of todosTimeIds) {
-      const time = await this.timeRepo.buscarPorId(timeId);
-      if (time) siglaMap.set(timeId, time.sigla as string);
+      const time = (await this.timeRepo.buscarPorId(timeId)) as {
+        sigla: string;
+      } | null;
+      if (time) siglaMap.set(timeId, time.sigla);
     }
     return siglaMap;
   }
@@ -263,7 +683,7 @@ export class ChaveamentoService {
     temporadaId: string,
   ): Promise<ClassificacaoMap | null> {
     const fases = await this.faseRepo.buscarPorTemporada(temporadaId);
-    const fasesGrupos = (fases as { id: string; nome: string; tipo: string }[]).filter(
+    const fasesGrupos = (fases as FaseBasica[]).filter(
       (f) => f.tipo === 'PONTOS_CORRIDOS',
     );
     if (fasesGrupos.length === 0) return null;
@@ -388,10 +808,10 @@ export class ChaveamentoService {
     sigla: string;
     escudo: string;
   }): Promise<{ id: string }> {
-    const existente = await this.timeRepo.buscarPorExternoId(
+    const existente = (await this.timeRepo.buscarPorExternoId(
       timeData.externoId,
-    );
-    if (existente) return existente as { id: string };
+    )) as { id: string } | null;
+    if (existente) return existente;
 
     return (await this.timeRepo.criar({
       nome: timeData.nome,

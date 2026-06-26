@@ -104,31 +104,111 @@ export const COPA_FASES_ELIMINATORIAS: FaseEliminatoriaConfig[] = [
 
 /**
  * Chaveamento dos 16 avos de final da Copa do Mundo 2026.
- * Cada entrada mapeia a rodada (1-16) para as posições dos times.
- * Formato: { rodada, casa: '1A' | '2F' | '3ABCDF', fora: idem }
- * '1A' = 1º do grupo A, '2F' = 2º do grupo F, '3ABCDF' = melhor 3º entre esses grupos
+ * Cada entrada mapeia a rodada (1-16) para as posições dos times e horário UTC.
  */
 export const COPA_CHAVEAMENTO_16AVOS: {
   rodada: number;
   casa: string;
   fora: string;
+  dataHora: string;
 }[] = [
-  { rodada: 1, casa: '2A', fora: '2B' }, // AFS x CAN
-  { rodada: 2, casa: '1C', fora: '2F' }, // BRA x 2ºF
-  { rodada: 3, casa: '1E', fora: '3ABCDF' }, // ALE x 3º
-  { rodada: 4, casa: '1F', fora: '2C' }, // 1ºF x MAR
-  { rodada: 5, casa: '2E', fora: '2I' }, // 2ºE x 2ºI
-  { rodada: 6, casa: '1I', fora: '3CDFGH' }, // 1ºI x 3º
-  { rodada: 7, casa: '1A', fora: '3CEFHI' }, // MEX x 3º
-  { rodada: 8, casa: '1L', fora: '3EHIJK' }, // 1ºL x 3º
-  { rodada: 9, casa: '1G', fora: '3AEHIJ' }, // 1ºG x 3º
-  { rodada: 10, casa: '1D', fora: '3BEFIJ' }, // EUA x 3º
-  { rodada: 11, casa: '1H', fora: '2J' }, // 1ºH x 2ºJ
-  { rodada: 12, casa: '2K', fora: '2L' }, // 2ºK x 2ºL
-  { rodada: 13, casa: '1B', fora: '3EFGIJ' }, // SUI x 3º
-  { rodada: 14, casa: '2D', fora: '2G' }, // 2ºD x 2ºG
-  { rodada: 15, casa: '1J', fora: '2H' }, // ARG x 2ºH
-  { rodada: 16, casa: '1K', fora: '3DEIJL' }, // 1ºK x 3º
+  { rodada: 1, casa: '2A', fora: '2B', dataHora: '2026-06-28T19:00:00Z' },
+  { rodada: 2, casa: '1C', fora: '2F', dataHora: '2026-06-29T17:00:00Z' },
+  { rodada: 3, casa: '1E', fora: '3ABCDF', dataHora: '2026-06-29T20:30:00Z' },
+  { rodada: 4, casa: '1F', fora: '2C', dataHora: '2026-06-30T01:00:00Z' },
+  { rodada: 5, casa: '2E', fora: '2I', dataHora: '2026-06-30T17:00:00Z' },
+  { rodada: 6, casa: '1I', fora: '3CDFGH', dataHora: '2026-06-30T21:00:00Z' },
+  { rodada: 7, casa: '1A', fora: '3CEFHI', dataHora: '2026-07-01T01:00:00Z' },
+  { rodada: 8, casa: '1L', fora: '3EHIJK', dataHora: '2026-07-01T16:00:00Z' },
+  { rodada: 9, casa: '1G', fora: '3AEHIJ', dataHora: '2026-07-01T20:00:00Z' },
+  { rodada: 10, casa: '1D', fora: '3BEFIJ', dataHora: '2026-07-02T00:00:00Z' },
+  { rodada: 11, casa: '1H', fora: '2J', dataHora: '2026-07-02T19:00:00Z' },
+  { rodada: 12, casa: '2K', fora: '2L', dataHora: '2026-07-02T23:00:00Z' },
+  { rodada: 13, casa: '1B', fora: '3EFGIJ', dataHora: '2026-07-03T03:00:00Z' },
+  { rodada: 14, casa: '2D', fora: '2G', dataHora: '2026-07-03T18:00:00Z' },
+  { rodada: 15, casa: '1J', fora: '2H', dataHora: '2026-07-03T22:00:00Z' },
+  { rodada: 16, casa: '1K', fora: '3DEIJL', dataHora: '2026-07-04T01:30:00Z' },
+];
+
+/**
+ * Bracket das fases seguintes da Copa 2026.
+ * Cada entrada: rodada da fase, vencedor de qual rodada da fase anterior (casa/fora).
+ * Baseado no chaveamento oficial FIFA.
+ */
+export const COPA_BRACKET_OITAVAS: {
+  rodada: number;
+  casaOrigem: number;
+  foraOrigem: number;
+  dataHora: string;
+}[] = [
+  { rodada: 1, casaOrigem: 2, foraOrigem: 1, dataHora: '2026-07-04T17:00:00Z' },
+  { rodada: 2, casaOrigem: 4, foraOrigem: 3, dataHora: '2026-07-04T21:00:00Z' },
+  { rodada: 3, casaOrigem: 6, foraOrigem: 5, dataHora: '2026-07-05T20:00:00Z' },
+  { rodada: 4, casaOrigem: 8, foraOrigem: 7, dataHora: '2026-07-06T00:00:00Z' },
+  {
+    rodada: 5,
+    casaOrigem: 10,
+    foraOrigem: 9,
+    dataHora: '2026-07-06T19:00:00Z',
+  },
+  {
+    rodada: 6,
+    casaOrigem: 12,
+    foraOrigem: 11,
+    dataHora: '2026-07-07T00:00:00Z',
+  },
+  {
+    rodada: 7,
+    casaOrigem: 14,
+    foraOrigem: 13,
+    dataHora: '2026-07-07T16:00:00Z',
+  },
+  {
+    rodada: 8,
+    casaOrigem: 16,
+    foraOrigem: 15,
+    dataHora: '2026-07-07T20:00:00Z',
+  },
+];
+
+export const COPA_BRACKET_QUARTAS: {
+  rodada: number;
+  casaOrigem: number;
+  foraOrigem: number;
+  dataHora: string;
+}[] = [
+  { rodada: 1, casaOrigem: 1, foraOrigem: 2, dataHora: '2026-07-09T20:00:00Z' },
+  { rodada: 2, casaOrigem: 3, foraOrigem: 4, dataHora: '2026-07-10T19:00:00Z' },
+  { rodada: 3, casaOrigem: 5, foraOrigem: 6, dataHora: '2026-07-11T21:00:00Z' },
+  { rodada: 4, casaOrigem: 7, foraOrigem: 8, dataHora: '2026-07-12T01:00:00Z' },
+];
+
+export const COPA_BRACKET_SEMIS: {
+  rodada: number;
+  casaOrigem: number;
+  foraOrigem: number;
+  dataHora: string;
+}[] = [
+  { rodada: 1, casaOrigem: 1, foraOrigem: 2, dataHora: '2026-07-14T19:00:00Z' },
+  { rodada: 2, casaOrigem: 3, foraOrigem: 4, dataHora: '2026-07-15T19:00:00Z' },
+];
+
+export const COPA_BRACKET_FINAL: {
+  rodada: number;
+  casaOrigem: number;
+  foraOrigem: number;
+  dataHora: string;
+}[] = [
+  { rodada: 1, casaOrigem: 1, foraOrigem: 2, dataHora: '2026-07-19T19:00:00Z' },
+];
+
+export const COPA_BRACKET_TERCEIRO: {
+  rodada: number;
+  casaOrigem: number;
+  foraOrigem: number;
+  dataHora: string;
+}[] = [
+  { rodada: 1, casaOrigem: 1, foraOrigem: 2, dataHora: '2026-07-18T21:00:00Z' },
 ];
 
 // --- Registry de configurações de campeonato ---

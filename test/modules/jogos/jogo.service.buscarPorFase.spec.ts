@@ -65,7 +65,7 @@ describe('JogoService — buscarPorFaseComDetalhes com filtro de rodada', () => 
       mapearStatus: vi.fn(),
     } as any;
 
-    service = new JogoService(jogoRepo, faseRepo, futebolApiService, timeRepo, { preencherProximaFaseEliminatoria: vi.fn() } as any);
+    service = new JogoService(jogoRepo, faseRepo, futebolApiService, timeRepo, { preencherProximaFaseEliminatoria: vi.fn(), propagarVencedoresParaProximaFase: vi.fn() } as any);
   });
 
   describe('buscarPorFase', () => {

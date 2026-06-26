@@ -60,7 +60,7 @@ describe('JogoService — importação multi-campeonato', () => {
       mapearStatus: vi.fn(),
     } as any;
 
-    service = new JogoService(jogoRepo, faseRepo, futebolApiService, timeRepo, { preencherProximaFaseEliminatoria: vi.fn() } as any);
+    service = new JogoService(jogoRepo, faseRepo, futebolApiService, timeRepo, { preencherProximaFaseEliminatoria: vi.fn(), propagarVencedoresParaProximaFase: vi.fn() } as any);
   });
 
   describe('importação Copa do Mundo — fase de grupos', () => {
