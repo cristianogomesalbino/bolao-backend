@@ -885,30 +885,31 @@ export class JogoService {
   }> {
     let jogoApi = jogoApiMap.get(jogo.externoId);
 
-    // Jogos sem externoId (criados manualmente para mata-mata): match por rodada
+    // Jogos sem externoId (criados manualmente para mata-mata): match por horário
     if (!jogoApi && !jogo.externoId) {
       jogoApi = this.matchPorRodada(jogo, jogoApiMap);
-      if (jogoApi) {
-        // Vincular externoId para próximas syncs
-        await this.jogoRepo.atualizar(jogo.id, {
-          externoId: jogoApi.externoId,
-        });
-        this.logger.log(
-          `[SYNC] 🔗 Jogo R${jogo.rodada} vinculado ao externoId ${jogoApi.externoId}`,
-        );
-      }
     }
 
-    if (!jogoApi) {
-      if (jogo.externoId) {
-        this.logger.warn(
-          apiDisponivel
-            ? `Jogo externo ${jogo.externoId} não encontrado na API`
-            : `Usando fallback interno para jogo ${jogo.id} (externoId: ${jogo.externoId})`,
-        );
-      }
-      // Jogo sem externoId e sem match — nada a fazer
-      if (!jogo.externoId) return { atualizado: false };
+    // Vincular externoId se encontrou match
+    if (jogoApi && !jogo.externoId) {
+      await this.jogoRepo.atualizar(jogo.id, { externoId: jogoApi.externoId });
+      this.logger.log(
+        `[SYNC] 🔗 Jogo R${jogo.rodada} vinculado ao externoId ${jogoApi.externoId}`,
+      );
+    }
+
+    // Sem match e sem externoId — nada a fazer
+    if (!jogoApi && !jogo.externoId) {
+      return { atualizado: false };
+    }
+
+    // Sem match mas tem externoId — logar warning
+    if (!jogoApi && jogo.externoId) {
+      this.logger.warn(
+        apiDisponivel
+          ? `Jogo externo ${jogo.externoId} não encontrado na API`
+          : `Usando fallback interno para jogo ${jogo.id} (externoId: ${jogo.externoId})`,
+      );
     }
 
     const novoStatus = this.definirStatusFinal(jogo, jogoApi?.status);
@@ -1036,22 +1037,18 @@ export class JogoService {
    * usando rodada como critério. Usado em fases eliminatórias.
    */
   private matchPorRodada(jogo: any, jogoApiMap: Map<string, any>): any | null {
-    if (!jogo.rodada) return null;
+    if (!jogo.rodada || !jogo.dataHora) return null;
+
+    const dataLocal = new Date(jogo.dataHora).getTime();
 
     for (const [, jogoApi] of jogoApiMap) {
-      if (jogoApi._matched) continue;
+      if (jogoApi._matched || !jogoApi.dataHora) continue;
 
-      // Match por horário similar (tolerância de 30 minutos)
-      if (jogo.dataHora && jogoApi.dataHora) {
-        const diffMs = Math.abs(
-          new Date(jogo.dataHora).getTime() -
-            new Date(jogoApi.dataHora).getTime(),
-        );
-        if (diffMs <= 30 * 60 * 1000) {
-          jogoApi._matched = true;
-          return jogoApi;
-        }
-      }
+      const diffMs = Math.abs(dataLocal - new Date(jogoApi.dataHora).getTime());
+      if (diffMs > 30 * 60 * 1000) continue;
+
+      jogoApi._matched = true;
+      return jogoApi;
     }
 
     return null;

@@ -175,32 +175,8 @@ export class ChaveamentoService {
       );
       if (!regra) continue;
 
-      const updateData: Record<string, string> = {};
-      let mudou = false;
-      let casaLabel = jogo.timeCasa?.sigla ?? regra.casa;
-      let foraLabel = jogo.timeFora?.sigla ?? regra.fora;
-
-      if (jogo.timeCasaId === TBD_ID) {
-        const timeId = this.resolverPosicao(regra.casa, classificacao);
-        if (timeId) {
-          updateData.timeCasaId = timeId;
-          mudou = true;
-          casaLabel = siglaMap.get(timeId) ?? regra.casa;
-        } else {
-          casaLabel = regra.casa;
-        }
-      }
-
-      if (jogo.timeForaId === TBD_ID) {
-        const timeId = this.resolverPosicao(regra.fora, classificacao);
-        if (timeId) {
-          updateData.timeForaId = timeId;
-          mudou = true;
-          foraLabel = siglaMap.get(timeId) ?? regra.fora;
-        } else {
-          foraLabel = regra.fora;
-        }
-      }
+      const { updateData, mudou, casaLabel, foraLabel } =
+        this.resolverTimesDoJogo(jogo, regra, classificacao, siglaMap);
 
       if (mudou) {
         await this.jogoRepo.atualizar(jogo.id, updateData);
@@ -210,6 +186,43 @@ export class ChaveamentoService {
     }
 
     this.logger.log(`🏆 ${resumoJogos.join(' | ')}`);
+  }
+
+  private resolverTimesDoJogo(
+    jogo: JogoComRelacoes,
+    regra: { casa: string; fora: string },
+    classificacao: ClassificacaoMap,
+    siglaMap: Map<string, string>,
+  ): {
+    updateData: Record<string, string>;
+    mudou: boolean;
+    casaLabel: string;
+    foraLabel: string;
+  } {
+    const updateData: Record<string, string> = {};
+    let mudou = false;
+    let casaLabel = jogo.timeCasa?.sigla ?? regra.casa;
+    let foraLabel = jogo.timeFora?.sigla ?? regra.fora;
+
+    if (jogo.timeCasaId === TBD_ID) {
+      const timeId = this.resolverPosicao(regra.casa, classificacao);
+      casaLabel = timeId ? (siglaMap.get(timeId) ?? regra.casa) : regra.casa;
+      if (timeId) {
+        updateData.timeCasaId = timeId;
+        mudou = true;
+      }
+    }
+
+    if (jogo.timeForaId === TBD_ID) {
+      const timeId = this.resolverPosicao(regra.fora, classificacao);
+      foraLabel = timeId ? (siglaMap.get(timeId) ?? regra.fora) : regra.fora;
+      if (timeId) {
+        updateData.timeForaId = timeId;
+        mudou = true;
+      }
+    }
+
+    return { updateData, mudou, casaLabel, foraLabel };
   }
 
   private async montarMapaSiglas(
