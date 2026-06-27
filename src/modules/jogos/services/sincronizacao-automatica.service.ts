@@ -194,6 +194,8 @@ export class SincronizacaoAutomaticaService implements OnModuleInit {
       const fasesParaSync = await this.buscarFasesParaSincronizar();
 
       if (fasesParaSync.length === 0) {
+        // Mesmo sem fases para sync, verificar se há chaveamento pendente
+        await this.verificarChaveamentoPendenteTodosCampeonatos();
         this.estado = {
           temJogosEmAndamento,
           proximoJogoEm,
@@ -208,6 +210,10 @@ export class SincronizacaoAutomaticaService implements OnModuleInit {
       for (const [campeonatoSlug, fases] of Object.entries(porCampeonato)) {
         await this.sincronizarFasesDoCampeonato(campeonatoSlug, fases);
       }
+
+      // Verificar chaveamento pendente de outros campeonatos
+      this.logger.log('[SYNC-AUTO] Verificando chaveamentos pendentes...');
+      await this.verificarChaveamentoPendenteTodosCampeonatos();
 
       // Recalcular estado após sincronização
       const estadoPosSync = await this.detectarEstadoJogos();
@@ -392,7 +398,7 @@ export class SincronizacaoAutomaticaService implements OnModuleInit {
       ['segunda-fase', 'segunda fase'],
       ['oitavas', 'oitavas'],
       ['quartas', 'quartas'],
-      ['semifinais', 'semi'],
+      ['semifinal', 'semi'],
       ['terceiro', 'terceiro'],
     ];
 
@@ -565,7 +571,40 @@ export class SincronizacaoAutomaticaService implements OnModuleInit {
   // Forçar execução manual (para admin)
   async forcarSincronizacao(): Promise<void> {
     await this.executarSincronizacao();
+    await this.verificarChaveamentoPendenteTodosCampeonatos();
     this.agendarProximaExecucao();
+  }
+
+  /**
+   * Verifica se há chaveamento pendente em todos os campeonatos habilitados.
+   * Chamado quando não há fases para sync mas pode haver eliminatórias a criar.
+   */
+  private async verificarChaveamentoPendenteTodosCampeonatos(): Promise<void> {
+    for (const slug of this.campeonatosPermitidos) {
+      const config = CAMPEONATO_CONFIGS[slug];
+      if (!config) continue;
+
+      const temMataMata = config.fases.some((f) => f.tipo === 'MATA_MATA');
+      if (!temMataMata) continue;
+
+      // Buscar temporada do campeonato que tenha fases MATA_MATA
+      const temporada = await this.prisma.temporada.findFirst({
+        where: {
+          campeonato: {
+            nome: { contains: slug.includes('copa') ? 'Copa' : 'Brasileirão' },
+          },
+          fases: { some: { tipo: 'MATA_MATA' } },
+        },
+        orderBy: { ano: 'desc' },
+      });
+      if (!temporada) continue;
+
+      this.logger.log(
+        `[SYNC-AUTO] Verificando chaveamento para ${slug} (temporada ${temporada.id})`,
+      );
+
+      await this.jogoService.verificarChaveamentoPendente(temporada.id, config);
+    }
   }
 
   private determinarStatusSync(
