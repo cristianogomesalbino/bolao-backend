@@ -161,6 +161,11 @@ export class FutebolApiService implements OnModuleInit {
   ): Promise<any[]> {
     if (rodadas.length === 0) return [];
 
+    // Para fases eliminatórias da Copa, usar endpoint /classificacao/
+    if (this.ehFaseEliminatoriaCopa(faseSlug)) {
+      return this.buscarJogosEliminatorios(campeonatoId, faseSlug);
+    }
+
     const resultados = await Promise.allSettled(
       rodadas.map((rodada) =>
         this.buscarJogosPorRodada(campeonatoId, faseSlug, rodada),
@@ -183,6 +188,95 @@ export class FutebolApiService implements OnModuleInit {
     }
 
     return encontrados;
+  }
+
+  /**
+   * Verifica se o slug corresponde a uma fase eliminatória da Copa.
+   * Fases eliminatórias usam endpoint /classificacao/ ao invés de /rodada/X/jogos/.
+   */
+  private ehFaseEliminatoriaCopa(faseSlug: string): boolean {
+    const slugsEliminatorios = [
+      'segunda-fase',
+      'oitavas',
+      'quartas',
+      'semifinal',
+      'terceiro',
+      'final-copa',
+    ];
+    return slugsEliminatorios.some((s) => faseSlug.includes(s));
+  }
+
+  /**
+   * Busca jogos de fases eliminatórias da Copa via endpoint /classificacao/.
+   * A API do GE não expõe jogos de mata-mata via /rodada/X/jogos/,
+   * mas retorna tudo no endpoint de classificação com estrutura de chaves.
+   */
+  async buscarJogosEliminatorios(
+    campeonatoId: string,
+    faseSlug: string,
+  ): Promise<any[]> {
+    const url = `${GE_BASE_URL}/${campeonatoId}/fase/${faseSlug}/classificacao/`;
+
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 10000);
+
+      const response = await fetch(url, {
+        method: 'GET',
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+
+      if (!response.ok) {
+        this.logger.warn(
+          `Segunda fase GE indisponível: status ${response.status}`,
+        );
+        return [];
+      }
+
+      const data = await response.json();
+      const secoes = data?.secao;
+      if (!Array.isArray(secoes)) return [];
+
+      const jogos = this.extrairJogosDeSecoes(secoes);
+
+      this.logger.log(
+        `🌐 Eliminatórias GE (${faseSlug}): ${jogos.length} jogos com times definidos`,
+      );
+      return jogos;
+    } catch (error) {
+      this.logger.warn('Erro ao buscar segunda fase da API GE', error);
+      return [];
+    }
+  }
+
+  private extrairJogosDeSecoes(secoes: any[]): any[] {
+    const jogos: any[] = [];
+
+    for (const secao of secoes) {
+      if (!Array.isArray(secao.chave)) continue;
+      for (const chave of secao.chave) {
+        if (!Array.isArray(chave.jogos)) continue;
+        for (const jogo of chave.jogos) {
+          const jogoFormatado = this.formatarJogoSegundaFase(jogo);
+          if (jogoFormatado) jogos.push(jogoFormatado);
+        }
+      }
+    }
+
+    return jogos;
+  }
+
+  private formatarJogoSegundaFase(jogo: any): any | null {
+    if (!jogo.id) return null;
+    if (!jogo.equipes?.mandante?.id || !jogo.equipes?.visitante?.id)
+      return null;
+
+    const dataCompleta = jogo.hora_realizacao
+      ? `${jogo.data_realizacao}T${jogo.hora_realizacao}`
+      : jogo.data_realizacao;
+
+    return { ...jogo, data_realizacao: dataCompleta };
   }
 
   private async fetchJogos(url: string): Promise<any[]> {
