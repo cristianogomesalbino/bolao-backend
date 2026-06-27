@@ -392,7 +392,7 @@ export class SincronizacaoAutomaticaService implements OnModuleInit {
       ['segunda-fase', 'segunda fase'],
       ['oitavas', 'oitavas'],
       ['quartas', 'quartas'],
-      ['semifinais', 'semi'],
+      ['semifinal', 'semi'],
       ['terceiro', 'terceiro'],
     ];
 

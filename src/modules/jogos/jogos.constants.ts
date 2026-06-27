@@ -43,10 +43,10 @@ export const COPA_TIMES_POR_GRUPO = 4;
 export const COPA_FASES = {
   FASE_DE_GRUPOS: 'fase-de-grupos-copa-do-mundo-2026',
   SEGUNDA_FASE: 'segunda-fase-copa-do-mundo-2026',
-  OITAVAS: 'oitavas-de-final-copa-do-mundo-2026',
-  QUARTAS: 'quartas-de-final-copa-do-mundo-2026',
-  SEMIFINAIS: 'semifinais-copa-do-mundo-2026',
-  TERCEIRO_LUGAR: 'disputa-terceiro-lugar-copa-do-mundo-2026',
+  OITAVAS: 'oitavas-copa-do-mundo-2026',
+  QUARTAS: 'quartas-copa-do-mundo-2026',
+  SEMIFINAIS: 'semifinal-copa-do-mundo-2026',
+  TERCEIRO_LUGAR: 'terceiro-copa-do-mundo-2026',
   FINAL: 'final-copa-do-mundo-2026',
 } as const;
 
@@ -103,7 +103,9 @@ export const COPA_FASES_ELIMINATORIAS: FaseEliminatoriaConfig[] = [
 ];
 
 /**
- * Chaveamento dos 16 avos de final da Copa do Mundo 2026.
+ * Chaveamento dos 16 avos de final (Round of 32) da Copa do Mundo 2026.
+ * Baseado no bracket oficial da FIFA (matches 73-88).
+ * Fonte: FIFA Match Schedule (digitalhub.fifa.com/m/1be9ce37eb98fcc5/original/FWC26-Match-Schedule_English.pdf)
  * Cada entrada mapeia a rodada (1-16) para as posições dos times e horário UTC.
  */
 export const COPA_CHAVEAMENTO_16AVOS: {
@@ -112,22 +114,22 @@ export const COPA_CHAVEAMENTO_16AVOS: {
   fora: string;
   dataHora: string;
 }[] = [
-  { rodada: 1, casa: '2A', fora: '2B', dataHora: '2026-06-28T19:00:00Z' },
-  { rodada: 2, casa: '1C', fora: '2F', dataHora: '2026-06-29T17:00:00Z' },
-  { rodada: 3, casa: '1E', fora: '3ABCDF', dataHora: '2026-06-29T20:30:00Z' },
-  { rodada: 4, casa: '1F', fora: '2C', dataHora: '2026-06-30T01:00:00Z' },
-  { rodada: 5, casa: '2E', fora: '2I', dataHora: '2026-06-30T17:00:00Z' },
-  { rodada: 6, casa: '1I', fora: '3CDFGH', dataHora: '2026-06-30T21:00:00Z' },
-  { rodada: 7, casa: '1A', fora: '3CEFHI', dataHora: '2026-07-01T01:00:00Z' },
-  { rodada: 8, casa: '1L', fora: '3EHIJK', dataHora: '2026-07-01T16:00:00Z' },
-  { rodada: 9, casa: '1G', fora: '3AEHIJ', dataHora: '2026-07-01T20:00:00Z' },
-  { rodada: 10, casa: '1D', fora: '3BEFIJ', dataHora: '2026-07-02T00:00:00Z' },
-  { rodada: 11, casa: '1H', fora: '2J', dataHora: '2026-07-02T19:00:00Z' },
-  { rodada: 12, casa: '2K', fora: '2L', dataHora: '2026-07-02T23:00:00Z' },
-  { rodada: 13, casa: '1B', fora: '3EFGIJ', dataHora: '2026-07-03T03:00:00Z' },
-  { rodada: 14, casa: '2D', fora: '2G', dataHora: '2026-07-03T18:00:00Z' },
-  { rodada: 15, casa: '1J', fora: '2H', dataHora: '2026-07-03T22:00:00Z' },
-  { rodada: 16, casa: '1K', fora: '3DEIJL', dataHora: '2026-07-04T01:30:00Z' },
+  { rodada: 1, casa: '2A', fora: '2B', dataHora: '2026-06-28T19:00:00Z' }, // M73: África do Sul x Canadá
+  { rodada: 2, casa: '1C', fora: '2F', dataHora: '2026-06-29T17:00:00Z' }, // M76: Brasil x Japão
+  { rodada: 3, casa: '1E', fora: '3ABCDF', dataHora: '2026-06-29T20:30:00Z' }, // M74: Alemanha x Paraguai
+  { rodada: 4, casa: '1F', fora: '2C', dataHora: '2026-06-30T01:00:00Z' }, // M75: Holanda x Marrocos
+  { rodada: 5, casa: '2E', fora: '2I', dataHora: '2026-06-30T17:00:00Z' }, // M78: Costa do Marfim x Noruega
+  { rodada: 6, casa: '1I', fora: '3CDFGH', dataHora: '2026-06-30T21:00:00Z' }, // M77: França x Suécia
+  { rodada: 7, casa: '1A', fora: '3CEFHI', dataHora: '2026-07-01T01:00:00Z' }, // M79: México x 3º C/E/F/H/I
+  { rodada: 8, casa: '1L', fora: '3EHIJK', dataHora: '2026-07-01T16:00:00Z' }, // M80: 1L x 3º E/H/I/J/K
+  { rodada: 9, casa: '1G', fora: '3AEHIJ', dataHora: '2026-07-01T20:00:00Z' }, // M82: Bélgica x 3º A/E/H/I/J
+  { rodada: 10, casa: '1D', fora: '3BEFIJ', dataHora: '2026-07-02T00:00:00Z' }, // M81: EUA x Bósnia
+  { rodada: 11, casa: '1H', fora: '2J', dataHora: '2026-07-02T19:00:00Z' }, // M84: Espanha x 2J
+  { rodada: 12, casa: '2K', fora: '2L', dataHora: '2026-07-02T23:00:00Z' }, // M83: 2K x 2L
+  { rodada: 13, casa: '1B', fora: '3EFGIJ', dataHora: '2026-07-03T03:00:00Z' }, // M85: Suíça x 3º E/F/G/I/J
+  { rodada: 14, casa: '2D', fora: '2G', dataHora: '2026-07-03T18:00:00Z' }, // M88: Austrália x Egito
+  { rodada: 15, casa: '1J', fora: '2H', dataHora: '2026-07-03T22:00:00Z' }, // M86: Argentina x Cabo Verde
+  { rodada: 16, casa: '1K', fora: '3DEIJL', dataHora: '2026-07-04T01:30:00Z' }, // M87: 1K x 3º D/E/I/J/L
 ];
 
 /**
