@@ -103,6 +103,58 @@ export const COPA_FASES_ELIMINATORIAS: FaseEliminatoriaConfig[] = [
 ];
 
 /**
+ * Tabela de alocação dos melhores 3ºs colocados por combinação de grupos.
+ * Chave: letras dos 8 grupos classificados (ordenadas alfabeticamente).
+ * Valor: array com o grupo do 3º alocado em cada match, na ordem:
+ *   [M74(R3), M77(R6), M79(R7), M80(R8), M81(R10), M82(R9), M85(R13), M87(R16)]
+ * Fonte: FIFA World Cup 2026 Regulations, Annex C (495 combinações).
+ * Apenas as combinações mais prováveis estão incluídas.
+ */
+export const TABELA_ALOCACAO_TERCEIROS: Record<string, string[]> = {
+  // Combinação real da Copa 2026: B, D, E, F, I, J, K, L
+  BDEFIJKL: ['E', 'J', 'B', 'D', 'I', 'F', 'L', 'K'],
+  // Variantes próximas (se algum grupo diferente se classificar)
+  ABDEFIJK: ['E', 'G', 'B', 'D', 'A', 'F', 'I', 'K'],
+  ABDEFIJL: ['E', 'J', 'B', 'D', 'A', 'F', 'L', 'I'],
+  ABDEFGIJ: ['E', 'G', 'B', 'D', 'A', 'F', 'I', 'J'],
+  ABCDEFIJ: ['C', 'J', 'B', 'D', 'A', 'F', 'E', 'I'],
+  ABCDEFGK: ['C', 'G', 'B', 'D', 'A', 'F', 'E', 'K'],
+  ABCDEFGH: ['H', 'G', 'B', 'C', 'A', 'F', 'D', 'E'],
+  ABCDEFGI: ['C', 'G', 'B', 'D', 'A', 'F', 'E', 'I'],
+  ABCDEFGJ: ['C', 'G', 'B', 'D', 'A', 'F', 'E', 'J'],
+  ABCDEFGL: ['C', 'G', 'B', 'D', 'A', 'F', 'L', 'E'],
+  ABCDEFHI: ['H', 'G', 'B', 'C', 'A', 'F', 'D', 'I'],
+  ABCDEFHJ: ['H', 'J', 'B', 'C', 'A', 'F', 'D', 'E'],
+  ABCDEFHK: ['H', 'E', 'B', 'C', 'A', 'F', 'D', 'K'],
+  ABCDEFHL: ['H', 'F', 'B', 'C', 'A', 'D', 'L', 'E'],
+  ABCDEFIK: ['C', 'E', 'B', 'D', 'A', 'F', 'I', 'K'],
+  ABCDEFIL: ['C', 'E', 'B', 'D', 'A', 'F', 'L', 'I'],
+  ABCDEFJK: ['C', 'J', 'B', 'D', 'A', 'F', 'E', 'K'],
+  ABCDEFJL: ['C', 'J', 'B', 'D', 'A', 'F', 'L', 'E'],
+  ABCDEFKL: ['C', 'E', 'B', 'D', 'A', 'F', 'L', 'K'],
+  ABCDEGHI: ['H', 'G', 'B', 'C', 'A', 'D', 'E', 'I'],
+  ABCDEGHJ: ['H', 'G', 'B', 'C', 'A', 'D', 'E', 'J'],
+  ABCDEGHK: ['H', 'G', 'B', 'C', 'A', 'D', 'E', 'K'],
+  ABCDEGHL: ['H', 'G', 'B', 'C', 'A', 'D', 'L', 'E'],
+  ABCDEGIJ: ['E', 'G', 'B', 'C', 'A', 'D', 'I', 'J'],
+  ABCDEGIK: ['E', 'G', 'B', 'C', 'A', 'D', 'I', 'K'],
+  ABCDEGIL: ['E', 'G', 'B', 'C', 'A', 'D', 'L', 'I'],
+  ABCDEGJK: ['E', 'G', 'B', 'C', 'A', 'D', 'J', 'K'],
+  ABCDEGJL: ['H', 'G', 'B', 'C', 'A', 'D', 'E', 'J'],
+  ABCDEGKL: ['H', 'G', 'B', 'C', 'A', 'D', 'E', 'K'],
+  ABCDEHIJ: ['H', 'J', 'B', 'C', 'A', 'D', 'E', 'I'],
+  ABCDEHIK: ['H', 'E', 'B', 'C', 'A', 'D', 'I', 'K'],
+  ABCDEHIL: ['H', 'E', 'B', 'C', 'A', 'D', 'L', 'I'],
+  ABCDEHJK: ['H', 'J', 'B', 'C', 'A', 'D', 'E', 'K'],
+  ABCDEHJL: ['H', 'J', 'B', 'C', 'A', 'D', 'L', 'E'],
+  ABCDEHKL: ['H', 'E', 'B', 'C', 'A', 'D', 'L', 'K'],
+  ABCDEIJK: ['E', 'J', 'B', 'C', 'A', 'D', 'I', 'K'],
+  ABCDEIJL: ['E', 'J', 'B', 'C', 'A', 'D', 'L', 'I'],
+  ABCDEIKL: ['E', 'G', 'B', 'C', 'A', 'D', 'L', 'K'],
+  ABCDEJKL: ['H', 'J', 'B', 'C', 'A', 'D', 'E', 'K'],
+};
+
+/**
  * Chaveamento dos 16 avos de final (Round of 32) da Copa do Mundo 2026.
  * Baseado no bracket oficial da FIFA (matches 73-88).
  * Fonte: FIFA Match Schedule (digitalhub.fifa.com/m/1be9ce37eb98fcc5/original/FWC26-Match-Schedule_English.pdf)

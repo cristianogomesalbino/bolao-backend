@@ -820,7 +820,7 @@ export class JogoService {
    * Verifica se há jogos eliminatórios que deveriam ter sido criados
    * (grupos finalizados em execuções anteriores da sync).
    */
-  private async verificarChaveamentoPendente(
+  async verificarChaveamentoPendente(
     temporadaId: string,
     config: CampeonatoConfig,
   ): Promise<void> {

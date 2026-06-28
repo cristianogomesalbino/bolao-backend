@@ -7,6 +7,7 @@ import {
   COPA_BRACKET_SEMIS,
   COPA_BRACKET_FINAL,
   COPA_BRACKET_TERCEIRO,
+  TABELA_ALOCACAO_TERCEIROS,
 } from '../jogos.constants';
 import { TIMES } from '../../times/time.constants';
 import type { JogoRepository } from '../repositories/jogo.repository.interface';
@@ -167,6 +168,7 @@ export class ChaveamentoService {
     }
 
     const siglaMap = await this.montarMapaSiglas(classificacao);
+    const alocacaoTerceiros = this.resolverTerceirosColocados(classificacao);
     let criados = 0;
     let atualizados = 0;
 
@@ -177,13 +179,18 @@ export class ChaveamentoService {
         classificacao,
         jogosPorRodada,
         tbdId,
+        alocacaoTerceiros,
       );
       criados += resultado.criado ? 1 : 0;
       atualizados += resultado.atualizado ? 1 : 0;
     }
 
     if (criados > 0 || atualizados > 0) {
-      const resumo = this.montarResumoChaveamento(classificacao, siglaMap);
+      const resumo = this.montarResumoChaveamento(
+        classificacao,
+        siglaMap,
+        alocacaoTerceiros,
+      );
       this.logger.log(
         `🏗️ ${criados} criados, ${atualizados} atualizados | ${resumo}`,
       );
@@ -225,9 +232,18 @@ export class ChaveamentoService {
       { id: string; timeCasaId: string; timeForaId: string }
     >,
     tbdId: string,
+    alocacaoTerceiros?: Map<number, string>,
   ): Promise<{ criado: boolean; atualizado: boolean }> {
-    const timeCasaId = this.resolverPosicao(entrada.casa, classificacao);
-    const timeForaId = this.resolverPosicao(entrada.fora, classificacao);
+    const timeCasaId = this.resolverPosicao(
+      entrada.casa,
+      classificacao,
+      alocacaoTerceiros,
+    );
+    const timeForaId = this.resolverPosicao(
+      entrada.fora,
+      classificacao,
+      alocacaoTerceiros,
+    );
 
     if (!timeCasaId && !timeForaId) return { criado: false, atualizado: false };
 
@@ -277,11 +293,20 @@ export class ChaveamentoService {
   private montarResumoChaveamento(
     classificacao: ClassificacaoMap,
     siglaMap: Map<string, string>,
+    alocacaoTerceiros?: Map<number, string>,
   ): string {
     const partes: string[] = [];
     for (const entrada of COPA_CHAVEAMENTO_16AVOS) {
-      const casaId = this.resolverPosicao(entrada.casa, classificacao);
-      const foraId = this.resolverPosicao(entrada.fora, classificacao);
+      const casaId = this.resolverPosicao(
+        entrada.casa,
+        classificacao,
+        alocacaoTerceiros,
+      );
+      const foraId = this.resolverPosicao(
+        entrada.fora,
+        classificacao,
+        alocacaoTerceiros,
+      );
       const casa = casaId ? (siglaMap.get(casaId) ?? '?') : entrada.casa;
       const fora = foraId ? (siglaMap.get(foraId) ?? '?') : entrada.fora;
       if (casaId || foraId) {
@@ -583,6 +608,7 @@ export class ChaveamentoService {
     }
 
     const siglaMap = await this.montarMapaSiglas(classificacao);
+    const alocacaoTerceiros = this.resolverTerceirosColocados(classificacao);
 
     this.logger.log(
       `📊 Grupos completos: ${[...classificacao.keys()].join(', ')}`,
@@ -597,7 +623,13 @@ export class ChaveamentoService {
       if (!regra) continue;
 
       const { updateData, mudou, casaLabel, foraLabel } =
-        this.resolverTimesDoJogo(jogo, regra, classificacao, siglaMap);
+        this.resolverTimesDoJogo(
+          jogo,
+          regra,
+          classificacao,
+          siglaMap,
+          alocacaoTerceiros,
+        );
 
       if (mudou) {
         await this.jogoRepo.atualizar(jogo.id, updateData);
@@ -614,6 +646,7 @@ export class ChaveamentoService {
     regra: { casa: string; fora: string },
     classificacao: ClassificacaoMap,
     siglaMap: Map<string, string>,
+    alocacaoTerceiros?: Map<number, string>,
   ): {
     updateData: Record<string, string>;
     mudou: boolean;
@@ -626,7 +659,11 @@ export class ChaveamentoService {
     let foraLabel = jogo.timeFora?.sigla ?? regra.fora;
 
     if (jogo.timeCasaId === TBD_ID) {
-      const timeId = this.resolverPosicao(regra.casa, classificacao);
+      const timeId = this.resolverPosicao(
+        regra.casa,
+        classificacao,
+        alocacaoTerceiros,
+      );
       casaLabel = timeId ? (siglaMap.get(timeId) ?? regra.casa) : regra.casa;
       if (timeId) {
         updateData.timeCasaId = timeId;
@@ -635,7 +672,11 @@ export class ChaveamentoService {
     }
 
     if (jogo.timeForaId === TBD_ID) {
-      const timeId = this.resolverPosicao(regra.fora, classificacao);
+      const timeId = this.resolverPosicao(
+        regra.fora,
+        classificacao,
+        alocacaoTerceiros,
+      );
       foraLabel = timeId ? (siglaMap.get(timeId) ?? regra.fora) : regra.fora;
       if (timeId) {
         updateData.timeForaId = timeId;
@@ -667,6 +708,7 @@ export class ChaveamentoService {
   private resolverPosicao(
     posicao: string,
     classificacao: ClassificacaoMap,
+    alocacaoTerceiros?: Map<number, string>,
   ): string | null {
     const matchDireto = /^(\d)([A-L])$/.exec(posicao);
     if (matchDireto) {
@@ -677,9 +719,87 @@ export class ChaveamentoService {
       return grupoData[pos]?.timeId ?? null;
     }
 
-    if (/^3[A-L]+$/.test(posicao)) return null;
+    // Posição de 3º colocado (ex: '3ABCDF')
+    if (/^3[A-L]+$/.test(posicao)) {
+      if (!alocacaoTerceiros) return null;
+      // Buscar qual rodada corresponde a esta posição na constante
+      const rodada = COPA_CHAVEAMENTO_16AVOS.find(
+        (e) => e.fora === posicao,
+      )?.rodada;
+      if (!rodada) return null;
+      return alocacaoTerceiros.get(rodada) ?? null;
+    }
 
     return null;
+  }
+
+  /**
+   * Resolve os 8 melhores 3ºs colocados e distribui nas rodadas corretas
+   * usando a tabela de combinações oficial da FIFA.
+   * Retorna mapa: rodada → timeId do 3º alocado naquela rodada.
+   */
+  private resolverTerceirosColocados(
+    classificacao: ClassificacaoMap,
+  ): Map<number, string> {
+    const resultado = new Map<number, string>();
+
+    // 1. Coletar todos os 3ºs colocados de grupos completos
+    const terceiros: {
+      grupo: string;
+      timeId: string;
+      pontos: number;
+      sg: number;
+      gp: number;
+    }[] = [];
+    for (const [nomeGrupo, times] of classificacao.entries()) {
+      if (times.length < 3) continue;
+      const terceiro = times[2];
+      const letraGrupo = nomeGrupo.replace('Grupo ', '');
+      terceiros.push({
+        grupo: letraGrupo,
+        timeId: terceiro.timeId,
+        pontos: terceiro.pontos,
+        sg: terceiro.sg,
+        gp: terceiro.gp,
+      });
+    }
+
+    // 2. Rankear os 3ºs (critérios FIFA: pontos > saldo > gols pró)
+    terceiros.sort((a, b) => b.pontos - a.pontos || b.sg - a.sg || b.gp - a.gp);
+
+    // 3. Pegar os 8 melhores
+    const classificados = terceiros.slice(0, 8);
+    if (classificados.length < 8) return resultado; // Nem todos os grupos terminaram
+
+    // 4. Identificar a combinação de grupos
+    const gruposClassificados = classificados
+      .map((t) => t.grupo)
+      .sort((a, b) => a.localeCompare(b))
+      .join('');
+
+    // 5. Buscar na tabela de alocação da FIFA
+    const alocacao = TABELA_ALOCACAO_TERCEIROS[gruposClassificados];
+    if (!alocacao) {
+      this.logger.warn(
+        `⚠️ Combinação de 3ºs "${gruposClassificados}" não encontrada na tabela FIFA`,
+      );
+      return resultado;
+    }
+
+    // 6. Mapear rodada → timeId
+    // alocacao é um array com os grupos dos 3ºs na ordem dos matches:
+    // [M74(R3), M77(R6), M79(R7), M80(R8), M81(R10), M82(R9), M85(R13), M87(R16)]
+    const rodadasTerceiros = [3, 6, 7, 8, 10, 9, 13, 16];
+
+    for (let i = 0; i < alocacao.length; i++) {
+      const grupoAlocado = alocacao[i];
+      const terceiro = classificados.find((t) => t.grupo === grupoAlocado);
+      if (terceiro) {
+        resultado.set(rodadasTerceiros[i], terceiro.timeId);
+      }
+    }
+
+    return resultado;
   }
 
   private async calcularClassificacaoGrupos(
