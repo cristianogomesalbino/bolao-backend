@@ -159,6 +159,7 @@ export class ChaveamentoService {
     )) as {
       id: string;
       rodada: number | null;
+      status: string;
       timeCasaId: string;
       timeForaId: string;
     }[];
@@ -229,7 +230,7 @@ export class ChaveamentoService {
     classificacao: ClassificacaoMap,
     jogosPorRodada: Map<
       number,
-      { id: string; timeCasaId: string; timeForaId: string }
+      { id: string; status: string; timeCasaId: string; timeForaId: string }
     >,
     tbdId: string,
     alocacaoTerceiros?: Map<number, string>,
@@ -275,16 +276,32 @@ export class ChaveamentoService {
       return { criado: true, atualizado: false };
     }
 
-    // Jogo existe — atualizar TBD se agora temos o time
+    // Jogo existe — atualizar se time é TBD ou diverge da classificação atual (apenas AGENDADO)
     const updateData: Record<string, string> = {};
-    if (jogoExistente.timeCasaId === tbdId && timeCasaId) {
+    const jogoAindaNaoIniciou = jogoExistente.status === 'AGENDADO';
+
+    const casaDiverge = timeCasaId && jogoExistente.timeCasaId !== timeCasaId;
+    const casaPermitido =
+      jogoExistente.timeCasaId === tbdId || jogoAindaNaoIniciou;
+    if (casaDiverge && casaPermitido) {
       updateData.timeCasaId = timeCasaId;
     }
-    if (jogoExistente.timeForaId === tbdId && timeForaId) {
+
+    const foraDiverge = timeForaId && jogoExistente.timeForaId !== timeForaId;
+    const foraPermitido =
+      jogoExistente.timeForaId === tbdId || jogoAindaNaoIniciou;
+    if (foraDiverge && foraPermitido) {
       updateData.timeForaId = timeForaId;
     }
+
     if (Object.keys(updateData).length === 0)
       return { criado: false, atualizado: false };
+
+    if (updateData.timeCasaId || updateData.timeForaId) {
+      this.logger.warn(
+        `⚠️ R${entrada.rodada}: times corrigidos — casa: ${jogoExistente.timeCasaId} → ${updateData.timeCasaId ?? '(sem mudança)'} | fora: ${jogoExistente.timeForaId} → ${updateData.timeForaId ?? '(sem mudança)'}`,
+      );
+    }
 
     await this.jogoRepo.atualizar(jogoExistente.id, updateData);
     return { criado: false, atualizado: true };
@@ -905,21 +922,37 @@ export class ChaveamentoService {
     const updateData: Record<string, string> = {};
     let mudou = false;
 
-    if (jogoLocal.timeCasaId === TBD_ID && normalizado.timeCasa?.externoId) {
+    // API do GE é fonte autoritativa — pode sobrescrever times da classificação
+    // quando o jogo ainda está AGENDADO (não finalizado/em andamento)
+    const jogoAindaNaoIniciou = jogoLocal.status === 'AGENDADO';
+
+    const casaDisponivel = normalizado.timeCasa?.externoId;
+    const casaPermitido =
+      jogoLocal.timeCasaId === TBD_ID || jogoAindaNaoIniciou;
+    if (casaDisponivel && casaPermitido) {
       const time = await this.resolverOuCriarTime(normalizado.timeCasa);
-      updateData.timeCasaId = time.id;
-      mudou = true;
+      if (time.id !== jogoLocal.timeCasaId) {
+        updateData.timeCasaId = time.id;
+        mudou = true;
+      }
     }
-    if (jogoLocal.timeForaId === TBD_ID && normalizado.timeFora?.externoId) {
+
+    const foraDisponivel = normalizado.timeFora?.externoId;
+    const foraPermitido =
+      jogoLocal.timeForaId === TBD_ID || jogoAindaNaoIniciou;
+    if (foraDisponivel && foraPermitido) {
       const time = await this.resolverOuCriarTime(normalizado.timeFora);
-      updateData.timeForaId = time.id;
-      mudou = true;
+      if (time.id !== jogoLocal.timeForaId) {
+        updateData.timeForaId = time.id;
+        mudou = true;
+      }
     }
+
     if (!jogoLocal.externoId && normalizado.externoId) {
       updateData.externoId = normalizado.externoId;
     }
 
-    if (mudou) {
+    if (mudou || updateData.externoId) {
       await this.jogoRepo.atualizar(jogoLocal.id, updateData);
     }
     return mudou;

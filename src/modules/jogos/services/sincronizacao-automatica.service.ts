@@ -83,6 +83,10 @@ export class SincronizacaoAutomaticaService implements OnModuleInit {
         );
         await this.executarSincronizacao();
       }
+
+      // Sempre verificar chaveamento no startup para corrigir alocações divergentes
+      this.logger.log('[SYNC-AUTO] Verificando chaveamentos...');
+      await this.verificarChaveamentoPendenteTodosCampeonatos();
     } catch (error) {
       this.logger.error('[SYNC-AUTO] Erro na verificação inicial', error);
     }

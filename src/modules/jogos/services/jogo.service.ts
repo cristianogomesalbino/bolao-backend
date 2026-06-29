@@ -43,6 +43,7 @@ const TRANSICOES_VALIDAS: Record<string, string[]> = {
 @Injectable()
 export class JogoService {
   private readonly logger = new Logger(JogoService.name);
+  private ultimaVerificacaoChaveamento = 0;
 
   constructor(
     @Inject(JOGOS.JOGO_REPOSITORY_TOKEN)
@@ -819,11 +820,17 @@ export class JogoService {
   /**
    * Verifica se há jogos eliminatórios que deveriam ter sido criados
    * (grupos finalizados em execuções anteriores da sync).
+   * Throttle: máximo 1 vez a cada 5 minutos para evitar queries repetidas.
    */
   async verificarChaveamentoPendente(
     temporadaId: string,
     config: CampeonatoConfig,
   ): Promise<void> {
+    const INTERVALO_MINIMO_MS = 5 * 60 * 1000;
+    const agora = Date.now();
+    if (agora - this.ultimaVerificacaoChaveamento < INTERVALO_MINIMO_MS) return;
+    this.ultimaVerificacaoChaveamento = agora;
+
     const todasFases = await this.faseRepo.buscarPorTemporada(temporadaId);
     const fases = todasFases as { id: string; nome: string; tipo: string }[];
 
@@ -855,12 +862,18 @@ export class JogoService {
       primeiraEliminatoria.id,
     )) as { id: string }[];
 
-    if (jogosEliminatoria.length > 0) return;
+    if (jogosEliminatoria.length === 0) {
+      // Grupos terminaram mas jogos eliminatórios não existem — criar
+      this.logger.log(
+        '[SYNC] ⚠️ Grupos finalizados mas jogos eliminatórios ausentes — criando via chaveamento',
+      );
+    } else {
+      // Jogos existem — rodar chaveamento para corrigir alocações divergentes
+      this.logger.log(
+        '[SYNC] 🔄 Verificando alocações de times nos jogos eliminatórios existentes',
+      );
+    }
 
-    // Grupos terminaram mas jogos eliminatórios não existem — criar
-    this.logger.log(
-      '[SYNC] ⚠️ Grupos finalizados mas jogos eliminatórios ausentes — criando via chaveamento',
-    );
     await this.chaveamentoService.preencherProximaFaseEliminatoria(
       temporadaId,
       config,
