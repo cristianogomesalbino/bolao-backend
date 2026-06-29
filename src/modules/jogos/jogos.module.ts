@@ -13,9 +13,14 @@ import { PrismaJogoRepository } from './repositories/prisma-jogo.repository';
 import { PrismaLogSincronizacaoRepository } from './repositories/prisma-log-sincronizacao.repository';
 import { TemporadasModule } from '../temporadas/temporadas.module';
 import { TimesModule } from '../times/times.module';
+import { NotificacoesModule } from '../notificacoes/notificacoes.module';
 
 @Module({
-  imports: [forwardRef(() => TemporadasModule), TimesModule],
+  imports: [
+    forwardRef(() => TemporadasModule),
+    TimesModule,
+    forwardRef(() => NotificacoesModule),
+  ],
   controllers: [FaseController, JogoController, SincronizacaoController],
   providers: [
     FaseService,

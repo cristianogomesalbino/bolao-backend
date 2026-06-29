@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import {
   JOGOS,
   obterCampeonatoConfig,
@@ -7,9 +7,11 @@ import {
 } from '../jogos.constants';
 import type { CampeonatoConfig } from '../jogos.constants';
 import { TIMES } from '../../times/time.constants';
+import { NOTIFICACOES } from '../../notificacoes/notificacoes.constants';
 import type { JogoRepository } from '../repositories/jogo.repository.interface';
 import type { FaseRepository } from '../repositories/fase.repository.interface';
 import type { TimeRepository } from '../../times/repositories/time.repository.interface';
+import type { NotificacaoEventService } from '../../notificacoes/services/notificacao-event.service';
 import { FutebolApiService } from './futebol-api.service';
 import { ChaveamentoService } from './chaveamento.service';
 import { ErrorFactory } from '../../../common/errors/error.factory';
@@ -93,6 +95,9 @@ export class JogoService {
     @Inject(TIMES.REPOSITORY_TOKEN)
     private readonly timeRepo: TimeRepository,
     private readonly chaveamentoService: ChaveamentoService,
+    @Optional()
+    @Inject(NOTIFICACOES.EVENT_SERVICE_TOKEN)
+    private readonly notificacaoEventService?: NotificacaoEventService,
   ) {}
 
   async criar(dto: CriarJogoDto & { faseId: string }, userId: string) {
@@ -198,11 +203,26 @@ export class JogoService {
       throw new PlacarInvalidoError();
     }
 
-    if (fase.tipo === 'PONTOS_CORRIDOS') {
-      return this.finalizarPontosCorridos(jogo, dto);
-    }
+    const jogoFinalizado =
+      fase.tipo === 'PONTOS_CORRIDOS'
+        ? await this.finalizarPontosCorridos(jogo, dto)
+        : await this.finalizarMataMata(jogo, fase, dto);
 
-    return this.finalizarMataMata(jogo, fase, dto);
+    this.dispararNotificacoesJogoFinalizado(jogoFinalizado.id);
+
+    return jogoFinalizado;
+  }
+
+  private dispararNotificacoesJogoFinalizado(jogoId: string): void {
+    if (!this.notificacaoEventService) return;
+    this.notificacaoEventService
+      .processarJogoFinalizado(jogoId)
+      .catch((err) =>
+        this.logger.error(
+          `Erro notificações pós-finalização: ${err.message}`,
+          err.stack,
+        ),
+      );
   }
 
   private async finalizarPontosCorridos(
@@ -859,6 +879,15 @@ export class JogoService {
       await this.chaveamentoService.propagarVencedoresParaProximaFase(
         fase.temporadaId,
       );
+
+      // Disparar notificações para cada jogo finalizado
+      for (const jogoFinalizado of jogosFinalizedAgora) {
+        this.dispararNotificacoesJogoFinalizado(jogoFinalizado.id);
+      }
+    } else {
+      // Verificar se há jogos eliminatórios pendentes de criação
+      // (grupos podem ter sido finalizados em execuções anteriores)
+      await this.verificarChaveamentoPendente(fase.temporadaId, config);
     }
 
     return { sincronizados, jogosAtualizados };
