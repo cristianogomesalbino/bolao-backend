@@ -198,4 +198,21 @@ export class InMemoryJogoRepository implements JogoRepository {
         j.timeForaId === placeholderTimeId,
     );
   }
+
+  async buscarAgendadosEntre(inicio: Date, fim: Date) {
+    const inicioMs = inicio.getTime();
+    const fimMs = fim.getTime();
+    return this.items
+      .filter(
+        (j) =>
+          j.status === 'AGENDADO' &&
+          j.dataHora &&
+          new Date(j.dataHora).getTime() >= inicioMs &&
+          new Date(j.dataHora).getTime() <= fimMs,
+      )
+      .sort(
+        (a, b) =>
+          new Date(a.dataHora).getTime() - new Date(b.dataHora).getTime(),
+      );
+  }
 }
