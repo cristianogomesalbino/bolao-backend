@@ -112,7 +112,8 @@ export const COPA_FASES_ELIMINATORIAS: FaseEliminatoriaConfig[] = [
  */
 export const TABELA_ALOCACAO_TERCEIROS: Record<string, string[]> = {
   // Combinação real da Copa 2026: B, D, E, F, I, J, K, L
-  BDEFIJKL: ['E', 'J', 'B', 'D', 'I', 'F', 'L', 'K'],
+  // Corrigido conforme chaveamento oficial FIFA publicado (Fox Sports / Sporting News)
+  BDEFIJKL: ['D', 'F', 'E', 'K', 'B', 'I', 'J', 'L'],
   // Variantes próximas (se algum grupo diferente se classificar)
   ABDEFIJK: ['E', 'G', 'B', 'D', 'A', 'F', 'I', 'K'],
   ABDEFIJL: ['E', 'J', 'B', 'D', 'A', 'F', 'L', 'I'],
