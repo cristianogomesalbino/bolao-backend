@@ -512,13 +512,6 @@ export class ChaveamentoService {
       return;
     }
 
-    // Não alterar times de jogos vinculados à API que já têm times reais definidos
-    const temTimesReaisDaApi =
-      Boolean(jogoDestino.externoId) &&
-      jogoDestino.timeCasaId !== tbdId &&
-      jogoDestino.timeForaId !== tbdId;
-    if (temTimesReaisDaApi) return;
-
     // Atualizar times com classificados (corrige TBD e times errados)
     const updateData: Record<string, string> = {};
 
@@ -973,7 +966,18 @@ export class ChaveamentoService {
     }
 
     if (!jogoLocal.externoId && normalizado.externoId) {
-      updateData.externoId = normalizado.externoId;
+      // Só vincular externoId se ambos os times são reais (não placeholder)
+      const casaEhReal =
+        !updateData.timeCasaId || updateData.timeCasaId !== TBD_ID;
+      const foraEhReal =
+        !updateData.timeForaId || updateData.timeForaId !== TBD_ID;
+      const casaAtualReal = jogoLocal.timeCasaId !== TBD_ID;
+      const foraAtualReal = jogoLocal.timeForaId !== TBD_ID;
+      const ambosTimesReais =
+        casaEhReal && casaAtualReal && foraEhReal && foraAtualReal;
+      if (ambosTimesReais) {
+        updateData.externoId = normalizado.externoId;
+      }
     }
 
     if (mudou || updateData.externoId) {
@@ -988,6 +992,11 @@ export class ChaveamentoService {
     sigla: string;
     escudo: string;
   }): Promise<{ id: string }> {
+    // Detectar nomes placeholder da API (ex: "Costa do Marfim ou Noruega")
+    if (this.ehTimePlaceholder(timeData.nome, timeData.sigla)) {
+      return { id: TBD_ID };
+    }
+
     const existente = (await this.timeRepo.buscarPorExternoId(
       timeData.externoId,
     )) as { id: string } | null;
@@ -999,5 +1008,13 @@ export class ChaveamentoService {
       escudo: timeData.escudo ?? null,
       externoId: timeData.externoId,
     })) as { id: string };
+  }
+
+  private ehTimePlaceholder(nome: string, sigla: string): boolean {
+    if (sigla === 'TBD') return true;
+    if (/\sou\s/i.test(nome)) return true;
+    if (/^\d[ºo°]\s/.test(nome)) return true;
+    if (nome === 'A Definir' || nome === 'A definir') return true;
+    return false;
   }
 }
