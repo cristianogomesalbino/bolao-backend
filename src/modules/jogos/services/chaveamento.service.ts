@@ -46,6 +46,7 @@ interface JogoDestino {
   rodada: number | null;
   timeCasaId: string;
   timeForaId: string;
+  externoId?: string | null;
 }
 
 interface JogoComRelacoes {
@@ -511,14 +512,26 @@ export class ChaveamentoService {
       return;
     }
 
-    // Atualizar TBD com classificado
+    // Não alterar times de jogos vinculados à API que já têm times reais definidos
+    const temTimesReaisDaApi =
+      Boolean(jogoDestino.externoId) &&
+      jogoDestino.timeCasaId !== tbdId &&
+      jogoDestino.timeForaId !== tbdId;
+    if (temTimesReaisDaApi) return;
+
+    // Atualizar times com classificados (corrige TBD e times errados)
     const updateData: Record<string, string> = {};
-    if (jogoDestino.timeCasaId === tbdId && classificadoCasa) {
-      updateData.timeCasaId = classificadoCasa;
+
+    const casaCorreta = classificadoCasa ?? tbdId;
+    const foraCorreta = classificadoFora ?? tbdId;
+
+    if (jogoDestino.timeCasaId !== casaCorreta) {
+      updateData.timeCasaId = casaCorreta;
     }
-    if (jogoDestino.timeForaId === tbdId && classificadoFora) {
-      updateData.timeForaId = classificadoFora;
+    if (jogoDestino.timeForaId !== foraCorreta) {
+      updateData.timeForaId = foraCorreta;
     }
+
     if (Object.keys(updateData).length > 0) {
       await this.jogoRepo.atualizar(jogoDestino.id, updateData);
     }

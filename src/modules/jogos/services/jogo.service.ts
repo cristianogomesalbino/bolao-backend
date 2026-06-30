@@ -688,6 +688,11 @@ export class JogoService {
     },
     cache: Map<string, any>,
   ): Promise<any> {
+    // Detectar nomes compostos placeholder da API (ex: "Costa do Marfim ou Noruega")
+    if (this.ehTimePlaceholder(timeData.nome, timeData.sigla)) {
+      return this.garantirTimeTBD();
+    }
+
     const cached = cache.get(timeData.externoId);
     if (cached?.escudo) return cached;
 
@@ -1320,5 +1325,28 @@ export class JogoService {
       default:
         return 'AGENDADO';
     }
+  }
+
+  /** Detecta nomes compostos placeholder retornados pela API do GE (ex: "Costa do Marfim ou Noruega") */
+  private ehTimePlaceholder(nome: string, sigla: string): boolean {
+    if (sigla === 'TBD') return true;
+    if (/\sou\s/i.test(nome)) return true;
+    if (/^\d[ºo°]\s/.test(nome)) return true;
+    if (nome === 'A Definir' || nome === 'A definir') return true;
+    return false;
+  }
+
+  /** Retorna o ID do time TBD placeholder, criando-o se não existir */
+  private async garantirTimeTBD(): Promise<any> {
+    const TBD_ID = '00000000-0000-0000-0000-000000000001';
+    const existente = await this.timeRepo.buscarPorId(TBD_ID);
+    if (existente) return existente;
+
+    return this.timeRepo.criar({
+      id: TBD_ID,
+      nome: 'A Definir',
+      sigla: 'TBD',
+      escudo: '',
+    } as any);
   }
 }
