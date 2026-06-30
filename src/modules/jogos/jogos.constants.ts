@@ -196,32 +196,40 @@ export const COPA_BRACKET_OITAVAS: {
   foraOrigem: number;
   dataHora: string;
 }[] = [
-  { rodada: 1, casaOrigem: 2, foraOrigem: 1, dataHora: '2026-07-04T17:00:00Z' },
-  { rodada: 2, casaOrigem: 4, foraOrigem: 3, dataHora: '2026-07-04T21:00:00Z' },
-  { rodada: 3, casaOrigem: 6, foraOrigem: 5, dataHora: '2026-07-05T20:00:00Z' },
-  { rodada: 4, casaOrigem: 8, foraOrigem: 7, dataHora: '2026-07-06T00:00:00Z' },
+  // M89: W75(HOL/MAR) vs W73(CAN) — Jul 4 Houston
+  { rodada: 1, casaOrigem: 4, foraOrigem: 1, dataHora: '2026-07-04T17:00:00Z' },
+  // M90: W77(FRA/SUE) vs W74(ALE/PAR) — Jul 4 Philadelphia
+  { rodada: 2, casaOrigem: 6, foraOrigem: 3, dataHora: '2026-07-04T21:00:00Z' },
+  // M91: W76(BRA) vs W78(CDM/NOR) — Jul 5 NY/NJ
+  { rodada: 3, casaOrigem: 2, foraOrigem: 5, dataHora: '2026-07-05T20:00:00Z' },
+  // M92: W79(MEX/EQU) vs W80(ING/RDC) — Jul 5 Mexico City
+  { rodada: 4, casaOrigem: 7, foraOrigem: 8, dataHora: '2026-07-06T00:00:00Z' },
+  // M93: W83(POR/CRO) vs W84(ESP/AUT) — Jul 6 Dallas
   {
     rodada: 5,
-    casaOrigem: 10,
-    foraOrigem: 9,
-    dataHora: '2026-07-06T19:00:00Z',
-  },
-  {
-    rodada: 6,
     casaOrigem: 12,
     foraOrigem: 11,
+    dataHora: '2026-07-06T19:00:00Z',
+  },
+  // M94: W81(EUA/BOS) vs W82(BEL/SEN) — Jul 6 Seattle
+  {
+    rodada: 6,
+    casaOrigem: 10,
+    foraOrigem: 9,
     dataHora: '2026-07-07T00:00:00Z',
   },
+  // M95: W86(ARG/CAB) vs W88(AUS/EGI) — Jul 7 Atlanta
   {
     rodada: 7,
-    casaOrigem: 14,
-    foraOrigem: 13,
+    casaOrigem: 15,
+    foraOrigem: 14,
     dataHora: '2026-07-07T16:00:00Z',
   },
+  // M96: W85(SUI/AGL) vs W87(COL/GAN) — Jul 7 Vancouver
   {
     rodada: 8,
-    casaOrigem: 16,
-    foraOrigem: 15,
+    casaOrigem: 13,
+    foraOrigem: 16,
     dataHora: '2026-07-07T20:00:00Z',
   },
 ];

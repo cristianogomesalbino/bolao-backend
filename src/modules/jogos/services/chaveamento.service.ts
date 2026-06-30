@@ -102,35 +102,37 @@ export class ChaveamentoService {
     await this.criarOuAtualizarJogosEliminatorios(temporadaId, config);
 
     // Tentar enriquecer via API do GE (externoId, horários mais precisos)
+    // Apenas jogos da fase de 16 avos — oitavas+ são preenchidos via propagação de vencedores
+    const fase16Avos = await this.buscarFase16Avos(temporadaId);
     const jogosComTBD = (await this.jogoRepo.buscarJogosComTimePlaceholder(
       temporadaId,
       TBD_ID,
     )) as JogoComRelacoes[];
 
-    if (jogosComTBD.length === 0) {
+    const jogos16AvosComTBD = fase16Avos
+      ? jogosComTBD.filter((j) => j.faseId === fase16Avos.id)
+      : [];
+
+    if (jogos16AvosComTBD.length === 0) {
       this.logger.log('✅ Todos os jogos eliminatórios com times definidos');
       return;
     }
 
-    const primeiraFaseId = jogosComTBD[0]?.faseId;
-    const jogosDaPrimeiraFase = jogosComTBD.filter(
-      (j) => j.faseId === primeiraFaseId,
-    );
-    const nomeFase = jogosComTBD[0]?.fase?.nome ?? 'desconhecida';
+    const nomeFase = jogos16AvosComTBD[0]?.fase?.nome ?? '16 Avos';
 
     this.logger.log(
-      `🔄 ${nomeFase}: ${jogosDaPrimeiraFase.length} jogos pendentes`,
+      `🔄 ${nomeFase}: ${jogos16AvosComTBD.length} jogos pendentes`,
     );
 
     const preenchidosViaApi = await this.tentarPreencherViaApi(
-      jogosDaPrimeiraFase,
+      jogos16AvosComTBD,
       config,
     );
     if (preenchidosViaApi.size > 0) {
       this.logger.log(`🌐 ${preenchidosViaApi.size} preenchidos via GE`);
     }
 
-    const restantes = jogosDaPrimeiraFase.filter(
+    const restantes = jogos16AvosComTBD.filter(
       (j) => !preenchidosViaApi.has(j.id),
     );
     if (restantes.length === 0) return;
@@ -160,6 +162,7 @@ export class ChaveamentoService {
       id: string;
       rodada: number | null;
       status: string;
+      externoId: string | null;
       timeCasaId: string;
       timeForaId: string;
     }[];
@@ -230,7 +233,13 @@ export class ChaveamentoService {
     classificacao: ClassificacaoMap,
     jogosPorRodada: Map<
       number,
-      { id: string; status: string; timeCasaId: string; timeForaId: string }
+      {
+        id: string;
+        status: string;
+        externoId: string | null;
+        timeCasaId: string;
+        timeForaId: string;
+      }
     >,
     tbdId: string,
     alocacaoTerceiros?: Map<number, string>,
@@ -277,6 +286,9 @@ export class ChaveamentoService {
     }
 
     // Jogo existe — atualizar se time é TBD ou diverge da classificação atual (apenas AGENDADO)
+    // Se já tem externoId vinculado (API confirmou), não mexer nos times
+    if (jogoExistente.externoId) return { criado: false, atualizado: false };
+
     const updateData: Record<string, string> = {};
     const jogoAindaNaoIniciou = jogoExistente.status === 'AGENDADO';
 
@@ -496,7 +508,6 @@ export class ChaveamentoService {
         classificadoFora,
         tbdId,
       );
-      this.logger.log(`🏗️ Jogo R${entrada.rodada} criado na próxima fase`);
       return;
     }
 
