@@ -145,7 +145,6 @@ export class SincronizacaoAutomaticaService implements OnModuleInit {
 
   private async executarSincronizacao(): Promise<void> {
     this.sincronizando = true;
-    const inicio = Date.now();
 
     try {
       // Detectar estado atual dos jogos
@@ -166,40 +165,15 @@ export class SincronizacaoAutomaticaService implements OnModuleInit {
           proximoJogoEm <= SYNC.ANTECEDENCIA_INICIO_MS);
 
       if (!deveSincronizar) {
-        // Verificar se há jogos adiados que precisam de checagem periódica
-        const temAdiados = await this.prisma.jogo.count({
-          where: {
-            status: 'ADIADO',
-            fonteResultado: 'API_EXTERNA',
-            externoId: { not: null },
-          },
-        });
-
-        const tempoDesdeUltimaSync =
-          Date.now() - this.estado.ultimaSincronizacao;
-        const deveVerificarAdiados =
-          temAdiados > 0 && tempoDesdeUltimaSync >= SYNC.INTERVALO_SEM_JOGOS_MS;
-
-        if (!deveVerificarAdiados) {
-          this.estado = {
-            temJogosEmAndamento: false,
-            proximoJogoEm,
-            ultimaSincronizacao: Date.now(),
-          };
-          return;
-        }
-
-        this.logger.log(
-          `[SYNC-AUTO] Verificando ${temAdiados} jogo(s) adiado(s) para possível remarcação`,
-        );
+        const podePular = await this.verificarSeDevePularSync(proximoJogoEm);
+        if (podePular) return;
       }
 
       // Buscar fases com jogos que precisam de sync
-      const fasesParaSync = await this.buscarFasesParaSincronizar();
+      const fasesParaSync =
+        await this.buscarFasesParaSincronizar(!deveSincronizar);
 
       if (fasesParaSync.length === 0) {
-        // Mesmo sem fases para sync, verificar se há chaveamento pendente
-        await this.verificarChaveamentoPendenteTodosCampeonatos();
         this.estado = {
           temJogosEmAndamento,
           proximoJogoEm,
@@ -215,10 +189,6 @@ export class SincronizacaoAutomaticaService implements OnModuleInit {
         await this.sincronizarFasesDoCampeonato(campeonatoSlug, fases);
       }
 
-      // Verificar chaveamento pendente de outros campeonatos
-      this.logger.log('[SYNC-AUTO] Verificando chaveamentos pendentes...');
-      await this.verificarChaveamentoPendenteTodosCampeonatos();
-
       // Recalcular estado após sincronização
       const estadoPosSync = await this.detectarEstadoJogos();
       this.estado = {
@@ -229,11 +199,8 @@ export class SincronizacaoAutomaticaService implements OnModuleInit {
         ultimaSincronizacao: Date.now(),
       };
 
-      const duracao = Date.now() - inicio;
       if (this.estado.temJogosEmAndamento) {
-        this.logger.log(
-          `[SYNC-AUTO] Ciclo em ${duracao}ms | emAndamento=${estadoPosSync.jogosEmAndamento} | proximoJogoEm=${this.estado.proximoJogoEm ? Math.round(this.estado.proximoJogoEm / 60000) + 'min' : 'nenhum'}`,
-        );
+        // Log só quando houve atualização (sincronizados > 0 já é logado pelo JogoService)
       }
     } catch (error) {
       this.logger.error('[SYNC-AUTO] Erro no ciclo de sincronização', error);
@@ -282,25 +249,63 @@ export class SincronizacaoAutomaticaService implements OnModuleInit {
     };
   }
 
-  private async buscarFasesParaSincronizar(): Promise<FaseParaSync[]> {
-    // Buscar fases que têm jogos EM_ANDAMENTO ou AGENDADO prestes a começar
+  private async verificarSeDevePularSync(proximoJogoEm: number | null): Promise<boolean> {
+    const temAdiados = await this.prisma.jogo.count({
+      where: {
+        status: 'ADIADO',
+        fonteResultado: 'API_EXTERNA',
+        externoId: { not: null },
+      },
+    });
+
+    const tempoDesdeUltimaSync = Date.now() - this.estado.ultimaSincronizacao;
+    const deveVerificarAdiados =
+      temAdiados > 0 && tempoDesdeUltimaSync >= SYNC.INTERVALO_SEM_JOGOS_MS;
+
+    if (!deveVerificarAdiados) {
+      this.estado = {
+        temJogosEmAndamento: false,
+        proximoJogoEm,
+        ultimaSincronizacao: Date.now(),
+      };
+      return true;
+    }
+
+    this.logger.log(
+      `[SYNC-AUTO] Verificando ${temAdiados} jogo(s) adiado(s) para possível remarcação`,
+    );
+    return false;
+  }
+
+  private async buscarFasesParaSincronizar(
+    incluirAdiados = false,
+  ): Promise<FaseParaSync[]> {
+    // Só sincroniza fases com jogos REALMENTE relevantes agora:
+    // - EM_ANDAMENTO (ao vivo)
+    // - AGENDADO com horário que já passou (provável início não detectado)
+    // - AGENDADO dentro da janela de antecedência (prestes a começar)
+    // - ADIADO: só quando incluirAdiados=true (checagem periódica de remarcação)
     const agora = new Date();
     const limiteAntecedencia = new Date(
       agora.getTime() + SYNC.ANTECEDENCIA_INICIO_MS,
     );
 
+    const filtros: any[] = [
+      { status: 'EM_ANDAMENTO' },
+      {
+        status: 'AGENDADO',
+        dataHora: { not: null, lte: limiteAntecedencia },
+      },
+    ];
+    if (incluirAdiados) {
+      filtros.push({ status: 'ADIADO', externoId: { not: null } });
+    }
+
     const fasesComJogosPendentes = await this.prisma.jogo.groupBy({
       by: ['faseId'],
       where: {
         fonteResultado: 'API_EXTERNA',
-        OR: [
-          { status: 'EM_ANDAMENTO' },
-          {
-            status: 'AGENDADO',
-            dataHora: { lte: limiteAntecedencia },
-          },
-          { status: 'ADIADO' },
-        ],
+        OR: filtros,
       },
       _count: { id: true },
     });
