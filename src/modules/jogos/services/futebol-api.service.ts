@@ -240,9 +240,6 @@ export class FutebolApiService implements OnModuleInit {
 
       const jogos = this.extrairJogosDeSecoes(secoes);
 
-      this.logger.log(
-        `🌐 Eliminatórias GE (${faseSlug}): ${jogos.length} jogos com times definidos`,
-      );
       return jogos;
     } catch (error) {
       this.logger.warn('Erro ao buscar segunda fase da API GE', error);

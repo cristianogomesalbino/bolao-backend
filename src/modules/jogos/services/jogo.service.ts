@@ -40,10 +40,48 @@ const TRANSICOES_VALIDAS: Record<string, string[]> = {
   EM_ANDAMENTO: ['FINALIZADO', 'CANCELADO'],
 };
 
+interface JogoInterno {
+  id: string;
+  status: string;
+  timeCasaId: string;
+  timeForaId: string;
+  faseId: string;
+  golsCasa: number | null;
+  golsFora: number | null;
+  temProrrogacao: boolean;
+  golsProrrogacaoCasa: number | null;
+  golsProrrogacaoFora: number | null;
+  temPenaltis: boolean;
+  penaltisCasa: number | null;
+  penaltisFora: number | null;
+  vencedorId: string | null;
+  externoId: string | null;
+  fonteResultado: string;
+  dataHora: Date | null;
+  rodada: number | null;
+  foiAdiado: boolean;
+  ehJogoVolta: boolean;
+  grupoIdaVolta: string | null;
+  timeCasa?: {
+    id: string;
+    nome: string;
+    sigla: string;
+    escudo: string | null;
+    externoId?: string | null;
+  };
+  timeFora?: {
+    id: string;
+    nome: string;
+    sigla: string;
+    escudo: string | null;
+    externoId?: string | null;
+  };
+  temporadaId?: string;
+}
+
 @Injectable()
 export class JogoService {
   private readonly logger = new Logger(JogoService.name);
-  private ultimaVerificacaoChaveamento = 0;
 
   constructor(
     @Inject(JOGOS.JOGO_REPOSITORY_TOKEN)
@@ -166,7 +204,10 @@ export class JogoService {
     return this.finalizarMataMata(jogo, fase, dto);
   }
 
-  private async finalizarPontosCorridos(jogo: any, dto: FinalizarJogoDto) {
+  private async finalizarPontosCorridos(
+    jogo: JogoInterno,
+    dto: FinalizarJogoDto,
+  ) {
     this.validarSemDesempate(dto);
 
     const vencedorId = this.determinarVencedorPorPlacar(
@@ -182,7 +223,11 @@ export class JogoService {
     );
   }
 
-  private async finalizarMataMata(jogo: any, fase: any, dto: FinalizarJogoDto) {
+  private async finalizarMataMata(
+    jogo: JogoInterno,
+    fase: any,
+    dto: FinalizarJogoDto,
+  ) {
     if (fase.idaVolta && !jogo.ehJogoVolta) {
       return this.finalizarJogoIda(jogo, dto);
     }
@@ -194,7 +239,7 @@ export class JogoService {
     return this.finalizarMataMataSimples(jogo, dto);
   }
 
-  private async finalizarJogoIda(jogo: any, dto: FinalizarJogoDto) {
+  private async finalizarJogoIda(jogo: JogoInterno, dto: FinalizarJogoDto) {
     this.validarSemDesempate(dto);
     return this.jogoRepo.atualizar(
       jogo.id,
@@ -202,7 +247,10 @@ export class JogoService {
     );
   }
 
-  private async finalizarJogoVolta(jogo: any, dto: FinalizarJogoDto) {
+  private async finalizarJogoVolta(jogo: JogoInterno, dto: FinalizarJogoDto) {
+    if (!jogo.grupoIdaVolta) {
+      throw new JogoIdaNaoEncontradoError();
+    }
     const jogosDoGrupo = await this.jogoRepo.buscarPorGrupoIdaVolta(
       jogo.grupoIdaVolta,
     );
@@ -235,7 +283,10 @@ export class JogoService {
     });
   }
 
-  private async finalizarMataMataSimples(jogo: any, dto: FinalizarJogoDto) {
+  private async finalizarMataMataSimples(
+    jogo: JogoInterno,
+    dto: FinalizarJogoDto,
+  ) {
     const empateTN = dto.golsCasa === dto.golsFora;
 
     if (!empateTN) {
@@ -246,7 +297,7 @@ export class JogoService {
   }
 
   private async finalizarMataMataComVencedorTN(
-    jogo: any,
+    jogo: JogoInterno,
     dto: FinalizarJogoDto,
   ) {
     if (dto.temProrrogacao) {
@@ -265,7 +316,10 @@ export class JogoService {
     );
   }
 
-  private async finalizarMataMataComEmpate(jogo: any, dto: FinalizarJogoDto) {
+  private async finalizarMataMataComEmpate(
+    jogo: JogoInterno,
+    dto: FinalizarJogoDto,
+  ) {
     if (!dto.temProrrogacao) {
       throw new VencedorObrigatorioError();
     }
@@ -275,11 +329,11 @@ export class JogoService {
     const empateProrrogacao =
       dto.golsProrrogacaoCasa === dto.golsProrrogacaoFora;
 
-    if (!empateProrrogacao) {
-      if (dto.temPenaltis) {
-        throw new PenaltisNaoPermitidoError();
-      }
+    if (!empateProrrogacao && dto.temPenaltis) {
+      throw new PenaltisNaoPermitidoError();
+    }
 
+    if (!empateProrrogacao) {
       const vencedorId =
         (dto.golsProrrogacaoCasa ?? 0) > (dto.golsProrrogacaoFora ?? 0)
           ? jogo.timeCasaId
@@ -668,11 +722,11 @@ export class JogoService {
       timeData.sigla,
     );
     if (existentePorSigla) {
-      // Se já existe time com essa sigla mas externoId diferente, criar com sigla diferenciada
-      if (
+      // Sigla existe mas é outro time (externoId diferente) — criar com sigla diferenciada
+      const ehOutroTime =
         existentePorSigla.externoId &&
-        existentePorSigla.externoId !== timeData.externoId
-      ) {
+        existentePorSigla.externoId !== timeData.externoId;
+      if (ehOutroTime) {
         const siglaUnica = `${timeData.sigla}-${timeData.externoId}`;
         const novo = await this.timeRepo.criar({
           ...timeData,
@@ -705,8 +759,6 @@ export class JogoService {
     campeonatoSlug: string,
     faseSlug: string,
   ) {
-    const inicioTotal = Date.now();
-
     const fase = await this.faseRepo.buscarPorId(faseId);
     if (!fase) {
       throw new FaseNaoEncontradaError();
@@ -733,13 +785,11 @@ export class JogoService {
       return { sincronizados: 0, jogosAtualizados: [] };
     }
 
-    const inicioApi = Date.now();
     const { jogoApiMap, apiDisponivel } = await this.buscarJogosParaSync(
       jogosParaSync,
       config.campeonatoId,
       faseSlugCompleto,
     );
-    const tempoApi = Date.now() - inicioApi;
 
     let sincronizados = 0;
     const jogosAtualizados: any[] = [];
@@ -767,24 +817,16 @@ export class JogoService {
       }
     }
 
-    const tempoTotal = Date.now() - inicioTotal;
-    const fasesNomes = fasesParaSync.map((f: any) => f.nome).join(', ');
-
-    // Log consolidado: 1 linha com todas as informações relevantes
+    // Log consolidado
     if (sincronizados > 0) {
       const resumoJogos = jogosAtualizados
-        .map(
-          (j) =>
-            `${j.timeCasa} ${j.golsCasa ?? '?'}x${j.golsFora ?? '?'} ${j.timeFora} (${j.status === 'FINALIZADO' ? '🏁' : '⚽'})`,
-        )
+        .map((j) => {
+          const placar = `${j.timeCasa} ${j.golsCasa ?? '?'}x${j.golsFora ?? '?'} ${j.timeFora}`;
+          const icone = j.status === 'FINALIZADO' ? '🏁' : '⚽';
+          return `${icone} ${placar}`;
+        })
         .join(' | ');
-      this.logger.log(
-        `[SYNC] ${campeonatoSlug} R${rodadaEfetiva} | ${sincronizados}/${jogosParaSync.length} atualizados | ${fasesNomes} | API ${tempoApi}ms | Total ${tempoTotal}ms | ${resumoJogos}`,
-      );
-    } else {
-      this.logger.log(
-        `[SYNC] ${campeonatoSlug} R${rodadaEfetiva} | 0/${jogosParaSync.length} atualizados | ${faseIds.length} fases | ${tempoTotal}ms`,
-      );
+      this.logger.log(`[SYNC] ${resumoJogos}`);
     }
 
     if (!apiDisponivel) {
@@ -798,9 +840,12 @@ export class JogoService {
       (j) => j.status === 'FINALIZADO',
     );
     if (jogosFinalizedAgora.length > 0) {
-      this.logger.log(
-        `[SYNC] 🏆 ${jogosFinalizedAgora.length} jogo(s) finalizado(s) — disparando chaveamento`,
-      );
+      const resumoFinalizados = jogosFinalizedAgora
+        .map(
+          (j) => `🏁 ${j.timeCasa} ${j.golsCasa}x${j.golsFora} ${j.timeFora}`,
+        )
+        .join(' | ');
+      this.logger.log(`[SYNC] ${resumoFinalizados} — propagando chaveamento`);
       await this.chaveamentoService.preencherProximaFaseEliminatoria(
         fase.temporadaId,
         config,
@@ -808,10 +853,6 @@ export class JogoService {
       await this.chaveamentoService.propagarVencedoresParaProximaFase(
         fase.temporadaId,
       );
-    } else {
-      // Verificar se há jogos eliminatórios pendentes de criação
-      // (grupos podem ter sido finalizados em execuções anteriores)
-      await this.verificarChaveamentoPendente(fase.temporadaId, config);
     }
 
     return { sincronizados, jogosAtualizados };
@@ -819,18 +860,13 @@ export class JogoService {
 
   /**
    * Verifica se há jogos eliminatórios que deveriam ter sido criados
-   * (grupos finalizados em execuções anteriores da sync).
-   * Throttle: máximo 1 vez a cada 5 minutos para evitar queries repetidas.
+   * e propaga vencedores para próximas fases.
+   * Roda sempre no startup e após finalizações — é idempotente.
    */
   async verificarChaveamentoPendente(
     temporadaId: string,
     config: CampeonatoConfig,
   ): Promise<void> {
-    const INTERVALO_MINIMO_MS = 5 * 60 * 1000;
-    const agora = Date.now();
-    if (agora - this.ultimaVerificacaoChaveamento < INTERVALO_MINIMO_MS) return;
-    this.ultimaVerificacaoChaveamento = agora;
-
     const todasFases = await this.faseRepo.buscarPorTemporada(temporadaId);
     const fases = todasFases as { id: string; nome: string; tipo: string }[];
 
@@ -1016,46 +1052,45 @@ export class JogoService {
       this.preencherPlacarSync(updateData, jogoApi, jogo, novoStatus);
     }
 
-    if (novoStatus !== jogo.status || jogoApi) {
-      // Verificar se realmente há mudança antes de atualizar
-      const statusMudou = updateData.status !== jogo.status;
-      const placarMudou =
-        updateData.golsCasa !== undefined &&
-        (updateData.golsCasa !== jogo.golsCasa ||
-          updateData.golsFora !== jogo.golsFora);
-      const horarioMudou = horarioAlterado;
-
-      if (!statusMudou && !placarMudou && !horarioMudou && !timesMudaram) {
-        return { atualizado: false };
-      }
-
-      // Log de transições de status importantes
-      if (statusMudou) {
-        this.logarTransicaoStatus(jogo, updateData);
-      }
-
-      await this.jogoRepo.atualizar(jogo.id, updateData);
-      return {
-        atualizado: true,
-        novoStatus: updateData.status,
-        golsCasa: updateData.golsCasa ?? null,
-        golsFora: updateData.golsFora ?? null,
-        horarioAlterado,
-        horarioAnterior,
-        horarioNovo,
-      };
+    if (novoStatus === jogo.status && !jogoApi) {
+      return { atualizado: false };
     }
 
-    return { atualizado: false };
+    // Verificar se realmente há mudança antes de atualizar
+    const statusMudou = updateData.status !== jogo.status;
+    const placarMudou =
+      updateData.golsCasa !== undefined &&
+      (updateData.golsCasa !== jogo.golsCasa ||
+        updateData.golsFora !== jogo.golsFora);
+    const horarioMudou = horarioAlterado;
+
+    if (!statusMudou && !placarMudou && !horarioMudou && !timesMudaram) {
+      return { atualizado: false };
+    }
+
+    if (statusMudou) {
+      this.logarTransicaoStatus(jogo, updateData);
+    }
+
+    await this.jogoRepo.atualizar(jogo.id, updateData);
+    return {
+      atualizado: true,
+      novoStatus: updateData.status,
+      golsCasa: updateData.golsCasa ?? null,
+      golsFora: updateData.golsFora ?? null,
+      horarioAlterado,
+      horarioAnterior,
+      horarioNovo,
+    };
   }
 
-  private logarTransicaoStatus(jogo: any, updateData: any): void {
+  private logarTransicaoStatus(jogo: JogoInterno, updateData: any): void {
     // Transições de status são logadas no resumo consolidado do sincronizarPlacares
     // Aqui apenas registra transições especiais que merecem destaque individual
     if (jogo.status === 'AGENDADO' && updateData.status === 'EM_ANDAMENTO') {
       const timeCasa = jogo.timeCasa?.sigla || '?';
       const timeFora = jogo.timeFora?.sigla || '?';
-      this.logger.log(`[SYNC] 🟢 ${timeCasa} x ${timeFora} — jogo iniciou`);
+      this.logger.log(`[SYNC] ⚽ ${timeCasa} x ${timeFora} — começou`);
     }
   }
 
@@ -1115,12 +1150,33 @@ export class JogoService {
     if (!jogo.rodada || !jogo.dataHora) return null;
 
     const dataLocal = new Date(jogo.dataHora).getTime();
+    const externoIdCasa = jogo.timeCasa?.externoId;
+    const externoIdFora = jogo.timeFora?.externoId;
 
     for (const [, jogoApi] of jogoApiMap) {
       if (jogoApi._matched || !jogoApi.dataHora) continue;
 
       const diffMs = Math.abs(dataLocal - new Date(jogoApi.dataHora).getTime());
       if (diffMs > 30 * 60 * 1000) continue;
+
+      // Se o jogo local tem times definidos (não TBD), validar que pelo menos 1 bate
+      const apiCasaId = jogoApi.timeCasa?.externoId;
+      const apiForaId = jogoApi.timeFora?.externoId;
+      const temTimeDefinido = externoIdCasa || externoIdFora;
+
+      if (temTimeDefinido) {
+        const casaBate = externoIdCasa && externoIdCasa === apiCasaId;
+        const foraBate = externoIdFora && externoIdFora === apiForaId;
+        if (!casaBate && !foraBate) {
+          // Horário bate mas times divergem — possível inconsistência
+          const localLabel = `${jogo.timeCasa?.sigla ?? 'TBD'} x ${jogo.timeFora?.sigla ?? 'TBD'}`;
+          const apiLabel = `${jogoApi.timeCasa?.sigla ?? '?'} x ${jogoApi.timeFora?.sigla ?? '?'}`;
+          this.logger.warn(
+            `[SYNC] ⚠️ R${jogo.rodada}: divergência — banco: ${localLabel} | API: ${apiLabel} — não vinculando`,
+          );
+          continue;
+        }
+      }
 
       jogoApi._matched = true;
       return jogoApi;
