@@ -22,6 +22,11 @@ export const NOTIFICACOES = {
     PALPITES_PENDENTES_HORAS: 3,
     LIMPEZA_LIDAS_DIAS: 30,
     LIMPEZA_NAO_LIDAS_DIAS: 90,
+    // Horários dos jobs (em UTC — BRT = UTC-3)
+    AGENDAMENTO_DIARIO: '0 11 * * *', // 08:00 BRT
+    FALLBACK_JOGOS: '*/15 11-23,0-4 * * *', // a cada 15min entre 08h-01h BRT
+    PALPITES_PENDENTES: '0,30 11-23,0-4 * * *', // a cada 30min entre 08h-01h BRT
+    LIMPEZA_DIARIA: '0 5 * * *', // 02:00 BRT
   },
 
   MENSAGENS: {
@@ -41,19 +46,15 @@ export const NOTIFICACOES = {
     JOGO_PROXIMO: {
       titulo: 'Jogo em 10 minutos!',
       mensagem: (timeCasa: string, timeFora: string) =>
-        `Jogo ${timeCasa} × ${timeFora} começa em 10 minutos!`,
+        `Não durma no ponto! Jogo ${timeCasa} × ${timeFora} começa em 10 minutos!`,
     },
     RODADA_ENCERRADA: {
       titulo: 'Rodada encerrada!',
-      mensagem: (rodada: number, faseNome: string) => {
-        const ehFaseUnica = faseNome.toLowerCase().includes('fase única') || faseNome.toLowerCase().includes('pontos corridos');
-        return ehFaseUnica
-          ? `Rodada ${rodada} encerrada! Confira o ranking.`
-          : `Rodada ${rodada} (${faseNome}) encerrada! Confira o ranking.`;
-      },
+      mensagem: (rodada: number, campeonatoNome: string) =>
+        `Rodada ${rodada} do ${campeonatoNome} encerrada! Confira o ranking.`,
     },
     ACERTO_EM_CHEIO: {
-      titulo: 'Acerto em cheio!',
+      titulo: 'Na mosca!',
       mensagem: (
         timeCasa: string,
         golsCasa: number,
@@ -61,7 +62,7 @@ export const NOTIFICACOES = {
         timeFora: string,
         pontos: number,
       ) =>
-        `Você acertou em cheio! ${timeCasa} ${golsCasa} × ${golsFora} ${timeFora} (+${pontos} pts)`,
+        `Você acertou em cheio! ${timeCasa} ${golsCasa} × ${golsFora} ${timeFora} (+${pontos} pontos)`,
     },
     SUBIU_POSICAO: {
       titulo: 'Subiu no ranking!',

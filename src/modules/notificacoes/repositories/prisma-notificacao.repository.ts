@@ -13,12 +13,12 @@ export class PrismaNotificacaoRepository implements NotificacaoRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   async criar(data: CriarNotificacaoData): Promise<Notificacao> {
-    return this.prisma.notificacao.create({ data: data as any }) as Promise<Notificacao>;
+    return this.prisma.notificacao.create({ data }) as Promise<Notificacao>;
   }
 
   async criarVarios(data: CriarNotificacaoData[]): Promise<void> {
     if (data.length === 0) return;
-    await this.prisma.notificacao.createMany({ data: data as any });
+    await this.prisma.notificacao.createMany({ data });
   }
 
   async buscarPorId(id: string): Promise<Notificacao | null> {

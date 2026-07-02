@@ -1,10 +1,18 @@
+export type TipoNotificacao =
+  | 'JOGO_PROXIMO'
+  | 'RODADA_ENCERRADA'
+  | 'ACERTO_EM_CHEIO'
+  | 'SUBIU_POSICAO'
+  | 'DESCEU_POSICAO'
+  | 'PALPITES_PENDENTES';
+
 export interface CriarNotificacaoData {
-  tipo: string;
+  tipo: TipoNotificacao;
   titulo: string;
   mensagem: string;
   usuarioId: string;
   jogoId?: string;
-  grupoId?: string;
+  grupoId?: string | null;
   faseId?: string;
   rodada?: number;
 }
