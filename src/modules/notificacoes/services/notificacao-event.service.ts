@@ -9,7 +9,10 @@ import { PushService } from './push.service';
 import { PreferenciaService } from './preferencia.service';
 import { PontuacaoService } from '../../ranking/services/pontuacao.service';
 import { RankingService } from '../../ranking/services/ranking.service';
-import type { NotificacaoRepository, CriarNotificacaoData } from '../repositories/notificacao.repository.interface';
+import type {
+  NotificacaoRepository,
+  CriarNotificacaoData,
+} from '../repositories/notificacao.repository.interface';
 import type { JogoRepository } from '../../jogos/repositories/jogo.repository.interface';
 import type { FaseRepository } from '../../jogos/repositories/fase.repository.interface';
 import type { PalpiteRepository } from '../../palpites/repositories/palpite.repository.interface';
@@ -62,7 +65,42 @@ export class NotificacaoEventService {
     }
   }
 
-  async processarJogosProximos(): Promise<void> {
+  async agendarJogosDoDia(): Promise<void> {
+    const agora = new Date();
+    const fimDoDia = new Date(agora);
+    fimDoDia.setHours(23, 59, 59, 999);
+
+    const jogos = await this.jogoRepo.buscarAgendadosEntre(agora, fimDoDia);
+    if (jogos.length === 0) return;
+
+    this.logger.log(`[NOTIF] ${jogos.length} jogos hoje — agendando lembretes`);
+
+    for (const jogo of jogos) {
+      const dataJogo = new Date(jogo.dataHora);
+      const msAteNotificacao =
+        dataJogo.getTime() -
+        agora.getTime() -
+        NOTIFICACOES.CRON.JOGO_PROXIMO_MINUTOS * 60 * 1000;
+
+      if (msAteNotificacao <= 0) {
+        this.notificarJogoProximo(jogo).catch((err) =>
+          this.logger.error(
+            `Erro ao notificar jogo ${jogo.id}: ${err.message}`,
+          ),
+        );
+      } else {
+        setTimeout(() => {
+          this.notificarJogoProximo(jogo).catch((err) =>
+            this.logger.error(
+              `Erro ao notificar jogo ${jogo.id}: ${err.message}`,
+            ),
+          );
+        }, msAteNotificacao);
+      }
+    }
+  }
+
+  async verificarJogosIminentes(): Promise<void> {
     const agora = new Date();
     const limite = new Date(
       agora.getTime() + NOTIFICACOES.CRON.JOGO_PROXIMO_MINUTOS * 60 * 1000,
@@ -75,7 +113,7 @@ export class NotificacaoEventService {
         await this.notificarJogoProximo(jogo);
       } catch (error) {
         this.logger.error(
-          `Erro ao notificar jogo próximo ${jogo.id}: ${(error as Error).message}`,
+          `Erro fallback jogo próximo ${jogo.id}: ${(error as Error).message}`,
         );
       }
     }
@@ -84,7 +122,8 @@ export class NotificacaoEventService {
   async processarPalpitesPendentes(): Promise<void> {
     const agora = new Date();
     const limite = new Date(
-      agora.getTime() + NOTIFICACOES.CRON.PALPITES_PENDENTES_HORAS * 60 * 60 * 1000,
+      agora.getTime() +
+        NOTIFICACOES.CRON.PALPITES_PENDENTES_HORAS * 60 * 60 * 1000,
     );
 
     const jogos = await this.jogoRepo.buscarAgendadosEntre(agora, limite);
@@ -110,7 +149,9 @@ export class NotificacaoEventService {
     // Buscar todos os membros de todos os grupos (deduplicando por usuário)
     const todosUsuarioIds = new Set<string>();
     for (const grupo of grupos) {
-      const membros = await this.grupoUsuarioRepo.listarPorGrupoComUsuario(grupo.id);
+      const membros = await this.grupoUsuarioRepo.listarPorGrupoComUsuario(
+        grupo.id,
+      );
       for (const m of membros) {
         todosUsuarioIds.add((m as any).usuarioId);
       }
@@ -122,6 +163,13 @@ export class NotificacaoEventService {
       usuarioIds,
     );
 
+    // Deduplicação em batch: verificar se já existe qualquer notificação ACERTO_EM_CHEIO para este jogo
+    const jaNotificado = await this.notificacaoRepo.existeNotificacao({
+      tipo: 'ACERTO_EM_CHEIO',
+      jogoId: jogo.id,
+    });
+    if (jaNotificado) return;
+
     const notificacoes: CriarNotificacaoData[] = [];
     const usuariosParaPush: string[] = [];
 
@@ -130,14 +178,6 @@ export class NotificacaoEventService {
         palpite.golsCasa === jogo.golsCasa &&
         palpite.golsFora === jogo.golsFora;
       if (!acertou) continue;
-
-      // Deduplicação: 1 notificação por usuário por jogo (sem considerar grupo)
-      const jaDuplicada = await this.notificacaoRepo.existeNotificacao({
-        tipo: 'ACERTO_EM_CHEIO',
-        jogoId: jogo.id,
-        usuarioId: palpite.usuarioId,
-      });
-      if (jaDuplicada) continue;
 
       // Usar grupo favorito do usuário (se pertence à temporada)
       const grupoFavorito = await this.obterGrupoFavoritoNaTemporada(
@@ -163,27 +203,36 @@ export class NotificacaoEventService {
         ),
         usuarioId: palpite.usuarioId,
         jogoId: jogo.id,
-        grupoId: grupos.length === 1 ? grupos[0].id : (grupoFavorito?.id ?? null),
+        grupoId:
+          grupos.length === 1 ? grupos[0].id : (grupoFavorito?.id ?? null),
       });
       usuariosParaPush.push(palpite.usuarioId);
     }
 
     if (notificacoes.length === 0) return;
 
-    const habilitados = await this.preferenciaService.filtrarUsuariosHabilitados(
-      usuariosParaPush,
-      'ACERTO_EM_CHEIO',
-    );
+    const habilitados =
+      await this.preferenciaService.filtrarUsuariosHabilitados(
+        usuariosParaPush,
+        'ACERTO_EM_CHEIO',
+      );
     const notificacoesFiltradas = notificacoes.filter((n) =>
       habilitados.includes(n.usuarioId),
     );
 
     await this.notificacaoService.criarLote(notificacoesFiltradas);
-    await this.pushService.enviarParaUsuarios(habilitados, {
-      titulo: NOTIFICACOES.TEMPLATES.ACERTO_EM_CHEIO.titulo,
-      mensagem: 'Você acertou em cheio! Confira seus pontos.',
-      tipo: 'ACERTO_EM_CHEIO',
-    });
+
+    // Enviar push com mensagem individual por usuário (contém times + placar)
+    for (const notif of notificacoesFiltradas) {
+      if (habilitados.includes(notif.usuarioId)) {
+        await this.pushService.enviarParaUsuario(notif.usuarioId, {
+          titulo: notif.titulo,
+          mensagem: notif.mensagem,
+          tipo: 'ACERTO_EM_CHEIO',
+          url: '/notificacoes',
+        });
+      }
+    }
   }
 
   private async obterGrupoFavoritoNaTemporada(
@@ -192,19 +241,23 @@ export class NotificacaoEventService {
   ): Promise<any> {
     const grupoIds = new Set(gruposDaTemporada.map((g: any) => g.id as string));
     const membros = await this.grupoUsuarioRepo.listarPorUsuario(usuarioId);
-    const grupoFavoritoMembro = membros.find(
-      (m: any) => grupoIds.has(m.grupoId),
+    const grupoFavoritoMembro = membros.find((m: any) =>
+      grupoIds.has(m.grupoId),
     );
 
     // Se o usuário tem um grupo favorito que pertence à temporada, usar esse
     // Por simplicidade, retorna o primeiro grupo que participa na temporada
     return grupoFavoritoMembro
-      ? gruposDaTemporada.find((g: any) => g.id === grupoFavoritoMembro.grupoId) ?? null
+      ? (gruposDaTemporada.find(
+          (g: any) => g.id === grupoFavoritoMembro.grupoId,
+        ) ?? null)
       : null;
   }
 
   private async verificarRodadaEncerrada(jogo: any, fase: any): Promise<void> {
     if (jogo.rodada == null) return;
+    // Não gerar notificação de rodada encerrada para fases mata-mata
+    if (fase.tipo === 'MATA_MATA') return;
 
     const jaDuplicada = await this.notificacaoRepo.existeNotificacao({
       tipo: 'RODADA_ENCERRADA',
@@ -213,10 +266,15 @@ export class NotificacaoEventService {
     });
     if (jaDuplicada) return;
 
-    const jogosDaRodada = await this.jogoRepo.buscarPorFase(fase.id, jogo.rodada);
+    const jogosDaRodada = await this.jogoRepo.buscarPorFase(
+      fase.id,
+      jogo.rodada,
+    );
     const todosEncerrados = jogosDaRodada.every(
       (j: any) =>
-        j.status === 'FINALIZADO' || j.status === 'CANCELADO' || j.status === 'ADIADO',
+        j.status === 'FINALIZADO' ||
+        j.status === 'CANCELADO' ||
+        j.status === 'ADIADO',
     );
     const temFinalizado = jogosDaRodada.some(
       (j: any) => j.status === 'FINALIZADO',
@@ -229,21 +287,24 @@ export class NotificacaoEventService {
     // Coletar todos os usuários únicos de todos os grupos da temporada
     const usuariosUnicos = new Set<string>();
     for (const grupo of grupos) {
-      const membros = await this.grupoUsuarioRepo.listarPorGrupoComUsuario(grupo.id);
+      const membros = await this.grupoUsuarioRepo.listarPorGrupoComUsuario(
+        grupo.id,
+      );
       for (const m of membros) {
         usuariosUnicos.add((m as any).usuarioId);
       }
     }
 
     const todosUsuarios = [...usuariosUnicos];
-    const habilitados = await this.preferenciaService.filtrarUsuariosHabilitados(
-      todosUsuarios,
-      'RODADA_ENCERRADA',
-    );
+    const habilitados =
+      await this.preferenciaService.filtrarUsuariosHabilitados(
+        todosUsuarios,
+        'RODADA_ENCERRADA',
+      );
 
     const mensagem = NOTIFICACOES.TEMPLATES.RODADA_ENCERRADA.mensagem(
       jogo.rodada,
-      fase.nome,
+      fase.temporada?.campeonato?.nome ?? fase.nome,
     );
 
     const notificacoes: CriarNotificacaoData[] = habilitados.map((uid) => ({
@@ -277,7 +338,10 @@ export class NotificacaoEventService {
     }
   }
 
-  private async processarMudancaPosicaoGrupo(jogo: any, grupo: any): Promise<void> {
+  private async processarMudancaPosicaoGrupo(
+    jogo: any,
+    grupo: any,
+  ): Promise<void> {
     const rankingAtual = await this.rankingService.obterRankingGeral(grupo.id);
     if (rankingAtual.length === 0) return;
 
@@ -365,15 +429,16 @@ export class NotificacaoEventService {
     usuariosSubiram: string[],
     usuariosDesceram: string[],
   ): Promise<void> {
-
-    const habilitadosSubiu = await this.preferenciaService.filtrarUsuariosHabilitados(
-      usuariosSubiram,
-      'SUBIU_POSICAO',
-    );
-    const habilitadosDesceu = await this.preferenciaService.filtrarUsuariosHabilitados(
-      usuariosDesceram,
-      'DESCEU_POSICAO',
-    );
+    const habilitadosSubiu =
+      await this.preferenciaService.filtrarUsuariosHabilitados(
+        usuariosSubiram,
+        'SUBIU_POSICAO',
+      );
+    const habilitadosDesceu =
+      await this.preferenciaService.filtrarUsuariosHabilitados(
+        usuariosDesceram,
+        'DESCEU_POSICAO',
+      );
     const habilitados = new Set([...habilitadosSubiu, ...habilitadosDesceu]);
 
     const notificacoesFiltradas = notificacoes.filter((n) =>
@@ -407,7 +472,9 @@ export class NotificacaoEventService {
     // O ranking geral já inclui o jogo finalizado. Para simular "antes",
     // recalculamos excluindo esse jogo específico.
     const fases = await this.faseRepo.buscarPorTemporada(grupo.temporadaId);
-    const membros = await this.grupoUsuarioRepo.listarPorGrupoComUsuario(grupo.id);
+    const membros = await this.grupoUsuarioRepo.listarPorGrupoComUsuario(
+      grupo.id,
+    );
 
     if (membros.length === 0) return [];
 
@@ -485,36 +552,56 @@ export class NotificacaoEventService {
 
     const grupos = await this.grupoRepo.buscarPorTemporadaId(fase.temporadaId);
 
+    // Coletar todos os usuários únicos
+    const usuariosUnicos = new Set<string>();
     for (const grupo of grupos) {
-      const membros = await this.grupoUsuarioRepo.listarPorGrupoComUsuario(grupo.id);
-      const usuarioIds = membros.map((m: any) => m.usuarioId);
+      const membros = await this.grupoUsuarioRepo.listarPorGrupoComUsuario(
+        grupo.id,
+      );
+      for (const m of membros) {
+        usuariosUnicos.add((m as any).usuarioId);
+      }
+    }
 
-      const habilitados = await this.preferenciaService.filtrarUsuariosHabilitados(
-        usuarioIds,
+    const todosUsuarios = [...usuariosUnicos];
+
+    // Filtrar: só notifica quem NÃO palpitou neste jogo
+    const palpites = await this.palpiteRepo.listarPorJogoEUsuarios(
+      jogo.id,
+      todosUsuarios,
+    );
+    const quemJaPalpitou = new Set(palpites.map((p: any) => p.usuarioId));
+    const semPalpite = todosUsuarios.filter((uid) => !quemJaPalpitou.has(uid));
+
+    if (semPalpite.length === 0) return;
+
+    const habilitados =
+      await this.preferenciaService.filtrarUsuariosHabilitados(
+        semPalpite,
         'JOGO_PROXIMO',
       );
 
-      const mensagem = NOTIFICACOES.TEMPLATES.JOGO_PROXIMO.mensagem(
-        jogo.timeCasa?.nome ?? 'Casa',
-        jogo.timeFora?.nome ?? 'Fora',
-      );
+    if (habilitados.length === 0) return;
 
-      const notificacoes: CriarNotificacaoData[] = habilitados.map((uid) => ({
-        tipo: 'JOGO_PROXIMO',
-        titulo: NOTIFICACOES.TEMPLATES.JOGO_PROXIMO.titulo,
-        mensagem,
-        usuarioId: uid,
-        jogoId: jogo.id,
-        grupoId: grupo.id,
-      }));
+    const mensagem = NOTIFICACOES.TEMPLATES.JOGO_PROXIMO.mensagem(
+      jogo.timeCasa?.nome ?? 'Casa',
+      jogo.timeFora?.nome ?? 'Fora',
+    );
 
-      await this.notificacaoService.criarLote(notificacoes);
-      await this.pushService.enviarParaUsuarios(habilitados, {
-        titulo: NOTIFICACOES.TEMPLATES.JOGO_PROXIMO.titulo,
-        mensagem,
-        tipo: 'JOGO_PROXIMO',
-      });
-    }
+    const notificacoes: CriarNotificacaoData[] = habilitados.map((uid) => ({
+      tipo: 'JOGO_PROXIMO',
+      titulo: NOTIFICACOES.TEMPLATES.JOGO_PROXIMO.titulo,
+      mensagem,
+      usuarioId: uid,
+      jogoId: jogo.id,
+    }));
+
+    await this.notificacaoService.criarLote(notificacoes);
+    await this.pushService.enviarParaUsuarios(habilitados, {
+      titulo: NOTIFICACOES.TEMPLATES.JOGO_PROXIMO.titulo,
+      mensagem,
+      tipo: 'JOGO_PROXIMO',
+    });
   }
 
   private async notificarPalpitesPendentes(
@@ -541,7 +628,9 @@ export class NotificacaoEventService {
       });
       if (jaDuplicada) continue;
 
-      const membros = await this.grupoUsuarioRepo.listarPorGrupoComUsuario(grupo.id);
+      const membros = await this.grupoUsuarioRepo.listarPorGrupoComUsuario(
+        grupo.id,
+      );
       const usuarioIds = membros.map((m: any) => m.usuarioId);
       const jogoIds = jogosDaRodada.map((j: any) => j.id);
 
@@ -582,10 +671,11 @@ export class NotificacaoEventService {
 
       if (notificacoes.length === 0) continue;
 
-      const habilitados = await this.preferenciaService.filtrarUsuariosHabilitados(
-        usuariosParaPush,
-        'PALPITES_PENDENTES',
-      );
+      const habilitados =
+        await this.preferenciaService.filtrarUsuariosHabilitados(
+          usuariosParaPush,
+          'PALPITES_PENDENTES',
+        );
       const notificacoesFiltradas = notificacoes.filter((n) =>
         habilitados.includes(n.usuarioId),
       );
@@ -608,7 +698,9 @@ export class NotificacaoEventService {
     return (resultado.pontosBase ?? 0) * multiplicador;
   }
 
-  private extrairFasesRodadasUnicas(jogos: any[]): { faseId: string; rodada: number }[] {
+  private extrairFasesRodadasUnicas(
+    jogos: any[],
+  ): { faseId: string; rodada: number }[] {
     const set = new Set<string>();
     const resultado: { faseId: string; rodada: number }[] = [];
 
