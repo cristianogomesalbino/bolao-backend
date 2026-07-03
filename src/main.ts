@@ -13,8 +13,28 @@ async function bootstrap() {
   app.use(cookieParser());
 
   const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3003';
+  const allowedOrigins = frontendUrl.split(',').map((url) => url.trim());
+
   app.enableCors({
-    origin: frontendUrl,
+    origin: (
+      origin: string | undefined,
+      callback: (err: Error | null, allow?: boolean) => void,
+    ) => {
+      // Permite requests sem origin (mobile, Postman, etc.)
+      if (!origin) {
+        callback(null, true);
+        return;
+      }
+
+      const isAllowed =
+        allowedOrigins.includes(origin) ||
+        allowedOrigins.some(
+          (allowed) =>
+            allowed.startsWith('*.') && origin.endsWith(allowed.slice(1)),
+        );
+
+      callback(null, isAllowed);
+    },
     credentials: true,
   });
 

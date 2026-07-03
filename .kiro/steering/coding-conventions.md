@@ -195,10 +195,10 @@ Não usar `"campo": "geral"`. O campo `campo` é opcional — omitir quando não
    - `any` em código legado tocado: aplicar regra dos 10%
 5. **Nunca declarar "pronto" sem rodar os 4 passos acima**
 
-## Redução Gradual de Dívida Técnica (Regra dos 10%)
+## Redução Gradual de Dívida Técnica (Regra dos 20%)
 
 - **Se um arquivo editado tem QUALQUER erro de `any` em código novo**, tipar o arquivo inteiro — não apenas o trecho novo. Corrigir interface + Prisma + InMemory do módulo correspondente.
-- **Sempre que editar um arquivo .ts existente**, corrigir pelo menos **10% dos erros de lint pré-existentes** nesse arquivo (arredondando pra cima, mínimo 1)
+- **Sempre que editar um arquivo .ts existente**, corrigir pelo menos **20% dos erros de lint pré-existentes** nesse arquivo (arredondando pra cima, mínimo 1)
 - Prioridade de correção:
   1. Erros de Prettier (formatação)
   2. Optional chaining (`!obj || !obj.prop` → `!obj?.prop`)

@@ -82,6 +82,7 @@ interface JogoInterno {
 @Injectable()
 export class JogoService {
   private readonly logger = new Logger(JogoService.name);
+  private readonly externoIdNaoEncontradoLogado = new Set<string>();
 
   constructor(
     @Inject(JOGOS.JOGO_REPOSITORY_TOKEN)
@@ -999,51 +1000,18 @@ export class JogoService {
     horarioAnterior?: string | null;
     horarioNovo?: string | null;
   }> {
-    let jogoApi = jogoApiMap.get(jogo.externoId);
+    const jogoApi = await this.resolverJogoApi(jogo, jogoApiMap, apiDisponivel);
 
-    // Jogos sem externoId (criados manualmente para mata-mata): match por horário
-    if (!jogoApi && !jogo.externoId) {
-      jogoApi = this.matchPorRodada(jogo, jogoApiMap);
-    }
-
-    // Vincular externoId se encontrou match
-    if (jogoApi && !jogo.externoId) {
-      await this.jogoRepo.atualizar(jogo.id, { externoId: jogoApi.externoId });
-      this.logger.log(
-        `[SYNC] 🔗 Jogo R${jogo.rodada} vinculado ao externoId ${jogoApi.externoId}`,
-      );
-    }
-
-    // Sem match e sem externoId — nada a fazer
-    if (!jogoApi && !jogo.externoId) {
-      return { atualizado: false };
-    }
-
-    // Sem match mas tem externoId — logar warning
-    if (!jogoApi && jogo.externoId) {
-      this.logger.warn(
-        apiDisponivel
-          ? `Jogo externo ${jogo.externoId} não encontrado na API`
-          : `Usando fallback interno para jogo ${jogo.id} (externoId: ${jogo.externoId})`,
-      );
-    }
+    if (!jogoApi && !jogo.externoId) return { atualizado: false };
 
     const novoStatus = this.definirStatusFinal(jogo, jogoApi?.status);
     const updateData: any = { status: novoStatus };
 
-    // Proteção: jogo sem data não pode ser AGENDADO nem EM_ANDAMENTO
-    const semData = !jogo.dataHora && !jogoApi?.dataHora;
-    const statusIncompativelSemData =
-      updateData.status === 'AGENDADO' || updateData.status === 'EM_ANDAMENTO';
-
-    if (semData && statusIncompativelSemData) {
-      updateData.status = 'ADIADO';
-    }
+    this.aplicarProtecaoSemData(jogo, jogoApi, updateData);
 
     const { horarioAlterado, horarioAnterior, horarioNovo } =
       this.detectarMudancaHorario(jogo, jogoApi, updateData);
 
-    // Detectar mudança de times (mata-mata: placeholder → time real)
     const timesMudaram = await this.detectarEAtualizarTimes(
       jogo,
       jogoApi,
@@ -1057,25 +1025,19 @@ export class JogoService {
       this.preencherPlacarSync(updateData, jogoApi, jogo, novoStatus);
     }
 
-    if (novoStatus === jogo.status && !jogoApi) {
-      return { atualizado: false };
-    }
+    if (novoStatus === jogo.status && !jogoApi) return { atualizado: false };
 
-    // Verificar se realmente há mudança antes de atualizar
     const statusMudou = updateData.status !== jogo.status;
     const placarMudou =
       updateData.golsCasa !== undefined &&
       (updateData.golsCasa !== jogo.golsCasa ||
         updateData.golsFora !== jogo.golsFora);
-    const horarioMudou = horarioAlterado;
 
-    if (!statusMudou && !placarMudou && !horarioMudou && !timesMudaram) {
+    if (!statusMudou && !placarMudou && !horarioAlterado && !timesMudaram) {
       return { atualizado: false };
     }
 
-    if (statusMudou) {
-      this.logarTransicaoStatus(jogo, updateData);
-    }
+    if (statusMudou) this.logarTransicaoStatus(jogo, updateData);
 
     await this.jogoRepo.atualizar(jogo.id, updateData);
     return {
@@ -1087,6 +1049,77 @@ export class JogoService {
       horarioAnterior,
       horarioNovo,
     };
+  }
+
+  /**
+   * Resolve o jogo da API correspondente ao jogo local.
+   * Tenta por externoId direto, depois por match time+horário.
+   * Vincula externoId se encontrar match e não houver duplicidade.
+   */
+  private async resolverJogoApi(
+    jogo: any,
+    jogoApiMap: Map<string, any>,
+    apiDisponivel: boolean,
+  ): Promise<any> {
+    let jogoApi = jogoApiMap.get(jogo.externoId);
+
+    if (!jogoApi && !jogo.externoId) {
+      jogoApi = this.matchPorRodada(jogo, jogoApiMap);
+    }
+
+    if (jogoApi && !jogo.externoId) {
+      await this.tentarVincularExternoId(
+        jogo,
+        jogoApi as { externoId: string },
+      );
+    }
+
+    if (!jogoApi && jogo.externoId) {
+      this.logarExternoIdNaoEncontrado(jogo.externoId, apiDisponivel);
+    }
+
+    return jogoApi;
+  }
+
+  private async tentarVincularExternoId(
+    jogo: any,
+    jogoApi: { externoId: string },
+  ): Promise<void> {
+    const jaVinculado = await this.jogoRepo.buscarPorExternoId(
+      jogoApi.externoId,
+    );
+    if (jaVinculado) return;
+
+    await this.jogoRepo.atualizar(jogo.id, { externoId: jogoApi.externoId });
+    this.logger.log(
+      `[SYNC] 🔗 Jogo R${jogo.rodada} vinculado ao externoId ${jogoApi.externoId}`,
+    );
+  }
+
+  private logarExternoIdNaoEncontrado(
+    externoId: string,
+    apiDisponivel: boolean,
+  ): void {
+    if (this.externoIdNaoEncontradoLogado.has(externoId)) return;
+    this.externoIdNaoEncontradoLogado.add(externoId);
+    this.logger.warn(
+      apiDisponivel
+        ? `Jogo externo ${externoId} não encontrado na API`
+        : `Usando fallback interno para jogo com externoId: ${externoId}`,
+    );
+  }
+
+  private aplicarProtecaoSemData(
+    jogo: any,
+    jogoApi: any,
+    updateData: any,
+  ): void {
+    const semData = !jogo.dataHora && !jogoApi?.dataHora;
+    const statusIncompativelSemData =
+      updateData.status === 'AGENDADO' || updateData.status === 'EM_ANDAMENTO';
+    if (semData && statusIncompativelSemData) {
+      updateData.status = 'ADIADO';
+    }
   }
 
   private logarTransicaoStatus(jogo: JogoInterno, updateData: any): void {
@@ -1148,8 +1181,8 @@ export class JogoService {
   }
 
   /**
-   * Para jogos criados manualmente (sem externoId), tenta parear com a API
-   * usando rodada como critério. Usado em fases eliminatórias.
+   * Para jogos sem externoId, tenta parear com a API usando time + horário.
+   * Só vincula se pelo menos 1 time do jogo local bate com a API.
    */
   private matchPorRodada(jogo: any, jogoApiMap: Map<string, any>): any {
     if (!jogo.rodada || !jogo.dataHora) return null;
@@ -1157,6 +1190,7 @@ export class JogoService {
     const dataLocal = new Date(jogo.dataHora).getTime();
     const externoIdCasa = jogo.timeCasa?.externoId;
     const externoIdFora = jogo.timeFora?.externoId;
+    const temTimeDefinido = externoIdCasa || externoIdFora;
 
     for (const [, jogoApi] of jogoApiMap) {
       if (jogoApi._matched || !jogoApi.dataHora) continue;
@@ -1164,27 +1198,28 @@ export class JogoService {
       const diffMs = Math.abs(dataLocal - new Date(jogoApi.dataHora).getTime());
       if (diffMs > 30 * 60 * 1000) continue;
 
-      // Se o jogo local tem times definidos (não TBD), validar que pelo menos 1 bate
-      const apiCasaId = jogoApi.timeCasa?.externoId;
-      const apiForaId = jogoApi.timeFora?.externoId;
-      const temTimeDefinido = externoIdCasa || externoIdFora;
-
-      if (temTimeDefinido) {
-        const casaBate = externoIdCasa && externoIdCasa === apiCasaId;
-        const foraBate = externoIdFora && externoIdFora === apiForaId;
-        if (!casaBate && !foraBate) {
-          // Horário bate mas times divergem — possível inconsistência
-          const localLabel = `${jogo.timeCasa?.sigla ?? 'TBD'} x ${jogo.timeFora?.sigla ?? 'TBD'}`;
-          const apiLabel = `${jogoApi.timeCasa?.sigla ?? '?'} x ${jogoApi.timeFora?.sigla ?? '?'}`;
-          this.logger.warn(
-            `[SYNC] ⚠️ R${jogo.rodada}: divergência — banco: ${localLabel} | API: ${apiLabel} — não vinculando`,
-          );
-          continue;
-        }
+      if (!temTimeDefinido) {
+        jogoApi._matched = true;
+        return jogoApi;
       }
 
-      jogoApi._matched = true;
-      return jogoApi;
+      const apiCasaId = jogoApi.timeCasa?.externoId;
+      const apiForaId = jogoApi.timeFora?.externoId;
+      const casaBate = externoIdCasa && externoIdCasa === apiCasaId;
+      const foraBate = externoIdFora && externoIdFora === apiForaId;
+
+      if (casaBate || foraBate) {
+        jogoApi._matched = true;
+        return jogoApi;
+      }
+    }
+
+    // Nenhum match: se tem time definido e horário bateu com algum jogo, logar divergência
+    if (temTimeDefinido) {
+      const localLabel = `${jogo.timeCasa?.sigla ?? 'TBD'} x ${jogo.timeFora?.sigla ?? 'TBD'}`;
+      this.logger.warn(
+        `[SYNC] ⚠️ R${jogo.rodada}: ${localLabel} sem match na API — não vinculando`,
+      );
     }
 
     return null;
@@ -1336,17 +1371,17 @@ export class JogoService {
     return false;
   }
 
-  /** Retorna o ID do time TBD placeholder, criando-o se não existir */
-  private async garantirTimeTBD(): Promise<any> {
+  /** Retorna o time TBD placeholder, criando-o se não existir */
+  private async garantirTimeTBD(): Promise<{ id: string }> {
     const TBD_ID = '00000000-0000-0000-0000-000000000001';
     const existente = await this.timeRepo.buscarPorId(TBD_ID);
-    if (existente) return existente;
+    if (existente) return existente as { id: string };
 
     return this.timeRepo.criar({
       id: TBD_ID,
       nome: 'A Definir',
       sigla: 'TBD',
       escudo: '',
-    } as any);
+    } as Record<string, string>) as unknown as { id: string };
   }
 }
