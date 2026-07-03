@@ -342,6 +342,9 @@ export class NotificacaoEventService {
     jogo: any,
     grupo: any,
   ): Promise<void> {
+    // Invalidar cache ANTES de buscar ranking atual (jogo acabou de ser finalizado)
+    this.rankingService.invalidarCache(grupo.id);
+
     const rankingAtual = await this.rankingService.obterRankingGeral(grupo.id);
     if (rankingAtual.length === 0) return;
 
@@ -466,9 +469,6 @@ export class NotificacaoEventService {
     grupo: any,
     jogoId: string,
   ): Promise<any[]> {
-    // Invalidar cache para obter ranking fresh
-    this.rankingService.invalidarCache(grupo.id);
-
     // O ranking geral já inclui o jogo finalizado. Para simular "antes",
     // recalculamos excluindo esse jogo específico.
     const fases = await this.faseRepo.buscarPorTemporada(grupo.temporadaId);

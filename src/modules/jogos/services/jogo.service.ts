@@ -85,6 +85,7 @@ interface JogoInterno {
 export class JogoService {
   private readonly logger = new Logger(JogoService.name);
   private readonly externoIdNaoEncontradoLogado = new Set<string>();
+  private readonly jogoSemMatchLogado = new Set<string>();
 
   constructor(
     @Inject(JOGOS.JOGO_REPOSITORY_TOKEN)
@@ -1243,8 +1244,9 @@ export class JogoService {
       }
     }
 
-    // Nenhum match: se tem time definido e horário bateu com algum jogo, logar divergência
-    if (temTimeDefinido) {
+    // Nenhum match: se tem time definido, logar divergência apenas 1x por jogo
+    if (temTimeDefinido && !this.jogoSemMatchLogado.has(jogo.id)) {
+      this.jogoSemMatchLogado.add(jogo.id);
       const localLabel = `${jogo.timeCasa?.sigla ?? 'TBD'} x ${jogo.timeFora?.sigla ?? 'TBD'}`;
       this.logger.warn(
         `[SYNC] ⚠️ R${jogo.rodada}: ${localLabel} sem match na API — não vinculando`,
