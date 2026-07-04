@@ -153,7 +153,7 @@ export class NotificacaoEventService {
         grupo.id,
       );
       for (const m of membros) {
-        todosUsuarioIds.add((m as any).usuarioId);
+        todosUsuarioIds.add(m.usuarioId);
       }
     }
 
@@ -291,7 +291,7 @@ export class NotificacaoEventService {
         grupo.id,
       );
       for (const m of membros) {
-        usuariosUnicos.add((m as any).usuarioId);
+        usuariosUnicos.add(m.usuarioId);
       }
     }
 
@@ -342,17 +342,25 @@ export class NotificacaoEventService {
     jogo: any,
     grupo: any,
   ): Promise<void> {
-    // Invalidar cache ANTES de buscar ranking atual (jogo acabou de ser finalizado)
-    this.rankingService.invalidarCache(grupo.id);
-
-    const rankingAtual = await this.rankingService.obterRankingGeral(grupo.id);
+    // Calcular ranking ATUAL (incluindo jogo recém-finalizado)
+    const rankingAtual = await this.calcularRankingSemCache(grupo, null);
     if (rankingAtual.length === 0) return;
 
-    const rankingAnterior = await this.calcularRankingExcluindoJogo(
-      grupo,
-      jogo.id,
-    );
+    // Calcular ranking ANTERIOR (excluindo o jogo recém-finalizado)
+    const rankingAnterior = await this.calcularRankingSemCache(grupo, jogo.id);
     if (rankingAnterior.length === 0) return;
+
+    const atualTop = rankingAtual
+      .slice(0, 3)
+      .map((r: any) => `${r.usuarioId?.slice(0, 8)}:pos${r.posicao}`)
+      .join(',');
+    const anteriorTop = rankingAnterior
+      .slice(0, 3)
+      .map((r: any) => `${r.usuarioId?.slice(0, 8)}:pos${r.posicao}`)
+      .join(',');
+    this.logger.log(
+      `[RANKING] Grupo ${grupo.nome} | Atual: ${atualTop} | Anterior: ${anteriorTop}`,
+    );
 
     const posicaoAnteriorMap = new Map(
       rankingAnterior.map((r: any) => [r.usuarioId, r.posicao]),
@@ -465,9 +473,9 @@ export class NotificacaoEventService {
     }
   }
 
-  private async calcularRankingExcluindoJogo(
+  private async calcularRankingSemCache(
     grupo: any,
-    jogoId: string,
+    jogoIdExcluir: string | null,
   ): Promise<any[]> {
     // O ranking geral já inclui o jogo finalizado. Para simular "antes",
     // recalculamos excluindo esse jogo específico.
@@ -484,7 +492,9 @@ export class NotificacaoEventService {
     for (const fase of fases) {
       const jogos = await this.jogoRepo.buscarPorFase(fase.id);
       const finalizados = jogos.filter(
-        (j: any) => j.status === 'FINALIZADO' && j.id !== jogoId,
+        (j: any) =>
+          j.status === 'FINALIZADO' &&
+          (jogoIdExcluir === null || j.id !== jogoIdExcluir),
       );
       todosJogosFinalizados.push(...finalizados);
     }
@@ -559,7 +569,7 @@ export class NotificacaoEventService {
         grupo.id,
       );
       for (const m of membros) {
-        usuariosUnicos.add((m as any).usuarioId);
+        usuariosUnicos.add(m.usuarioId);
       }
     }
 
@@ -617,76 +627,130 @@ export class NotificacaoEventService {
     );
     if (jogosDaRodada.length === 0) return;
 
-    const grupos = await this.grupoRepo.buscarPorTemporadaId(fase.temporadaId);
+    // Verificar duplicação por fase+rodada (independente de grupo)
+    const jaDuplicada = await this.notificacaoRepo.existeNotificacao({
+      tipo: 'PALPITES_PENDENTES',
+      faseId,
+      rodada,
+    });
+    if (jaDuplicada) return;
+
+    const usuarioIds = await this.obterUsuariosDaTemporada(fase.temporadaId);
+    if (usuarioIds.length === 0) return;
+
+    const palpitesPorUsuario = await this.mapearPalpitesPorUsuario(
+      jogosDaRodada,
+      usuarioIds,
+    );
+
+    const isMataMata = fase.tipo === 'MATA_MATA';
+    const { notificacoes, usuariosParaPush } = this.montarNotificacoesPendentes(
+      usuarioIds,
+      jogosDaRodada,
+      palpitesPorUsuario,
+      isMataMata,
+      faseId,
+      rodada,
+    );
+
+    if (notificacoes.length === 0) return;
+
+    const habilitados =
+      await this.preferenciaService.filtrarUsuariosHabilitados(
+        usuariosParaPush,
+        'PALPITES_PENDENTES',
+      );
+    const notificacoesFiltradas = notificacoes.filter((n) =>
+      habilitados.includes(n.usuarioId),
+    );
+
+    await this.notificacaoService.criarLote(notificacoesFiltradas);
+    await this.pushService.enviarParaUsuarios(habilitados, {
+      titulo: NOTIFICACOES.TEMPLATES.PALPITES_PENDENTES.titulo,
+      mensagem: `Você tem palpites pendentes!`,
+      tipo: 'PALPITES_PENDENTES',
+    });
+  }
+
+  private async obterUsuariosDaTemporada(
+    temporadaId: string,
+  ): Promise<string[]> {
+    const grupos = await this.grupoRepo.buscarPorTemporadaId(temporadaId);
+    const usuarioIdsSet = new Set<string>();
 
     for (const grupo of grupos) {
-      const jaDuplicada = await this.notificacaoRepo.existeNotificacao({
-        tipo: 'PALPITES_PENDENTES',
-        faseId,
-        rodada,
-        grupoId: grupo.id,
-      });
-      if (jaDuplicada) continue;
-
       const membros = await this.grupoUsuarioRepo.listarPorGrupoComUsuario(
         grupo.id,
       );
-      const usuarioIds = membros.map((m: any) => m.usuarioId);
-      const jogoIds = jogosDaRodada.map((j: any) => j.id);
-
-      const palpites = await this.palpiteRepo.listarPorJogosEUsuarios(
-        jogoIds,
-        usuarioIds,
-      );
-      const palpitesPorUsuario = new Map<string, number>();
-      for (const p of palpites) {
-        palpitesPorUsuario.set(
-          p.usuarioId,
-          (palpitesPorUsuario.get(p.usuarioId) ?? 0) + 1,
-        );
+      for (const m of membros) {
+        usuarioIdsSet.add(m.usuarioId);
       }
-
-      const notificacoes: CriarNotificacaoData[] = [];
-      const usuariosParaPush: string[] = [];
-
-      for (const uid of usuarioIds) {
-        const feitos = palpitesPorUsuario.get(uid) ?? 0;
-        const pendentes = jogosDaRodada.length - feitos;
-        if (pendentes <= 0) continue;
-
-        notificacoes.push({
-          tipo: 'PALPITES_PENDENTES',
-          titulo: NOTIFICACOES.TEMPLATES.PALPITES_PENDENTES.titulo,
-          mensagem: NOTIFICACOES.TEMPLATES.PALPITES_PENDENTES.mensagem(
-            pendentes,
-            rodada,
-          ),
-          usuarioId: uid,
-          faseId,
-          rodada,
-          grupoId: grupo.id,
-        });
-        usuariosParaPush.push(uid);
-      }
-
-      if (notificacoes.length === 0) continue;
-
-      const habilitados =
-        await this.preferenciaService.filtrarUsuariosHabilitados(
-          usuariosParaPush,
-          'PALPITES_PENDENTES',
-        );
-      const notificacoesFiltradas = notificacoes.filter((n) =>
-        habilitados.includes(n.usuarioId),
-      );
-
-      await this.notificacaoService.criarLote(notificacoesFiltradas);
-      await this.pushService.enviarParaUsuarios(habilitados, {
-        titulo: NOTIFICACOES.TEMPLATES.PALPITES_PENDENTES.titulo,
-        mensagem: `Você tem palpites pendentes para a rodada ${rodada}!`,
-        tipo: 'PALPITES_PENDENTES',
-      });
     }
+
+    return [...usuarioIdsSet];
+  }
+
+  private async mapearPalpitesPorUsuario(
+    jogosDaRodada: any[],
+    usuarioIds: string[],
+  ): Promise<Map<string, Set<string>>> {
+    const jogoIds = jogosDaRodada.map((j: any) => j.id);
+    const palpites = await this.palpiteRepo.listarPorJogosEUsuarios(
+      jogoIds,
+      usuarioIds,
+    );
+
+    const mapa = new Map<string, Set<string>>();
+    for (const p of palpites) {
+      if (!mapa.has(p.usuarioId)) {
+        mapa.set(p.usuarioId, new Set());
+      }
+      mapa.get(p.usuarioId)!.add(p.jogoId);
+    }
+    return mapa;
+  }
+
+  private montarNotificacoesPendentes(
+    usuarioIds: string[],
+    jogosDaRodada: any[],
+    palpitesPorUsuario: Map<string, Set<string>>,
+    isMataMata: boolean,
+    faseId: string,
+    rodada: number,
+  ): { notificacoes: CriarNotificacaoData[]; usuariosParaPush: string[] } {
+    const notificacoes: CriarNotificacaoData[] = [];
+    const usuariosParaPush: string[] = [];
+
+    for (const uid of usuarioIds) {
+      const jogosPalpitados = palpitesPorUsuario.get(uid) ?? new Set();
+      const jogosPendentes = jogosDaRodada.filter(
+        (j: any) => !jogosPalpitados.has(j.id),
+      );
+      if (jogosPendentes.length === 0) continue;
+
+      const mensagem = isMataMata
+        ? NOTIFICACOES.TEMPLATES.PALPITES_PENDENTES.mensagemMataMata(
+            jogosPendentes.map(
+              (j: any) => `${j.timeCasa.nome} × ${j.timeFora.nome}`,
+            ),
+          )
+        : NOTIFICACOES.TEMPLATES.PALPITES_PENDENTES.mensagem(
+            jogosPendentes.length,
+            rodada,
+          );
+
+      notificacoes.push({
+        tipo: 'PALPITES_PENDENTES',
+        titulo: NOTIFICACOES.TEMPLATES.PALPITES_PENDENTES.titulo,
+        mensagem,
+        usuarioId: uid,
+        faseId,
+        rodada,
+      });
+      usuariosParaPush.push(uid);
+    }
+
+    return { notificacoes, usuariosParaPush };
   }
 
   private calcularPontosAcerto(palpite: any, jogo: any, grupo: any): number {

@@ -78,6 +78,10 @@ export const NOTIFICACOES = {
       titulo: 'Palpites pendentes!',
       mensagem: (quantidade: number, rodada: number) =>
         `Faltam ${quantidade} palpites para a rodada ${rodada}! Não esqueça.`,
+      mensagemMataMata: (jogos: string[]) =>
+        jogos.length === 1
+          ? `Falta palpite para ${jogos[0]}! Não esqueça.`
+          : `Faltam palpites para ${jogos.join(', ')}! Não esqueça.`,
     },
   },
 } as const;
