@@ -1042,6 +1042,7 @@ export class JogoService {
     const { horarioAlterado, horarioAnterior, horarioNovo } =
       this.detectarMudancaHorario(jogo, jogoApi, updateData);
 
+    // Corrige times no banco quando API indica posições diferentes (inclui mando invertido)
     const timesMudaram = await this.detectarEAtualizarTimes(
       jogo,
       jogoApi,
@@ -1233,15 +1234,13 @@ export class JogoService {
         return jogoApi;
       }
 
-      const apiCasaId = jogoApi.timeCasa?.externoId;
-      const apiForaId = jogoApi.timeFora?.externoId;
-      const casaBate = externoIdCasa && externoIdCasa === apiCasaId;
-      const foraBate = externoIdFora && externoIdFora === apiForaId;
-
-      if (casaBate || foraBate) {
-        jogoApi._matched = true;
-        return jogoApi;
-      }
+      const resultado = this.compararTimesParaMatch(
+        externoIdCasa,
+        externoIdFora,
+        jogoApi,
+        jogo,
+      );
+      if (resultado) return resultado;
     }
 
     // Nenhum match: se tem time definido, logar divergência apenas 1x por jogo
@@ -1251,6 +1250,47 @@ export class JogoService {
       this.logger.warn(
         `[SYNC] ⚠️ R${jogo.rodada}: ${localLabel} sem match na API — não vinculando`,
       );
+    }
+
+    return null;
+  }
+
+  /**
+   * Compara externoIds dos times do banco com os da API.
+   * Aceita match direto (mesma posição) ou cruzado (mandante/visitante invertidos).
+   */
+  private compararTimesParaMatch(
+    externoIdCasa: string | undefined,
+    externoIdFora: string | undefined,
+    jogoApi: any,
+    jogo: any,
+  ): any {
+    const apiCasaId = jogoApi.timeCasa?.externoId;
+    const apiForaId = jogoApi.timeFora?.externoId;
+
+    // Match direto: posições iguais
+    const casaBate = externoIdCasa && externoIdCasa === apiCasaId;
+    const foraBate = externoIdFora && externoIdFora === apiForaId;
+
+    if (casaBate || foraBate) {
+      jogoApi._matched = true;
+      return jogoApi;
+    }
+
+    // Match cruzado: API com mandante/visitante invertidos
+    // Comum em fases eliminatórias onde a API pode inverter o mando
+    const casaBateInvertido = externoIdCasa && externoIdCasa === apiForaId;
+    const foraBateInvertido = externoIdFora && externoIdFora === apiCasaId;
+
+    if (casaBateInvertido || foraBateInvertido) {
+      jogoApi._matched = true;
+      jogoApi._mandoInvertido = true;
+      this.logger.log(
+        `[SYNC] 🔄 R${jogo.rodada}: mando invertido detectado — ` +
+          `banco: ${jogo.timeCasa?.sigla} x ${jogo.timeFora?.sigla} | ` +
+          `API: ${jogoApi.timeCasa?.sigla ?? jogoApi.timeCasa?.nome} x ${jogoApi.timeFora?.sigla ?? jogoApi.timeFora?.nome}`,
+      );
+      return jogoApi;
     }
 
     return null;

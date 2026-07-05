@@ -17,6 +17,8 @@ export const PALPITES = {
     DOBRO_JA_ATIVO: 'Já existe dobro ativo para este jogo neste grupo',
     DOBRO_NAO_ENCONTRADO: 'Não existe dobro ativo para este jogo neste grupo',
     JOGO_NAO_ACEITA_DOBRO: 'O jogo não aceita mais ativação de dobro',
+    JOGO_PENDENTE_CONFIRMACAO:
+      'Jogo pendente de confirmação pela API — palpites bloqueados até validação',
     DOBRO_ATIVADO: 'Palpite dobrado ativado com sucesso',
     DOBRO_DESATIVADO: 'Palpite dobrado desativado com sucesso',
     CONFIGURACAO_ATUALIZADA: 'Configuração de palpite dobrado atualizada',

@@ -16,6 +16,7 @@ import {
   PalpiteJaExisteError,
   PalpiteNaoPertenceAoUsuarioError,
   JogoNaoPertenceAoGrupoError,
+  JogoPendenteConfirmacaoError,
 } from '../../../common/errors/domain-errors/palpites.errors';
 import { CriarPalpiteDto } from '../dto/criar-palpite.dto';
 import { AtualizarPalpiteDto } from '../dto/atualizar-palpite.dto';
@@ -204,6 +205,14 @@ export class PalpiteService {
         });
         continue;
       }
+      if (jogo.fonteResultado === 'API_EXTERNA' && !jogo.externoId) {
+        resultados.push({
+          jogoId: item.jogoId,
+          sucesso: false,
+          erro: PALPITES.MENSAGENS.JOGO_PENDENTE_CONFIRMACAO,
+        });
+        continue;
+      }
       if (existentesSet.has(item.jogoId)) {
         resultados.push({
           jogoId: item.jogoId,
@@ -244,9 +253,17 @@ export class PalpiteService {
     return palpite;
   }
 
-  private validarJogoAceitaPalpites(jogo: { status: string }): void {
+  private validarJogoAceitaPalpites(jogo: {
+    status: string;
+    externoId?: string | null;
+    fonteResultado?: string | null;
+  }): void {
     if (jogo.status !== 'AGENDADO' && jogo.status !== 'ADIADO') {
       throw new JogoNaoAceitaPalpitesError();
+    }
+    // Bloqueia palpites em jogos da API que ainda não foram confirmados (sem externoId)
+    if (jogo.fonteResultado === 'API_EXTERNA' && !jogo.externoId) {
+      throw new JogoPendenteConfirmacaoError();
     }
   }
 }

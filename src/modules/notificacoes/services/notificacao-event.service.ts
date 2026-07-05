@@ -342,21 +342,28 @@ export class NotificacaoEventService {
     jogo: any,
     grupo: any,
   ): Promise<void> {
-    // Calcular ranking ATUAL (incluindo jogo recém-finalizado)
-    const rankingAtual = await this.calcularRankingSemCache(grupo, null);
-    if (rankingAtual.length === 0) return;
-
-    // Calcular ranking ANTERIOR (excluindo o jogo recém-finalizado)
+    // Calcular ranking ANTERIOR (excluindo jogo recém-finalizado)
     const rankingAnterior = await this.calcularRankingSemCache(grupo, jogo.id);
     if (rankingAnterior.length === 0) return;
 
+    // Calcular ranking ATUAL: incluir o jogo manualmente
+    // (evita race condition com PgBouncer que pode não ver o commit ainda)
+    const rankingAtual = await this.calcularRankingComJogoExtra(grupo, jogo);
+    if (rankingAtual.length === 0) return;
+
     const atualTop = rankingAtual
       .slice(0, 3)
-      .map((r: any) => `${r.usuarioId?.slice(0, 8)}:pos${r.posicao}`)
+      .map(
+        (r: { usuarioId: string; posicao: number; pontuacaoTotal: number }) =>
+          `${r.usuarioId.slice(0, 8)}:pos${r.posicao}:${r.pontuacaoTotal}pts`,
+      )
       .join(',');
     const anteriorTop = rankingAnterior
       .slice(0, 3)
-      .map((r: any) => `${r.usuarioId?.slice(0, 8)}:pos${r.posicao}`)
+      .map(
+        (r: { usuarioId: string; posicao: number; pontuacaoTotal: number }) =>
+          `${r.usuarioId.slice(0, 8)}:pos${r.posicao}:${r.pontuacaoTotal}pts`,
+      )
       .join(',');
     this.logger.log(
       `[RANKING] Grupo ${grupo.nome} | Atual: ${atualTop} | Anterior: ${anteriorTop}`,
@@ -548,6 +555,66 @@ export class NotificacaoEventService {
       ...entry,
       posicao: i + 1,
     }));
+  }
+
+  /**
+   * Calcula ranking incluindo um jogo que pode não estar visível no banco
+   * (race condition com PgBouncer). Pega o ranking "anterior" e soma os pontos
+   * do jogo extra manualmente.
+   */
+  private async calcularRankingComJogoExtra(
+    grupo: {
+      id: string;
+      temporadaId: string;
+      permitirPalpiteDobrado?: boolean;
+    },
+    jogoExtra: { id: string; golsCasa: number; golsFora: number },
+  ): Promise<{ usuarioId: string; pontuacaoTotal: number; posicao: number }[]> {
+    const membros = await this.grupoUsuarioRepo.listarPorGrupoComUsuario(
+      grupo.id,
+    );
+    if (membros.length === 0) return [];
+
+    const usuarioIds = (membros as { usuarioId: string }[]).map(
+      (m) => m.usuarioId,
+    );
+
+    // Pegar ranking sem o jogo extra
+    const rankingBase = await this.calcularRankingSemCache(grupo, jogoExtra.id);
+
+    // Buscar palpites do jogo extra para todos os membros
+    const palpites = await this.palpiteRepo.listarPorJogoEUsuarios(
+      jogoExtra.id,
+      usuarioIds,
+    );
+    const palpiteMap = new Map(
+      (
+        palpites as { usuarioId: string; golsCasa: number; golsFora: number }[]
+      ).map((p) => [p.usuarioId, p]),
+    );
+
+    // Somar pontos do jogo extra ao ranking base
+    const entries = (
+      rankingBase as { usuarioId: string; pontuacaoTotal: number }[]
+    ).map((entry) => {
+      const palpite = palpiteMap.get(entry.usuarioId);
+      const resultado = this.pontuacaoService.calcular(
+        palpite
+          ? { golsCasa: palpite.golsCasa, golsFora: palpite.golsFora }
+          : null,
+        { golsCasa: jogoExtra.golsCasa, golsFora: jogoExtra.golsFora },
+      );
+      const pontosExtra = resultado.pontosBase ?? 0;
+      return {
+        ...entry,
+        pontuacaoTotal: entry.pontuacaoTotal + pontosExtra,
+      };
+    });
+
+    const sorted = [...entries].sort(
+      (a, b) => b.pontuacaoTotal - a.pontuacaoTotal,
+    );
+    return sorted.map((e, i) => ({ ...e, posicao: i + 1 }));
   }
 
   private async notificarJogoProximo(jogo: any): Promise<void> {
