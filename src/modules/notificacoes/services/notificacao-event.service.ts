@@ -140,4 +140,22 @@ export class NotificacaoEventService {
       }
     }
   }
+
+  async notificarJogoLiberado(
+    jogoId: string,
+    timeCasaNome: string,
+    timeForaNome: string,
+  ): Promise<void> {
+    try {
+      await this.lembreteService.notificarJogoLiberado(
+        jogoId,
+        timeCasaNome,
+        timeForaNome,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Erro ao notificar jogo liberado ${jogoId}: ${(error as Error).message}`,
+      );
+    }
+  }
 }

@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import {
   JOGOS,
   COPA_CHAVEAMENTO_16AVOS,
@@ -10,9 +10,11 @@ import {
   TABELA_ALOCACAO_TERCEIROS,
 } from '../jogos.constants';
 import { TIMES } from '../../times/time.constants';
+import { NOTIFICACOES } from '../../notificacoes/notificacoes.constants';
 import type { JogoRepository } from '../repositories/jogo.repository.interface';
 import type { FaseRepository } from '../repositories/fase.repository.interface';
 import type { TimeRepository } from '../../times/repositories/time.repository.interface';
+import type { NotificacaoEventService } from '../../notificacoes/services/notificacao-event.service';
 import { FutebolApiService } from './futebol-api.service';
 import type { CampeonatoConfig } from '../jogos.constants';
 
@@ -89,6 +91,9 @@ export class ChaveamentoService {
     @Inject(TIMES.REPOSITORY_TOKEN)
     private readonly timeRepo: TimeRepository,
     private readonly futebolApiService: FutebolApiService,
+    @Optional()
+    @Inject(NOTIFICACOES.EVENT_SERVICE_TOKEN)
+    private readonly notificacaoEventService?: NotificacaoEventService,
   ) {}
 
   /**
@@ -530,7 +535,46 @@ export class ChaveamentoService {
 
     if (Object.keys(updateData).length > 0) {
       await this.jogoRepo.atualizar(jogoDestino.id, updateData);
+
+      // Se ambos os times estão definidos após update, notificar jogo liberado
+      const casaFinal = updateData.timeCasaId ?? jogoDestino.timeCasaId;
+      const foraFinal = updateData.timeForaId ?? jogoDestino.timeForaId;
+      const ambosDefinidos = casaFinal !== tbdId && foraFinal !== tbdId;
+
+      if (ambosDefinidos) {
+        this.dispararNotificacaoJogoLiberado(
+          jogoDestino.id,
+          casaFinal,
+          foraFinal,
+        );
+      }
     }
+  }
+
+  private dispararNotificacaoJogoLiberado(
+    jogoId: string,
+    timeCasaId: string,
+    timeForaId: string,
+  ): void {
+    if (!this.notificacaoEventService) return;
+
+    const buscarTime = (id: string) =>
+      this.timeRepo.buscarPorId(id) as Promise<{ nome: string } | null>;
+
+    Promise.all([buscarTime(timeCasaId), buscarTime(timeForaId)])
+      .then(([timeCasa, timeFora]) => {
+        if (!timeCasa || !timeFora) return;
+        return this.notificacaoEventService!.notificarJogoLiberado(
+          jogoId,
+          timeCasa.nome,
+          timeFora.nome,
+        );
+      })
+      .catch((err: Error) => {
+        this.logger.error(
+          `Erro ao notificar jogo liberado ${jogoId}: ${err.message}`,
+        );
+      });
   }
 
   /**

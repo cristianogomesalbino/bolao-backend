@@ -230,6 +230,7 @@ Services divididos por responsabilidade (SRP):
 | `SUBIU_POSICAO` | Jogo finalizado + ranking recalculado | Quem subiu |
 | `DESCEU_POSICAO` | Jogo finalizado + ranking recalculado | Quem desceu |
 | `PALPITES_PENDENTES` | 3h antes de jogos com palpites faltando | Quem não palpitou |
+| `JOGO_LIBERADO` | Chaveamento define times de jogo eliminatório | Todos os membros |
 
 ### Endpoints
 
@@ -269,3 +270,40 @@ Todas as notificações são deduplicadas via `existeNotificacao()` antes de cri
 ### Integração com JogoService
 
 `JogoService.dispararNotificacoesJogoFinalizado(jogoId)` chama `NotificacaoEventService.processarJogoFinalizado(jogoId)` de forma fire-and-forget (`.catch()`) após finalizar/sincronizar um jogo. Não bloqueia o fluxo principal.
+
+### Integração com ChaveamentoService (JOGO_LIBERADO)
+
+Quando `ChaveamentoService.propagarVencedoresParaProximaFase()` substitui TBD por times reais em um jogo eliminatório:
+1. Verifica se ambos os times ficaram definidos (nenhum é TBD)
+2. Busca nomes dos times via `timeRepo.buscarPorId()`
+3. Chama `NotificacaoEventService.notificarJogoLiberado(jogoId, timeCasaNome, timeForaNome)` fire-and-forget
+4. `NotificacaoLembreteService.notificarJogoLiberado()` deduplica, filtra por preferência, cria notificações e envia push
+
+O `NotificacaoEventService` é injetado no `ChaveamentoService` via `@Optional() @Inject(NOTIFICACOES.EVENT_SERVICE_TOKEN)` — graceful se módulo de notificações não estiver disponível.
+
+### Web Push — Arquitetura Frontend
+
+O push no frontend usa PWA + Service Worker:
+
+**Fluxo de inscrição:**
+1. Login/inicialização → `sincronizarPushPendente()` (re-inscreve se necessário)
+2. `BannerPush` no layout → solicita permissão + `pushManager.subscribe()` + `POST /push/inscrever`
+3. `TogglePush` nas preferências → ativa/desativa
+
+**Service Worker (`worker/index.ts`):**
+- Compilado por `@ducanh2912/next-pwa` via `customWorkerSrc: "worker"`
+- Handler `push` → `showNotification()` com título, body, ícone, tag único
+- Handler `notificationclick` → foca janela existente ou abre nova (cross-browser, Safari-safe)
+
+**Compatibilidade iOS:**
+- Push funciona em iOS 16.4+ APENAS quando o site está adicionado à tela inicial como PWA
+- `pushSuportado()` retorna `false` em dispositivos sem suporte
+- Sem `vibrate` (iOS ignora)
+- Sem `client.navigate()` (não existe em Safari) — usa `client.focus()` + `openWindow()`
+
+**Componentes envolvidos:**
+- `src/lib/push-notifications.ts` — lib de subscription (subscribe, cancel, sync pendente)
+- `src/components/notificacoes/banner-push.tsx` — modal de opt-in (primeira vez)
+- `src/components/notificacoes/toggle-push.tsx` — toggle nas preferências
+- `src/components/notificacoes/sw-updater.tsx` — re-inscreve silenciosamente quando SW atualiza
+- `src/stores/auth.store.ts` — chama `sincronizarPushPendente()` após login/refresh

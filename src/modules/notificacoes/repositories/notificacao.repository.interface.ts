@@ -4,7 +4,8 @@ export type TipoNotificacao =
   | 'ACERTO_EM_CHEIO'
   | 'SUBIU_POSICAO'
   | 'DESCEU_POSICAO'
-  | 'PALPITES_PENDENTES';
+  | 'PALPITES_PENDENTES'
+  | 'JOGO_LIBERADO';
 
 export interface CriarNotificacaoData {
   tipo: TipoNotificacao;

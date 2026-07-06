@@ -107,5 +107,9 @@ export class NotificacaoRodadaService {
       mensagem,
       tipo: 'RODADA_ENCERRADA',
     });
+
+    this.logger.log(
+      `[NOTIF] RODADA_ENCERRADA: rodada ${String(jogo.rodada)} — ${String(habilitados.length)} notificados`,
+    );
   }
 }

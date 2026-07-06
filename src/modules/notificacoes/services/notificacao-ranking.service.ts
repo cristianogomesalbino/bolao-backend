@@ -110,6 +110,10 @@ export class NotificacaoRankingService {
       usuariosSubiram,
       usuariosDesceram,
     );
+
+    this.logger.log(
+      `[NOTIF] RANKING: ${grupo.nome} — ${String(usuariosSubiram.length)} subiram, ${String(usuariosDesceram.length)} desceram`,
+    );
   }
 
   async classificarMudancaPosicao(

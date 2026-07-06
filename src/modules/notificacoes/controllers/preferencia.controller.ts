@@ -28,6 +28,7 @@ export class PreferenciaController {
       subiuPosicao: preferencias.subiuPosicao,
       desceuPosicao: preferencias.desceuPosicao,
       palpitesPendentes: preferencias.palpitesPendentes,
+      jogoLiberado: preferencias.jogoLiberado,
     };
   }
 

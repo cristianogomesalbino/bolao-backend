@@ -5,6 +5,7 @@ export interface PreferenciaCampos {
   subiuPosicao: boolean;
   desceuPosicao: boolean;
   palpitesPendentes: boolean;
+  jogoLiberado: boolean;
 }
 
 export interface PreferenciaNotificacao {
@@ -16,6 +17,7 @@ export interface PreferenciaNotificacao {
   subiuPosicao: boolean;
   desceuPosicao: boolean;
   palpitesPendentes: boolean;
+  jogoLiberado: boolean;
 }
 
 export interface PreferenciaRepository {

@@ -110,6 +110,10 @@ export class NotificacaoLembreteService {
       mensagem,
       tipo: 'JOGO_PROXIMO',
     });
+
+    this.logger.log(
+      `[NOTIF] JOGO_PROXIMO: ${jogo.timeCasa?.nome ?? '?'} × ${jogo.timeFora?.nome ?? '?'} — ${String(habilitados.length)} notificados`,
+    );
   }
 
   async notificarPalpitesPendentes(
@@ -171,6 +175,10 @@ export class NotificacaoLembreteService {
         tipo: 'PALPITES_PENDENTES',
       });
     }
+
+    this.logger.log(
+      `[NOTIF] PALPITES_PENDENTES: rodada ${String(rodada)} — ${String(notificacoesFiltradas.length)} notificados`,
+    );
   }
 
   async obterUsuariosDaTemporada(temporadaId: string): Promise<string[]> {
@@ -270,5 +278,60 @@ export class NotificacaoLembreteService {
     }
 
     return resultado;
+  }
+
+  async notificarJogoLiberado(
+    jogoId: string,
+    timeCasaNome: string,
+    timeForaNome: string,
+  ): Promise<void> {
+    const jaDuplicada = await this.notificacaoRepo.existeNotificacao({
+      tipo: 'JOGO_LIBERADO',
+      jogoId,
+    });
+    if (jaDuplicada) return;
+
+    const jogo = (await this.jogoRepo.buscarPorId(jogoId)) as JogoNotif | null;
+    if (!jogo) return;
+
+    const fase = (await this.faseRepo.buscarPorId(
+      jogo.faseId,
+    )) as FaseNotif | null;
+    if (!fase) return;
+
+    const usuarioIds = await this.obterUsuariosDaTemporada(fase.temporadaId);
+    if (usuarioIds.length === 0) return;
+
+    const habilitados =
+      await this.preferenciaService.filtrarUsuariosHabilitados(
+        usuarioIds,
+        'JOGO_LIBERADO',
+      );
+    if (habilitados.length === 0) return;
+
+    const mensagem = NOTIFICACOES.TEMPLATES.JOGO_LIBERADO.mensagem(
+      timeCasaNome,
+      timeForaNome,
+    );
+
+    const notificacoes: CriarNotificacaoData[] = habilitados.map((uid) => ({
+      tipo: 'JOGO_LIBERADO',
+      titulo: NOTIFICACOES.TEMPLATES.JOGO_LIBERADO.titulo,
+      mensagem,
+      usuarioId: uid,
+      jogoId,
+    }));
+
+    await this.notificacaoService.criarLote(notificacoes);
+    await this.pushService.enviarParaUsuarios(habilitados, {
+      titulo: NOTIFICACOES.TEMPLATES.JOGO_LIBERADO.titulo,
+      mensagem,
+      tipo: 'JOGO_LIBERADO',
+      url: '/palpites',
+    });
+
+    this.logger.log(
+      `[NOTIF] Jogo liberado: ${timeCasaNome} × ${timeForaNome} — ${String(habilitados.length)} notificados`,
+    );
   }
 }

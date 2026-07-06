@@ -287,6 +287,7 @@ enum TipoNotificacao {
   SUBIU_POSICAO
   DESCEU_POSICAO
   PALPITES_PENDENTES
+  JOGO_LIBERADO
 }
 
 enum StatusNotificacao {
@@ -340,6 +341,7 @@ model PreferenciaNotificacao {
   subiuPosicao      Boolean @default(true)
   desceuPosicao     Boolean @default(true)
   palpitesPendentes Boolean @default(true)
+  jogoLiberado      Boolean @default(true)
 
   usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 }

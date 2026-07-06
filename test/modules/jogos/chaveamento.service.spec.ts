@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ChaveamentoService } from '@src/modules/jogos/services/chaveamento.service';
+import type { CampeonatoConfig } from '@src/modules/jogos/jogos.constants';
+import type { NotificacaoEventService } from '@src/modules/notificacoes/services/notificacao-event.service';
 import { InMemoryJogoRepository } from '@src/modules/jogos/repositories/in-memory-jogo.repository';
 import { InMemoryFaseRepository } from '@src/modules/jogos/repositories/in-memory-fase.repository';
 import { InMemoryTimeRepository } from '@src/modules/times/repositories/in-memory-time.repository';
@@ -36,10 +38,13 @@ describe('ChaveamentoService', () => {
   };
 
   const config = {
+    slug: 'copa-do-mundo-2026',
+    nome: 'Copa do Mundo 2026',
+    tema: { corPrimaria: '#16a34a', corSecundaria: '#22c55e' },
     campeonatoId: 'copa-2026-id',
     fases: [{ slug: 'segunda-fase-copa-do-mundo-2026', tipo: 'MATA_MATA' }],
     buildFaseSlug: (slug: string) => slug,
-  };
+  } as CampeonatoConfig;
 
   beforeEach(() => {
     jogoRepo = new InMemoryJogoRepository();
@@ -53,7 +58,7 @@ describe('ChaveamentoService', () => {
       normalizarJogo: vi.fn(),
       buscarJogosPorIds: vi.fn(),
       mapearStatus: vi.fn(),
-    } as any;
+    } as unknown as FutebolApiService;
 
     service = new ChaveamentoService(
       jogoRepo,
@@ -356,7 +361,7 @@ describe('ChaveamentoService - propagarVencedoresParaProximaFase (3º lugar e fi
       normalizarJogo: vi.fn(),
       buscarJogosPorIds: vi.fn(),
       mapearStatus: vi.fn(),
-    } as any;
+    } as unknown as FutebolApiService;
 
     service = new ChaveamentoService(
       jogoRepo,
@@ -461,5 +466,330 @@ describe('ChaveamentoService - propagarVencedoresParaProximaFase (3º lugar e fi
     // Vencedor da semi 1 (BRA) + TBD
     expect(jogoFinal?.timeCasaId).toBe('bra-id');
     expect(jogoFinal?.timeForaId).toBe(TBD_ID);
+  });
+});
+
+describe('ChaveamentoService - dispararNotificacaoJogoLiberado', () => {
+  let service: ChaveamentoService;
+  let jogoRepo: InMemoryJogoRepository;
+  let faseRepo: InMemoryFaseRepository;
+  let timeRepo: InMemoryTimeRepository;
+  let futebolApiService: FutebolApiService;
+  let notificacaoEventService: {
+    notificarJogoLiberado: ReturnType<typeof vi.fn>;
+  };
+
+  beforeEach(() => {
+    jogoRepo = new InMemoryJogoRepository();
+    faseRepo = new InMemoryFaseRepository();
+    timeRepo = new InMemoryTimeRepository();
+
+    futebolApiService = {
+      buscarJogosPorRodada: vi.fn().mockResolvedValue([]),
+      buscarJogosPorRodadas: vi.fn().mockResolvedValue([]),
+      normalizarJogo: vi.fn(),
+      buscarJogosPorIds: vi.fn(),
+      mapearStatus: vi.fn(),
+    } as unknown as FutebolApiService;
+
+    notificacaoEventService = {
+      notificarJogoLiberado: vi.fn().mockResolvedValue(undefined),
+    };
+
+    service = new ChaveamentoService(
+      jogoRepo,
+      faseRepo,
+      timeRepo,
+      futebolApiService,
+      notificacaoEventService as unknown as NotificacaoEventService,
+    );
+
+    // Times
+    timeRepo.items.push(
+      {
+        id: TBD_ID,
+        nome: 'A Definir',
+        sigla: 'TBD',
+        escudo: null,
+        externoId: null,
+        dataCriacao: new Date(),
+        atualizadoEm: new Date(),
+      },
+      {
+        id: 'bra-id',
+        nome: 'Brasil',
+        sigla: 'BRA',
+        escudo: null,
+        externoId: 'ext-bra',
+        dataCriacao: new Date(),
+        atualizadoEm: new Date(),
+      },
+      {
+        id: 'arg-id',
+        nome: 'Argentina',
+        sigla: 'ARG',
+        escudo: null,
+        externoId: 'ext-arg',
+        dataCriacao: new Date(),
+        atualizadoEm: new Date(),
+      },
+    );
+  });
+
+  it('dispara notificação quando ambos os times ficam definidos', async () => {
+    // Usar semifinais → final (bracket simples: R1 vencedor = casa, R2 vencedor = fora)
+    const faseSemisLocal = {
+      id: 'fase-semis-local',
+      nome: 'Semifinais',
+      tipo: 'MATA_MATA',
+      ordem: 16,
+      idaVolta: false,
+      temporadaId: TEMPORADA_ID,
+      dataCriacao: new Date(),
+    };
+    const faseFinalLocal = {
+      id: 'fase-final-local',
+      nome: 'Final',
+      tipo: 'MATA_MATA',
+      ordem: 18,
+      idaVolta: false,
+      temporadaId: TEMPORADA_ID,
+      dataCriacao: new Date(),
+    };
+    faseRepo.items = [faseSemisLocal, faseFinalLocal];
+
+    // Duas semifinais finalizadas
+    jogoRepo.items.push({
+      id: 'semi-1',
+      faseId: 'fase-semis-local',
+      timeCasaId: 'bra-id',
+      timeForaId: 'arg-id',
+      dataHora: new Date('2026-07-14T19:00:00Z'),
+      rodada: 1,
+      status: 'FINALIZADO',
+      vencedorId: 'bra-id',
+      golsCasa: 2,
+      golsFora: 1,
+      temProrrogacao: false,
+      temPenaltis: false,
+      penaltisCasa: null,
+      penaltisFora: null,
+      fonteResultado: 'API_EXTERNA',
+      externoId: null,
+      criadoPor: 'sistema',
+      dataCriacao: new Date(),
+      atualizadoEm: new Date(),
+    });
+    jogoRepo.items.push({
+      id: 'semi-2',
+      faseId: 'fase-semis-local',
+      timeCasaId: 'arg-id',
+      timeForaId: 'bra-id',
+      dataHora: new Date('2026-07-14T22:00:00Z'),
+      rodada: 2,
+      status: 'FINALIZADO',
+      vencedorId: 'arg-id',
+      golsCasa: 3,
+      golsFora: 0,
+      temProrrogacao: false,
+      temPenaltis: false,
+      penaltisCasa: null,
+      penaltisFora: null,
+      fonteResultado: 'API_EXTERNA',
+      externoId: null,
+      criadoPor: 'sistema',
+      dataCriacao: new Date(),
+      atualizadoEm: new Date(),
+    });
+
+    // Jogo da final com TBD (será preenchido com vencedores)
+    jogoRepo.items.push({
+      id: 'jogo-final',
+      faseId: 'fase-final-local',
+      timeCasaId: TBD_ID,
+      timeForaId: TBD_ID,
+      dataHora: new Date('2026-07-18T20:00:00Z'),
+      rodada: 1,
+      status: 'AGENDADO',
+      vencedorId: null,
+      golsCasa: null,
+      golsFora: null,
+      temProrrogacao: false,
+      temPenaltis: false,
+      penaltisCasa: null,
+      penaltisFora: null,
+      fonteResultado: 'API_EXTERNA',
+      externoId: null,
+      criadoPor: 'sistema',
+      dataCriacao: new Date(),
+      atualizadoEm: new Date(),
+    });
+
+    await service.propagarVencedoresParaProximaFase(TEMPORADA_ID);
+
+    // Aguardar fire-and-forget
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    expect(notificacaoEventService.notificarJogoLiberado).toHaveBeenCalledWith(
+      'jogo-final',
+      'Brasil',
+      'Argentina',
+    );
+  });
+
+  it('não dispara notificação se notificacaoEventService não existe', async () => {
+    const serviceWithout = new ChaveamentoService(
+      jogoRepo,
+      faseRepo,
+      timeRepo,
+      futebolApiService,
+      // sem notificacaoEventService
+    );
+
+    const faseOitavas = {
+      id: 'fase-oitavas',
+      nome: 'Oitavas de Final',
+      tipo: 'MATA_MATA',
+      ordem: 14,
+      idaVolta: false,
+      temporadaId: TEMPORADA_ID,
+      dataCriacao: new Date(),
+    };
+    const fase16Avos = {
+      id: 'fase-16avos',
+      nome: '16 Avos de Final',
+      tipo: 'MATA_MATA',
+      ordem: 13,
+      idaVolta: false,
+      temporadaId: TEMPORADA_ID,
+      dataCriacao: new Date(),
+    };
+    faseRepo.items = [fase16Avos, faseOitavas];
+
+    jogoRepo.items.push({
+      id: 'jogo-16avos-1',
+      faseId: 'fase-16avos',
+      timeCasaId: 'bra-id',
+      timeForaId: 'arg-id',
+      dataHora: new Date('2026-07-04T20:00:00Z'),
+      rodada: 1,
+      status: 'FINALIZADO',
+      vencedorId: 'bra-id',
+      golsCasa: 2,
+      golsFora: 1,
+      temProrrogacao: false,
+      temPenaltis: false,
+      penaltisCasa: null,
+      penaltisFora: null,
+      fonteResultado: 'API_EXTERNA',
+      externoId: null,
+      criadoPor: 'sistema',
+      dataCriacao: new Date(),
+      atualizadoEm: new Date(),
+    });
+
+    jogoRepo.items.push({
+      id: 'jogo-oitavas-1',
+      faseId: 'fase-oitavas',
+      timeCasaId: TBD_ID,
+      timeForaId: 'arg-id',
+      dataHora: new Date('2026-07-09T20:00:00Z'),
+      rodada: 1,
+      status: 'AGENDADO',
+      vencedorId: null,
+      golsCasa: null,
+      golsFora: null,
+      temProrrogacao: false,
+      temPenaltis: false,
+      penaltisCasa: null,
+      penaltisFora: null,
+      fonteResultado: 'API_EXTERNA',
+      externoId: null,
+      criadoPor: 'sistema',
+      dataCriacao: new Date(),
+      atualizadoEm: new Date(),
+    });
+
+    // Não deve lançar erro — graceful quando service é undefined
+    await expect(
+      serviceWithout.propagarVencedoresParaProximaFase(TEMPORADA_ID),
+    ).resolves.not.toThrow();
+  });
+
+  it('não dispara se um time ainda é TBD', async () => {
+    const faseOitavas = {
+      id: 'fase-oitavas',
+      nome: 'Oitavas de Final',
+      tipo: 'MATA_MATA',
+      ordem: 14,
+      idaVolta: false,
+      temporadaId: TEMPORADA_ID,
+      dataCriacao: new Date(),
+    };
+    const fase16Avos = {
+      id: 'fase-16avos',
+      nome: '16 Avos de Final',
+      tipo: 'MATA_MATA',
+      ordem: 13,
+      idaVolta: false,
+      temporadaId: TEMPORADA_ID,
+      dataCriacao: new Date(),
+    };
+    faseRepo.items = [fase16Avos, faseOitavas];
+
+    // Apenas 1 semi finalizada — destino fica com TBD em um lado
+    jogoRepo.items.push({
+      id: 'jogo-16avos-1',
+      faseId: 'fase-16avos',
+      timeCasaId: 'bra-id',
+      timeForaId: 'arg-id',
+      dataHora: new Date('2026-07-04T20:00:00Z'),
+      rodada: 1,
+      status: 'FINALIZADO',
+      vencedorId: 'bra-id',
+      golsCasa: 2,
+      golsFora: 1,
+      temProrrogacao: false,
+      temPenaltis: false,
+      penaltisCasa: null,
+      penaltisFora: null,
+      fonteResultado: 'API_EXTERNA',
+      externoId: null,
+      criadoPor: 'sistema',
+      dataCriacao: new Date(),
+      atualizadoEm: new Date(),
+    });
+
+    // Jogo destino: ambos TBD (segundo time vem de R2 que não finalizou)
+    jogoRepo.items.push({
+      id: 'jogo-oitavas-1',
+      faseId: 'fase-oitavas',
+      timeCasaId: TBD_ID,
+      timeForaId: TBD_ID,
+      dataHora: new Date('2026-07-09T20:00:00Z'),
+      rodada: 1,
+      status: 'AGENDADO',
+      vencedorId: null,
+      golsCasa: null,
+      golsFora: null,
+      temProrrogacao: false,
+      temPenaltis: false,
+      penaltisCasa: null,
+      penaltisFora: null,
+      fonteResultado: 'API_EXTERNA',
+      externoId: null,
+      criadoPor: 'sistema',
+      dataCriacao: new Date(),
+      atualizadoEm: new Date(),
+    });
+
+    await service.propagarVencedoresParaProximaFase(TEMPORADA_ID);
+
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    // Não notifica pq um time ainda é TBD
+    expect(
+      notificacaoEventService.notificarJogoLiberado,
+    ).not.toHaveBeenCalled();
   });
 });

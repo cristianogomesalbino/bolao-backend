@@ -83,5 +83,10 @@ export const NOTIFICACOES = {
           ? `Falta palpite para ${jogos[0]}! Não esqueça.`
           : `Faltam palpites para ${jogos.join(', ')}! Não esqueça.`,
     },
+    JOGO_LIBERADO: {
+      titulo: 'Jogo liberado!',
+      mensagem: (timeCasa: string, timeFora: string) =>
+        `O jogo ${timeCasa} × ${timeFora} está definido. Dê seu palpite!`,
+    },
   },
 } as const;

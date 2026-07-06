@@ -233,10 +233,11 @@ Não usar `"campo": "geral"`. O campo `campo` é opcional — omitir quando não
 - Framework: Vitest 4 (nunca Jest)
 - Instanciação direta com mocks (`vi.fn()`) ou InMemory repositories — **NUNCA** usar `TestingModule`
 - Services testados com InMemory repositories: `new ServiceClass(inMemoryRepo)`
-- Controllers testados com `new ControllerClass(mockService as any)`
+- Controllers testados com `new ControllerClass(mockService as unknown as ServiceClass)`
 - Guards testados com instanciação direta e mock de `ExecutionContext`
+- **NUNCA usar `as any` em testes** — usar `as unknown as TipoEsperado` para mocks parciais
 - Imports explícitos: `import { describe, it, expect, beforeEach, vi } from 'vitest'`
-- Rodar testes: `docker exec bolao-backend-dev npx vitest run`
+- Rodar testes: `npx vitest run` (host — InMemory repos, sem banco)
 
 ## Postman Collection
 

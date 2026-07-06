@@ -129,6 +129,10 @@ export class NotificacaoAcertoService {
         });
       }
     }
+
+    this.logger.log(
+      `[NOTIF] ACERTO_EM_CHEIO: ${jogo.timeCasa?.nome ?? '?'} ${String(jogo.golsCasa)}×${String(jogo.golsFora)} ${jogo.timeFora?.nome ?? '?'} — ${String(notificacoesFiltradas.length)} acertos`,
+    );
   }
 
   async obterGrupoFavoritoNaTemporada(
