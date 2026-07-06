@@ -51,7 +51,8 @@ src/modules/
 ├── jogos/           # Jogos, fases, importação via API externa, sincronização
 ├── palpites/        # Palpites (CRUD, lote), palpite dobrado, painel da rodada
 ├── times/           # Times (criados automaticamente na importação)
-└── ranking/         # Pontuação calculada on-the-fly, ranking por grupo/fase
+├── ranking/         # Pontuação calculada on-the-fly, ranking por grupo/fase
+└── notificacoes/    # Push notifications, lembretes, acertos, ranking changes
 ```
 
 ## Modelos Prisma
@@ -203,3 +204,68 @@ Nomes de classes, decorators e padrões do NestJS seguem inglês (Controller, Se
 5. Nome alfabético (asc) — fallback final
 
 Cache: 5 minutos em memória (Map-based, TTL 300.000ms)
+
+## Módulo de Notificações
+
+### Arquitetura
+
+Services divididos por responsabilidade (SRP):
+- `NotificacaoEventService` — orquestrador: recebe eventos e delega para services especializados
+- `NotificacaoAcertoService` — detecta acertos em cheio e notifica usuários
+- `NotificacaoRodadaService` — detecta rodada encerrada e notifica
+- `NotificacaoRankingService` — calcula mudanças de posição e notifica subidas/descidas
+- `NotificacaoLembreteService` — lembrete de jogo próximo + palpites pendentes
+- `NotificacaoCronService` — jobs agendados via `@nestjs/schedule`
+- `PushService` — envio de Web Push (VAPID/web-push)
+- `PreferenciaService` — preferências do usuário por tipo de notificação
+- `NotificacaoService` — CRUD de notificações (listar, marcar lida, limpar antigas)
+
+### Tipos de Notificação
+
+| Tipo | Trigger | Quem recebe |
+|------|---------|-------------|
+| `JOGO_PROXIMO` | 10min antes do jogo | Usuários que NÃO palpitaram |
+| `RODADA_ENCERRADA` | Todos os jogos da rodada finalizados | Todos os membros |
+| `ACERTO_EM_CHEIO` | Jogo finalizado + palpite exato | Quem acertou |
+| `SUBIU_POSICAO` | Jogo finalizado + ranking recalculado | Quem subiu |
+| `DESCEU_POSICAO` | Jogo finalizado + ranking recalculado | Quem desceu |
+| `PALPITES_PENDENTES` | 3h antes de jogos com palpites faltando | Quem não palpitou |
+
+### Endpoints
+
+- `GET /notificacoes` — listar notificações do usuário (paginado, filtro por status)
+- `PATCH /notificacoes/:id/lida` — marcar como lida
+- `PATCH /notificacoes/lidas` — marcar todas como lidas
+- `POST /push/inscrever` — registrar inscrição push (endpoint + keys)
+- `DELETE /push/cancelar` — cancelar inscrição push
+- `GET /push/chave-publica` — retornar VAPID public key
+- `GET /preferencias` — buscar preferências de notificação do usuário
+- `PATCH /preferencias` — atualizar preferências
+
+### Web Push (VAPID)
+
+- Chaves VAPID configuradas via env vars: `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`
+- Se VAPID não configurado: push desabilitado graciosamente (não bloqueia startup)
+- Inscrições inválidas (404/410) são removidas automaticamente
+- Limite: 10 inscrições por usuário
+
+### Cron Jobs (UTC)
+
+- `0 11 * * *` (08:00 BRT) — agenda timers para lembretes de jogos do dia
+- `*/15 11-23,0-4 * * *` — fallback: verifica jogos iminentes a cada 15min
+- `0,30 11-23,0-4 * * *` — verifica palpites pendentes a cada 30min
+- `0 5 * * *` (02:00 BRT) — limpeza de notificações antigas (30 dias)
+
+### Deduplicação
+
+Todas as notificações são deduplicadas via `existeNotificacao()` antes de criar. Verifica combinação de `tipo + jogoId/faseId/rodada/grupoId/usuarioId` conforme o tipo.
+
+### Modelos Prisma
+
+- `Notificacao` — tipo, título, mensagem, status (NAO_LIDA/LIDA), relação com usuario/jogo/grupo/fase
+- `InscricaoPush` — endpoint, p256dh, auth (unique por usuario+endpoint)
+- `PreferenciaNotificacao` — booleans por tipo (unique por usuario)
+
+### Integração com JogoService
+
+`JogoService.dispararNotificacoesJogoFinalizado(jogoId)` chama `NotificacaoEventService.processarJogoFinalizado(jogoId)` de forma fire-and-forget (`.catch()`) após finalizar/sincronizar um jogo. Não bloqueia o fluxo principal.

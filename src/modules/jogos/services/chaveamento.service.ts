@@ -512,6 +512,9 @@ export class ChaveamentoService {
       return;
     }
 
+    // Jogo já vinculado pela API — não sobrescrever times
+    if (jogoDestino.externoId) return;
+
     // Atualizar times com classificados (corrige TBD e times errados)
     const updateData: Record<string, string> = {};
 

@@ -81,6 +81,35 @@ interface JogoInterno {
   temporadaId?: string;
 }
 
+interface SyncUpdateData {
+  status: string;
+  golsCasa?: number | null;
+  golsFora?: number | null;
+  timeCasaId?: string;
+  timeForaId?: string;
+  vencedorId?: string | null;
+  dataHora?: Date;
+  foiAdiado?: boolean;
+  fonteResultado?: string;
+  temPenaltis?: boolean;
+  penaltisCasa?: number | null;
+  penaltisFora?: number | null;
+}
+
+interface JogoApiNormalizado {
+  externoId: string;
+  status: string;
+  golsCasa: number | null;
+  golsFora: number | null;
+  dataHora: string | null;
+  penaltisCasa: number | null;
+  penaltisFora: number | null;
+  timeCasa: { externoId: string; nome: string; sigla: string; escudo: string };
+  timeFora: { externoId: string; nome: string; sigla: string; escudo: string };
+  _matched?: boolean;
+  _mandoInvertido?: boolean;
+}
+
 @Injectable()
 export class JogoService {
   private readonly logger = new Logger(JogoService.name);
@@ -867,12 +896,9 @@ export class JogoService {
       (j) => j.status === 'FINALIZADO',
     );
     if (jogosFinalizedAgora.length > 0) {
-      const resumoFinalizados = jogosFinalizedAgora
-        .map(
-          (j) => `🏁 ${j.timeCasa} ${j.golsCasa}x${j.golsFora} ${j.timeFora}`,
-        )
-        .join(' | ');
-      this.logger.log(`[SYNC] ${resumoFinalizados} — propagando chaveamento`);
+      this.logger.log(
+        `[SYNC] ${String(jogosFinalizedAgora.length)} finalizados — propagando chaveamento`,
+      );
       await this.chaveamentoService.preencherProximaFaseEliminatoria(
         fase.temporadaId,
         config,
@@ -885,10 +911,6 @@ export class JogoService {
       for (const jogoFinalizado of jogosFinalizedAgora) {
         this.dispararNotificacoesJogoFinalizado(jogoFinalizado.id);
       }
-    } else {
-      // Verificar se há jogos eliminatórios pendentes de criação
-      // (grupos podem ter sido finalizados em execuções anteriores)
-      await this.verificarChaveamentoPendente(fase.temporadaId, config);
     }
 
     return { sincronizados, jogosAtualizados };
@@ -988,6 +1010,13 @@ export class JogoService {
     const rodadasPendentes = [
       ...new Set(jogos.map((j: any) => j.rodada).filter(Boolean)),
     ] as number[];
+
+    // Para fases MATA_MATA, a API do GE usa rodada 1 para todos os jogos
+    // Sempre incluir rodada 1 para garantir que encontramos os jogos
+    if (!rodadasPendentes.includes(1)) {
+      rodadasPendentes.unshift(1);
+    }
+
     let jogosApi: any[] = [];
     let apiDisponivel = true;
 
@@ -1018,7 +1047,7 @@ export class JogoService {
   }
 
   private async processarJogoSync(
-    jogo: any,
+    jogo: JogoInterno,
     jogoApiMap: Map<string, any>,
     apiDisponivel: boolean,
   ): Promise<{
@@ -1030,24 +1059,31 @@ export class JogoService {
     horarioAnterior?: string | null;
     horarioNovo?: string | null;
   }> {
-    const jogoApi = await this.resolverJogoApi(jogo, jogoApiMap, apiDisponivel);
+    if (this.jogoTemTimePlaceholder(jogo)) return { atualizado: false };
+
+    const jogoApi = (await this.resolverJogoApi(
+      jogo,
+      jogoApiMap,
+      apiDisponivel,
+    )) as JogoApiNormalizado | null;
 
     if (!jogoApi && !jogo.externoId) return { atualizado: false };
 
+    if (await this.tratarSemDadosSeNecessario(jogo, jogoApi)) {
+      return { atualizado: false };
+    }
+
     const novoStatus = this.definirStatusFinal(jogo, jogoApi?.status);
-    const updateData: any = { status: novoStatus };
+    const updateData: SyncUpdateData = { status: novoStatus };
 
     this.aplicarProtecaoSemData(jogo, jogoApi, updateData);
 
     const { horarioAlterado, horarioAnterior, horarioNovo } =
       this.detectarMudancaHorario(jogo, jogoApi, updateData);
 
-    // Corrige times no banco quando API indica posições diferentes (inclui mando invertido)
-    const timesMudaram = await this.detectarEAtualizarTimes(
-      jogo,
-      jogoApi,
-      updateData,
-    );
+    const timesMudaram = jogo.externoId
+      ? await this.detectarEAtualizarTimes(jogo, jogoApi, updateData)
+      : false;
 
     if (
       jogoApi &&
@@ -1056,19 +1092,22 @@ export class JogoService {
       this.preencherPlacarSync(updateData, jogoApi, jogo, novoStatus);
     }
 
-    if (novoStatus === jogo.status && !jogoApi) return { atualizado: false };
-
-    const statusMudou = updateData.status !== jogo.status;
-    const placarMudou =
-      updateData.golsCasa !== undefined &&
-      (updateData.golsCasa !== jogo.golsCasa ||
-        updateData.golsFora !== jogo.golsFora);
-
-    if (!statusMudou && !placarMudou && !horarioAlterado && !timesMudaram) {
+    if (
+      !this.houveAlteracao(
+        jogo,
+        updateData,
+        jogoApi,
+        horarioAlterado,
+        timesMudaram,
+      )
+    ) {
       return { atualizado: false };
     }
 
-    if (statusMudou) this.logarTransicaoStatus(jogo, updateData);
+    // Guard: NUNCA finalizar sem placar confirmado
+    if (updateData.status === 'FINALIZADO' && updateData.golsCasa == null) {
+      updateData.status = 'EM_ANDAMENTO';
+    }
 
     await this.jogoRepo.atualizar(jogo.id, updateData);
     return {
@@ -1080,6 +1119,49 @@ export class JogoService {
       horarioAnterior,
       horarioNovo,
     };
+  }
+
+  private jogoTemTimePlaceholder(jogo: JogoInterno): boolean {
+    const timeCasa = jogo.timeCasa as { nome: string; sigla: string } | null;
+    const timeFora = jogo.timeFora as { nome: string; sigla: string } | null;
+    if (this.ehTimePlaceholder(timeCasa?.nome ?? '', timeCasa?.sigla ?? ''))
+      return true;
+    if (this.ehTimePlaceholder(timeFora?.nome ?? '', timeFora?.sigla ?? ''))
+      return true;
+    return false;
+  }
+
+  private async tratarSemDadosSeNecessario(
+    jogo: JogoInterno,
+    jogoApi: JogoApiNormalizado | null,
+  ): Promise<boolean> {
+    const semDadosEmAndamento =
+      !jogoApi && jogo.status === 'EM_ANDAMENTO' && jogo.dataHora;
+    if (!semDadosEmAndamento) return false;
+
+    const horasDesdeInicio =
+      (Date.now() - new Date(jogo.dataHora!).getTime()) / (1000 * 60 * 60);
+    await this.tratarJogoSemDadosApi(jogo, horasDesdeInicio);
+    return true;
+  }
+
+  private houveAlteracao(
+    jogo: JogoInterno,
+    updateData: SyncUpdateData,
+    jogoApi: JogoApiNormalizado | null,
+    horarioAlterado: boolean,
+    timesMudaram: boolean,
+  ): boolean {
+    const novoStatus = updateData.status;
+    if (novoStatus === jogo.status && !jogoApi) return false;
+
+    const statusMudou = novoStatus !== jogo.status;
+    const placarMudou =
+      updateData.golsCasa !== undefined &&
+      (updateData.golsCasa !== jogo.golsCasa ||
+        updateData.golsFora !== jogo.golsFora);
+
+    return statusMudou || placarMudou || horarioAlterado || timesMudaram;
   }
 
   /**
@@ -1141,9 +1223,9 @@ export class JogoService {
   }
 
   private aplicarProtecaoSemData(
-    jogo: any,
-    jogoApi: any,
-    updateData: any,
+    jogo: JogoInterno,
+    jogoApi: JogoApiNormalizado | null,
+    updateData: SyncUpdateData,
   ): void {
     const semData = !jogo.dataHora && !jogoApi?.dataHora;
     const statusIncompativelSemData =
@@ -1153,24 +1235,14 @@ export class JogoService {
     }
   }
 
-  private logarTransicaoStatus(jogo: JogoInterno, updateData: any): void {
-    // Transições de status são logadas no resumo consolidado do sincronizarPlacares
-    // Aqui apenas registra transições especiais que merecem destaque individual
-    if (jogo.status === 'AGENDADO' && updateData.status === 'EM_ANDAMENTO') {
-      const timeCasa = jogo.timeCasa?.sigla || '?';
-      const timeFora = jogo.timeFora?.sigla || '?';
-      this.logger.log(`[SYNC] ⚽ ${timeCasa} x ${timeFora} — começou`);
-    }
-  }
-
   /**
    * Detecta se a API atualizou os times de um jogo (placeholder → time real).
    * Acontece nas fases eliminatórias quando um classificado é definido.
    */
   private async detectarEAtualizarTimes(
-    jogo: any,
-    jogoApi: any,
-    updateData: any,
+    jogo: JogoInterno,
+    jogoApi: JogoApiNormalizado | null,
+    updateData: SyncUpdateData,
   ): Promise<boolean> {
     if (!jogoApi?.timeCasa?.externoId || !jogoApi?.timeFora?.externoId) {
       return false;
@@ -1215,7 +1287,10 @@ export class JogoService {
    * Para jogos sem externoId, tenta parear com a API usando time + horário.
    * Só vincula se pelo menos 1 time do jogo local bate com a API.
    */
-  private matchPorRodada(jogo: any, jogoApiMap: Map<string, any>): any {
+  private matchPorRodada(
+    jogo: JogoInterno,
+    jogoApiMap: Map<string, JogoApiNormalizado>,
+  ): JogoApiNormalizado | null {
     if (!jogo.rodada || !jogo.dataHora) return null;
 
     const dataLocal = new Date(jogo.dataHora).getTime();
@@ -1248,7 +1323,7 @@ export class JogoService {
       this.jogoSemMatchLogado.add(jogo.id);
       const localLabel = `${jogo.timeCasa?.sigla ?? 'TBD'} x ${jogo.timeFora?.sigla ?? 'TBD'}`;
       this.logger.warn(
-        `[SYNC] ⚠️ R${jogo.rodada}: ${localLabel} sem match na API — não vinculando`,
+        `[SYNC] ⚠️ R${String(jogo.rodada)}: ${localLabel} sem match na API — não vinculando`,
       );
     }
 
@@ -1260,11 +1335,11 @@ export class JogoService {
    * Aceita match direto (mesma posição) ou cruzado (mandante/visitante invertidos).
    */
   private compararTimesParaMatch(
-    externoIdCasa: string | undefined,
-    externoIdFora: string | undefined,
-    jogoApi: any,
-    jogo: any,
-  ): any {
+    externoIdCasa: string | null | undefined,
+    externoIdFora: string | null | undefined,
+    jogoApi: JogoApiNormalizado,
+    jogo: JogoInterno,
+  ): JogoApiNormalizado | null {
     const apiCasaId = jogoApi.timeCasa?.externoId;
     const apiForaId = jogoApi.timeFora?.externoId;
 
@@ -1278,7 +1353,6 @@ export class JogoService {
     }
 
     // Match cruzado: API com mandante/visitante invertidos
-    // Comum em fases eliminatórias onde a API pode inverter o mando
     const casaBateInvertido = externoIdCasa && externoIdCasa === apiForaId;
     const foraBateInvertido = externoIdFora && externoIdFora === apiCasaId;
 
@@ -1286,7 +1360,7 @@ export class JogoService {
       jogoApi._matched = true;
       jogoApi._mandoInvertido = true;
       this.logger.log(
-        `[SYNC] 🔄 R${jogo.rodada}: mando invertido detectado — ` +
+        `[SYNC] 🔄 R${String(jogo.rodada)}: mando invertido detectado — ` +
           `banco: ${jogo.timeCasa?.sigla} x ${jogo.timeFora?.sigla} | ` +
           `API: ${jogoApi.timeCasa?.sigla ?? jogoApi.timeCasa?.nome} x ${jogoApi.timeFora?.sigla ?? jogoApi.timeFora?.nome}`,
       );
@@ -1297,9 +1371,9 @@ export class JogoService {
   }
 
   private detectarMudancaHorario(
-    jogo: any,
-    jogoApi: any,
-    updateData: any,
+    jogo: JogoInterno,
+    jogoApi: JogoApiNormalizado | null,
+    updateData: SyncUpdateData,
   ): {
     horarioAlterado: boolean;
     horarioAnterior: string | null;
@@ -1337,9 +1411,9 @@ export class JogoService {
   }
 
   private preencherPlacarSync(
-    updateData: any,
-    jogoApi: any,
-    jogo: any,
+    updateData: SyncUpdateData,
+    jogoApi: JogoApiNormalizado,
+    jogo: JogoInterno,
     status: string,
   ) {
     updateData.golsCasa = jogoApi.golsCasa ?? null;
@@ -1355,20 +1429,21 @@ export class JogoService {
     }
 
     updateData.vencedorId = this.determinarVencedorPorPlacar(
-      updateData.golsCasa,
-      updateData.golsFora,
+      updateData.golsCasa ?? 0,
+      updateData.golsFora ?? 0,
       jogo.timeCasaId,
       jogo.timeForaId,
     );
 
     // Se empate no tempo normal e tem pênaltis, vencedor é por pênaltis
     if (!updateData.vencedorId && updateData.temPenaltis) {
-      if (updateData.penaltisCasa > updateData.penaltisFora) {
+      if ((updateData.penaltisCasa ?? 0) > (updateData.penaltisFora ?? 0)) {
         updateData.vencedorId = jogo.timeCasaId;
-      } else if (updateData.penaltisFora > updateData.penaltisCasa) {
+      } else if (
+        (updateData.penaltisFora ?? 0) > (updateData.penaltisCasa ?? 0)
+      ) {
         updateData.vencedorId = jogo.timeForaId;
       }
-      // Se penaltisCasa === penaltisFora → vencedorId permanece null (dados inconsistentes)
     }
   }
 
@@ -1406,17 +1481,13 @@ export class JogoService {
   calcularStatusInterno(jogo: any): string {
     const agora = Date.now();
     const dataHora = new Date(jogo.dataHora).getTime();
-    const duasHoras = 2 * 60 * 60 * 1000;
 
     if (agora < dataHora) {
       return 'AGENDADO';
     }
 
-    if (agora <= dataHora + duasHoras) {
-      return 'EM_ANDAMENTO';
-    }
-
-    return 'FINALIZADO';
+    // Sem dados da API, não podemos finalizar — apenas detectar que começou
+    return 'EM_ANDAMENTO';
   }
 
   mapearStatusExterno(status: string): string {
@@ -1431,6 +1502,36 @@ export class JogoService {
       default:
         return 'AGENDADO';
     }
+  }
+
+  /**
+   * Trata jogo EM_ANDAMENTO sem dados da API.
+   * - < 3h: silencioso
+   * - 3-6h: warning
+   * - > 6h: marca fonteResultado=MANUAL para finalização admin
+   */
+  private async tratarJogoSemDadosApi(
+    jogo: JogoInterno,
+    horasDesdeInicio: number,
+  ): Promise<void> {
+    if (horasDesdeInicio <= 3) return;
+
+    const label = `${jogo.timeCasa?.sigla} x ${jogo.timeFora?.sigla}`;
+
+    if (horasDesdeInicio > 6) {
+      this.logger.error(
+        `[SYNC] ⚠️ ${label} EM_ANDAMENTO há ${horasDesdeInicio.toFixed(1)}h — resetando para admin finalizar`,
+      );
+      await this.jogoRepo.atualizar(jogo.id, {
+        fonteResultado: 'MANUAL',
+        status: 'AGENDADO',
+      });
+      return;
+    }
+
+    this.logger.warn(
+      `[SYNC] ⚠️ ${label} EM_ANDAMENTO há ${horasDesdeInicio.toFixed(1)}h — aguardando API`,
+    );
   }
 
   /** Detecta nomes compostos placeholder retornados pela API do GE (ex: "Costa do Marfim ou Noruega") */

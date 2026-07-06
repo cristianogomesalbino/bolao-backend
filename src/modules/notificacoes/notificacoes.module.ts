@@ -10,11 +10,14 @@ import { PushController } from './controllers/push.controller';
 import { PreferenciaController } from './controllers/preferencia.controller';
 import { NotificacaoService } from './services/notificacao.service';
 import { NotificacaoEventService } from './services/notificacao-event.service';
+import { NotificacaoAcertoService } from './services/notificacao-acerto.service';
+import { NotificacaoRodadaService } from './services/notificacao-rodada.service';
+import { NotificacaoRankingService } from './services/notificacao-ranking.service';
+import { NotificacaoLembreteService } from './services/notificacao-lembrete.service';
 import { NotificacaoCronService } from './services/notificacao-cron.service';
 import { PushService } from './services/push.service';
 import { PreferenciaService } from './services/preferencia.service';
 import { PontuacaoService } from '../ranking/services/pontuacao.service';
-import { RankingService } from '../ranking/services/ranking.service';
 import { TokenDobroService } from '../palpites/services/token-dobro.service';
 import { PrismaNotificacaoRepository } from './repositories/prisma-notificacao.repository';
 import { PrismaInscricaoPushRepository } from './repositories/prisma-inscricao-push.repository';
@@ -38,12 +41,15 @@ import { PrismaGrupoRepository } from '../grupos/repositories/prisma-grupo.repos
     // Services do módulo
     NotificacaoService,
     NotificacaoEventService,
+    NotificacaoAcertoService,
+    NotificacaoRodadaService,
+    NotificacaoRankingService,
+    NotificacaoLembreteService,
     NotificacaoCronService,
     PushService,
     PreferenciaService,
     // Services de outros módulos (instanciados localmente para evitar circular deps)
     PontuacaoService,
-    RankingService,
     TokenDobroService,
     // Repositories próprios
     {

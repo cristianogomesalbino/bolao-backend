@@ -1,7 +1,6 @@
 import { IsNotEmpty, IsString, IsUrl, MaxLength, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
-import { NOTIFICACOES } from '../notificacoes.constants';
 
 class PushKeysDto {
   @ApiProperty({ description: 'Chave pública p256dh' })
@@ -25,7 +24,7 @@ export class InscreverPushDto {
   @IsNotEmpty({ message: 'endpoint é obrigatório' })
   @IsUrl({}, { message: 'endpoint deve ser uma URL válida' })
   @MaxLength(2048, {
-    message: `endpoint deve ter no máximo ${NOTIFICACOES.LIMITES.INSCRICOES_POR_USUARIO * 200} caracteres`,
+    message: 'endpoint deve ter no máximo 2048 caracteres',
   })
   endpoint: string;
 
