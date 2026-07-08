@@ -201,4 +201,15 @@ export class PrismaJogoRepository implements JogoRepository {
       orderBy: [{ fase: { ordem: 'asc' } }, { rodada: 'asc' }],
     });
   }
+
+  buscarAgendadosEntre(inicio: Date, fim: Date) {
+    return this.prisma.jogo.findMany({
+      where: {
+        status: 'AGENDADO',
+        dataHora: { gte: inicio, lte: fim },
+      },
+      include: { timeCasa: true, timeFora: true, fase: true },
+      orderBy: { dataHora: 'asc' },
+    });
+  }
 }

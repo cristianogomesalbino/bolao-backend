@@ -11,6 +11,6 @@ import { GrupoUsuarioModule } from '../grupo-usuario/grupo-usuario.module';
   imports: [PalpitesModule, JogosModule, GruposModule, GrupoUsuarioModule],
   controllers: [RankingController],
   providers: [PontuacaoService, RankingService],
-  exports: [RankingService],
+  exports: [RankingService, PontuacaoService],
 })
 export class RankingModule {}

@@ -19,7 +19,10 @@ export class PrismaFaseRepository implements FaseRepository {
   }
 
   buscarPorId(id: string) {
-    return this.prisma.fase.findUnique({ where: { id } });
+    return this.prisma.fase.findUnique({
+      where: { id },
+      include: { temporada: { include: { campeonato: true } } },
+    });
   }
 
   buscarPorTemporada(temporadaId: string) {

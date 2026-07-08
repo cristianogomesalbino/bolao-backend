@@ -19,4 +19,5 @@ export interface JogoRepository {
     temporadaId: string,
     placeholderTimeId: string,
   ): Promise<any[]>;
+  buscarAgendadosEntre(inicio: Date, fim: Date): Promise<any[]>;
 }

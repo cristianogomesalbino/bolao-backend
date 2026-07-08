@@ -163,6 +163,8 @@ describe('Presenters — Property-Based Tests', () => {
       'penaltisCasa',
       'penaltisFora',
       'vencedorId',
+      'fonteResultado',
+      'externoId',
       'ehJogoVolta',
       'grupoIdaVolta',
       'dataCriacao',

@@ -620,7 +620,8 @@ describe('JogoService — Property-Based Tests', () => {
       status: 'AGENDADO',
       dataHora: new Date(agora - duasHoras - 60000),
     };
-    expect(service.calcularStatusInterno(jogoAntigo)).toBe('FINALIZADO');
+    // Sem dados da API, fallback interno nunca finaliza — fica EM_ANDAMENTO
+    expect(service.calcularStatusInterno(jogoAntigo)).toBe('EM_ANDAMENTO');
   });
 
   // ==================== Propriedade 14 ====================
