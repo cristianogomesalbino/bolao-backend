@@ -852,7 +852,7 @@ export class JogoService {
     }
 
     const { jogoApiMap, apiDisponivel } = await this.buscarJogosParaSync(
-      jogosParaSync,
+      jogosParaSync as JogoInterno[],
       config.campeonatoId,
       faseSlugCompleto,
     );
@@ -1024,10 +1024,13 @@ export class JogoService {
   }
 
   private async buscarJogosParaSync(
-    jogos: any[],
+    jogos: JogoInterno[],
     campeonatoId: string,
     faseSlug: string,
-  ) {
+  ): Promise<{
+    jogoApiMap: Map<string, JogoApiNormalizado>;
+    apiDisponivel: boolean;
+  }> {
     const rodadasPendentes = [
       ...new Set(jogos.map((j: any) => j.rodada).filter(Boolean)),
     ] as number[];
@@ -1071,7 +1074,7 @@ export class JogoService {
 
   private async processarJogoSync(
     jogo: JogoInterno,
-    jogoApiMap: Map<string, any>,
+    jogoApiMap: Map<string, JogoApiNormalizado>,
     apiDisponivel: boolean,
   ): Promise<{
     atualizado: boolean;
@@ -1084,11 +1087,7 @@ export class JogoService {
   }> {
     if (this.jogoTemTimePlaceholder(jogo)) return { atualizado: false };
 
-    const jogoApi = (await this.resolverJogoApi(
-      jogo,
-      jogoApiMap,
-      apiDisponivel,
-    )) as JogoApiNormalizado | null;
+    const jogoApi = await this.resolverJogoApi(jogo, jogoApiMap, apiDisponivel);
 
     if (!jogoApi && !jogo.externoId) return { atualizado: false };
 
@@ -1193,21 +1192,20 @@ export class JogoService {
    * Vincula externoId se encontrar match e não houver duplicidade.
    */
   private async resolverJogoApi(
-    jogo: any,
-    jogoApiMap: Map<string, any>,
+    jogo: JogoInterno,
+    jogoApiMap: Map<string, JogoApiNormalizado>,
     apiDisponivel: boolean,
-  ): Promise<any> {
-    let jogoApi = jogoApiMap.get(jogo.externoId);
+  ): Promise<JogoApiNormalizado | null> {
+    let jogoApi = jogo.externoId
+      ? (jogoApiMap.get(jogo.externoId) ?? null)
+      : null;
 
     if (!jogoApi && !jogo.externoId) {
       jogoApi = this.matchPorRodada(jogo, jogoApiMap);
     }
 
     if (jogoApi && !jogo.externoId) {
-      await this.tentarVincularExternoId(
-        jogo,
-        jogoApi as { externoId: string },
-      );
+      await this.tentarVincularExternoId(jogo, jogoApi);
     }
 
     if (!jogoApi && jogo.externoId) {
@@ -1218,7 +1216,7 @@ export class JogoService {
   }
 
   private async tentarVincularExternoId(
-    jogo: any,
+    jogo: JogoInterno,
     jogoApi: { externoId: string },
   ): Promise<void> {
     const jaVinculado = await this.jogoRepo.buscarPorExternoId(
@@ -1230,6 +1228,13 @@ export class JogoService {
     this.logger.log(
       `[SYNC] 🔗 Jogo R${jogo.rodada} vinculado ao externoId ${jogoApi.externoId}`,
     );
+
+    // Palpite liberado — notificar usuários
+    const timeCasaNome = jogo.timeCasa?.nome ?? jogo.timeCasa?.sigla ?? '?';
+    const timeForaNome = jogo.timeFora?.nome ?? jogo.timeFora?.sigla ?? '?';
+    this.notificacaoEventService
+      ?.notificarJogoLiberado(jogo.id, timeCasaNome, timeForaNome)
+      ?.catch(() => {});
   }
 
   private logarExternoIdNaoEncontrado(
@@ -1282,10 +1287,10 @@ export class JogoService {
     if (!casaMudou && !foraMudou) return false;
 
     if (casaMudou) {
-      const timeCasa = await this.resolverOuCriarTime(
+      const timeCasa = (await this.resolverOuCriarTime(
         jogoApi.timeCasa,
         new Map(),
-      );
+      )) as { id: string };
       updateData.timeCasaId = timeCasa.id;
       this.logger.log(
         `[SYNC] 🔄 Jogo ${jogo.id}: time casa atualizado → ${jogoApi.timeCasa.nome}`,
@@ -1293,10 +1298,10 @@ export class JogoService {
     }
 
     if (foraMudou) {
-      const timeFora = await this.resolverOuCriarTime(
+      const timeFora = (await this.resolverOuCriarTime(
         jogoApi.timeFora,
         new Map(),
-      );
+      )) as { id: string };
       updateData.timeForaId = timeFora.id;
       this.logger.log(
         `[SYNC] 🔄 Jogo ${jogo.id}: time fora atualizado → ${jogoApi.timeFora.nome}`,
@@ -1314,18 +1319,19 @@ export class JogoService {
     jogo: JogoInterno,
     jogoApiMap: Map<string, JogoApiNormalizado>,
   ): JogoApiNormalizado | null {
-    if (!jogo.rodada || !jogo.dataHora) return null;
+    if (!jogo.rodada) return null;
 
-    const dataLocal = new Date(jogo.dataHora).getTime();
     const externoIdCasa = jogo.timeCasa?.externoId;
     const externoIdFora = jogo.timeFora?.externoId;
     const temTimeDefinido = externoIdCasa || externoIdFora;
+    const pendenteVinculacao = !jogo.externoId;
 
     for (const [, jogoApi] of jogoApiMap) {
-      if (jogoApi._matched || !jogoApi.dataHora) continue;
-
-      const diffMs = Math.abs(dataLocal - new Date(jogoApi.dataHora).getTime());
-      if (diffMs > 30 * 60 * 1000) continue;
+      if (jogoApi._matched) continue;
+      if (this.deveDescartarPorHorario(jogo, jogoApi, pendenteVinculacao)) {
+        continue;
+      }
+      if (pendenteVinculacao && !jogoApi.dataHora && !temTimeDefinido) continue;
 
       if (!temTimeDefinido) {
         jogoApi._matched = true;
@@ -1341,16 +1347,32 @@ export class JogoService {
       if (resultado) return resultado;
     }
 
-    // Nenhum match: se tem time definido, logar divergência apenas 1x por jogo
-    if (temTimeDefinido && !this.jogoSemMatchLogado.has(jogo.id)) {
-      this.jogoSemMatchLogado.add(jogo.id);
-      const localLabel = `${jogo.timeCasa?.sigla ?? 'TBD'} x ${jogo.timeFora?.sigla ?? 'TBD'}`;
-      this.logger.warn(
-        `[SYNC] ⚠️ R${String(jogo.rodada)}: ${localLabel} sem match na API — não vinculando`,
-      );
-    }
-
+    this.logarMatchNaoEncontrado(jogo, temTimeDefinido);
     return null;
+  }
+
+  private deveDescartarPorHorario(
+    jogo: JogoInterno,
+    jogoApi: JogoApiNormalizado,
+    pendenteVinculacao: boolean,
+  ): boolean {
+    if (pendenteVinculacao) return false;
+    if (!jogo.dataHora || !jogoApi.dataHora) return false;
+    const dataLocal = new Date(jogo.dataHora).getTime();
+    const dataApi = new Date(jogoApi.dataHora).getTime();
+    return Math.abs(dataLocal - dataApi) > 30 * 60 * 1000;
+  }
+
+  private logarMatchNaoEncontrado(
+    jogo: JogoInterno,
+    temTimeDefinido: string | null | undefined,
+  ): void {
+    if (!temTimeDefinido || this.jogoSemMatchLogado.has(jogo.id)) return;
+    this.jogoSemMatchLogado.add(jogo.id);
+    const localLabel = `${jogo.timeCasa?.sigla ?? 'TBD'} x ${jogo.timeFora?.sigla ?? 'TBD'}`;
+    this.logger.warn(
+      `[SYNC] ⚠️ R${String(jogo.rodada)}: ${localLabel} sem match na API — não vinculando`,
+    );
   }
 
   /**
