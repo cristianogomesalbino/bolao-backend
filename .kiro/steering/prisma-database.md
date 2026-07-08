@@ -59,6 +59,21 @@ O schema fica em `prisma/schema.prisma`. Provider: PostgreSQL (Supabase).
 - O container Docker roda `prisma migrate deploy` automaticamente no startup
 - **ANTES de adicionar FK**: verificar se existem dados órfãos que violam a constraint
 
+### Regras Críticas de Migrations (NUNCA violar)
+
+- **NUNCA usar `prisma db push` em desenvolvimento** — sempre usar `prisma migrate dev` para que a migration SQL seja gerada e commitada
+- **NUNCA mergear para main sem verificar que TODAS as migrations necessárias existem na pasta `prisma/migrations/`** — se o schema.prisma tem models/enums que não existem em nenhuma migration commitada, o deploy VAI falhar em produção
+- **TODA alteração no schema.prisma DEVE ter uma migration correspondente commitada** — se o model foi criado via `db push` ou manualmente no banco, criar a migration retroativamente com `prisma migrate dev` antes de mergear
+- **Migrations incrementais (ALTER TABLE) requerem que a migration de criação (CREATE TABLE) exista antes** — verificar a ordem cronológica dos arquivos em `prisma/migrations/`
+- **Antes de mergear feature branch para main**, executar mentalmente: "se eu fizer `prisma migrate deploy` num banco limpo com apenas as migrations commitadas, tudo roda sem erro?" — se a resposta for não, faltam migrations
+
+### Protocolo Pré-Merge para Main
+
+1. Listar todos os models/enums no `schema.prisma`
+2. Para cada model/enum, verificar se existe uma migration em `prisma/migrations/` que o cria (CREATE TABLE / CREATE TYPE)
+3. Verificar que migrations de ALTER referenciam tabelas/enums já criados por migrations anteriores (pela data do nome da pasta)
+4. Se algum model/enum não tem migration de criação — criar com `prisma migrate dev --name add_[nome_do_modulo]` ANTES de mergear
+
 ## Grupos
 
 - Grupos privados recebem `codigoConvite` único de 8 caracteres (gerado com nanoid, constante `GRUPOS.CODIGO_CONVITE_LENGTH`)
