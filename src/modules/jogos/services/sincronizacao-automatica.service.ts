@@ -168,8 +168,17 @@ export class SincronizacaoAutomaticaService implements OnModuleInit {
 
       // Sincronizar se há jogos em andamento (inclui "atrasados" que já passaram do horário),
       // ou se há próximo jogo dentro da antecedência
+      const temPendentesVinculacao = await this.prisma.jogo.count({
+        where: {
+          fonteResultado: 'API_EXTERNA',
+          externoId: null,
+          status: { in: ['AGENDADO', 'ADIADO'] },
+        },
+      });
+
       const deveSincronizar =
         temJogosEmAndamento ||
+        temPendentesVinculacao > 0 ||
         (proximoJogoEm !== null &&
           proximoJogoEm <= SYNC.ANTECEDENCIA_INICIO_MS);
 
