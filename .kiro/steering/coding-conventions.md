@@ -197,7 +197,8 @@ Não usar `"campo": "geral"`. O campo `campo` é opcional — omitir quando não
    - Complexidade > 15: extrair helper ANTES de entregar
    - `any` em código novo: tipar ANTES de entregar
    - `any` em código legado tocado: aplicar regra dos 10%
-5. **Nunca declarar "pronto" sem rodar os 4 passos acima**
+5. **Verificar integridade de migrations** — se `schema.prisma` foi alterado, confirmar que TODA tabela/enum tem uma migration correspondente commitada em `prisma/migrations/`. NUNCA usar `db push` como substituto de `migrate dev`
+6. **Nunca declarar "pronto" sem rodar os 5 passos acima**
 
 ## Redução Gradual de Dívida Técnica (Regra dos 20%)
 
