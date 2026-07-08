@@ -29,6 +29,8 @@ interface JogoData {
   penaltisFora?: number | null;
   ehJogoVolta?: boolean;
   grupoIdaVolta?: string | null;
+  fonteResultado?: string | null;
+  externoId?: string | null;
 }
 
 export class JogoPresenter {
@@ -90,6 +92,8 @@ export class JogoPresenter {
       golsCasa: jogo.golsCasa,
       golsFora: jogo.golsFora,
       vencedorId: jogo.vencedorId,
+      fonteResultado: jogo.fonteResultado ?? null,
+      externoId: jogo.externoId ?? null,
       dataCriacao: jogo.dataCriacao,
       atualizadoEm: jogo.atualizadoEm,
     };

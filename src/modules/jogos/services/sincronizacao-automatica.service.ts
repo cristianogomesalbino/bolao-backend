@@ -84,6 +84,15 @@ export class SincronizacaoAutomaticaService implements OnModuleInit {
         await this.executarSincronizacao();
       }
 
+      // Sincronizar jogos pendentes de vinculação (sem externoId) no startup
+      const fasesPendentes = await this.buscarFasesParaSincronizar();
+      if (fasesPendentes.length > 0 && !this.estado.temJogosEmAndamento) {
+        this.logger.log(
+          `[SYNC-AUTO] ${fasesPendentes.length} fase(s) com jogos pendentes de vinculação — sincronizando`,
+        );
+        await this.executarSincronizacao();
+      }
+
       // Sempre verificar chaveamento no startup para corrigir alocações divergentes
       this.logger.log('[SYNC-AUTO] Verificando chaveamentos...');
       await this.verificarChaveamentoPendenteTodosCampeonatos();
@@ -298,6 +307,8 @@ export class SincronizacaoAutomaticaService implements OnModuleInit {
         status: 'AGENDADO',
         dataHora: { not: null, lte: limiteAntecedencia },
       },
+      // Jogos sem externoId precisam de vinculação via API (independente do horário)
+      { status: 'AGENDADO', externoId: null },
     ];
     if (incluirAdiados) {
       filtros.push({ status: 'ADIADO', externoId: { not: null } });

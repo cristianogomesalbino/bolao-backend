@@ -38,13 +38,16 @@ model Usuario {
   ativo             Boolean            @default(true)
   grupoFavoritoId   String?
   grupoFavorito     Grupo?             @relation("GrupoFavorito", fields: [grupoFavoritoId], references: [id])
-  gruposCriados     Grupo[]            @relation("GrupoCriador")
-  grupos            GrupoUsuario[]
-  palpites          Palpite[]
-  palpitesDobrados  PalpiteDobrado[]
-  recuperacoesSenha RecuperacaoSenha[]
-  refreshTokens     RefreshToken[]
-  tokensDobro       TokenDobro[]
+  gruposCriados          Grupo[]                 @relation("GrupoCriador")
+  grupos                 GrupoUsuario[]
+  palpites               Palpite[]
+  palpitesDobrados       PalpiteDobrado[]
+  recuperacoesSenha      RecuperacaoSenha[]
+  refreshTokens          RefreshToken[]
+  tokensDobro            TokenDobro[]
+  notificacoes           Notificacao[]
+  inscricoesPush         InscricaoPush[]
+  preferenciaNotificacao PreferenciaNotificacao?
 }
 
 model Grupo {
@@ -275,4 +278,70 @@ enum StatusSincronizacao {
   PARCIAL
   ERRO
   SEM_JOGOS
+}
+
+enum TipoNotificacao {
+  JOGO_PROXIMO
+  RODADA_ENCERRADA
+  ACERTO_EM_CHEIO
+  SUBIU_POSICAO
+  DESCEU_POSICAO
+  PALPITES_PENDENTES
+  JOGO_LIBERADO
+}
+
+enum StatusNotificacao {
+  NAO_LIDA
+  LIDA
+}
+
+model Notificacao {
+  id          String            @id @default(uuid())
+  tipo        TipoNotificacao
+  titulo      String            @db.VarChar(100)
+  mensagem    String            @db.VarChar(500)
+  status      StatusNotificacao @default(NAO_LIDA)
+  usuarioId   String
+  jogoId      String?
+  grupoId     String?
+  faseId      String?
+  rodada      Int?
+  dataCriacao DateTime          @default(now())
+  dataLeitura DateTime?
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([usuarioId, status, dataCriacao])
+  @@index([usuarioId, dataCriacao])
+  @@index([jogoId, tipo])
+  @@index([faseId, rodada, tipo])
+}
+
+model InscricaoPush {
+  id           String   @id @default(uuid())
+  usuarioId    String
+  endpoint     String   @db.VarChar(2048)
+  p256dh       String   @db.VarChar(128)
+  auth         String   @db.VarChar(48)
+  dataCriacao  DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@unique([usuarioId, endpoint])
+  @@index([usuarioId])
+}
+
+model PreferenciaNotificacao {
+  id                String  @id @default(uuid())
+  usuarioId         String  @unique
+  jogoProximo       Boolean @default(true)
+  rodadaEncerrada   Boolean @default(true)
+  acertoEmCheio     Boolean @default(true)
+  subiuPosicao      Boolean @default(true)
+  desceuPosicao     Boolean @default(true)
+  palpitesPendentes Boolean @default(true)
+  jogoLiberado      Boolean @default(true)
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 }

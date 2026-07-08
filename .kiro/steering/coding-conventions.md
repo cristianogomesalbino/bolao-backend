@@ -6,6 +6,9 @@ inclusion: always
 
 ## Regras Críticas (NUNCA violar)
 
+- **NUNCA usar `any` em código novo** — ZERO tolerância. Usar interfaces locais, tipos do Prisma, ou `as TipoEsperado` no ponto de uso. Se um repository retorna `any`, fazer cast imediatamente: `const jogo = await repo.buscarPorId(id) as Jogo | null`. NÃO propagar `any` para parâmetros de métodos
+- **NUNCA criar um arquivo .ts com mais de 300 linhas** — dividir em arquivos menores com responsabilidade única. Se o arquivo está crescendo, parar e refatorar ANTES de continuar
+- **SEMPRE documentar funcionalidades novas no steering `project-overview.md`** — ao finalizar uma feature, atualizar endpoints, regras de domínio, services especializados e módulos no steering. Funcionalidade não documentada no steering é funcionalidade incompleta
 - **NUNCA duplicar funções com propósito similar** — se duas funções fazem mapeamento parecido (ex: `mapearStatus` e `mapearStatusExterno`), unificar em uma só ou deixar claro qual é a canônica
 - **NUNCA colocar lógica de autorização no controller** — sempre via Guards (`SuperAdminGuard`, `GroupRoleGuard`, etc.)
 - **NUNCA duplicar dados entre URL param e body do DTO** — se o dado vem do `@Param`, não incluir no DTO
@@ -17,6 +20,7 @@ inclusion: always
 - **SEMPRE tipar DTOs com union types em vez de `string` genérico** — ex: `tipo: 'PONTOS_CORRIDOS' | 'MATA_MATA'` em vez de `tipo: string` com `@IsIn`
 - **SEMPRE validar variáveis de ambiente no startup** — usar `OnModuleInit` para validar e logar warning se env var obrigatória estiver ausente
 - **SEMPRE extrair métodos quando complexidade cognitiva > 15** — quebrar em helpers privados com nomes descritivos
+- **NUNCA criar um service com mais de 300 linhas** — dividir em services especializados por responsabilidade (ex: `NotificacaoEventService` orquestra, `NotificacaoAcertoService` calcula acertos, `NotificacaoRankingService` calcula posições). O service principal delega, os especializados executam
 - **SEMPRE usar early returns em vez de ifs aninhados** — reduz complexidade cognitiva e melhora legibilidade
 - **SEMPRE extrair lógica duplicada em helpers** — se o mesmo bloco aparece 2+ vezes, criar método privado (ex: `validarSemDesempate`, `determinarVencedorPorPlacar`, `buildUpdateFinalizado`)
 - **NUNCA fazer queries em loop (N+1)** — buscar todos os dados necessários antes do loop com uma única query
@@ -160,9 +164,9 @@ Não usar `"campo": "geral"`. O campo `campo` é opcional — omitir quando não
 
 - Prettier: single quotes, trailing commas
 - ESLint: `recommendedTypeChecked` do typescript-eslint
-- `@typescript-eslint/no-explicit-any`: off
+- `@typescript-eslint/no-explicit-any`: off (dívida técnica em código legado — **código novo NUNCA deve ter `any`**)
 - `@typescript-eslint/no-floating-promises`: warn
-- `@typescript-eslint/no-unsafe-argument`: warn (dívida técnica aceita — não bloqueia)
+- `@typescript-eslint/no-unsafe-argument`: warn (bloqueia em código novo — dívida técnica aceita apenas em código legado não tocado)
 - **SEMPRE usar optional chaining** — `!obj || !obj.prop` → `!obj?.prop`
 - **SEMPRE quebrar tipos de retorno longos em múltiplas linhas** — se o tipo inline tem mais de 80 caracteres, quebrar com uma propriedade por linha
 - **SEMPRE quebrar parâmetros de função em múltiplas linhas** — se a assinatura ultrapassa 100 caracteres
@@ -175,7 +179,7 @@ Não usar `"campo": "geral"`. O campo `campo` é opcional — omitir quando não
 - **SEMPRE manter complexidade cognitiva ≤ 15** — se ultrapassar, extrair helpers privados. NÃO aceitar "vou resolver depois"
 - **NUNCA usar `any` em código novo** — tipar tudo com interfaces próprias. Parâmetros de métodos, retornos, variáveis locais. Se recebe `any` de um repository, fazer cast com `as TipoEsperado` imediatamente
 - **NUNCA commitar com erros de Prettier** — formatação deve estar correta antes de qualquer commit
-- **NUNCA aninhar ifs** — máximo 1 nível dentro de um `if`. Se precisar de `if` dentro de `if`, extrair em método privado ou usar early return
+- **NUNCA aninhar ifs** — máximo 1 nível dentro de um `if`. Se precisar de `if` dentro de `if`, extrair em método privado ou usar early return. `if/else if` encadeado deve ser extraído em helper quando ultrapassa 3 branches
 - **SEMPRE executar `getDiagnostics` ANTES de declarar que o código está pronto** — é a etapa final obrigatória
 - **Ao criar código novo, seguir estes padrões para evitar issues de Sonar:**
   - Usar `?.` em vez de `&& obj.prop` (S6582)
@@ -195,10 +199,10 @@ Não usar `"campo": "geral"`. O campo `campo` é opcional — omitir quando não
    - `any` em código legado tocado: aplicar regra dos 10%
 5. **Nunca declarar "pronto" sem rodar os 4 passos acima**
 
-## Redução Gradual de Dívida Técnica (Regra dos 10%)
+## Redução Gradual de Dívida Técnica (Regra dos 20%)
 
 - **Se um arquivo editado tem QUALQUER erro de `any` em código novo**, tipar o arquivo inteiro — não apenas o trecho novo. Corrigir interface + Prisma + InMemory do módulo correspondente.
-- **Sempre que editar um arquivo .ts existente**, corrigir pelo menos **10% dos erros de lint pré-existentes** nesse arquivo (arredondando pra cima, mínimo 1)
+- **Sempre que editar um arquivo .ts existente**, corrigir pelo menos **20% dos erros de lint pré-existentes** nesse arquivo (arredondando pra cima, mínimo 1)
 - Prioridade de correção:
   1. Erros de Prettier (formatação)
   2. Optional chaining (`!obj || !obj.prop` → `!obj?.prop`)
@@ -229,10 +233,11 @@ Não usar `"campo": "geral"`. O campo `campo` é opcional — omitir quando não
 - Framework: Vitest 4 (nunca Jest)
 - Instanciação direta com mocks (`vi.fn()`) ou InMemory repositories — **NUNCA** usar `TestingModule`
 - Services testados com InMemory repositories: `new ServiceClass(inMemoryRepo)`
-- Controllers testados com `new ControllerClass(mockService as any)`
+- Controllers testados com `new ControllerClass(mockService as unknown as ServiceClass)`
 - Guards testados com instanciação direta e mock de `ExecutionContext`
+- **NUNCA usar `as any` em testes** — usar `as unknown as TipoEsperado` para mocks parciais
 - Imports explícitos: `import { describe, it, expect, beforeEach, vi } from 'vitest'`
-- Rodar testes: `docker exec bolao-backend-dev npx vitest run`
+- Rodar testes: `npx vitest run` (host — InMemory repos, sem banco)
 
 ## Postman Collection
 

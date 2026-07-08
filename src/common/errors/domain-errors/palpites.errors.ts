@@ -70,3 +70,10 @@ export class JogoNaoPertenceAoGrupoError extends DomainError {
     super(mensagem);
   }
 }
+
+export class JogoPendenteConfirmacaoError extends DomainError {
+  readonly statusCode = 400;
+  constructor(mensagem = PALPITES.MENSAGENS.JOGO_PENDENTE_CONFIRMACAO) {
+    super(mensagem);
+  }
+}
