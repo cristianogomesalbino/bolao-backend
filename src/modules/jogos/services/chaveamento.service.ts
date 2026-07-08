@@ -633,42 +633,55 @@ export class ChaveamentoService {
     const preenchidos = new Set<string>();
 
     try {
-      const faseConfig = config.fases.find((f) =>
-        f.slug.includes('segunda-fase'),
-      );
-      if (!faseConfig) return preenchidos;
-
-      const faseSlug = config.buildFaseSlug(faseConfig.slug);
-      const rodadas = [
-        ...new Set(
-          jogosComTBD
-            .map((j) => j.rodada)
-            .filter((r): r is number => r !== null),
-        ),
-      ];
-
-      const jogosApi = await this.futebolApiService.buscarJogosPorRodadas(
-        config.campeonatoId,
-        faseSlug,
-        rodadas,
+      // Detectar a fase correta dos jogos (pode ser segunda-fase, oitavas, quartas, etc.)
+      const faseIds = [...new Set(jogosComTBD.map((j) => j.faseId))];
+      const fasesInfo = await Promise.all(
+        faseIds.map((id) => this.faseRepo.buscarPorId(id)),
       );
 
-      for (const jogoApi of jogosApi) {
-        const normalizado = this.futebolApiService.normalizarJogo(
-          jogoApi,
-        ) as JogoNormalizado;
-        const jogoLocal = this.matchPorHorario(jogosComTBD, normalizado);
-        if (!jogoLocal) continue;
+      for (const faseInfo of fasesInfo) {
+        if (!faseInfo) continue;
+        const nomeLower = faseInfo.nome.toLowerCase();
 
-        const atualizado = await this.atualizarTimesDoJogo(
-          jogoLocal,
-          normalizado,
+        // Resolver slug da fase eliminatória
+        const faseConfig = this.resolverFaseConfigPorNome(config, nomeLower);
+        if (!faseConfig) continue;
+
+        const faseSlug = config.buildFaseSlug(faseConfig.slug);
+        const jogosDestaFase = jogosComTBD.filter(
+          (j) => j.faseId === faseInfo.id,
         );
-        if (atualizado) {
-          preenchidos.add(jogoLocal.id);
-          this.logger.log(
-            `🌐 GE reconheceu jogo R${jogoLocal.rodada}: ${normalizado.timeCasa?.sigla ?? '?'} x ${normalizado.timeFora?.sigla ?? '?'} (externoId vinculado)`,
+        const rodadas = [
+          ...new Set(
+            jogosDestaFase
+              .map((j) => j.rodada)
+              .filter((r): r is number => r !== null),
+          ),
+        ];
+
+        const jogosApi = await this.futebolApiService.buscarJogosPorRodadas(
+          config.campeonatoId,
+          faseSlug,
+          rodadas,
+        );
+
+        for (const jogoApi of jogosApi) {
+          const normalizado = this.futebolApiService.normalizarJogo(
+            jogoApi,
+          ) as JogoNormalizado;
+          const jogoLocal = this.matchPorHorario(jogosDestaFase, normalizado);
+          if (!jogoLocal) continue;
+
+          const atualizado = await this.atualizarTimesDoJogo(
+            jogoLocal,
+            normalizado,
           );
+          if (atualizado) {
+            preenchidos.add(jogoLocal.id);
+            this.logger.log(
+              `🌐 GE reconheceu jogo R${jogoLocal.rodada}: ${normalizado.timeCasa?.sigla ?? '?'} x ${normalizado.timeFora?.sigla ?? '?'} (externoId vinculado)`,
+            );
+          }
         }
       }
     } catch {
@@ -676,6 +689,32 @@ export class ChaveamentoService {
     }
 
     return preenchidos;
+  }
+
+  private resolverFaseConfigPorNome(
+    config: CampeonatoConfig,
+    nomeLower: string,
+  ): { slug: string; maxRodadas: number } | undefined {
+    const mapeamento: [string, string][] = [
+      ['segunda-fase', '16 avos'],
+      ['segunda-fase', 'segunda fase'],
+      ['oitavas', 'oitavas'],
+      ['quartas', 'quartas'],
+      ['semifinal', 'semi'],
+      ['terceiro', 'terceiro'],
+    ];
+
+    for (const [slugParte, termo] of mapeamento) {
+      if (nomeLower.includes(termo)) {
+        return config.fases.find((f) => f.slug.includes(slugParte));
+      }
+    }
+
+    if (nomeLower.includes('final') && !nomeLower.includes('semi')) {
+      return config.fases.find((f) => f.slug.includes('final-copa'));
+    }
+
+    return undefined;
   }
 
   private async preencherViaClassificacao(

@@ -815,7 +815,12 @@ export class JogoService {
     campeonatoSlug: string,
     faseSlug: string,
   ) {
-    const fase = await this.faseRepo.buscarPorId(faseId);
+    const fase = (await this.faseRepo.buscarPorId(faseId)) as {
+      id: string;
+      nome: string;
+      tipo: string;
+      temporadaId: string;
+    } | null;
     if (!fase) {
       throw new FaseNaoEncontradaError();
     }
@@ -825,12 +830,17 @@ export class JogoService {
 
     // Detectar se há múltiplas fases do mesmo tipo na temporada (ex: grupos da Copa)
     const fasesParaSync = await this.obterFasesParaSync(fase);
-    const faseIds = fasesParaSync.map((f: any) => f.id);
+    const faseIds = fasesParaSync.map((f) => f.id);
 
     // Calcular rodada atual (1 query) e buscar jogos pendentes em uma única query
     const rodadaAtual = await this.obterRodadaAtual(faseIds[0]);
     const rodadaEfetiva = rodadaAtual ?? 1;
-    const limiteRodada = rodadaEfetiva + 1;
+    // Para mata-mata, sincronizar TODOS os jogos (rodada é apenas ID da chave)
+    const faseTipo = (fase as { tipo: string }).tipo;
+    const ehMataMata = faseTipo === 'MATA_MATA';
+    const limiteRodada = ehMataMata
+      ? JOGOS.LIMITE_RODADA_MATA_MATA
+      : rodadaEfetiva + 1;
 
     const jogosParaSync = await this.jogoRepo.buscarPendentesSync(
       faseIds,
@@ -848,9 +858,20 @@ export class JogoService {
     );
 
     let sincronizados = 0;
-    const jogosAtualizados: any[] = [];
+    const jogosAtualizados: {
+      id: string;
+      timeCasa: string;
+      timeFora: string;
+      status: string;
+      golsCasa: number | null;
+      golsFora: number | null;
+      rodada: number | null;
+      horarioAlterado: boolean;
+      horarioAnterior: string | null;
+      horarioNovo: string | null;
+    }[] = [];
 
-    for (const jogo of jogosParaSync) {
+    for (const jogo of jogosParaSync as JogoInterno[]) {
       const resultado = await this.processarJogoSync(
         jogo,
         jogoApiMap,
@@ -860,12 +881,12 @@ export class JogoService {
         sincronizados++;
         jogosAtualizados.push({
           id: jogo.id,
-          timeCasa: jogo.timeCasa?.sigla || jogo.timeCasa?.nome,
-          timeFora: jogo.timeFora?.sigla || jogo.timeFora?.nome,
+          timeCasa: jogo.timeCasa?.sigla ?? jogo.timeCasa?.nome ?? '?',
+          timeFora: jogo.timeFora?.sigla ?? jogo.timeFora?.nome ?? '?',
           status: resultado.novoStatus ?? jogo.status,
-          golsCasa: resultado.golsCasa ?? jogo.golsCasa,
-          golsFora: resultado.golsFora ?? jogo.golsFora,
-          rodada: jogo.rodada,
+          golsCasa: resultado.golsCasa ?? jogo.golsCasa ?? null,
+          golsFora: resultado.golsFora ?? jogo.golsFora ?? null,
+          rodada: jogo.rodada ?? null,
           horarioAlterado: resultado.horarioAlterado || false,
           horarioAnterior: resultado.horarioAnterior || null,
           horarioNovo: resultado.horarioNovo || null,
@@ -1017,15 +1038,15 @@ export class JogoService {
       rodadasPendentes.unshift(1);
     }
 
-    let jogosApi: any[] = [];
+    let jogosApi: Record<string, unknown>[] = [];
     let apiDisponivel = true;
 
     try {
-      jogosApi = await this.futebolApiService.buscarJogosPorRodadas(
+      jogosApi = (await this.futebolApiService.buscarJogosPorRodadas(
         campeonatoId,
         faseSlug,
         rodadasPendentes,
-      );
+      )) as Record<string, unknown>[];
     } catch (error) {
       if (error instanceof ApiExternaIndisponivelError) {
         this.logger.warn(
@@ -1037,9 +1058,11 @@ export class JogoService {
       }
     }
 
-    const jogoApiMap = new Map<string, any>();
+    const jogoApiMap = new Map<string, JogoApiNormalizado>();
     for (const j of jogosApi) {
-      const normalizado = this.futebolApiService.normalizarJogo(j);
+      const normalizado = this.futebolApiService.normalizarJogo(
+        j,
+      ) as JogoApiNormalizado;
       jogoApiMap.set(normalizado.externoId, normalizado);
     }
 
@@ -1081,7 +1104,7 @@ export class JogoService {
     const { horarioAlterado, horarioAnterior, horarioNovo } =
       this.detectarMudancaHorario(jogo, jogoApi, updateData);
 
-    const timesMudaram = jogo.externoId
+    const timesMudaram = jogoApi
       ? await this.detectarEAtualizarTimes(jogo, jogoApi, updateData)
       : false;
 
