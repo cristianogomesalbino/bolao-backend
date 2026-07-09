@@ -109,6 +109,7 @@ export class NotificacaoLembreteService {
       titulo: NOTIFICACOES.TEMPLATES.JOGO_PROXIMO.titulo,
       mensagem,
       tipo: 'JOGO_PROXIMO',
+      url: '/palpites',
     });
 
     this.logger.log(
@@ -173,6 +174,7 @@ export class NotificacaoLembreteService {
         titulo: notif.titulo,
         mensagem: notif.mensagem,
         tipo: 'PALPITES_PENDENTES',
+        url: '/palpites',
       });
     }
 
