@@ -55,6 +55,7 @@ src/modules/
 ├── notificacoes/    # Push notifications, lembretes, acertos, ranking changes
 ├── scheduler/       # Centralização de todos os jobs (sync, notificações, limpeza)
 └── eventos/         # Outbox pattern local (eventos pendentes com retry)
+└── stories/         # Stories/Destaques do grupo — geração automática, interação F, recordes
 ```
 
 ## Modelos Prisma
@@ -154,6 +155,53 @@ EM_ANDAMENTO → CANCELADO
 10. ~~Scheduler (centralização de jobs)~~ ✅
 11. ~~Eventos (outbox pattern)~~ ✅
 12. Planos/Monetização — Limites por plano (max participantes, etc.)
+
+## Módulo de Stories
+
+### Arquitetura
+
+Services divididos por responsabilidade (SRP):
+- `StoryEventService` — orquestrador: recebe evento de jogo finalizado, coordena geração para todos os grupos
+- `StoryGeneratorService` — avalia 7 critérios por membro e gera stories em batch
+- `StorySequenciaService` — calcula sequências (mosca + resultado) e gerencia recordes
+- `StoryReactionService` — lógica do "Mandar um F" com validações
+- `StoryNotificacaoService` — push consolidado + notificação de F recebido
+- `StoryCronService` — limpeza de stories > 30 dias
+
+### Tipos de Story
+
+| Tipo | Gatilho |
+|------|---------|
+| `ACERTOU_EM_CHEIO` | Acertou placar exato (quando 2+ cravaram) |
+| `UNICO_NA_MOSCA` | Único do grupo a cravar placar (prioridade sobre ACERTOU_EM_CHEIO) |
+| `SUBIU_RANKING` | Subiu 2+ posições OU subiu 1 dentro do top 5 |
+| `SEQUENCIA_MOSCA` | 2+ acertos em cheio consecutivos na mesma rodada |
+| `SEQUENCIA_RESULTADO` | Sequência de acertos cross-rodada (consulta até 3 rodadas atrás) |
+| `NAO_PALPITOU` | Não palpitou (consolidado por rodada) |
+| `DOBROU_E_ACERTOU` | Palpite dobrado + acertou resultado |
+
+### Endpoints
+
+- `GET /grupos/:grupoId/stories` — listagem cronológica (rodada atual + anterior, mín 5 / máx 20)
+- `POST /grupos/:grupoId/stories/:storyId/mandar-f` — enviar F (apenas NAO_PALPITOU)
+- `POST /grupos/:grupoId/stories/visualizar` — batch de visualizações (ao fechar viewer)
+
+### Regras de Domínio
+
+- Stories persistidos em banco (não calculados on-the-fly)
+- Gerados fire-and-forget após finalização de jogo
+- Deduplicação: unique(grupoId, usuarioId, jogoId, tipo)
+- Visibilidade: rodada atual + anterior
+- Hard delete: cron 30 dias
+- F: 1 por remetente por story, não pode enviar pra si mesmo
+- Recordes: por grupo + temporada + categoria (MOSCA/RESULTADO), empate mantém múltiplos detentores
+- Prioridade de exibição: UNICO_NA_MOSCA > NAO_PALPITOU > SEQUENCIA_MOSCA > SEQUENCIA_RESULTADO > ACERTOU_EM_CHEIO > SUBIU_RANKING > DOBROU_E_ACERTOU
+- Título randomizado por tipo (sem repetição imediata via pickRandomTitle)
+- RankingSnapshot: posição salva após cada jogo finalizado para comparação eficiente
+
+### Integração com JogoService
+
+`JogoService.dispararStoriesJogoFinalizado(jogoId)` chama `StoryEventService.processarJogoFinalizado(jogoId)` fire-and-forget após finalizar/sincronizar um jogo. Não bloqueia o fluxo principal. Injetado via `@Optional() @Inject(STORIES.EVENT_SERVICE_TOKEN)`.
 
 ## Idioma
 
