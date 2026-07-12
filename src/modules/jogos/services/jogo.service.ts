@@ -1107,6 +1107,15 @@ export class JogoService {
       ? await this.detectarEAtualizarTimes(jogo, jogoApi, updateData)
       : false;
 
+    // Verificar se ambos os times ficaram definidos após atualização pela API
+    const timeCasaFinalId =
+      (updateData.timeCasaId as string) ?? jogo.timeCasaId;
+    const timeForaFinalId =
+      (updateData.timeForaId as string) ?? jogo.timeForaId;
+    const tbdId = '00000000-0000-0000-0000-000000000001';
+    const timesDefinitivosAposSync =
+      timesMudaram && timeCasaFinalId !== tbdId && timeForaFinalId !== tbdId;
+
     if (
       jogoApi &&
       (novoStatus === 'FINALIZADO' || novoStatus === 'EM_ANDAMENTO')
@@ -1132,6 +1141,17 @@ export class JogoService {
     }
 
     await this.jogoRepo.atualizar(jogo.id, updateData);
+
+    // Notificar JOGO_LIBERADO quando a API define os times definitivos
+    // (corrige o cenário em que o chaveamento local havia preenchido times errados)
+    if (timesDefinitivosAposSync) {
+      const timeCasaNome = jogoApi?.timeCasa?.nome ?? '?';
+      const timeForaNome = jogoApi?.timeFora?.nome ?? '?';
+      this.notificacaoEventService
+        ?.notificarJogoLiberado(jogo.id, timeCasaNome, timeForaNome)
+        ?.catch(() => {});
+    }
+
     return {
       atualizado: true,
       novoStatus: updateData.status,
@@ -1229,12 +1249,9 @@ export class JogoService {
       `[SYNC] 🔗 Jogo R${jogo.rodada} vinculado ao externoId ${jogoApi.externoId}`,
     );
 
-    // Palpite liberado — notificar usuários
-    const timeCasaNome = jogo.timeCasa?.nome ?? jogo.timeCasa?.sigla ?? '?';
-    const timeForaNome = jogo.timeFora?.nome ?? jogo.timeFora?.sigla ?? '?';
-    this.notificacaoEventService
-      ?.notificarJogoLiberado(jogo.id, timeCasaNome, timeForaNome)
-      ?.catch(() => {});
+    // NOTA: Notificação de JOGO_LIBERADO NÃO é disparada aqui.
+    // Motivo: neste ponto os times podem estar desatualizados (vindos do chaveamento local).
+    // A notificação será disparada após detectarEAtualizarTimes confirmar os times definitivos.
   }
 
   private logarExternoIdNaoEncontrado(
