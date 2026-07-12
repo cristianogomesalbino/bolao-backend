@@ -520,6 +520,18 @@ export class ChaveamentoService {
     // Jogo já vinculado pela API — não sobrescrever times
     if (jogoDestino.externoId) return;
 
+    // Se outro jogo da mesma fase já foi importado da API, não sobrescrever
+    // com dados do bracket local — a API é a fonte de verdade para fases
+    // que já têm jogos com externoId (evita conflitos de times duplicados)
+    const outrosJogosFase = [...destinoPorRodada.values()];
+    const faseJaTemJogosApi = outrosJogosFase.some((j) => !!j.externoId);
+    if (faseJaTemJogosApi) {
+      this.logger.log(
+        `⏭️ Fase já tem jogos importados da API — não sobrescrever R${String(entrada.rodada)} via bracket local`,
+      );
+      return;
+    }
+
     // Atualizar times com classificados (corrige TBD e times errados)
     const updateData: Record<string, string> = {};
 
