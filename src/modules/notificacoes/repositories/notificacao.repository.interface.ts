@@ -5,7 +5,9 @@ export type TipoNotificacao =
   | 'SUBIU_POSICAO'
   | 'DESCEU_POSICAO'
   | 'PALPITES_PENDENTES'
-  | 'JOGO_LIBERADO';
+  | 'JOGO_LIBERADO'
+  | 'STORIES_GRUPO'
+  | 'RECEBEU_F';
 
 export interface CriarNotificacaoData {
   tipo: TipoNotificacao;

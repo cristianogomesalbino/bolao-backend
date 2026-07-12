@@ -17,27 +17,28 @@ model Campeonato {
 }
 
 model Temporada {
-  id           String     @id @default(uuid())
-  ano          Int
-  dataCriacao  DateTime   @default(now())
-  atualizadoEm DateTime   @updatedAt
-  campeonatoId String
-  fases        Fase[]
-  grupos       Grupo[]
-  campeonato   Campeonato @relation(fields: [campeonatoId], references: [id])
+  id                String             @id @default(uuid())
+  ano               Int
+  dataCriacao       DateTime           @default(now())
+  atualizadoEm      DateTime           @updatedAt
+  campeonatoId      String
+  fases             Fase[]
+  grupos            Grupo[]
+  campeonato        Campeonato         @relation(fields: [campeonatoId], references: [id])
+  recordesSequencia RecordeSequencia[]
 }
 
 model Usuario {
-  id                String             @id @default(uuid())
-  nome              String
-  email             String             @unique
-  senha             String
-  dataCriacao       DateTime           @default(now())
-  atualizadoEm      DateTime           @updatedAt
-  perfil            Perfil             @default(USER)
-  ativo             Boolean            @default(true)
-  grupoFavoritoId   String?
-  grupoFavorito     Grupo?             @relation("GrupoFavorito", fields: [grupoFavoritoId], references: [id])
+  id                     String                  @id @default(uuid())
+  nome                   String
+  email                  String                  @unique
+  senha                  String
+  dataCriacao            DateTime                @default(now())
+  atualizadoEm           DateTime                @updatedAt
+  perfil                 Perfil                  @default(USER)
+  ativo                  Boolean                 @default(true)
+  grupoFavoritoId        String?
+  grupoFavorito          Grupo?                  @relation("GrupoFavorito", fields: [grupoFavoritoId], references: [id])
   gruposCriados          Grupo[]                 @relation("GrupoCriador")
   grupos                 GrupoUsuario[]
   palpites               Palpite[]
@@ -48,28 +49,34 @@ model Usuario {
   notificacoes           Notificacao[]
   inscricoesPush         InscricaoPush[]
   preferenciaNotificacao PreferenciaNotificacao?
+  stories                Story[]
+  storyReacoes           StoryReacao[]
+  storyVisualizacoes     StoryVisualizacao[]
 }
 
 model Grupo {
-  id                        String           @id @default(uuid())
-  nome                      String           @unique @db.VarChar(100)
+  id                        String             @id @default(uuid())
+  nome                      String             @unique @db.VarChar(100)
   temporadaId               String
   criadoPor                 String
   privado                   Boolean
-  codigoConvite             String?          @unique @db.VarChar(8)
+  codigoConvite             String?            @unique @db.VarChar(8)
   icone                     String?
-  permitirPalpiteAutomatico Boolean          @default(false)
-  maxParticipantes          Int              @default(50)
-  ativo                     Boolean          @default(true)
-  permitirPalpiteDobrado    Boolean          @default(false)
-  dataCriacao               DateTime         @default(now())
-  atualizadoEm              DateTime         @updatedAt
-  criador                   Usuario          @relation("GrupoCriador", fields: [criadoPor], references: [id])
-  temporada                 Temporada        @relation(fields: [temporadaId], references: [id])
+  permitirPalpiteAutomatico Boolean            @default(false)
+  maxParticipantes          Int                @default(50)
+  ativo                     Boolean            @default(true)
+  permitirPalpiteDobrado    Boolean            @default(false)
+  dataCriacao               DateTime           @default(now())
+  atualizadoEm              DateTime           @updatedAt
+  criador                   Usuario            @relation("GrupoCriador", fields: [criadoPor], references: [id])
+  temporada                 Temporada          @relation(fields: [temporadaId], references: [id])
   usuarios                  GrupoUsuario[]
-  usuariosFavorito          Usuario[]        @relation("GrupoFavorito")
+  usuariosFavorito          Usuario[]          @relation("GrupoFavorito")
   palpitesDobrados          PalpiteDobrado[]
   tokensDobro               TokenDobro[]
+  stories                   Story[]
+  recordesSequencia         RecordeSequencia[]
+  rankingSnapshots          RankingSnapshot[]
 }
 
 model GrupoUsuario {
@@ -163,6 +170,7 @@ model Jogo {
   timeFora            Time             @relation("TimeFora", fields: [timeForaId], references: [id])
   palpites            Palpite[]
   palpitesDobrados    PalpiteDobrado[]
+  stories             Story[]
 
   @@index([faseId])
   @@index([timeCasaId])
@@ -256,17 +264,17 @@ enum MotivoTokenDobro {
 }
 
 model LogSincronizacao {
-  id               String              @id @default(uuid())
-  campeonatoSlug   String
-  fasesIds         String[]
-  totalJogos       Int
-  sincronizados    Int
-  erros            Int                 @default(0)
-  status           StatusSincronizacao
-  mensagem         String?
-  duracaoMs        Int
-  dataCriacao      DateTime            @default(now())
-  detalhes         Json?
+  id             String              @id @default(uuid())
+  campeonatoSlug String
+  fasesIds       String[]
+  totalJogos     Int
+  sincronizados  Int
+  erros          Int                 @default(0)
+  status         StatusSincronizacao
+  mensagem       String?
+  duracaoMs      Int
+  dataCriacao    DateTime            @default(now())
+  detalhes       Json?
 
   @@index([campeonatoSlug])
   @@index([dataCriacao])
@@ -288,6 +296,8 @@ enum TipoNotificacao {
   DESCEU_POSICAO
   PALPITES_PENDENTES
   JOGO_LIBERADO
+  STORIES_GRUPO
+  RECEBEU_F
 }
 
 enum StatusNotificacao {
@@ -342,6 +352,8 @@ model PreferenciaNotificacao {
   desceuPosicao     Boolean @default(true)
   palpitesPendentes Boolean @default(true)
   jogoLiberado      Boolean @default(true)
+  storiesGrupo      Boolean @default(true)
+  recebeuF          Boolean @default(true)
 
   usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 }
@@ -370,4 +382,120 @@ model EventoPendente {
 
   @@index([status])
   @@index([tipo, status])
+}
+
+// ============================================
+// MÓDULO STORIES
+// ============================================
+
+enum TipoStory {
+  ACERTOU_EM_CHEIO
+  UNICO_NA_MOSCA
+  SUBIU_RANKING
+  SEQUENCIA_MOSCA
+  SEQUENCIA_RESULTADO
+  NAO_PALPITOU
+  DOBROU_E_ACERTOU
+}
+
+model Story {
+  id         String    @id @default(uuid())
+  grupoId    String
+  usuarioId  String
+  jogoId     String
+  rodada     Int?
+  tipo       TipoStory
+  dados      Json
+  titulo     String    @db.VarChar(100)
+  contadorFs Int       @default(0)
+  criadoEm   DateTime  @default(now())
+
+  grupo         Grupo               @relation(fields: [grupoId], references: [id], onDelete: Cascade)
+  usuario       Usuario             @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  jogo          Jogo                @relation(fields: [jogoId], references: [id], onDelete: Cascade)
+  reacoes       StoryReacao[]
+  visualizacoes StoryVisualizacao[]
+
+  @@unique([grupoId, usuarioId, jogoId, tipo])
+  @@index([grupoId, criadoEm])
+  @@index([grupoId, usuarioId])
+  @@index([grupoId, rodada])
+}
+
+model StoryReacao {
+  id          String   @id @default(uuid())
+  storyId     String
+  remetenteId String
+  criadoEm    DateTime @default(now())
+
+  story     Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  usuario   Usuario? @relation(fields: [usuarioId], references: [id])
+  usuarioId String?
+
+  @@unique([remetenteId, storyId])
+  @@index([storyId])
+}
+
+model StoryVisualizacao {
+  id            String   @id @default(uuid())
+  storyId       String
+  usuarioId     String
+  visualizadoEm DateTime @default(now())
+
+  story   Story   @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@unique([storyId, usuarioId])
+  @@index([storyId])
+  @@index([usuarioId])
+}
+
+enum CategoriaRecorde {
+  MOSCA
+  RESULTADO
+}
+
+model RecordeSequencia {
+  id           String           @id @default(uuid())
+  grupoId      String
+  temporadaId  String
+  categoria    CategoriaRecorde
+  valor        Int
+  criadoEm     DateTime         @default(now())
+  atualizadoEm DateTime         @updatedAt
+
+  grupo      Grupo             @relation(fields: [grupoId], references: [id], onDelete: Cascade)
+  temporada  Temporada         @relation(fields: [temporadaId], references: [id], onDelete: Cascade)
+  detentores RecordeDetentor[]
+
+  @@unique([grupoId, temporadaId, categoria])
+  @@index([grupoId, temporadaId])
+}
+
+model RecordeDetentor {
+  id         String   @id @default(uuid())
+  recordeId  String
+  usuarioId  String
+  atingidoEm DateTime @default(now())
+
+  recorde RecordeSequencia @relation(fields: [recordeId], references: [id], onDelete: Cascade)
+
+  @@unique([recordeId, usuarioId])
+  @@index([recordeId])
+}
+
+model RankingSnapshot {
+  id        String   @id @default(uuid())
+  grupoId   String
+  usuarioId String
+  faseId    String
+  rodada    Int?
+  posicao   Int
+  pontuacao Int
+  criadoEm  DateTime @default(now())
+
+  grupo Grupo @relation(fields: [grupoId], references: [id], onDelete: Cascade)
+
+  @@unique([grupoId, usuarioId, faseId, rodada])
+  @@index([grupoId, faseId, rodada])
 }
