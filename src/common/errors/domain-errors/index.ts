@@ -6,3 +6,4 @@ export * from './grupo-usuario.errors';
 export * from './jogos.errors';
 export * from './palpites.errors';
 export * from './ranking.errors';
+export * from './stories.errors';
