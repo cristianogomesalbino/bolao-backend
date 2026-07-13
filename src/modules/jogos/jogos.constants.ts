@@ -252,8 +252,8 @@ export const COPA_BRACKET_SEMIS: {
   foraOrigem: number;
   dataHora: string;
 }[] = [
-  { rodada: 1, casaOrigem: 1, foraOrigem: 2, dataHora: '2026-07-14T19:00:00Z' },
-  { rodada: 2, casaOrigem: 3, foraOrigem: 4, dataHora: '2026-07-15T19:00:00Z' },
+  { rodada: 1, casaOrigem: 1, foraOrigem: 3, dataHora: '2026-07-14T19:00:00Z' },
+  { rodada: 2, casaOrigem: 2, foraOrigem: 4, dataHora: '2026-07-15T19:00:00Z' },
 ];
 
 export const COPA_BRACKET_FINAL: {
