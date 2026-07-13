@@ -284,11 +284,6 @@ export const CAMPEONATO_CONFIGS: Record<string, CampeonatoConfig> = {
     tema: { corPrimaria: '#1B5E20', corSecundaria: '#FFFFFF' },
     fases: [
       {
-        slug: 'fase-unica-campeonato-brasileiro-2025',
-        tipo: 'PONTOS_CORRIDOS',
-        maxRodadas: 38,
-      },
-      {
         slug: 'fase-unica-campeonato-brasileiro-2026',
         tipo: 'PONTOS_CORRIDOS',
         maxRodadas: 38,
