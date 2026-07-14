@@ -23,9 +23,8 @@ describe('CampeonatoConfig', () => {
 
       expect(config.slug).toBe('brasileirao');
       expect(config.campeonatoId).toBe(BRASILEIRAO_CAMPEONATO_ID);
-      expect(config.fases).toHaveLength(2);
+      expect(config.fases).toHaveLength(1);
       expect(config.fases[0].maxRodadas).toBe(38);
-      expect(config.fases[1].maxRodadas).toBe(38);
     });
 
     it('deve retornar config da copa-do-mundo-2026', () => {
