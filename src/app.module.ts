@@ -1,6 +1,5 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { ScheduleModule } from '@nestjs/schedule';
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { LoggerMiddleware } from './common/middleware/logger.middleware';
 import { DomainExceptionFilter } from './common/filters/domain-exception.filter';
@@ -12,6 +11,7 @@ import { GruposModule } from './modules/grupos/grupos.module';
 import { JogosModule } from './modules/jogos/jogos.module';
 import { PalpitesModule } from './modules/palpites/palpites.module';
 import { RankingModule } from './modules/ranking/ranking.module';
+import { SchedulerModule } from './modules/scheduler/scheduler.module';
 import { TemporadasModule } from './modules/temporadas/temporadas.module';
 import { TimesModule } from './modules/times/times.module';
 import { UsuariosModule } from './modules/usuarios/usuarios.module';
@@ -22,8 +22,8 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
-    ScheduleModule.forRoot(),
     PrismaModule,
+    SchedulerModule,
     AuthModule,
     CampeonatosModule,
     GrupoUsuarioModule,
