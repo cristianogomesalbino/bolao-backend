@@ -98,7 +98,7 @@ export class PalpiteService {
   async listarPorJogoNoGrupo(
     jogoId: string,
     grupoId: string,
-    usuarioId: string,
+    _usuarioId: string,
   ) {
     const jogo = await this.jogoRepo.buscarPorId(jogoId);
     if (!jogo) throw new JogoNaoEncontradoError();
@@ -108,15 +108,27 @@ export class PalpiteService {
     const membros = await this.grupoUsuarioRepo.listarPorGrupo(grupoId);
     const membrosIds = membros.map((m) => m.usuario.id);
 
-    if (jogo.status === 'FINALIZADO') {
+    if (jogo.status === 'FINALIZADO' || jogo.status === 'EM_ANDAMENTO') {
       return this.palpiteRepo.listarPorJogoEUsuarios(jogoId, membrosIds);
     }
 
-    const meuPalpite = await this.palpiteRepo.buscarPorUsuarioEJogo(
-      usuarioId,
+    // Jogo não iniciou: retornar todos os membros com flag de palpite (sem revelar placar)
+    const palpites = await this.palpiteRepo.listarPorJogoEUsuarios(
       jogoId,
+      membrosIds,
     );
-    return meuPalpite ? [meuPalpite] : [];
+    const idsQuePalpitaram = new Set(palpites.map((p) => p.usuarioId));
+
+    return membros.map((m) => ({
+      id: `status-${m.usuario.id}`,
+      usuarioId: m.usuario.id,
+      jogoId,
+      golsCasa: idsQuePalpitaram.has(m.usuario.id) ? -1 : null,
+      golsFora: idsQuePalpitaram.has(m.usuario.id) ? -1 : null,
+      dataCriacao: '',
+      atualizadoEm: '',
+      usuario: { id: m.usuario.id, nome: m.usuario.nome },
+    }));
   }
 
   async buscarEstatisticasPorJogo(jogoId: string, grupoId: string) {
