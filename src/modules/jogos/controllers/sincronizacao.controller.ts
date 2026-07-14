@@ -5,6 +5,7 @@ import {
   Post,
   Query,
   UseGuards,
+  Inject,
 } from '@nestjs/common';
 import {
   ApiOperation,
@@ -15,16 +16,20 @@ import {
 } from '@nestjs/swagger';
 import { SuperAdminGuard } from '../../../common/guards/super-admin.guard';
 import { Public } from '../../../common/decorators/public.decorator';
-import { SincronizacaoAutomaticaService } from '../services/sincronizacao-automatica.service';
 import { ErrorFactory } from '../../../common/errors/error.factory';
 import { ConfigService } from '@nestjs/config';
+import { ExecutarSincronizacao } from '../../scheduler/use-cases/executar-sincronizacao';
+import { JOGOS } from '../jogos.constants';
+import type { LogSincronizacaoRepository } from '../repositories/log-sincronizacao.repository.interface';
 
 @ApiTags('Sincronização')
 @Controller('sincronizacao')
 export class SincronizacaoController {
   constructor(
-    private readonly syncService: SincronizacaoAutomaticaService,
+    private readonly executarSincronizacao: ExecutarSincronizacao,
     private readonly configService: ConfigService,
+    @Inject(JOGOS.LOG_SINCRONIZACAO_REPOSITORY_TOKEN)
+    private readonly logRepo: LogSincronizacaoRepository,
   ) {}
 
   @ApiOperation({ summary: 'Obter status da sincronização automática' })
@@ -32,7 +37,7 @@ export class SincronizacaoController {
   @UseGuards(SuperAdminGuard)
   @Get('status')
   async obterStatus() {
-    return this.syncService.obterStatus();
+    return { mensagem: 'Use GET /scheduler/status para status completo' };
   }
 
   @ApiOperation({ summary: 'Listar logs recentes de sincronização' })
@@ -48,10 +53,10 @@ export class SincronizacaoController {
     const limiteNum = limite ? Number.parseInt(limite, 10) : undefined;
 
     if (campeonato) {
-      return this.syncService.obterLogsPorCampeonato(campeonato, limiteNum);
+      return this.logRepo.buscarPorCampeonato(campeonato, limiteNum);
     }
 
-    return this.syncService.obterLogsRecentes(limiteNum);
+    return this.logRepo.buscarRecentes(limiteNum);
   }
 
   @ApiOperation({ summary: 'Forçar sincronização (SUPER_ADMIN ou API Key)' })
@@ -64,18 +69,25 @@ export class SincronizacaoController {
   @Public()
   @Post('forcar')
   async forcarSincronizacao(@Headers('x-sync-api-key') apiKey?: string) {
-    // Validar acesso: ou via JWT (SUPER_ADMIN) ou via API key
     const syncApiKey = this.configService.get<string>('SYNC_API_KEY');
 
     if (!syncApiKey) {
-      throw ErrorFactory.forbidden('SYNC_API_KEY não configurada no servidor');
+      throw ErrorFactory.forbidden(
+        'SYNC_API_KEY não configurada no servidor',
+      );
     }
 
     if (apiKey !== syncApiKey) {
       throw ErrorFactory.forbidden('API key inválida');
     }
 
-    await this.syncService.forcarSincronizacao();
-    return { mensagem: 'Sincronização forçada executada com sucesso' };
+    const resultado = await this.executarSincronizacao.execute({
+      trigger: 'API_KEY',
+    });
+
+    return {
+      mensagem: 'Sincronização forçada executada com sucesso',
+      ...resultado,
+    };
   }
 }

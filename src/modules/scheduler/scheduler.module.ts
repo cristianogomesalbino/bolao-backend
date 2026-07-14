@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { ScheduleModule } from '@nestjs/schedule';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { JogosModule } from '../jogos/jogos.module';
@@ -13,6 +13,9 @@ import { SincronizacaoScheduler } from './schedulers/sincronizacao.scheduler';
 import { NotificacaoScheduler } from './schedulers/notificacao.scheduler';
 import { ManutencaoScheduler } from './schedulers/manutencao.scheduler';
 import { SchedulerController } from './scheduler.controller';
+import { SincronizacaoController } from '../jogos/controllers/sincronizacao.controller';
+import { JOGOS } from '../jogos/jogos.constants';
+import { PrismaLogSincronizacaoRepository } from '../jogos/repositories/prisma-log-sincronizacao.repository';
 
 /**
  * Módulo Scheduler — centraliza todos os agendamentos do sistema.
@@ -25,11 +28,11 @@ import { SchedulerController } from './scheduler.controller';
   imports: [
     ScheduleModule.forRoot(),
     PrismaModule,
-    JogosModule,
+    forwardRef(() => JogosModule),
     NotificacoesModule,
     EventosModule,
   ],
-  controllers: [SchedulerController],
+  controllers: [SchedulerController, SincronizacaoController],
   providers: [
     // Services
     AdvisoryLockService,
@@ -42,6 +45,11 @@ import { SchedulerController } from './scheduler.controller';
     SincronizacaoScheduler,
     NotificacaoScheduler,
     ManutencaoScheduler,
+    // Repositories (para SincronizacaoController)
+    {
+      provide: JOGOS.LOG_SINCRONIZACAO_REPOSITORY_TOKEN,
+      useClass: PrismaLogSincronizacaoRepository,
+    },
   ],
   exports: [ExecutarSincronizacao, ExecutarNotificacoes, ExecutarLimpeza],
 })
