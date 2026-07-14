@@ -341,14 +341,16 @@ describe('PalpiteService — Property-Based Tests', () => {
             golsFora: gf2,
           });
 
-          // Jogo AGENDADO → só o próprio
-          const apenasProprioAgendado = await service.listarPorJogoNoGrupo(
+          // Jogo AGENDADO → retorna todos os membros com flag (sem revelar placar)
+          const todosAgendado = await service.listarPorJogoNoGrupo(
             'jogo-agendado',
             'grupo-1',
             'user-1',
           );
-          expect(apenasProprioAgendado).toHaveLength(1);
-          expect(apenasProprioAgendado[0].usuarioId).toBe('user-1');
+          expect(todosAgendado).toHaveLength(2);
+          // Não revela placar (golsCasa = -1 indica que palpitou, sem mostrar valor real)
+          expect(todosAgendado[0].golsCasa).toBe(-1);
+          expect(todosAgendado[1].golsCasa).toBe(-1);
         },
       ),
       { numRuns: 100 },

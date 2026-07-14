@@ -494,18 +494,30 @@ describe('PalpiteService', () => {
         userId,
       );
 
-      expect(result).toHaveLength(1);
-      expect(result[0].usuarioId).toBe(userId);
+      expect(result).toHaveLength(2);
+      const resultTyped = result as {
+        usuarioId: string;
+        golsCasa: number | null;
+      }[];
+      const membro1 = resultTyped.find((r) => r.usuarioId === userId);
+      const membro2 = resultTyped.find((r) => r.usuarioId === outroUserId);
+      expect(membro1).toBeDefined();
+      expect(membro2).toBeDefined();
+      // Não revela placar antes do jogo iniciar
+      expect(membro1!.golsCasa).toBe(-1);
+      expect(membro2!.golsCasa).toBe(-1);
     });
 
-    it('jogo AGENDADO sem palpite próprio deve retornar lista vazia', async () => {
+    it('jogo AGENDADO sem palpite próprio deve retornar todos os membros com flag', async () => {
       const result = await service.listarPorJogoNoGrupo(
         'jogo-1',
         grupoId,
         userId,
       );
 
-      expect(result).toHaveLength(0);
+      expect(result).toHaveLength(2);
+      // Nenhum palpitou
+      expect(result.every((r: any) => r.golsCasa === null)).toBe(true);
     });
 
     it('deve lançar JogoNaoEncontradoError se jogo inexistente', async () => {
