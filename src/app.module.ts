@@ -6,6 +6,7 @@ import { DomainExceptionFilter } from './common/filters/domain-exception.filter'
 import { AppController } from './app.controller';
 import { AuthModule } from './modules/auth/auth.module';
 import { CampeonatosModule } from './modules/campeonatos/campeonatos.module';
+import { EventosModule } from './modules/eventos/eventos.module';
 import { GrupoUsuarioModule } from './modules/grupo-usuario/grupo-usuario.module';
 import { GruposModule } from './modules/grupos/grupos.module';
 import { JogosModule } from './modules/jogos/jogos.module';
@@ -24,6 +25,7 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
     ConfigModule.forRoot({ isGlobal: true }),
     PrismaModule,
     SchedulerModule,
+    EventosModule,
     AuthModule,
     CampeonatosModule,
     GrupoUsuarioModule,
