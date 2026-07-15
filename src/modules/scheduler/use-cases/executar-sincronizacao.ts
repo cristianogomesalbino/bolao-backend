@@ -38,15 +38,15 @@ export interface ExecutarSincronizacaoOutput {
  * Use case unificado de sincronização.
  * Qualquer trigger (CRON, SUPER_ADMIN, API_KEY) chama este execute().
  *
- * Responsabilidades:
- * - Gerar syncId
- * - Adquirir advisory lock (pg_try_advisory_xact_lock)
- * - Delegar sincronização pro JogoService
- * - Registrar resultado
+ * Usa advisory lock para garantir exclusividade:
+ * - Tenta lock dentro de transação curta (apenas para verificar)
+ * - Se obteve, executa sync fora da transação (API externa pode demorar)
+ * - Flag in-memory previne concorrência no mesmo processo
  */
 @Injectable()
 export class ExecutarSincronizacao {
   private readonly logger = new Logger(ExecutarSincronizacao.name);
+  private executando = false;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -60,49 +60,61 @@ export class ExecutarSincronizacao {
     const syncId = randomUUID();
     const inicio = Date.now();
 
-    // Tentar adquirir lock dentro de transação
-    const resultado = await this.prisma.$transaction(async (tx) => {
-      const obteveLock = await this.lockService.tryXactLock(
-        LOCK_IDS.SINCRONIZACAO,
-        tx,
-      );
-
-      if (!obteveLock) {
-        this.logger.log(
-          `[SCHEDULER:${syncId}] ${input.trigger} → ${SCHEDULER.MENSAGENS.SYNC_JA_EM_EXECUCAO}`,
-        );
-        return { sincronizados: 0, falhas: 0, ignorado: true };
-      }
-
+    // Guard in-memory — impede concorrência no mesmo processo
+    if (this.executando) {
       this.logger.log(
-        `[SCHEDULER:${syncId}] ${input.trigger} → iniciando sincronização`,
+        `[SCHEDULER:${syncId}] ${input.trigger} → ${SCHEDULER.MENSAGENS.SYNC_JA_EM_EXECUCAO}`,
       );
+      return this.buildOutput(syncId, input.trigger, inicio, 0, 0, true);
+    }
 
-      return this.executarSync(input, syncId);
-    });
+    // Tentar advisory lock (transação curta apenas para checar)
+    const obteveLock = await this.tentarAdvisoryLock();
+    if (!obteveLock) {
+      this.logger.log(
+        `[SCHEDULER:${syncId}] ${input.trigger} → ${SCHEDULER.MENSAGENS.SYNC_JA_EM_EXECUCAO} (outra instância)`,
+      );
+      return this.buildOutput(syncId, input.trigger, inicio, 0, 0, true);
+    }
 
-    const duracaoMs = Date.now() - inicio;
+    this.executando = true;
+    this.logger.log(
+      `[SCHEDULER:${syncId}] ${input.trigger} → iniciando sincronização`,
+    );
 
-    if (!resultado.ignorado) {
+    try {
+      const resultado = await this.executarSync(input, syncId);
+      const duracaoMs = Date.now() - inicio;
+
       this.logger.log(
         `[SCHEDULER:${syncId}] Concluído: ${resultado.sincronizados} sincronizados, ${resultado.falhas} falhas, ${duracaoMs}ms`,
       );
-    }
 
-    return {
-      syncId,
-      trigger: input.trigger,
-      duracaoMs,
-      sincronizados: resultado.sincronizados,
-      falhas: resultado.falhas,
-      ignorado: resultado.ignorado,
-    };
+      return this.buildOutput(
+        syncId,
+        input.trigger,
+        inicio,
+        resultado.sincronizados,
+        resultado.falhas,
+        false,
+      );
+    } finally {
+      this.executando = false;
+    }
+  }
+
+  private async tentarAdvisoryLock(): Promise<boolean> {
+    const resultado = await this.prisma.$transaction(
+      async (tx) => this.lockService.tryXactLock(LOCK_IDS.SINCRONIZACAO, tx),
+      { timeout: 3000 },
+    );
+    return resultado;
   }
 
   private async executarSync(
     input: ExecutarSincronizacaoInput,
     syncId: string,
-  ): Promise<{ sincronizados: number; falhas: number; ignorado: boolean }> {
+  ): Promise<{ sincronizados: number; falhas: number }> {
     let totalSincronizados = 0;
     let totalFalhas = 0;
 
@@ -134,17 +146,9 @@ export class ExecutarSincronizacao {
       }
     }
 
-    return {
-      sincronizados: totalSincronizados,
-      falhas: totalFalhas,
-      ignorado: false,
-    };
+    return { sincronizados: totalSincronizados, falhas: totalFalhas };
   }
 
-  /**
-   * Resolve o faseId do banco para um campeonato.
-   * Busca a primeira fase da temporada mais recente.
-   */
   private async resolverFaseId(campeonatoSlug: string): Promise<string | null> {
     const fase = await this.prisma.fase.findFirst({
       where: {
@@ -162,5 +166,23 @@ export class ExecutarSincronizacao {
       select: { id: true },
     });
     return fase?.id ?? null;
+  }
+
+  private buildOutput(
+    syncId: string,
+    trigger: TriggerOrigem,
+    inicio: number,
+    sincronizados: number,
+    falhas: number,
+    ignorado: boolean,
+  ): ExecutarSincronizacaoOutput {
+    return {
+      syncId,
+      trigger,
+      duracaoMs: Date.now() - inicio,
+      sincronizados,
+      falhas,
+      ignorado,
+    };
   }
 }

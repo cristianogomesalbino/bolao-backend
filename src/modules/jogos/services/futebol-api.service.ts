@@ -277,30 +277,62 @@ export class FutebolApiService implements OnModuleInit {
   }
 
   private async fetchJogos(url: string): Promise<any[]> {
-    try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 10000);
+    const maxRetries = 2;
+    const backoff = [1000, 3000];
 
-      const response = await fetch(url, {
-        method: 'GET',
-        signal: controller.signal,
-      });
-      clearTimeout(timeout);
+    for (let tentativa = 0; tentativa <= maxRetries; tentativa++) {
+      try {
+        const response = await fetch(url, {
+          method: 'GET',
+          signal: AbortSignal.timeout(10_000),
+        });
 
-      if (!response.ok) {
-        this.logger.error(`API externa retornou status ${response.status}`);
+        if (response.ok) {
+          const data = await response.json();
+          return Array.isArray(data) ? data : [];
+        }
+
+        // Erros definitivos — não repetir
+        if ([400, 401, 403, 404].includes(response.status)) {
+          this.logger.error(
+            `API externa retornou ${response.status} (definitivo)`,
+          );
+          throw new ApiExternaIndisponivelError();
+        }
+
+        // Erros retryable — tentar novamente
+        if (tentativa < maxRetries) {
+          this.logger.warn(
+            `API externa retornou ${response.status}, retry ${tentativa + 1}/${maxRetries}`,
+          );
+          await this.sleep(backoff[tentativa]);
+          continue;
+        }
+
         throw new ApiExternaIndisponivelError();
-      }
+      } catch (error) {
+        if (error instanceof ApiExternaIndisponivelError) throw error;
 
-      const data = await response.json();
-      return Array.isArray(data) ? data : [];
-    } catch (error) {
-      if (error instanceof ApiExternaIndisponivelError) {
-        throw error;
+        if (tentativa >= maxRetries) {
+          this.logger.error(
+            'API externa indisponível após retries',
+            error,
+          );
+          throw new ApiExternaIndisponivelError();
+        }
+
+        this.logger.warn(
+          `Erro na API externa, retry ${tentativa + 1}/${maxRetries}`,
+        );
+        await this.sleep(backoff[tentativa]);
       }
-      this.logger.error('Erro ao comunicar com API externa de futebol', error);
-      throw new ApiExternaIndisponivelError();
     }
+
+    throw new ApiExternaIndisponivelError();
+  }
+
+  private sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   normalizarJogo(jogo: any): any {

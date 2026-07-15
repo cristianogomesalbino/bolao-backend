@@ -219,6 +219,23 @@ export class JogoService {
     }
   }
 
+  /**
+   * Verifica se transição é válida sem lançar exceção.
+   * Usado pela sync para ignorar transições inválidas vindas da API.
+   */
+  private ehTransicaoValida(statusAtual: string, novoStatus: string): boolean {
+    if (novoStatus === statusAtual) return true;
+    const permitidas = TRANSICOES_VALIDAS[statusAtual];
+    if (!permitidas) return true; // Status sem restrição (ex: FINALIZADO, CANCELADO)
+    if (!permitidas.includes(novoStatus)) {
+      this.logger.warn(
+        `[SYNC] Transição inválida ignorada: ${statusAtual} → ${novoStatus}`,
+      );
+      return false;
+    }
+    return true;
+  }
+
   async finalizar(id: string, dto: FinalizarJogoDto) {
     const jogo = await this.jogoRepo.buscarPorId(id);
     if (!jogo) {
@@ -1096,6 +1113,12 @@ export class JogoService {
     }
 
     const novoStatus = this.definirStatusFinal(jogo, jogoApi?.status);
+
+    // Validar transição de estado — rejeitar regressões (ex: EM_ANDAMENTO → AGENDADO)
+    if (!this.ehTransicaoValida(jogo.status, novoStatus)) {
+      return { atualizado: false };
+    }
+
     const updateData: SyncUpdateData = { status: novoStatus };
 
     this.aplicarProtecaoSemData(jogo, jogoApi, updateData);
