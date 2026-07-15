@@ -167,10 +167,10 @@
 - [ ] Validar: getDiagnostics 0 erros, testes passando
 
 ### Task 16: Implementar timeout/retry na API externa
-- [ ] Adicionar constantes `API_CONFIG` (timeout, max retries, backoff, erros retryable/definitivos)
-- [ ] Refatorar `FutebolApiService.buscarJogosPorRodada` para usar `AbortSignal.timeout` + retry com backoff
-- [ ] Atualizar testes do `FutebolApiService` para cobrir cenários de timeout e retry
-- [ ] Validar: getDiagnostics 0 erros, testes passando
+- [x] Adicionar constantes `API_CONFIG` (timeout, max retries, backoff, erros retryable/definitivos)
+- [x] Refatorar `FutebolApiService.buscarJogosPorRodada` para usar `AbortSignal.timeout` + retry com backoff
+- [x] Atualizar testes do `FutebolApiService` para cobrir cenários de timeout e retry
+- [x] Validar: getDiagnostics 0 erros, testes passando
 
 ### Task 17: Validar máquina de estados na sync
 - [ ] No `JogoService.processarJogoSync`: validar transição via `TRANSICOES_VALIDAS` antes de aplicar status da API
@@ -179,7 +179,7 @@
 - [ ] Validar: getDiagnostics 0 erros, testes passando
 
 ### Task 18: Atualizar documentação
-- [ ] Atualizar `project-overview.md` com novo módulo Scheduler (estrutura, endpoints, env vars)
-- [ ] Remover referências ao `SincronizacaoAutomaticaService` e `NotificacaoCronService` dos steerings
-- [ ] Atualizar `README.md` com novos endpoints `/scheduler/*`
-- [ ] Atualizar Postman collection com endpoints do scheduler
+- [x] Atualizar `project-overview.md` com novo módulo Scheduler (estrutura, endpoints, env vars)
+- [x] Remover referências ao `SincronizacaoAutomaticaService` e `NotificacaoCronService` dos steerings
+- [x] Atualizar `README.md` com novos endpoints `/scheduler/*`
+- [x] Atualizar Postman collection com endpoints do scheduler

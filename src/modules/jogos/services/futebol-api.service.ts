@@ -5,6 +5,18 @@ import {
   BRASILEIRAO_CAMPEONATO_ID,
   type CampeonatoConfig,
 } from '../jogos.constants';
+import { API_EXTERNA_CONFIG } from '../../scheduler/scheduler.constants';
+import type {
+  JogoApiRaw,
+  JogoNormalizado,
+  ClassificacaoItem,
+  ClassificacaoGeRawGrupo,
+  ClassificacaoGeRawItem,
+  SecaoRaw,
+  ChaveRaw,
+  SecaoJogoRaw,
+  ClassificacaoEliminatoriaRaw,
+} from './futebol-api.types';
 
 @Injectable()
 export class FutebolApiService implements OnModuleInit {
@@ -16,14 +28,16 @@ export class FutebolApiService implements OnModuleInit {
     );
   }
 
-  async buscarClassificacao(season: number): Promise<any[]> {
+  async buscarClassificacao(season: number): Promise<ClassificacaoItem[]> {
     const resultado = await this.buscarClassificacaoGe(season);
     if (resultado.length > 0) return resultado;
 
     return this.buscarClassificacaoPacote();
   }
 
-  private async buscarClassificacaoGe(season: number): Promise<any[]> {
+  private async buscarClassificacaoGe(
+    season: number,
+  ): Promise<ClassificacaoItem[]> {
     const fase = `fase-unica-campeonato-brasileiro-${season}`;
     const url = `${GE_BASE_URL}/${BRASILEIRAO_CAMPEONATO_ID}/fase/${fase}/classificacao/`;
 
@@ -37,63 +51,77 @@ export class FutebolApiService implements OnModuleInit {
         return [];
       }
 
-      const data = await response.json();
-
+      const data: unknown = await response.json();
       if (!Array.isArray(data)) return [];
 
-      const resultado: any[] = [];
-      for (const grupo of data) {
-        if (grupo.classificacao && Array.isArray(grupo.classificacao)) {
-          for (const item of grupo.classificacao) {
-            resultado.push({
-              posicao: item.ordem,
-              timeId: String(item.equipe_id),
-              nome: item.nome_popular || item.nome || '',
-              sigla: item.sigla || '',
-              escudo: item.escudo || null,
-              pontos: item.pontos ?? 0,
-              jogos: item.jogos ?? 0,
-              vitorias: item.vitorias ?? 0,
-              empates: item.empates ?? 0,
-              derrotas: item.derrotas ?? 0,
-              golsPro: item.gols_pro ?? 0,
-              golsContra: item.gols_contra ?? 0,
-              saldoGols: item.saldo_gols ?? 0,
-            });
-          }
-        }
-      }
-
-      return resultado;
+      return this.mapearClassificacaoGe(data as ClassificacaoGeRawGrupo[]);
     } catch (error) {
       this.logger.warn('Erro ao buscar classificação da API GE', error);
       return [];
     }
   }
 
-  private async buscarClassificacaoPacote(): Promise<any[]> {
+  private mapearClassificacaoGe(
+    grupos: ClassificacaoGeRawGrupo[],
+  ): ClassificacaoItem[] {
+    const resultado: ClassificacaoItem[] = [];
+
+    for (const grupo of grupos) {
+      if (!grupo.classificacao || !Array.isArray(grupo.classificacao)) continue;
+
+      for (const item of grupo.classificacao) {
+        resultado.push(this.mapearItemClassificacaoGe(item));
+      }
+    }
+
+    return resultado;
+  }
+
+  private mapearItemClassificacaoGe(
+    item: ClassificacaoGeRawItem,
+  ): ClassificacaoItem {
+    return {
+      posicao: item.ordem,
+      timeId: String(item.equipe_id),
+      nome: item.nome_popular || item.nome || '',
+      sigla: item.sigla || '',
+      escudo: item.escudo || null,
+      pontos: item.pontos ?? 0,
+      jogos: item.jogos ?? 0,
+      vitorias: item.vitorias ?? 0,
+      empates: item.empates ?? 0,
+      derrotas: item.derrotas ?? 0,
+      golsPro: item.gols_pro ?? 0,
+      golsContra: item.gols_contra ?? 0,
+      saldoGols: item.saldo_gols ?? 0,
+    };
+  }
+
+  private async buscarClassificacaoPacote(): Promise<ClassificacaoItem[]> {
     try {
       const { getStandings } = await import('campeonato-brasileiro-api');
       const standings = await getStandings('a');
 
       if (!standings?.tables?.[0]?.entries) return [];
 
-      return standings.tables[0].entries.map((entry: any) => ({
-        posicao: entry.position,
-        timeId: String(entry.team.id),
-        nome: entry.team.name,
-        sigla: entry.team.shortName,
-        escudo: entry.team.badge || null,
-        pontos: entry.points ?? 0,
-        jogos: entry.matches ?? 0,
-        vitorias: entry.wins ?? 0,
-        empates: entry.draws ?? 0,
-        derrotas: entry.losses ?? 0,
-        golsPro: entry.goalsFor ?? 0,
-        golsContra: entry.goalsAgainst ?? 0,
-        saldoGols: entry.goalDifference ?? 0,
-        recentForm: entry.recentForm ?? [],
-      }));
+      return standings.tables[0].entries.map(
+        (entry): ClassificacaoItem => ({
+          posicao: entry.position,
+          timeId: String(entry.team.id),
+          nome: entry.team.name,
+          sigla: entry.team.shortName,
+          escudo: entry.team.badge || null,
+          pontos: entry.points ?? 0,
+          jogos: entry.matches ?? 0,
+          vitorias: entry.wins ?? 0,
+          empates: entry.draws ?? 0,
+          derrotas: entry.losses ?? 0,
+          golsPro: entry.goalsFor ?? 0,
+          golsContra: entry.goalsAgainst ?? 0,
+          saldoGols: entry.goalDifference ?? 0,
+          recentForm: entry.recentForm ?? [],
+        }),
+      );
     } catch (error) {
       this.logger.warn('Erro ao buscar classificação via pacote', error);
       return [];
@@ -104,7 +132,7 @@ export class FutebolApiService implements OnModuleInit {
     campeonatoId: string,
     faseSlug: string,
     rodada: number,
-  ): Promise<any[]> {
+  ): Promise<JogoApiRaw[]> {
     const url = `${GE_BASE_URL}/${campeonatoId}/fase/${faseSlug}/rodada/${rodada}/jogos/`;
     return this.fetchJogos(url);
   }
@@ -112,11 +140,11 @@ export class FutebolApiService implements OnModuleInit {
   async buscarJogosPorIds(
     ids: number[],
     config: CampeonatoConfig,
-  ): Promise<any[]> {
+  ): Promise<JogoApiRaw[]> {
     if (ids.length === 0) return [];
 
     const idsSet = new Set(ids);
-    const encontrados: any[] = [];
+    const encontrados: JogoApiRaw[] = [];
 
     for (const fase of config.fases) {
       if (idsSet.size === 0) break;
@@ -130,7 +158,7 @@ export class FutebolApiService implements OnModuleInit {
     config: CampeonatoConfig,
     fase: { slug: string; maxRodadas: number },
     idsSet: Set<number>,
-    encontrados: any[],
+    encontrados: JogoApiRaw[],
   ): Promise<void> {
     for (let rodada = 1; rodada <= fase.maxRodadas; rodada++) {
       if (idsSet.size === 0) break;
@@ -158,10 +186,9 @@ export class FutebolApiService implements OnModuleInit {
     campeonatoId: string,
     faseSlug: string,
     rodadas: number[],
-  ): Promise<any[]> {
+  ): Promise<JogoApiRaw[]> {
     if (rodadas.length === 0) return [];
 
-    // Para fases eliminatórias da Copa, usar endpoint /classificacao/
     if (this.ehFaseEliminatoriaCopa(faseSlug)) {
       return this.buscarJogosEliminatorios(campeonatoId, faseSlug);
     }
@@ -172,7 +199,7 @@ export class FutebolApiService implements OnModuleInit {
       ),
     );
 
-    const encontrados: any[] = [];
+    const encontrados: JogoApiRaw[] = [];
     let falhas = 0;
 
     for (const resultado of resultados) {
@@ -214,12 +241,15 @@ export class FutebolApiService implements OnModuleInit {
   async buscarJogosEliminatorios(
     campeonatoId: string,
     faseSlug: string,
-  ): Promise<any[]> {
+  ): Promise<JogoApiRaw[]> {
     const url = `${GE_BASE_URL}/${campeonatoId}/fase/${faseSlug}/classificacao/`;
 
     try {
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 10000);
+      const timeout = setTimeout(
+        () => controller.abort(),
+        API_EXTERNA_CONFIG.TIMEOUT_MS,
+      );
 
       const response = await fetch(url, {
         method: 'GET',
@@ -234,25 +264,23 @@ export class FutebolApiService implements OnModuleInit {
         return [];
       }
 
-      const data = await response.json();
+      const data = (await response.json()) as ClassificacaoEliminatoriaRaw;
       const secoes = data?.secao;
       if (!Array.isArray(secoes)) return [];
 
-      const jogos = this.extrairJogosDeSecoes(secoes);
-
-      return jogos;
+      return this.extrairJogosDeSecoes(secoes);
     } catch (error) {
       this.logger.warn('Erro ao buscar segunda fase da API GE', error);
       return [];
     }
   }
 
-  private extrairJogosDeSecoes(secoes: any[]): any[] {
-    const jogos: any[] = [];
+  private extrairJogosDeSecoes(secoes: SecaoRaw[]): JogoApiRaw[] {
+    const jogos: JogoApiRaw[] = [];
 
     for (const secao of secoes) {
       if (!Array.isArray(secao.chave)) continue;
-      for (const chave of secao.chave) {
+      for (const chave of secao.chave as ChaveRaw[]) {
         if (!Array.isArray(chave.jogos)) continue;
         for (const jogo of chave.jogos) {
           const jogoFormatado = this.formatarJogoSegundaFase(jogo);
@@ -264,90 +292,100 @@ export class FutebolApiService implements OnModuleInit {
     return jogos;
   }
 
-  private formatarJogoSegundaFase(jogo: any): any | null {
+  private formatarJogoSegundaFase(jogo: SecaoJogoRaw): JogoApiRaw | null {
     if (!jogo.id) return null;
     if (!jogo.equipes?.mandante?.id || !jogo.equipes?.visitante?.id)
       return null;
 
     const dataCompleta = jogo.hora_realizacao
       ? `${jogo.data_realizacao}T${jogo.hora_realizacao}`
-      : jogo.data_realizacao;
+      : (jogo.data_realizacao ?? null);
 
-    return { ...jogo, data_realizacao: dataCompleta };
+    return {
+      ...(jogo as unknown as JogoApiRaw),
+      data_realizacao: dataCompleta,
+    };
   }
 
-  private async fetchJogos(url: string): Promise<any[]> {
-    const maxRetries = 2;
-    const backoff = [1000, 3000];
-
-    for (let tentativa = 0; tentativa <= maxRetries; tentativa++) {
-      try {
-        const response = await fetch(url, {
-          method: 'GET',
-          signal: AbortSignal.timeout(10_000),
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          return Array.isArray(data) ? data : [];
-        }
-
-        // Erros definitivos — não repetir
-        if ([400, 401, 403, 404].includes(response.status)) {
-          this.logger.error(
-            `API externa retornou ${response.status} (definitivo)`,
-          );
-          throw new ApiExternaIndisponivelError();
-        }
-
-        // Erros retryable — tentar novamente
-        if (tentativa < maxRetries) {
-          this.logger.warn(
-            `API externa retornou ${response.status}, retry ${tentativa + 1}/${maxRetries}`,
-          );
-          await this.sleep(backoff[tentativa]);
-          continue;
-        }
-
-        throw new ApiExternaIndisponivelError();
-      } catch (error) {
-        if (error instanceof ApiExternaIndisponivelError) throw error;
-
-        if (tentativa >= maxRetries) {
-          this.logger.error(
-            'API externa indisponível após retries',
-            error,
-          );
-          throw new ApiExternaIndisponivelError();
-        }
-
-        this.logger.warn(
-          `Erro na API externa, retry ${tentativa + 1}/${maxRetries}`,
-        );
-        await this.sleep(backoff[tentativa]);
-      }
+  private async fetchJogos(url: string): Promise<JogoApiRaw[]> {
+    for (
+      let tentativa = 0;
+      tentativa <= API_EXTERNA_CONFIG.MAX_RETRIES;
+      tentativa++
+    ) {
+      const resultado = await this.tentarFetch(url, tentativa);
+      if (resultado !== null) return resultado;
     }
 
     throw new ApiExternaIndisponivelError();
+  }
+
+  private async tentarFetch(
+    url: string,
+    tentativa: number,
+  ): Promise<JogoApiRaw[] | null> {
+    try {
+      const response = await fetch(url, {
+        method: 'GET',
+        signal: AbortSignal.timeout(API_EXTERNA_CONFIG.TIMEOUT_MS),
+      });
+
+      if (response.ok) {
+        const data: unknown = await response.json();
+        return Array.isArray(data) ? (data as JogoApiRaw[]) : [];
+      }
+
+      return this.tratarErroResponse(response.status, tentativa);
+    } catch (error) {
+      return this.tratarErroRede(error, tentativa);
+    }
+  }
+
+  private async tratarErroResponse(
+    status: number,
+    tentativa: number,
+  ): Promise<null> {
+    if (API_EXTERNA_CONFIG.ERROS_DEFINITIVOS.includes(status)) {
+      this.logger.error(`API externa retornou ${status} (definitivo)`);
+      throw new ApiExternaIndisponivelError();
+    }
+
+    if (tentativa < API_EXTERNA_CONFIG.MAX_RETRIES) {
+      this.logger.warn(
+        `API externa retornou ${status}, retry ${tentativa + 1}/${API_EXTERNA_CONFIG.MAX_RETRIES}`,
+      );
+      await this.sleep(API_EXTERNA_CONFIG.BACKOFF_MS[tentativa]);
+      return null;
+    }
+
+    throw new ApiExternaIndisponivelError();
+  }
+
+  private async tratarErroRede(
+    error: unknown,
+    tentativa: number,
+  ): Promise<null> {
+    if (error instanceof ApiExternaIndisponivelError) throw error;
+
+    if (tentativa >= API_EXTERNA_CONFIG.MAX_RETRIES) {
+      this.logger.error('API externa indisponível após retries', error);
+      throw new ApiExternaIndisponivelError();
+    }
+
+    this.logger.warn(
+      `Erro na API externa, retry ${tentativa + 1}/${API_EXTERNA_CONFIG.MAX_RETRIES}`,
+    );
+    await this.sleep(API_EXTERNA_CONFIG.BACKOFF_MS[tentativa]);
+    return null;
   }
 
   private sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
-  normalizarJogo(jogo: any): any {
+  normalizarJogo(jogo: JogoApiRaw): JogoNormalizado {
     const status = this.mapearStatus(jogo);
-
-    const dataHoraBrt = jogo.data_realizacao;
-    let dataHoraUtc: string | null = null;
-    if (dataHoraBrt) {
-      const jaTemTimezone = /[Zz]$|[+-]\d{2}:\d{2}$|[+-]\d{4}$/.test(
-        dataHoraBrt.trim(),
-      );
-      dataHoraUtc = jaTemTimezone
-        ? new Date(dataHoraBrt).toISOString()
-        : new Date(`${dataHoraBrt}-03:00`).toISOString();
-    }
+    const dataHoraUtc = this.converterDataParaUtc(jogo.data_realizacao);
 
     return {
       externoId: String(jogo.id),
@@ -380,16 +418,23 @@ export class FutebolApiService implements OnModuleInit {
     };
   }
 
-  mapearStatus(jogo: any): string {
+  private converterDataParaUtc(dataHoraBrt: string | null): string | null {
+    if (!dataHoraBrt) return null;
+
+    const jaTemTimezone = /[Zz]$|[+-]\d{2}:\d{2}$|[+-]\d{4}$/.test(
+      dataHoraBrt.trim(),
+    );
+
+    return jaTemTimezone
+      ? new Date(dataHoraBrt).toISOString()
+      : new Date(`${dataHoraBrt}-03:00`).toISOString();
+  }
+
+  mapearStatus(jogo: JogoApiRaw): string {
     const broadcastId = jogo.transmissao?.broadcast?.id;
 
-    if (broadcastId === 'ENCERRADA') {
-      return 'FINALIZADO';
-    }
-
-    if (jogo.jogo_ja_comecou) {
-      return 'EM_ANDAMENTO';
-    }
+    if (broadcastId === 'ENCERRADA') return 'FINALIZADO';
+    if (jogo.jogo_ja_comecou) return 'EM_ANDAMENTO';
 
     return 'AGENDADO';
   }

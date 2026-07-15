@@ -13,6 +13,7 @@ import type { FaseRepository } from '../repositories/fase.repository.interface';
 import type { TimeRepository } from '../../times/repositories/time.repository.interface';
 import type { NotificacaoEventService } from '../../notificacoes/services/notificacao-event.service';
 import { FutebolApiService } from './futebol-api.service';
+import type { JogoApiRaw } from './futebol-api.types';
 import { ChaveamentoService } from './chaveamento.service';
 import { ErrorFactory } from '../../../common/errors/error.factory';
 import { CriarJogoDto } from '../dto/criar-jogo.dto';
@@ -155,8 +156,8 @@ export class JogoService {
     if (ehJogoVolta && grupoIdaVolta) {
       const jogosDoGrupo =
         await this.jogoRepo.buscarPorGrupoIdaVolta(grupoIdaVolta);
-      const jogoIda = jogosDoGrupo.find((j: any) => !j.ehJogoVolta);
-      if (!jogoIda) {
+      const temJogoIda = jogosDoGrupo.some((j: any) => !j.ehJogoVolta);
+      if (!temJogoIda) {
         throw new JogoIdaNaoEncontradoError();
       }
     }
@@ -243,6 +244,9 @@ export class JogoService {
     }
 
     const fase = await this.faseRepo.buscarPorId(jogo.faseId);
+    if (!fase) {
+      throw new FaseNaoEncontradaError();
+    }
 
     this.validarTransicaoStatus(jogo.status, 'FINALIZADO');
 
@@ -644,11 +648,11 @@ export class JogoService {
       dto.rodada,
     );
 
-    const normalizados = jogosApi.map((j: any) =>
+    const normalizados = jogosApi.map((j) =>
       this.futebolApiService.normalizarJogo(j),
     );
 
-    const externoIds = normalizados.map((n: any) => n.externoId);
+    const externoIds = normalizados.map((n) => n.externoId);
     const jogosExistentesGlobal =
       await this.buscarExternoIdsExistentes(externoIds);
     const externosExistentes = new Set(jogosExistentesGlobal);
@@ -742,7 +746,7 @@ export class JogoService {
     ]);
     const cache = new Map<string, any>();
     for (const time of timesExistentes) {
-      cache.set(time.externoId, time);
+      if (time.externoId) cache.set(time.externoId, time);
     }
     return cache;
   }
@@ -1058,15 +1062,15 @@ export class JogoService {
       rodadasPendentes.unshift(1);
     }
 
-    let jogosApi: Record<string, unknown>[] = [];
+    let jogosApi: JogoApiRaw[] = [];
     let apiDisponivel = true;
 
     try {
-      jogosApi = (await this.futebolApiService.buscarJogosPorRodadas(
+      jogosApi = await this.futebolApiService.buscarJogosPorRodadas(
         campeonatoId,
         faseSlug,
         rodadasPendentes,
-      )) as Record<string, unknown>[];
+      );
     } catch (error) {
       if (error instanceof ApiExternaIndisponivelError) {
         this.logger.warn(
@@ -1642,6 +1646,6 @@ export class JogoService {
       nome: 'A Definir',
       sigla: 'TBD',
       escudo: '',
-    } as Record<string, string>) as unknown as { id: string };
+    }) as unknown as { id: string };
   }
 }

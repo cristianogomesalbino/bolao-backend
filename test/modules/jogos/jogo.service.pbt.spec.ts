@@ -107,8 +107,8 @@ describe('JogoService — Property-Based Tests', () => {
           );
 
           expect(jogo.status).toBe('AGENDADO');
-          expect(jogo.golsCasa).toBeUndefined();
-          expect(jogo.golsFora).toBeUndefined();
+          expect(jogo.golsCasa).toBeNull();
+          expect(jogo.golsFora).toBeNull();
           expect(jogo.fonteResultado).toBe('MANUAL');
           expect(jogo.criadoPor).toBe(userId);
         },

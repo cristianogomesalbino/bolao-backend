@@ -52,7 +52,9 @@ src/modules/
 ├── palpites/        # Palpites (CRUD, lote), palpite dobrado, painel da rodada
 ├── times/           # Times (criados automaticamente na importação)
 ├── ranking/         # Pontuação calculada on-the-fly, ranking por grupo/fase
-└── notificacoes/    # Push notifications, lembretes, acertos, ranking changes
+├── notificacoes/    # Push notifications, lembretes, acertos, ranking changes
+├── scheduler/       # Centralização de todos os jobs (sync, notificações, limpeza)
+└── eventos/         # Outbox pattern local (eventos pendentes com retry)
 ```
 
 ## Modelos Prisma
@@ -149,7 +151,9 @@ EM_ANDAMENTO → CANCELADO
 7. ~~Jogos~~ ✅
 8. ~~Palpites~~ ✅
 9. ~~Ranking~~ ✅
-10. Planos/Monetização — Limites por plano (max participantes, etc.)
+10. ~~Scheduler (centralização de jobs)~~ ✅
+11. ~~Eventos (outbox pattern)~~ ✅
+12. Planos/Monetização — Limites por plano (max participantes, etc.)
 
 ## Idioma
 
@@ -189,11 +193,102 @@ Nomes de classes, decorators e padrões do NestJS seguem inglês (Controller, Se
 ## Services Especializados
 
 - `PontuacaoService` — cálculo de pontos (cheio 3pts, resultado 1pt, erro 0pts, dobrado ×2)
-- `FutebolApiService` — integração com API ge.globo.com + fallback campeonato-brasileiro-api
-- `SincronizacaoAutomaticaService` — scheduling adaptativo de sync (2min ao vivo, dorme sem jogos, acorda com antecedência)
+- `FutebolApiService` — integração com API ge.globo.com + fallback campeonato-brasileiro-api (tipado, com timeout/retry)
 - `PainelRodadaService` — agregação de dados para painel da rodada
 - `TokenDobroService` — gerenciamento de fichas de palpite dobrado
 - `PalpiteDobradoService` — operações de palpite dobrado
+
+## Módulo Scheduler
+
+Centraliza todos os agendamentos do sistema. Responsabilidade: saber QUANDO executar. Delega o QUE executar para use cases e o COMO para módulos de domínio.
+
+### Estrutura
+
+```
+src/modules/scheduler/
+├── scheduler.module.ts              # Importa ScheduleModule, JogosModule, NotificacoesModule, EventosModule
+├── scheduler.constants.ts           # Lock IDs, intervalos, API config, triggers
+├── scheduler.controller.ts          # GET /scheduler/status, POST /scheduler/executar/:useCase
+├── schedulers/
+│   ├── sincronizacao.scheduler.ts   # setTimeout adaptativo (2min ao vivo, dorme sem jogos)
+│   ├── notificacao.scheduler.ts     # @Cron: lembretes, palpites pendentes, jogos do dia
+│   └── manutencao.scheduler.ts      # @Cron: limpeza diária + processar eventos pendentes
+├── use-cases/
+│   ├── executar-sincronizacao.ts    # Lock + API externa + reconciliação (qualquer trigger)
+│   ├── executar-notificacoes.ts     # Delega para NotificacaoEventService
+│   └── executar-limpeza.ts          # Limpa notificações/logs antigos
+└── services/
+    ├── advisory-lock.service.ts     # pg_try_advisory_xact_lock (exclusividade entre instâncias)
+    └── sync-policy.service.ts       # Função pura: estado dos jogos → intervalo de sync
+```
+
+### Endpoints
+
+| Método | Rota | Descrição | Auth |
+|--------|------|-----------|------|
+| GET | `/scheduler/status` | Estado de todos os jobs + eventos pendentes | JWT + SUPER_ADMIN |
+| POST | `/scheduler/executar/:useCase` | Forçar execução (`sincronizacao`, `notificacoes`, `limpeza`, `eventos-pendentes`) | JWT + SUPER_ADMIN |
+
+### Variáveis de Ambiente
+
+| Variável | Descrição | Default |
+|----------|-----------|---------|
+| `SCHEDULER_HABILITADO` | Ativa/desativa scheduler global | `true` |
+| `SYNC_AUTOMATICA_HABILITADA` | Ativa/desativa sincronização automática | `true` |
+| `SYNC_CAMPEONATOS` | Slugs dos campeonatos para sync (comma-separated) | todos |
+
+### Triggers
+
+Todo use case aceita `trigger: 'CRON' | 'SUPER_ADMIN' | 'API_KEY'` para rastreabilidade em logs.
+
+### Advisory Lock
+
+Usa `pg_try_advisory_xact_lock` dentro de transação curta do Prisma. Garante exclusividade entre múltiplas instâncias (Render).
+
+### Policy de Frequência (SyncPolicyService)
+
+| Estado | Intervalo |
+|--------|-----------|
+| Jogos ao vivo | 2 minutos |
+| Próximo jogo em < 5min | 2 minutos |
+| Próximo jogo em > 5min | Acorda 5min antes |
+| Sem jogos próximos | 2 horas |
+
+## Módulo Eventos (Outbox Pattern Local)
+
+Módulo independente para registrar e processar efeitos derivados com retry.
+
+### Estrutura
+
+```
+src/modules/eventos/
+├── eventos.module.ts
+├── eventos.constants.ts             # Tipos de evento, max tentativas (3)
+├── services/
+│   └── evento-pendente.service.ts   # Registrar, processar, retry, contarPendentes
+└── repositories/
+    ├── evento-pendente.repository.interface.ts
+    ├── prisma-evento-pendente.repository.ts
+    └── in-memory-evento-pendente.repository.ts
+```
+
+### Tipos de Evento
+
+| Tipo | Chave de Idempotência | Descrição |
+|------|----------------------|-----------|
+| `RANKING_PROCESSAR` | `ranking:{jogoId}:{grupoId}` | Recalcular ranking do grupo |
+| `NOTIFICACAO_ENVIAR` | `notif:{tipo}:{jogoId}:{usuarioId}:{ref}` | Enviar notificação |
+| `CHAVEAMENTO_PROPAGAR` | `chave:{temporadaId}:{faseId}:{syncId}` | Propagar vencedores |
+
+### Ciclo de Vida
+
+```
+PENDENTE → PROCESSANDO → PROCESSADO
+                       → PENDENTE (retry, tentativas < 3)
+                       → FALHA_DEFINITIVA (tentativas >= 3)
+```
+
+Processamento: a cada 5 minutos via `ManutencaoScheduler`.
 
 ## Ranking — Critérios de Desempate
 
@@ -215,7 +310,6 @@ Services divididos por responsabilidade (SRP):
 - `NotificacaoRodadaService` — detecta rodada encerrada e notifica
 - `NotificacaoRankingService` — calcula mudanças de posição e notifica subidas/descidas
 - `NotificacaoLembreteService` — lembrete de jogo próximo + palpites pendentes
-- `NotificacaoCronService` — jobs agendados via `@nestjs/schedule`
 - `PushService` — envio de Web Push (VAPID/web-push)
 - `PreferenciaService` — preferências do usuário por tipo de notificação
 - `NotificacaoService` — CRUD de notificações (listar, marcar lida, limpar antigas)
