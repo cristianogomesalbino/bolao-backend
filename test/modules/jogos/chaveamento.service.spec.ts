@@ -536,7 +536,7 @@ describe('ChaveamentoService - dispararNotificacaoJogoLiberado', () => {
     );
   });
 
-  it('dispara notificação quando ambos os times ficam definidos', async () => {
+  it('não dispara notificação na propagação (notifica apenas quando externoId é vinculado)', async () => {
     // Usar semifinais → final (bracket simples: R1 vencedor = casa, R2 vencedor = fora)
     const faseSemisLocal = {
       id: 'fase-semis-local',
@@ -627,14 +627,17 @@ describe('ChaveamentoService - dispararNotificacaoJogoLiberado', () => {
 
     await service.propagarVencedoresParaProximaFase(TEMPORADA_ID);
 
-    // Aguardar fire-and-forget
     await new Promise((resolve) => setTimeout(resolve, 50));
 
-    expect(notificacaoEventService.notificarJogoLiberado).toHaveBeenCalledWith(
-      'jogo-final',
-      'Brasil',
-      'Argentina',
-    );
+    // Propagação preenche times mas não notifica — notificação só ocorre com externoId
+    expect(
+      notificacaoEventService.notificarJogoLiberado,
+    ).not.toHaveBeenCalled();
+
+    // Times devem estar preenchidos
+    const jogoFinal = jogoRepo.items.find((j) => j.id === 'jogo-final');
+    expect(jogoFinal?.timeCasaId).toBe('bra-id');
+    expect(jogoFinal?.timeForaId).toBe('arg-id');
   });
 
   it('não dispara notificação se notificacaoEventService não existe', async () => {
