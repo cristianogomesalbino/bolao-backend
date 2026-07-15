@@ -78,17 +78,17 @@ export class ExecutarSincronizacao {
     }
 
     this.executando = true;
-    this.logger.log(
-      `[SCHEDULER:${syncId}] ${input.trigger} → iniciando sincronização`,
-    );
 
     try {
       const resultado = await this.executarSync(input, syncId);
       const duracaoMs = Date.now() - inicio;
 
-      this.logger.log(
-        `[SCHEDULER:${syncId}] Concluído: ${resultado.sincronizados} sincronizados, ${resultado.falhas} falhas, ${duracaoMs}ms`,
-      );
+      // Só loga quando há mudanças ou falhas — ciclos sem novidade ficam silenciosos
+      if (resultado.sincronizados > 0 || resultado.falhas > 0) {
+        this.logger.log(
+          `[SCHEDULER:${syncId}] ${input.trigger} → ${resultado.sincronizados} sincronizados, ${resultado.falhas} falhas, ${duracaoMs}ms`,
+        );
+      }
 
       return this.buildOutput(
         syncId,
@@ -125,19 +125,23 @@ export class ExecutarSincronizacao {
     for (const slug of slugs) {
       try {
         const config = obterCampeonatoConfig(slug);
-        const faseSlug = config.fases[0]?.slug;
-        if (!faseSlug) continue;
+        const faseIdsProcessados = new Set<string>();
 
-        const faseId = input.faseId ?? (await this.resolverFaseId(slug));
-        if (!faseId) continue;
+        for (const faseConfig of config.fases) {
+          const resolvedId = await this.resolverFaseId(slug, faseConfig.slug);
+          const faseId = input.faseId ?? resolvedId;
+          if (!faseId) continue;
+          if (faseIdsProcessados.has(faseId)) continue;
+          faseIdsProcessados.add(faseId);
 
-        const resultado = await this.jogoService.sincronizarPlacares(
-          faseId,
-          slug,
-          faseSlug,
-        );
+          const resultado = await this.jogoService.sincronizarPlacares(
+            faseId,
+            slug,
+            faseConfig.slug,
+          );
 
-        totalSincronizados += resultado.sincronizados;
+          totalSincronizados += resultado.sincronizados;
+        }
       } catch (error: unknown) {
         totalFalhas++;
         const msg =
@@ -149,23 +153,50 @@ export class ExecutarSincronizacao {
     return { sincronizados: totalSincronizados, falhas: totalFalhas };
   }
 
-  private async resolverFaseId(campeonatoSlug: string): Promise<string | null> {
+  private async resolverFaseId(
+    campeonatoSlug: string,
+    faseSlug: string,
+  ): Promise<string | null> {
+    const nomeBusca = campeonatoSlug.includes('copa') ? 'Copa' : 'Brasileirão';
+
     const fase = await this.prisma.fase.findFirst({
       where: {
         temporada: {
-          campeonato: {
-            nome: {
-              contains: campeonatoSlug.includes('copa')
-                ? 'Copa'
-                : 'Brasileirão',
-            },
-          },
+          campeonato: { nome: { contains: nomeBusca } },
         },
+        nome: { contains: this.extrairNomeFase(faseSlug) },
       },
       orderBy: { temporada: { ano: 'desc' } },
       select: { id: true },
     });
-    return fase?.id ?? null;
+
+    // Fallback: buscar qualquer fase da temporada mais recente
+    if (!fase) {
+      const fallback = await this.prisma.fase.findFirst({
+        where: {
+          temporada: {
+            campeonato: { nome: { contains: nomeBusca } },
+          },
+        },
+        orderBy: { temporada: { ano: 'desc' } },
+        select: { id: true },
+      });
+      return fallback?.id ?? null;
+    }
+
+    return fase.id;
+  }
+
+  private extrairNomeFase(faseSlug: string): string {
+    if (faseSlug.includes('fase-de-grupos')) return 'Grupo';
+    if (faseSlug.includes('segunda-fase')) return '16 Avos';
+    if (faseSlug.includes('oitavas')) return 'Oitavas';
+    if (faseSlug.includes('quartas')) return 'Quartas';
+    if (faseSlug.includes('semifinal')) return 'Semifin';
+    if (faseSlug.includes('terceiro')) return 'Terceiro';
+    if (faseSlug.includes('final-copa')) return 'Final';
+    if (faseSlug.includes('fase-unica')) return 'Fase';
+    return '';
   }
 
   private buildOutput(

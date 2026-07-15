@@ -883,6 +883,7 @@ export class JogoService {
       id: string;
       timeCasa: string;
       timeFora: string;
+      statusAnterior: string;
       status: string;
       golsCasa: number | null;
       golsFora: number | null;
@@ -904,6 +905,7 @@ export class JogoService {
           id: jogo.id,
           timeCasa: jogo.timeCasa?.sigla ?? jogo.timeCasa?.nome ?? '?',
           timeFora: jogo.timeFora?.sigla ?? jogo.timeFora?.nome ?? '?',
+          statusAnterior: jogo.status,
           status: resultado.novoStatus ?? jogo.status,
           golsCasa: resultado.golsCasa ?? jogo.golsCasa ?? null,
           golsFora: resultado.golsFora ?? jogo.golsFora ?? null,
@@ -917,14 +919,18 @@ export class JogoService {
 
     // Log consolidado
     if (sincronizados > 0) {
+      // Jogos que TRANSITARAM para EM_ANDAMENTO (eram AGENDADO)
       const jogosIniciados = jogosAtualizados.filter(
-        (j) => j.status === 'EM_ANDAMENTO',
+        (j) =>
+          j.status === 'EM_ANDAMENTO' && j.statusAnterior !== 'EM_ANDAMENTO',
+      );
+      // Jogos que já estavam EM_ANDAMENTO e tiveram placar atualizado (gols)
+      const jogosComGol = jogosAtualizados.filter(
+        (j) =>
+          j.status === 'EM_ANDAMENTO' && j.statusAnterior === 'EM_ANDAMENTO',
       );
       const jogosFinalizados = jogosAtualizados.filter(
         (j) => j.status === 'FINALIZADO',
-      );
-      const outrosJogos = jogosAtualizados.filter(
-        (j) => j.status !== 'EM_ANDAMENTO' && j.status !== 'FINALIZADO',
       );
 
       for (const j of jogosIniciados) {
@@ -933,7 +939,7 @@ export class JogoService {
         );
       }
 
-      const resumoJogos = [...jogosFinalizados, ...outrosJogos]
+      const resumoJogos = [...jogosComGol, ...jogosFinalizados]
         .map((j) => {
           const placar = `${j.timeCasa} ${j.golsCasa ?? '?'}x${j.golsFora ?? '?'} ${j.timeFora}`;
           const icone = j.status === 'FINALIZADO' ? '🏁' : '⚽';
@@ -1042,18 +1048,27 @@ export class JogoService {
     temporadaId: string;
     tipo: string;
   }): Promise<{ id: string; nome: string; tipo: string }[]> {
-    // Buscar todas as fases da mesma temporada com o mesmo tipo
+    // MATA_MATA: cada fase tem seu próprio endpoint na API — não expandir
+    if (fase.tipo === 'MATA_MATA') {
+      return [
+        {
+          id: (fase as any).id as string,
+          nome: (fase as any).nome as string,
+          tipo: fase.tipo,
+        },
+      ];
+    }
+
+    // PONTOS_CORRIDOS: múltiplas fases usam o mesmo endpoint (ex: 12 grupos da Copa)
     const todasFases = await this.faseRepo.buscarPorTemporada(fase.temporadaId);
     const fasesDoMesmoTipo = (
       todasFases as { id: string; nome: string; tipo: string }[]
     ).filter((f) => f.tipo === fase.tipo);
 
-    // Se há múltiplas fases do mesmo tipo (ex: 12 grupos da Copa), sincronizar todas
     if (fasesDoMesmoTipo.length > 1) {
       return fasesDoMesmoTipo;
     }
 
-    // Caso contrário, sincronizar apenas a fase solicitada
     return [
       {
         id: (fase as any).id as string,
