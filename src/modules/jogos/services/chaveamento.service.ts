@@ -688,6 +688,8 @@ export class ChaveamentoService {
       ['quartas', 'quartas'],
       ['semifinal', 'semi'],
       ['terceiro', 'terceiro'],
+      ['terceiro', '3º'],
+      ['terceiro', '3°'],
     ];
 
     for (const [slugParte, termo] of mapeamento) {
