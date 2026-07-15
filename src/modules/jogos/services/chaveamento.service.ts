@@ -373,11 +373,10 @@ export class ChaveamentoService {
         f.nome.toLowerCase().includes('3') ||
         f.nome.toLowerCase().includes('terceiro'),
     );
-    const faseFinal = fasesMataMata.find(
-      (f) =>
-        f.nome.toLowerCase().includes('final') &&
-        !f.nome.toLowerCase().includes('semi'),
-    );
+    const faseFinal = fasesMataMata.find((f) => {
+      const nome = f.nome.toLowerCase().trim();
+      return nome === 'final';
+    });
 
     for (let i = 0; i < fasesMataMata.length - 1; i++) {
       const faseAtual = fasesMataMata[i];
@@ -531,21 +530,11 @@ export class ChaveamentoService {
       updateData.timeForaId = foraCorreta;
     }
 
-    if (Object.keys(updateData).length > 0) {
-      await this.jogoRepo.atualizar(jogoDestino.id, updateData);
-
-      const casaFinal = updateData.timeCasaId ?? jogoDestino.timeCasaId;
-      const foraFinal = updateData.timeForaId ?? jogoDestino.timeForaId;
-      const ambosDefinidos = casaFinal !== tbdId && foraFinal !== tbdId;
-
-      if (ambosDefinidos) {
-        this.dispararNotificacaoJogoLiberado(
-          jogoDestino.id,
-          casaFinal,
-          foraFinal,
-        );
-      }
+    if (Object.keys(updateData).length === 0) {
+      return;
     }
+
+    await this.jogoRepo.atualizar(jogoDestino.id, updateData);
   }
 
   private dispararNotificacaoJogoLiberado(
@@ -1022,51 +1011,102 @@ export class ChaveamentoService {
     const updateData: Record<string, string> = {};
     let mudou = false;
 
-    // API do GE é fonte autoritativa — pode sobrescrever times da classificação
-    // quando o jogo ainda está AGENDADO (não finalizado/em andamento)
     const jogoAindaNaoIniciou = jogoLocal.status === 'AGENDADO';
 
+    mudou = await this.resolverTimeCasa(
+      jogoLocal,
+      normalizado,
+      jogoAindaNaoIniciou,
+      updateData,
+    );
+    const mudouFora = await this.resolverTimeFora(
+      jogoLocal,
+      normalizado,
+      jogoAindaNaoIniciou,
+      updateData,
+    );
+    mudou = mudou || mudouFora;
+
+    this.tentarVincularExternoId(jogoLocal, normalizado, updateData);
+
+    const temAlteracao = mudou || !!updateData.externoId;
+    if (!temAlteracao) return false;
+
+    await this.jogoRepo.atualizar(jogoLocal.id, updateData);
+    this.notificarSeJogoLiberado(jogoLocal, updateData);
+
+    return mudou;
+  }
+
+  private notificarSeJogoLiberado(
+    jogoLocal: JogoComRelacoes,
+    updateData: Record<string, string>,
+  ): void {
+    if (!updateData.externoId) return;
+
+    const casaFinal = updateData.timeCasaId ?? jogoLocal.timeCasaId;
+    const foraFinal = updateData.timeForaId ?? jogoLocal.timeForaId;
+    if (casaFinal === TBD_ID || foraFinal === TBD_ID) return;
+
+    this.dispararNotificacaoJogoLiberado(jogoLocal.id, casaFinal, foraFinal);
+  }
+
+  private async resolverTimeCasa(
+    jogoLocal: JogoComRelacoes,
+    normalizado: JogoNormalizado,
+    jogoAindaNaoIniciou: boolean,
+    updateData: Record<string, string>,
+  ): Promise<boolean> {
     const casaDisponivel = normalizado.timeCasa?.externoId;
     const casaPermitido =
       jogoLocal.timeCasaId === TBD_ID || jogoAindaNaoIniciou;
-    if (casaDisponivel && casaPermitido) {
-      const time = await this.resolverOuCriarTime(normalizado.timeCasa);
-      if (time.id !== jogoLocal.timeCasaId) {
-        updateData.timeCasaId = time.id;
-        mudou = true;
-      }
-    }
+    if (!casaDisponivel || !casaPermitido) return false;
 
+    const time = await this.resolverOuCriarTime(normalizado.timeCasa);
+    if (time.id === jogoLocal.timeCasaId) return false;
+
+    updateData.timeCasaId = time.id;
+    return true;
+  }
+
+  private async resolverTimeFora(
+    jogoLocal: JogoComRelacoes,
+    normalizado: JogoNormalizado,
+    jogoAindaNaoIniciou: boolean,
+    updateData: Record<string, string>,
+  ): Promise<boolean> {
     const foraDisponivel = normalizado.timeFora?.externoId;
     const foraPermitido =
       jogoLocal.timeForaId === TBD_ID || jogoAindaNaoIniciou;
-    if (foraDisponivel && foraPermitido) {
-      const time = await this.resolverOuCriarTime(normalizado.timeFora);
-      if (time.id !== jogoLocal.timeForaId) {
-        updateData.timeForaId = time.id;
-        mudou = true;
-      }
-    }
+    if (!foraDisponivel || !foraPermitido) return false;
 
-    if (!jogoLocal.externoId && normalizado.externoId) {
-      // Só vincular externoId se ambos os times são reais (não placeholder)
-      const casaEhReal =
-        !updateData.timeCasaId || updateData.timeCasaId !== TBD_ID;
-      const foraEhReal =
-        !updateData.timeForaId || updateData.timeForaId !== TBD_ID;
-      const casaAtualReal = jogoLocal.timeCasaId !== TBD_ID;
-      const foraAtualReal = jogoLocal.timeForaId !== TBD_ID;
-      const ambosTimesReais =
-        casaEhReal && casaAtualReal && foraEhReal && foraAtualReal;
-      if (ambosTimesReais) {
-        updateData.externoId = normalizado.externoId;
-      }
-    }
+    const time = await this.resolverOuCriarTime(normalizado.timeFora);
+    if (time.id === jogoLocal.timeForaId) return false;
 
-    if (mudou || updateData.externoId) {
-      await this.jogoRepo.atualizar(jogoLocal.id, updateData);
-    }
-    return mudou;
+    updateData.timeForaId = time.id;
+    return true;
+  }
+
+  private tentarVincularExternoId(
+    jogoLocal: JogoComRelacoes,
+    normalizado: JogoNormalizado,
+    updateData: Record<string, string>,
+  ): void {
+    if (jogoLocal.externoId || !normalizado.externoId) return;
+
+    const casaEhReal =
+      !updateData.timeCasaId || updateData.timeCasaId !== TBD_ID;
+    const foraEhReal =
+      !updateData.timeForaId || updateData.timeForaId !== TBD_ID;
+    const casaAtualReal = jogoLocal.timeCasaId !== TBD_ID;
+    const foraAtualReal = jogoLocal.timeForaId !== TBD_ID;
+    const ambosTimesReais =
+      casaEhReal && casaAtualReal && foraEhReal && foraAtualReal;
+
+    if (!ambosTimesReais) return;
+
+    updateData.externoId = normalizado.externoId;
+    updateData.fonteResultado = 'API_EXTERNA';
   }
 
   private async resolverOuCriarTime(timeData: {
