@@ -352,9 +352,8 @@ export function validarRodada(rodada: number, faseConfig: FaseConfig): void {
 export const SYNC = {
   INTERVALO_COM_JOGOS_AO_VIVO_MS: 2 * 60 * 1000, // 2 minutos
   INTERVALO_PROXIMO_JOGO_MS: 5 * 60 * 1000, // 5 minutos
-  INTERVALO_SEM_JOGOS_MS: 15 * 60 * 1000, // 15 minutos
+  INTERVALO_SEM_JOGOS_MS: 24 * 60 * 60 * 1000, // 24 horas (adiados são remarcados com dias de antecedência)
   ANTECEDENCIA_INICIO_MS: 5 * 60 * 1000, // 5 minutos antes do jogo começa a sincronizar
-  CRON_VERIFICACAO: '*/1 * * * *', // A cada 1 minuto verifica se deve sincronizar
   LOG_REPOSITORY_TOKEN: 'LOG_SINCRONIZACAO_REPOSITORY',
 } as const;
 
