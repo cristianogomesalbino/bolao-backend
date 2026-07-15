@@ -27,11 +27,11 @@ export class PrismaJogoRepository implements JogoRepository {
     }) as unknown as Promise<Jogo>;
   }
 
-  async buscarPorId(id: string): Promise<JogoComTimes | null> {
+  async buscarPorId(id: string): Promise<JogoComRelacoes | null> {
     return this.prisma.jogo.findUnique({
       where: { id },
       include: { fase: true, timeCasa: true, timeFora: true },
-    }) as unknown as Promise<JogoComTimes | null>;
+    }) as unknown as Promise<JogoComRelacoes | null>;
   }
 
   async buscarPorIds(ids: string[]): Promise<Jogo[]> {

@@ -7,6 +7,11 @@ import { SYNC_INTERVALOS } from '../scheduler.constants';
 export interface EstadoJogos {
   readonly jogosEmAndamento: number;
   readonly proximoJogoEm: number | null; // ms até o próximo jogo (null = sem jogos)
+  readonly proximoJogoInfo?: {
+    readonly timeCasa: string;
+    readonly timeFora: string;
+    readonly dataHora: Date;
+  } | null;
 }
 
 /**

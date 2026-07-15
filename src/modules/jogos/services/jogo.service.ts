@@ -917,14 +917,33 @@ export class JogoService {
 
     // Log consolidado
     if (sincronizados > 0) {
-      const resumoJogos = jogosAtualizados
+      const jogosIniciados = jogosAtualizados.filter(
+        (j) => j.status === 'EM_ANDAMENTO',
+      );
+      const jogosFinalizados = jogosAtualizados.filter(
+        (j) => j.status === 'FINALIZADO',
+      );
+      const outrosJogos = jogosAtualizados.filter(
+        (j) => j.status !== 'EM_ANDAMENTO' && j.status !== 'FINALIZADO',
+      );
+
+      for (const j of jogosIniciados) {
+        this.logger.log(
+          `[SYNC] 🎙️ AAAAAAAAAAAAAAUTORIZA O ÁRBITRO! ${j.timeCasa} x ${j.timeFora} — BOLA ROLANDO!`,
+        );
+      }
+
+      const resumoJogos = [...jogosFinalizados, ...outrosJogos]
         .map((j) => {
           const placar = `${j.timeCasa} ${j.golsCasa ?? '?'}x${j.golsFora ?? '?'} ${j.timeFora}`;
           const icone = j.status === 'FINALIZADO' ? '🏁' : '⚽';
           return `${icone} ${placar}`;
         })
         .join(' | ');
-      this.logger.log(`[SYNC] ${resumoJogos}`);
+
+      if (resumoJogos) {
+        this.logger.log(`[SYNC] ${resumoJogos}`);
+      }
     }
 
     if (!apiDisponivel) {

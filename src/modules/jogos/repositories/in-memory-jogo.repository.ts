@@ -59,8 +59,8 @@ export class InMemoryJogoRepository implements JogoRepository {
     return this.items[index];
   }
 
-  async buscarPorId(id: string): Promise<JogoComTimes | null> {
-    return (this.items.find((j) => j.id === id) as JogoComTimes) ?? null;
+  async buscarPorId(id: string): Promise<JogoComRelacoes | null> {
+    return (this.items.find((j) => j.id === id) as JogoComRelacoes) ?? null;
   }
 
   async buscarPorIds(ids: string[]): Promise<Jogo[]> {

@@ -106,7 +106,7 @@ export interface AtualizarJogoData {
 export interface JogoRepository {
   criar(data: CriarJogoData): Promise<Jogo>;
   atualizar(id: string, data: AtualizarJogoData): Promise<Jogo>;
-  buscarPorId(id: string): Promise<JogoComTimes | null>;
+  buscarPorId(id: string): Promise<JogoComRelacoes | null>;
   buscarPorIds(ids: string[]): Promise<Jogo[]>;
   buscarPorExternoIds(externoIds: string[]): Promise<JogoExternoId[]>;
   buscarPorFase(faseId: string, rodada?: number): Promise<JogoComTimes[]>;

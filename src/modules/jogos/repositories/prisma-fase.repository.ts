@@ -16,7 +16,7 @@ export class PrismaFaseRepository implements FaseRepository {
   }
 
   async criarVarios(data: CriarFaseData[]): Promise<Fase[]> {
-    await this.prisma.fase.createMany({ data: data as Parameters<typeof this.prisma.fase.createMany>[0]['data'] });
+    await this.prisma.fase.createMany({ data: data as never });
     return this.prisma.fase.findMany({
       where: { temporadaId: data[0]?.temporadaId },
       orderBy: { ordem: 'asc' },
