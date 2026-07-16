@@ -9,6 +9,7 @@ interface ExecutarNotificacoesInput {
 /**
  * Use case unificado para notificações agendadas.
  * Delega para NotificacaoEventService existente.
+ * Logs silenciosos — só loga em erro. O EventService loga quando há ação real.
  */
 @Injectable()
 export class ExecutarNotificacoes {
@@ -16,8 +17,7 @@ export class ExecutarNotificacoes {
 
   constructor(private readonly eventService: NotificacaoEventService) {}
 
-  async agendarJogosDoDia(input: ExecutarNotificacoesInput): Promise<void> {
-    this.logger.log(`[NOTIFICACOES] ${input.trigger} → agendarJogosDoDia`);
+  async agendarJogosDoDia(_input: ExecutarNotificacoesInput): Promise<void> {
     try {
       await this.eventService.agendarJogosDoDia();
     } catch (error: unknown) {
@@ -26,8 +26,7 @@ export class ExecutarNotificacoes {
     }
   }
 
-  async verificarIminentes(input: ExecutarNotificacoesInput): Promise<void> {
-    this.logger.log(`[NOTIFICACOES] ${input.trigger} → verificarIminentes`);
+  async verificarIminentes(_input: ExecutarNotificacoesInput): Promise<void> {
     try {
       await this.eventService.verificarJogosIminentes();
     } catch (error: unknown) {
@@ -36,8 +35,7 @@ export class ExecutarNotificacoes {
     }
   }
 
-  async processarPendentes(input: ExecutarNotificacoesInput): Promise<void> {
-    this.logger.log(`[NOTIFICACOES] ${input.trigger} → processarPendentes`);
+  async processarPendentes(_input: ExecutarNotificacoesInput): Promise<void> {
     try {
       await this.eventService.processarPalpitesPendentes();
     } catch (error: unknown) {
