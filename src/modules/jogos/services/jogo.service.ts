@@ -1113,8 +1113,11 @@ export class JogoService {
     const timeForaFinalId =
       (updateData.timeForaId as string) ?? jogo.timeForaId;
     const tbdId = '00000000-0000-0000-0000-000000000001';
-    const timesDefinitivosAposSync =
-      timesMudaram && timeCasaFinalId !== tbdId && timeForaFinalId !== tbdId;
+    const ambosTimesReais =
+      timeCasaFinalId !== tbdId && timeForaFinalId !== tbdId;
+    const externoIdRecemVinculado = !jogo.externoId && !!jogoApi?.externoId;
+    const deveNotificarLiberado =
+      ambosTimesReais && (timesMudaram || externoIdRecemVinculado);
 
     if (
       jogoApi &&
@@ -1144,7 +1147,7 @@ export class JogoService {
 
     // Notificar JOGO_LIBERADO quando a API define os times definitivos
     // (corrige o cenário em que o chaveamento local havia preenchido times errados)
-    if (timesDefinitivosAposSync) {
+    if (deveNotificarLiberado) {
       const timeCasaNome = jogoApi?.timeCasa?.nome ?? '?';
       const timeForaNome = jogoApi?.timeFora?.nome ?? '?';
       this.notificacaoEventService

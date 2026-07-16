@@ -35,9 +35,7 @@ export class GruposService {
       throw new TemporadaNaoEncontradaError();
     }
 
-    const codigoConvite = dto.privado
-      ? nanoid(GRUPOS.CODIGO_CONVITE_LENGTH).toUpperCase()
-      : null;
+    const codigoConvite = nanoid(GRUPOS.CODIGO_CONVITE_LENGTH).toUpperCase();
 
     const grupo = await this.grupoRepo.criar({
       nome: dto.nome,
@@ -146,5 +144,21 @@ export class GruposService {
     ).toUpperCase();
 
     return this.grupoRepo.atualizar(id, { codigoConvite: novoCodigoConvite });
+  }
+
+  async buscarInfoPorConvite(codigo: string) {
+    const grupo = await this.grupoRepo.buscarPorCodigoConvite(codigo);
+
+    if (!grupo?.ativo) {
+      throw new GrupoNaoEncontradoError();
+    }
+
+    return {
+      id: grupo.id,
+      nome: grupo.nome,
+      icone: grupo.icone ?? null,
+      privado: grupo.privado,
+      maxParticipantes: grupo.maxParticipantes,
+    };
   }
 }
