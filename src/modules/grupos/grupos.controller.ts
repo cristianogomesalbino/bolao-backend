@@ -26,6 +26,7 @@ import {
 import { GroupRoleGuard } from '../../common/guards/group-role.guard';
 import { GroupRoles } from '../../common/decorators/group-roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { Public } from '../../common/decorators/public.decorator';
 import { GRUPOS } from './grupos.constants';
 import { GRUPO_ROLE } from '../../common/constants/roles.constants';
 import { GrupoPresenter } from '../../common/presenters';
@@ -79,6 +80,15 @@ export class GruposController {
   ) {
     const grupos = await this.gruposService.buscarTodos(filtros, user.id);
     return grupos.map((g) => GrupoPresenter.toHttp(g));
+  }
+
+  @ApiOperation({ summary: 'Buscar informações públicas do grupo por código de convite' })
+  @ApiResponse({ status: 200, description: 'Informações do grupo retornadas.' })
+  @ApiNotFoundResponse({ description: 'Código de convite inválido.' })
+  @Public()
+  @Get('convite/:codigo/info')
+  async buscarPorConvite(@Param('codigo') codigo: string) {
+    return this.gruposService.buscarInfoPorConvite(codigo);
   }
 
   @ApiOperation({ summary: 'Buscar grupo por ID' })
