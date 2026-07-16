@@ -26,9 +26,40 @@ import {
 import { GroupRoleGuard } from '../../common/guards/group-role.guard';
 import { GroupRoles } from '../../common/decorators/group-roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { Public } from '../../common/decorators/public.decorator';
 import { GRUPOS } from './grupos.constants';
 import { GRUPO_ROLE } from '../../common/constants/roles.constants';
 import { GrupoPresenter } from '../../common/presenters';
+
+interface GrupoComRelacoes {
+  id: string;
+  nome: string;
+  icone: string | null;
+  temporadaId: string;
+  privado: boolean;
+  codigoConvite: string | null;
+  permitirPalpiteAutomatico: boolean;
+  maxParticipantes: number;
+  permitirPalpiteDobrado: boolean;
+  ativo: boolean;
+  dataCriacao: Date;
+  criadoPor: string;
+  ehMembro?: boolean;
+  _count?: { usuarios: number };
+  temporada?: {
+    id: string;
+    ano: number;
+    campeonatoId: string;
+    dataCriacao: Date;
+    campeonato?: {
+      id: string;
+      nome: string;
+      dataCriacao: Date;
+      atualizadoEm: Date;
+    };
+  };
+  usuarios?: Array<{ role: string }>;
+}
 
 @ApiTags(GRUPOS.TAG)
 @Controller('grupos')
@@ -44,9 +75,11 @@ export class GruposController {
     @Body() criarGrupoDto: CriarGrupoDto,
     @CurrentUser() user: { id: string },
   ) {
-    return GrupoPresenter.toHttp(
-      await this.gruposService.criar(criarGrupoDto, user.id),
-    );
+    const grupo = (await this.gruposService.criar(
+      criarGrupoDto,
+      user.id,
+    )) as GrupoComRelacoes;
+    return GrupoPresenter.toHttp(grupo);
   }
 
   @ApiOperation({ summary: 'Listar grupos com filtros opcionais' })
@@ -77,8 +110,22 @@ export class GruposController {
     @Query() filtros: FiltrarGruposDto,
     @CurrentUser() user: { id: string },
   ) {
-    const grupos = await this.gruposService.buscarTodos(filtros, user.id);
+    const grupos = (await this.gruposService.buscarTodos(
+      filtros,
+      user.id,
+    )) as GrupoComRelacoes[];
     return grupos.map((g) => GrupoPresenter.toHttp(g));
+  }
+
+  @ApiOperation({
+    summary: 'Buscar informações públicas do grupo por código de convite',
+  })
+  @ApiResponse({ status: 200, description: 'Informações do grupo retornadas.' })
+  @ApiNotFoundResponse({ description: 'Código de convite inválido.' })
+  @Public()
+  @Get('convite/:codigo/info')
+  async buscarPorConvite(@Param('codigo') codigo: string) {
+    return this.gruposService.buscarInfoPorConvite(codigo);
   }
 
   @ApiOperation({ summary: 'Buscar grupo por ID' })
@@ -89,7 +136,10 @@ export class GruposController {
     @Param('grupoId', new ParseUUIDCustomPipe('grupoId')) grupoId: string,
     @CurrentUser() user: { id: string },
   ) {
-    const grupo = await this.gruposService.buscarPorId(grupoId, user.id);
+    const grupo = (await this.gruposService.buscarPorId(
+      grupoId,
+      user.id,
+    )) as GrupoComRelacoes;
     if (grupo.ehMembro) {
       return GrupoPresenter.toHttpMembro(grupo);
     }
@@ -106,9 +156,11 @@ export class GruposController {
     @Param('grupoId', new ParseUUIDCustomPipe('grupoId')) grupoId: string,
     @Body() updateGrupoDto: UpdateGrupoDto,
   ) {
-    return GrupoPresenter.toHttp(
-      await this.gruposService.atualizar(grupoId, updateGrupoDto),
-    );
+    const grupo = (await this.gruposService.atualizar(
+      grupoId,
+      updateGrupoDto,
+    )) as GrupoComRelacoes;
+    return GrupoPresenter.toHttp(grupo);
   }
 
   @ApiOperation({ summary: 'Alterar status (ativo/inativo) do grupo' })
@@ -122,9 +174,11 @@ export class GruposController {
     @Param('grupoId', new ParseUUIDCustomPipe('grupoId')) grupoId: string,
     @Body() updateStatusGrupoDto: UpdateStatusGrupoDto,
   ) {
-    return GrupoPresenter.toHttp(
-      await this.gruposService.atualizarStatus(grupoId, updateStatusGrupoDto),
-    );
+    const grupo = (await this.gruposService.atualizarStatus(
+      grupoId,
+      updateStatusGrupoDto,
+    )) as GrupoComRelacoes;
+    return GrupoPresenter.toHttp(grupo);
   }
 
   @ApiOperation({ summary: 'Exclui um grupo inativo' })
@@ -149,7 +203,9 @@ export class GruposController {
   async regenerarConvite(
     @Param('grupoId', new ParseUUIDCustomPipe('grupoId')) grupoId: string,
   ) {
-    const grupo = await this.gruposService.regenerarCodigoConvite(grupoId);
+    const grupo = (await this.gruposService.regenerarCodigoConvite(
+      grupoId,
+    )) as GrupoComRelacoes;
     return {
       codigoConvite: grupo.codigoConvite,
       mensagem: GRUPOS.MENSAGENS.CONVITE_REGENERADO,

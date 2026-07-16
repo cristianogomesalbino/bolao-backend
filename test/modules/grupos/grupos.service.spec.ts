@@ -68,13 +68,14 @@ describe('GruposService', () => {
       expect(grupoUsuarioRepo.items[0].usuarioId).toBe('user-1');
     });
 
-    it('deve criar grupo público sem código de convite', async () => {
+    it('deve criar grupo público com código de convite', async () => {
       const result = await service.criar(
         { nome: 'Bolão Público', temporadaId: 'temp-1', privado: false },
         'user-1',
       );
 
-      expect(result.codigoConvite).toBeNull();
+      expect(result.codigoConvite).toBeDefined();
+      expect(result.codigoConvite).toHaveLength(8);
       expect(result.privado).toBe(false);
     });
 
