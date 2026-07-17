@@ -27,7 +27,9 @@ src/
 │   ├── jogos/              # Fases, jogos, integração API de futebol
 │   ├── times/              # Times (criados automaticamente na importação, sem controller)
 │   ├── palpites/           # Palpites universais, palpite dobrado, token dobro
-│   └── ranking/            # Pontuação, ranking por fase/geral, detalhamento
+│   ├── ranking/            # Pontuação, ranking por fase/geral, detalhamento
+│   ├── scheduler/          # Centralização de jobs (sync, notificações, limpeza)
+│   └── eventos/            # Outbox pattern local (eventos pendentes com retry)
 ├── common/
 │   ├── constants/          # Constantes globais (roles)
 │   ├── decorators/         # @Public(), @CurrentUser(), @GroupRoles()
@@ -262,6 +264,15 @@ O endpoint de alterar role aceita `?transferir=true` para transferência de prop
 | POST   | `/fases/:faseId/jogos/sincronizar`            | Sincronizar placares               | JWT + SUPER_ADMIN  |
 | PATCH  | `/jogos/:id/resetar-fonte`                    | Resetar fonte resultado            | JWT                |
 
+### Scheduler (`/scheduler`)
+
+| Método | Rota                              | Descrição                                   | Auth              |
+|--------|-----------------------------------|---------------------------------------------|--------------------|
+| GET    | `/scheduler/status`               | Estado de todos os jobs + eventos pendentes  | JWT + SUPER_ADMIN  |
+| POST   | `/scheduler/executar/:useCase`    | Forçar execução de use case                 | JWT + SUPER_ADMIN  |
+
+Use cases permitidos: `sincronizacao`, `notificacoes`, `limpeza`, `eventos-pendentes`.
+
 ## Integração com API de Futebol
 
 O módulo de Jogos suporta importação e sincronização de jogos via API do ge.globo.com (Globo Esporte).
@@ -343,6 +354,8 @@ Mocks: `vi.fn()` para controllers, InMemory repositories para services.
 7. ~~Jogos~~ ✅
 8. ~~Palpites~~ ✅
 9. ~~Ranking~~ ✅
+10. ~~Scheduler (centralização de jobs)~~ ✅
+11. ~~Eventos (outbox pattern)~~ ✅
 
 ## Licença
 

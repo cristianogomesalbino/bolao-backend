@@ -8,7 +8,7 @@ interface TimeRelacao {
 interface JogoData {
   id: string;
   faseId: string;
-  rodada: number;
+  rodada: number | null;
   timeCasaId: string;
   timeForaId: string;
   timeCasa?: TimeRelacao | null;
@@ -31,6 +31,7 @@ interface JogoData {
   grupoIdaVolta?: string | null;
   fonteResultado?: string | null;
   externoId?: string | null;
+  fase?: { tipo?: string };
 }
 
 export class JogoPresenter {

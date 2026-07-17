@@ -1069,6 +1069,71 @@
           }
         }
       ]
+    },
+    {
+      "name": "Scheduler",
+      "item": [
+        {
+          "name": "Status do Scheduler",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/scheduler/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["scheduler", "status"]
+            }
+          }
+        },
+        {
+          "name": "Executar Sincronização",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/scheduler/executar/sincronizacao",
+              "host": ["{{baseUrl}}"],
+              "path": ["scheduler", "executar", "sincronizacao"]
+            }
+          }
+        },
+        {
+          "name": "Executar Notificações",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/scheduler/executar/notificacoes",
+              "host": ["{{baseUrl}}"],
+              "path": ["scheduler", "executar", "notificacoes"]
+            }
+          }
+        },
+        {
+          "name": "Executar Limpeza",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/scheduler/executar/limpeza",
+              "host": ["{{baseUrl}}"],
+              "path": ["scheduler", "executar", "limpeza"]
+            }
+          }
+        },
+        {
+          "name": "Processar Eventos Pendentes",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/scheduler/executar/eventos-pendentes",
+              "host": ["{{baseUrl}}"],
+              "path": ["scheduler", "executar", "eventos-pendentes"]
+            }
+          }
+        }
+      ]
     }
   ]
 }

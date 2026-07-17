@@ -8,11 +8,15 @@ import {
 import type { CampeonatoConfig } from '../jogos.constants';
 import { TIMES } from '../../times/time.constants';
 import { NOTIFICACOES } from '../../notificacoes/notificacoes.constants';
-import type { JogoRepository } from '../repositories/jogo.repository.interface';
+import type {
+  JogoRepository,
+  CriarJogoData,
+} from '../repositories/jogo.repository.interface';
 import type { FaseRepository } from '../repositories/fase.repository.interface';
 import type { TimeRepository } from '../../times/repositories/time.repository.interface';
 import type { NotificacaoEventService } from '../../notificacoes/services/notificacao-event.service';
 import { FutebolApiService } from './futebol-api.service';
+import type { JogoApiRaw } from './futebol-api.types';
 import { ChaveamentoService } from './chaveamento.service';
 import { ErrorFactory } from '../../../common/errors/error.factory';
 import { CriarJogoDto } from '../dto/criar-jogo.dto';
@@ -37,7 +41,7 @@ import {
 } from '../../../common/errors/domain-errors';
 
 const TRANSICOES_VALIDAS: Record<string, string[]> = {
-  AGENDADO: ['EM_ANDAMENTO', 'ADIADO', 'CANCELADO'],
+  AGENDADO: ['EM_ANDAMENTO', 'FINALIZADO', 'ADIADO', 'CANCELADO'],
   ADIADO: ['AGENDADO', 'CANCELADO'],
   EM_ANDAMENTO: ['FINALIZADO', 'CANCELADO'],
 };
@@ -155,13 +159,15 @@ export class JogoService {
     if (ehJogoVolta && grupoIdaVolta) {
       const jogosDoGrupo =
         await this.jogoRepo.buscarPorGrupoIdaVolta(grupoIdaVolta);
-      const jogoIda = jogosDoGrupo.find((j: any) => !j.ehJogoVolta);
-      if (!jogoIda) {
+      const temJogoIda = jogosDoGrupo.some(
+        (j) => !(j as JogoInterno).ehJogoVolta,
+      );
+      if (!temJogoIda) {
         throw new JogoIdaNaoEncontradoError();
       }
     }
 
-    const data: any = {
+    const data: CriarJogoData = {
       faseId: dto.faseId,
       timeCasaId: dto.timeCasaId,
       timeForaId: dto.timeForaId,
@@ -219,6 +225,23 @@ export class JogoService {
     }
   }
 
+  /**
+   * Verifica se transição é válida sem lançar exceção.
+   * Usado pela sync para ignorar transições inválidas vindas da API.
+   */
+  private ehTransicaoValida(statusAtual: string, novoStatus: string): boolean {
+    if (novoStatus === statusAtual) return true;
+    const permitidas = TRANSICOES_VALIDAS[statusAtual];
+    if (!permitidas) return true; // Status sem restrição (ex: FINALIZADO, CANCELADO)
+    if (!permitidas.includes(novoStatus)) {
+      this.logger.warn(
+        `[SYNC] Transição inválida ignorada: ${statusAtual} → ${novoStatus}`,
+      );
+      return false;
+    }
+    return true;
+  }
+
   async finalizar(id: string, dto: FinalizarJogoDto) {
     const jogo = await this.jogoRepo.buscarPorId(id);
     if (!jogo) {
@@ -226,6 +249,9 @@ export class JogoService {
     }
 
     const fase = await this.faseRepo.buscarPorId(jogo.faseId);
+    if (!fase) {
+      throw new FaseNaoEncontradaError();
+    }
 
     this.validarTransicaoStatus(jogo.status, 'FINALIZADO');
 
@@ -245,6 +271,7 @@ export class JogoService {
 
   private dispararNotificacoesJogoFinalizado(jogoId: string): void {
     if (!this.notificacaoEventService) return;
+    this.logger.log(`[SYNC] 📣 Disparando notificações para jogo ${jogoId}`);
     this.notificacaoEventService
       .processarJogoFinalizado(jogoId)
       .catch((err) =>
@@ -599,6 +626,88 @@ export class JogoService {
     return rodada ?? undefined;
   }
 
+  /**
+   * Conta jogos com status AGENDADO cuja dataHora já passou.
+   * Usado pelo scheduler para diagnóstico.
+   */
+  async contarJogosAtrasados(): Promise<number> {
+    return this.jogoRepo.contarAtrasados();
+  }
+
+  /**
+   * Detecta estado dos jogos para o scheduler calcular intervalo de sync.
+   * Retorna dados necessários para a SyncPolicy decidir próximo intervalo.
+   */
+  async detectarEstadoParaSync(): Promise<{
+    jogosEmAndamento: number;
+    proximoJogoEm: number | null;
+    proximoJogoInfo: {
+      timeCasa: string;
+      timeFora: string;
+      dataHora: Date;
+    } | null;
+  }> {
+    const atrasados = await this.jogoRepo.contarAtrasados();
+    const emAndamento = await this.jogoRepo.contarEmAndamento();
+
+    const proximoJogo = await this.jogoRepo.buscarProximoAgendado();
+
+    const proximoJogoEm = proximoJogo?.dataHora
+      ? new Date(proximoJogo.dataHora).getTime() - Date.now()
+      : null;
+
+    const proximoJogoInfo = proximoJogo?.dataHora
+      ? {
+          timeCasa: proximoJogo.timeCasa?.sigla ?? '?',
+          timeFora: proximoJogo.timeFora?.sigla ?? '?',
+          dataHora: new Date(proximoJogo.dataHora),
+        }
+      : null;
+
+    return {
+      jogosEmAndamento: emAndamento + atrasados,
+      proximoJogoEm,
+      proximoJogoInfo,
+    };
+  }
+
+  /**
+   * Resolve o faseId no banco para sincronização.
+   * Busca pela temporada mais recente do campeonato e nome da fase.
+   */
+  async resolverFaseIdParaSync(
+    campeonatoSlug: string,
+    faseSlug: string,
+  ): Promise<string | null> {
+    const nomeBusca = campeonatoSlug.includes('copa') ? 'Copa' : 'Brasileirão';
+    const nomeFase = this.extrairNomeFaseParaSync(faseSlug);
+
+    const fase = await this.faseRepo.buscarPorCampeonatoENome(
+      nomeBusca,
+      nomeFase,
+    );
+    if (fase) return fase.id;
+
+    // Fallback: qualquer fase da temporada mais recente
+    const fallback = await this.faseRepo.buscarPorCampeonatoENome(
+      nomeBusca,
+      '',
+    );
+    return fallback?.id ?? null;
+  }
+
+  private extrairNomeFaseParaSync(faseSlug: string): string {
+    if (faseSlug.includes('fase-de-grupos')) return 'Grupo';
+    if (faseSlug.includes('segunda-fase')) return '16 Avos';
+    if (faseSlug.includes('oitavas')) return 'Oitavas';
+    if (faseSlug.includes('quartas')) return 'Quartas';
+    if (faseSlug.includes('semifinal')) return 'Semifin';
+    if (faseSlug.includes('terceiro')) return 'Terceiro';
+    if (faseSlug.includes('final-copa')) return 'Final';
+    if (faseSlug.includes('fase-unica')) return 'Fase';
+    return '';
+  }
+
   async buscarPorId(id: string) {
     const jogo = await this.jogoRepo.buscarPorId(id);
     if (!jogo) {
@@ -627,11 +736,11 @@ export class JogoService {
       dto.rodada,
     );
 
-    const normalizados = jogosApi.map((j: any) =>
+    const normalizados = jogosApi.map((j) =>
       this.futebolApiService.normalizarJogo(j),
     );
 
-    const externoIds = normalizados.map((n: any) => n.externoId);
+    const externoIds = normalizados.map((n) => n.externoId);
     const jogosExistentesGlobal =
       await this.buscarExternoIdsExistentes(externoIds);
     const externosExistentes = new Set(jogosExistentesGlobal);
@@ -725,7 +834,7 @@ export class JogoService {
     ]);
     const cache = new Map<string, any>();
     for (const time of timesExistentes) {
-      cache.set(time.externoId, time);
+      if (time.externoId) cache.set(time.externoId, time);
     }
     return cache;
   }
@@ -851,6 +960,8 @@ export class JogoService {
       return { sincronizados: 0, jogosAtualizados: [] };
     }
 
+    this.logarJogosAtrasadosDetectados(jogosParaSync as JogoInterno[]);
+
     const { jogoApiMap, apiDisponivel } = await this.buscarJogosParaSync(
       jogosParaSync as JogoInterno[],
       config.campeonatoId,
@@ -862,6 +973,7 @@ export class JogoService {
       id: string;
       timeCasa: string;
       timeFora: string;
+      statusAnterior: string;
       status: string;
       golsCasa: number | null;
       golsFora: number | null;
@@ -883,6 +995,7 @@ export class JogoService {
           id: jogo.id,
           timeCasa: jogo.timeCasa?.sigla ?? jogo.timeCasa?.nome ?? '?',
           timeFora: jogo.timeFora?.sigla ?? jogo.timeFora?.nome ?? '?',
+          statusAnterior: jogo.status,
           status: resultado.novoStatus ?? jogo.status,
           golsCasa: resultado.golsCasa ?? jogo.golsCasa ?? null,
           golsFora: resultado.golsFora ?? jogo.golsFora ?? null,
@@ -896,14 +1009,37 @@ export class JogoService {
 
     // Log consolidado
     if (sincronizados > 0) {
-      const resumoJogos = jogosAtualizados
+      // Jogos que TRANSITARAM para EM_ANDAMENTO (eram AGENDADO)
+      const jogosIniciados = jogosAtualizados.filter(
+        (j) =>
+          j.status === 'EM_ANDAMENTO' && j.statusAnterior !== 'EM_ANDAMENTO',
+      );
+      // Jogos que já estavam EM_ANDAMENTO e tiveram placar atualizado (gols)
+      const jogosComGol = jogosAtualizados.filter(
+        (j) =>
+          j.status === 'EM_ANDAMENTO' && j.statusAnterior === 'EM_ANDAMENTO',
+      );
+      const jogosFinalizados = jogosAtualizados.filter(
+        (j) => j.status === 'FINALIZADO',
+      );
+
+      for (const j of jogosIniciados) {
+        this.logger.log(
+          `[SYNC] 🎙️ AAAAAAAAAAAAAAUTORIZA O ÁRBITRO! ${j.timeCasa} x ${j.timeFora} — BOLA ROLANDO!`,
+        );
+      }
+
+      const resumoJogos = [...jogosComGol, ...jogosFinalizados]
         .map((j) => {
           const placar = `${j.timeCasa} ${j.golsCasa ?? '?'}x${j.golsFora ?? '?'} ${j.timeFora}`;
           const icone = j.status === 'FINALIZADO' ? '🏁' : '⚽';
           return `${icone} ${placar}`;
         })
         .join(' | ');
-      this.logger.log(`[SYNC] ${resumoJogos}`);
+
+      if (resumoJogos) {
+        this.logger.log(`[SYNC] ${resumoJogos}`);
+      }
     }
 
     if (!apiDisponivel) {
@@ -912,26 +1048,16 @@ export class JogoService {
       );
     }
 
-    // Pós-sync: se algum jogo foi finalizado, tentar preencher próxima fase eliminatória
+    // Pós-sync: se algum jogo foi finalizado
     const jogosFinalizedAgora = jogosAtualizados.filter(
       (j) => j.status === 'FINALIZADO',
     );
     if (jogosFinalizedAgora.length > 0) {
-      this.logger.log(
-        `[SYNC] ${String(jogosFinalizedAgora.length)} finalizados — propagando chaveamento`,
-      );
-      await this.chaveamentoService.preencherProximaFaseEliminatoria(
+      await this.processarJogosFinalizadosSync(
+        jogosFinalizedAgora,
         fase.temporadaId,
         config,
       );
-      await this.chaveamentoService.propagarVencedoresParaProximaFase(
-        fase.temporadaId,
-      );
-
-      // Disparar notificações para cada jogo finalizado
-      for (const jogoFinalizado of jogosFinalizedAgora) {
-        this.dispararNotificacoesJogoFinalizado(jogoFinalizado.id);
-      }
     }
 
     return { sincronizados, jogosAtualizados };
@@ -1002,18 +1128,27 @@ export class JogoService {
     temporadaId: string;
     tipo: string;
   }): Promise<{ id: string; nome: string; tipo: string }[]> {
-    // Buscar todas as fases da mesma temporada com o mesmo tipo
+    // MATA_MATA: cada fase tem seu próprio endpoint na API — não expandir
+    if (fase.tipo === 'MATA_MATA') {
+      return [
+        {
+          id: (fase as any).id as string,
+          nome: (fase as any).nome as string,
+          tipo: fase.tipo,
+        },
+      ];
+    }
+
+    // PONTOS_CORRIDOS: múltiplas fases usam o mesmo endpoint (ex: 12 grupos da Copa)
     const todasFases = await this.faseRepo.buscarPorTemporada(fase.temporadaId);
     const fasesDoMesmoTipo = (
       todasFases as { id: string; nome: string; tipo: string }[]
     ).filter((f) => f.tipo === fase.tipo);
 
-    // Se há múltiplas fases do mesmo tipo (ex: 12 grupos da Copa), sincronizar todas
     if (fasesDoMesmoTipo.length > 1) {
       return fasesDoMesmoTipo;
     }
 
-    // Caso contrário, sincronizar apenas a fase solicitada
     return [
       {
         id: (fase as any).id as string,
@@ -1041,15 +1176,15 @@ export class JogoService {
       rodadasPendentes.unshift(1);
     }
 
-    let jogosApi: Record<string, unknown>[] = [];
+    let jogosApi: JogoApiRaw[] = [];
     let apiDisponivel = true;
 
     try {
-      jogosApi = (await this.futebolApiService.buscarJogosPorRodadas(
+      jogosApi = await this.futebolApiService.buscarJogosPorRodadas(
         campeonatoId,
         faseSlug,
         rodadasPendentes,
-      )) as Record<string, unknown>[];
+      );
     } catch (error) {
       if (error instanceof ApiExternaIndisponivelError) {
         this.logger.warn(
@@ -1096,6 +1231,12 @@ export class JogoService {
     }
 
     const novoStatus = this.definirStatusFinal(jogo, jogoApi?.status);
+
+    // Validar transição de estado — rejeitar regressões (ex: EM_ANDAMENTO → AGENDADO)
+    if (!this.ehTransicaoValida(jogo.status, novoStatus)) {
+      return { atualizado: false };
+    }
+
     const updateData: SyncUpdateData = { status: novoStatus };
 
     this.aplicarProtecaoSemData(jogo, jogoApi, updateData);
@@ -1268,6 +1409,51 @@ export class JogoService {
         ? `Jogo externo ${externoId} não encontrado na API`
         : `Usando fallback interno para jogo com externoId: ${externoId}`,
     );
+  }
+
+  private logarJogosAtrasadosDetectados(jogos: JogoInterno[]): void {
+    const agora = new Date();
+    const atrasados = jogos.filter(
+      (j) => j.dataHora && new Date(j.dataHora) <= agora,
+    );
+    if (atrasados.length === 0) return;
+
+    const descricao = atrasados
+      .map(
+        (j) =>
+          `R${j.rodada ?? '?'}: ${j.timeCasa?.sigla ?? '?'} x ${j.timeFora?.sigla ?? '?'}`,
+      )
+      .join(', ');
+    this.logger.log(
+      `[SYNC] 🔍 ${atrasados.length} jogo(s) atrasado(s) detectado(s): ${descricao}`,
+    );
+  }
+
+  private async processarJogosFinalizadosSync(
+    jogosFinalizados: { id: string; status: string }[],
+    temporadaId: string,
+    config: CampeonatoConfig,
+  ): Promise<void> {
+    const temMataMata = config.fases.some((f) => f.tipo === 'MATA_MATA');
+
+    if (temMataMata) {
+      this.logger.log(
+        `[SYNC] ${String(jogosFinalizados.length)} finalizados — propagando chaveamento`,
+      );
+      await this.chaveamentoService.preencherProximaFaseEliminatoria(
+        temporadaId,
+        config,
+      );
+      await this.chaveamentoService.propagarVencedoresParaProximaFase(
+        temporadaId,
+      );
+    } else {
+      this.logger.log(`[SYNC] ${String(jogosFinalizados.length)} finalizados`);
+    }
+
+    for (const jogo of jogosFinalizados) {
+      this.dispararNotificacoesJogoFinalizado(jogo.id);
+    }
   }
 
   private aplicarProtecaoSemData(
@@ -1619,6 +1805,6 @@ export class JogoService {
       nome: 'A Definir',
       sigla: 'TBD',
       escudo: '',
-    } as Record<string, string>) as unknown as { id: string };
+    }) as unknown as { id: string };
   }
 }

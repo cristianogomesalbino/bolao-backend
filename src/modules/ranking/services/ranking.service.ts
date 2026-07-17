@@ -208,7 +208,7 @@ export class RankingService {
         palpite
           ? { golsCasa: palpite.golsCasa, golsFora: palpite.golsFora }
           : null,
-        { golsCasa: jogo.golsCasa, golsFora: jogo.golsFora },
+        { golsCasa: jogo.golsCasa ?? 0, golsFora: jogo.golsFora ?? 0 },
       );
 
       const multiplicador =

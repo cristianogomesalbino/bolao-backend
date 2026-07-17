@@ -98,10 +98,10 @@ describe('JogoService', () => {
       );
 
       expect(result.status).toBe('AGENDADO');
-      expect(result.golsCasa).toBeUndefined();
-      expect(result.golsFora).toBeUndefined();
+      expect(result.golsCasa).toBeNull();
+      expect(result.golsFora).toBeNull();
       expect(result.fonteResultado).toBe('MANUAL');
-      expect(result.vencedorId).toBeUndefined();
+      expect(result.vencedorId).toBeNull();
       expect(result.timeCasaId).toBe('time-a');
       expect(result.timeForaId).toBe('time-b');
       expect(result.criadoPor).toBe(userId);
