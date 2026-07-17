@@ -8,7 +8,10 @@ import {
 import type { CampeonatoConfig } from '../jogos.constants';
 import { TIMES } from '../../times/time.constants';
 import { NOTIFICACOES } from '../../notificacoes/notificacoes.constants';
-import type { JogoRepository } from '../repositories/jogo.repository.interface';
+import type {
+  JogoRepository,
+  CriarJogoData,
+} from '../repositories/jogo.repository.interface';
 import type { FaseRepository } from '../repositories/fase.repository.interface';
 import type { TimeRepository } from '../../times/repositories/time.repository.interface';
 import type { NotificacaoEventService } from '../../notificacoes/services/notificacao-event.service';
@@ -38,7 +41,7 @@ import {
 } from '../../../common/errors/domain-errors';
 
 const TRANSICOES_VALIDAS: Record<string, string[]> = {
-  AGENDADO: ['EM_ANDAMENTO', 'ADIADO', 'CANCELADO'],
+  AGENDADO: ['EM_ANDAMENTO', 'FINALIZADO', 'ADIADO', 'CANCELADO'],
   ADIADO: ['AGENDADO', 'CANCELADO'],
   EM_ANDAMENTO: ['FINALIZADO', 'CANCELADO'],
 };
@@ -156,13 +159,15 @@ export class JogoService {
     if (ehJogoVolta && grupoIdaVolta) {
       const jogosDoGrupo =
         await this.jogoRepo.buscarPorGrupoIdaVolta(grupoIdaVolta);
-      const temJogoIda = jogosDoGrupo.some((j: any) => !j.ehJogoVolta);
+      const temJogoIda = jogosDoGrupo.some(
+        (j) => !(j as JogoInterno).ehJogoVolta,
+      );
       if (!temJogoIda) {
         throw new JogoIdaNaoEncontradoError();
       }
     }
 
-    const data: any = {
+    const data: CriarJogoData = {
       faseId: dto.faseId,
       timeCasaId: dto.timeCasaId,
       timeForaId: dto.timeForaId,
@@ -266,6 +271,7 @@ export class JogoService {
 
   private dispararNotificacoesJogoFinalizado(jogoId: string): void {
     if (!this.notificacaoEventService) return;
+    this.logger.log(`[SYNC] 📣 Disparando notificações para jogo ${jogoId}`);
     this.notificacaoEventService
       .processarJogoFinalizado(jogoId)
       .catch((err) =>
@@ -872,6 +878,8 @@ export class JogoService {
       return { sincronizados: 0, jogosAtualizados: [] };
     }
 
+    this.logarJogosAtrasadosDetectados(jogosParaSync as JogoInterno[]);
+
     const { jogoApiMap, apiDisponivel } = await this.buscarJogosParaSync(
       jogosParaSync as JogoInterno[],
       config.campeonatoId,
@@ -958,26 +966,16 @@ export class JogoService {
       );
     }
 
-    // Pós-sync: se algum jogo foi finalizado, tentar preencher próxima fase eliminatória
+    // Pós-sync: se algum jogo foi finalizado
     const jogosFinalizedAgora = jogosAtualizados.filter(
       (j) => j.status === 'FINALIZADO',
     );
     if (jogosFinalizedAgora.length > 0) {
-      this.logger.log(
-        `[SYNC] ${String(jogosFinalizedAgora.length)} finalizados — propagando chaveamento`,
-      );
-      await this.chaveamentoService.preencherProximaFaseEliminatoria(
+      await this.processarJogosFinalizadosSync(
+        jogosFinalizedAgora,
         fase.temporadaId,
         config,
       );
-      await this.chaveamentoService.propagarVencedoresParaProximaFase(
-        fase.temporadaId,
-      );
-
-      // Disparar notificações para cada jogo finalizado
-      for (const jogoFinalizado of jogosFinalizedAgora) {
-        this.dispararNotificacoesJogoFinalizado(jogoFinalizado.id);
-      }
     }
 
     return { sincronizados, jogosAtualizados };
@@ -1329,6 +1327,51 @@ export class JogoService {
         ? `Jogo externo ${externoId} não encontrado na API`
         : `Usando fallback interno para jogo com externoId: ${externoId}`,
     );
+  }
+
+  private logarJogosAtrasadosDetectados(jogos: JogoInterno[]): void {
+    const agora = new Date();
+    const atrasados = jogos.filter(
+      (j) => j.dataHora && new Date(j.dataHora) <= agora,
+    );
+    if (atrasados.length === 0) return;
+
+    const descricao = atrasados
+      .map(
+        (j) =>
+          `R${j.rodada ?? '?'}: ${j.timeCasa?.sigla ?? '?'} x ${j.timeFora?.sigla ?? '?'}`,
+      )
+      .join(', ');
+    this.logger.log(
+      `[SYNC] 🔍 ${atrasados.length} jogo(s) atrasado(s) detectado(s): ${descricao}`,
+    );
+  }
+
+  private async processarJogosFinalizadosSync(
+    jogosFinalizados: { id: string; status: string }[],
+    temporadaId: string,
+    config: CampeonatoConfig,
+  ): Promise<void> {
+    const temMataMata = config.fases.some((f) => f.tipo === 'MATA_MATA');
+
+    if (temMataMata) {
+      this.logger.log(
+        `[SYNC] ${String(jogosFinalizados.length)} finalizados — propagando chaveamento`,
+      );
+      await this.chaveamentoService.preencherProximaFaseEliminatoria(
+        temporadaId,
+        config,
+      );
+      await this.chaveamentoService.propagarVencedoresParaProximaFase(
+        temporadaId,
+      );
+    } else {
+      this.logger.log(`[SYNC] ${String(jogosFinalizados.length)} finalizados`);
+    }
+
+    for (const jogo of jogosFinalizados) {
+      this.dispararNotificacoesJogoFinalizado(jogo.id);
+    }
   }
 
   private aplicarProtecaoSemData(

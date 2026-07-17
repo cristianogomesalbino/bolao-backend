@@ -83,11 +83,27 @@ export class ExecutarSincronizacao {
       const resultado = await this.executarSync(input, syncId);
       const duracaoMs = Date.now() - inicio;
 
-      // Só loga quando há mudanças ou falhas — ciclos sem novidade ficam silenciosos
+      // Loga quando há mudanças ou falhas
       if (resultado.sincronizados > 0 || resultado.falhas > 0) {
         this.logger.log(
           `[SCHEDULER:${syncId}] ${input.trigger} → ${resultado.sincronizados} sincronizados, ${resultado.falhas} falhas, ${duracaoMs}ms`,
         );
+      }
+
+      // Diagnóstico: se há jogos atrasados mas nenhum foi sincronizado, logar warning
+      if (resultado.sincronizados === 0 && resultado.falhas === 0) {
+        const atrasados = await this.prisma.jogo.count({
+          where: {
+            status: 'AGENDADO',
+            fonteResultado: 'API_EXTERNA',
+            dataHora: { not: null, lte: new Date() },
+          },
+        });
+        if (atrasados > 0) {
+          this.logger.warn(
+            `[SCHEDULER:${syncId}] ⚠️ ${atrasados} jogo(s) atrasado(s) detectado(s) mas 0 sincronizados — possível falha de match com API`,
+          );
+        }
       }
 
       return this.buildOutput(
@@ -124,24 +140,8 @@ export class ExecutarSincronizacao {
 
     for (const slug of slugs) {
       try {
-        const config = obterCampeonatoConfig(slug);
-        const faseIdsProcessados = new Set<string>();
-
-        for (const faseConfig of config.fases) {
-          const resolvedId = await this.resolverFaseId(slug, faseConfig.slug);
-          const faseId = input.faseId ?? resolvedId;
-          if (!faseId) continue;
-          if (faseIdsProcessados.has(faseId)) continue;
-          faseIdsProcessados.add(faseId);
-
-          const resultado = await this.jogoService.sincronizarPlacares(
-            faseId,
-            slug,
-            faseConfig.slug,
-          );
-
-          totalSincronizados += resultado.sincronizados;
-        }
+        const sincronizados = await this.sincronizarCampeonato(slug, input);
+        totalSincronizados += sincronizados;
       } catch (error: unknown) {
         totalFalhas++;
         const msg =
@@ -151,6 +151,33 @@ export class ExecutarSincronizacao {
     }
 
     return { sincronizados: totalSincronizados, falhas: totalFalhas };
+  }
+
+  private async sincronizarCampeonato(
+    slug: string,
+    input: ExecutarSincronizacaoInput,
+  ): Promise<number> {
+    const config = obterCampeonatoConfig(slug);
+    const faseIdsProcessados = new Set<string>();
+    let sincronizados = 0;
+
+    for (const faseConfig of config.fases) {
+      const resolvedId = await this.resolverFaseId(slug, faseConfig.slug);
+      const faseId = input.faseId ?? resolvedId;
+      if (!faseId) continue;
+      if (faseIdsProcessados.has(faseId)) continue;
+      faseIdsProcessados.add(faseId);
+
+      const resultado = await this.jogoService.sincronizarPlacares(
+        faseId,
+        slug,
+        faseConfig.slug,
+      );
+
+      sincronizados += resultado.sincronizados;
+    }
+
+    return sincronizados;
   }
 
   private async resolverFaseId(

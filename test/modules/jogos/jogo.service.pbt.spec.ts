@@ -504,7 +504,7 @@ describe('JogoService — Property-Based Tests', () => {
   // Valida: Requisitos 10.2, 10.3
   it('Propriedade 19: apenas transições permitidas são aceitas', () => {
     const transicoes: Record<string, string[]> = {
-      AGENDADO: ['EM_ANDAMENTO', 'CANCELADO'],
+      AGENDADO: ['EM_ANDAMENTO', 'FINALIZADO', 'CANCELADO'],
       EM_ANDAMENTO: ['FINALIZADO', 'CANCELADO'],
     };
 

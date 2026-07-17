@@ -201,7 +201,12 @@ export class PrismaJogoRepository implements JogoRepository {
         faseId: { in: faseIds },
         fonteResultado: 'API_EXTERNA',
         status: { notIn: ['FINALIZADO', 'CANCELADO'] },
-        OR: [{ rodada: null }, { rodada: { lte: limiteRodada } }],
+        OR: [
+          { rodada: null },
+          { rodada: { lte: limiteRodada } },
+          // Incluir jogos atrasados (dataHora já passou) independente da rodada
+          { dataHora: { not: null, lte: new Date() } },
+        ],
       },
       include: { timeCasa: true, timeFora: true },
       orderBy: { dataHora: 'asc' },

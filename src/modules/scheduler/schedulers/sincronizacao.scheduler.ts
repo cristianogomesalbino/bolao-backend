@@ -8,9 +8,17 @@ import {
 import { PrismaService } from '../../../prisma/prisma.service';
 import { SYNC_INTERVALOS } from '../scheduler.constants';
 
+/** Timeout máximo para uma execução de sync (evita travar o ciclo) */
+const SYNC_TIMEOUT_MS = 60 * 1000; // 60 segundos
+
 /**
  * Scheduler de sincronização com política adaptativa.
  * Usa setTimeout em vez de cron fixo — intervalo depende do estado dos jogos.
+ *
+ * Proteções contra travamento:
+ * - Timeout de 60s por execução (evita promise pendurada travar ciclo)
+ * - Log quando ciclo é reagendado após timeout
+ * - Sempre reagenda próximo ciclo, mesmo em caso de erro
  */
 @Injectable()
 export class SincronizacaoScheduler implements OnModuleInit {
@@ -46,18 +54,52 @@ export class SincronizacaoScheduler implements OnModuleInit {
 
   private async ciclo(): Promise<void> {
     try {
-      await this.executarSincronizacao.execute({ trigger: 'CRON' });
+      await this.executarComTimeout();
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : 'Erro';
       this.logger.error(`[SYNC-SCHEDULER] Erro no ciclo: ${msg}`);
     }
 
-    const estado = await this.detectarEstado();
-    const intervalo = this.syncPolicy.calcularIntervalo(estado);
-    this.logarProximaExecucao(estado, intervalo);
-    this.timeout = setTimeout(() => {
-      void this.ciclo();
-    }, intervalo);
+    // SEMPRE reagendar, mesmo após erro — nunca parar o ciclo
+    try {
+      const estado = await this.detectarEstado();
+      const intervalo = this.syncPolicy.calcularIntervalo(estado);
+      this.logarProximaExecucao(estado, intervalo);
+      this.timeout = setTimeout(() => {
+        void this.ciclo();
+      }, intervalo);
+    } catch (error: unknown) {
+      // Fallback: se até detectarEstado falhar, reagendar com intervalo padrão
+      this.logger.error(
+        '[SYNC-SCHEDULER] Erro ao detectar estado — reagendando em 2min',
+      );
+      this.timeout = setTimeout(() => {
+        void this.ciclo();
+      }, SYNC_INTERVALOS.AO_VIVO_MS);
+    }
+  }
+
+  /**
+   * Executa sincronização com timeout de proteção.
+   * Evita que uma promise pendurada (API externa sem resposta) trave o ciclo.
+   */
+  private async executarComTimeout(): Promise<void> {
+    let timer: NodeJS.Timeout | undefined;
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timer = setTimeout(
+        () => reject(new Error('Sync timeout — ciclo travado por 60s')),
+        SYNC_TIMEOUT_MS,
+      );
+    });
+
+    try {
+      await Promise.race([
+        this.executarSincronizacao.execute({ trigger: 'CRON' }),
+        timeoutPromise,
+      ]);
+    } finally {
+      clearTimeout(timer);
+    }
   }
 
   private logarProximaExecucao(estado: EstadoJogos, intervalo: number): void {

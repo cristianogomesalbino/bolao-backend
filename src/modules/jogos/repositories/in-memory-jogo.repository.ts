@@ -209,13 +209,16 @@ export class InMemoryJogoRepository implements JogoRepository {
   }
 
   async buscarPendentesSync(faseIds: string[], limiteRodada: number): Promise<JogoComTimes[]> {
+    const agora = new Date();
     return this.items.filter(
       (j) =>
         faseIds.includes(j.faseId) &&
         j.fonteResultado === 'API_EXTERNA' &&
         j.status !== 'FINALIZADO' &&
         j.status !== 'CANCELADO' &&
-        (j.rodada == null || j.rodada <= limiteRodada),
+        (j.rodada == null ||
+          j.rodada <= limiteRodada ||
+          (j.dataHora != null && new Date(j.dataHora) <= agora)),
     ) as JogoComTimes[];
   }
 
