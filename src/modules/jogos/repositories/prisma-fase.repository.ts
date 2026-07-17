@@ -1,34 +1,60 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
-import { FaseRepository } from './fase.repository.interface';
+import type {
+  Fase,
+  FaseComTemporada,
+  CriarFaseData,
+  FaseRepository,
+} from './fase.repository.interface';
 
 @Injectable()
 export class PrismaFaseRepository implements FaseRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  criar(data: any) {
-    return this.prisma.fase.create({ data });
+  async criar(data: CriarFaseData): Promise<Fase> {
+    return this.prisma.fase.create({ data }) as unknown as Promise<Fase>;
   }
 
-  async criarVarios(data: any[]) {
-    await this.prisma.fase.createMany({ data });
+  async criarVarios(data: CriarFaseData[]): Promise<Fase[]> {
+    await this.prisma.fase.createMany({ data: data as never });
     return this.prisma.fase.findMany({
       where: { temporadaId: data[0]?.temporadaId },
       orderBy: { ordem: 'asc' },
-    });
+    }) as unknown as Promise<Fase[]>;
   }
 
-  buscarPorId(id: string) {
+  async buscarPorId(id: string): Promise<FaseComTemporada | null> {
     return this.prisma.fase.findUnique({
       where: { id },
       include: { temporada: { include: { campeonato: true } } },
-    });
+    }) as unknown as Promise<FaseComTemporada | null>;
   }
 
-  buscarPorTemporada(temporadaId: string) {
+  async buscarPorTemporada(temporadaId: string): Promise<Fase[]> {
     return this.prisma.fase.findMany({
       where: { temporadaId },
       orderBy: { ordem: 'asc' },
+    }) as unknown as Promise<Fase[]>;
+  }
+
+  async buscarPorCampeonatoENome(
+    nomeCampeonato: string,
+    nomeFase: string,
+  ): Promise<{ id: string } | null> {
+    const where: Record<string, unknown> = {
+      temporada: {
+        campeonato: { nome: { contains: nomeCampeonato } },
+      },
+    };
+    if (nomeFase) {
+      where.nome = { contains: nomeFase };
+    }
+
+    const fase = await this.prisma.fase.findFirst({
+      where,
+      orderBy: { temporada: { ano: 'desc' } },
+      select: { id: true },
     });
+    return fase;
   }
 }
