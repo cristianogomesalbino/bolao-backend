@@ -626,6 +626,88 @@ export class JogoService {
     return rodada ?? undefined;
   }
 
+  /**
+   * Conta jogos com status AGENDADO cuja dataHora já passou.
+   * Usado pelo scheduler para diagnóstico.
+   */
+  async contarJogosAtrasados(): Promise<number> {
+    return this.jogoRepo.contarAtrasados();
+  }
+
+  /**
+   * Detecta estado dos jogos para o scheduler calcular intervalo de sync.
+   * Retorna dados necessários para a SyncPolicy decidir próximo intervalo.
+   */
+  async detectarEstadoParaSync(): Promise<{
+    jogosEmAndamento: number;
+    proximoJogoEm: number | null;
+    proximoJogoInfo: {
+      timeCasa: string;
+      timeFora: string;
+      dataHora: Date;
+    } | null;
+  }> {
+    const atrasados = await this.jogoRepo.contarAtrasados();
+    const emAndamento = await this.jogoRepo.contarEmAndamento();
+
+    const proximoJogo = await this.jogoRepo.buscarProximoAgendado();
+
+    const proximoJogoEm = proximoJogo?.dataHora
+      ? new Date(proximoJogo.dataHora).getTime() - Date.now()
+      : null;
+
+    const proximoJogoInfo = proximoJogo?.dataHora
+      ? {
+          timeCasa: proximoJogo.timeCasa?.sigla ?? '?',
+          timeFora: proximoJogo.timeFora?.sigla ?? '?',
+          dataHora: new Date(proximoJogo.dataHora),
+        }
+      : null;
+
+    return {
+      jogosEmAndamento: emAndamento + atrasados,
+      proximoJogoEm,
+      proximoJogoInfo,
+    };
+  }
+
+  /**
+   * Resolve o faseId no banco para sincronização.
+   * Busca pela temporada mais recente do campeonato e nome da fase.
+   */
+  async resolverFaseIdParaSync(
+    campeonatoSlug: string,
+    faseSlug: string,
+  ): Promise<string | null> {
+    const nomeBusca = campeonatoSlug.includes('copa') ? 'Copa' : 'Brasileirão';
+    const nomeFase = this.extrairNomeFaseParaSync(faseSlug);
+
+    const fase = await this.faseRepo.buscarPorCampeonatoENome(
+      nomeBusca,
+      nomeFase,
+    );
+    if (fase) return fase.id;
+
+    // Fallback: qualquer fase da temporada mais recente
+    const fallback = await this.faseRepo.buscarPorCampeonatoENome(
+      nomeBusca,
+      '',
+    );
+    return fallback?.id ?? null;
+  }
+
+  private extrairNomeFaseParaSync(faseSlug: string): string {
+    if (faseSlug.includes('fase-de-grupos')) return 'Grupo';
+    if (faseSlug.includes('segunda-fase')) return '16 Avos';
+    if (faseSlug.includes('oitavas')) return 'Oitavas';
+    if (faseSlug.includes('quartas')) return 'Quartas';
+    if (faseSlug.includes('semifinal')) return 'Semifin';
+    if (faseSlug.includes('terceiro')) return 'Terceiro';
+    if (faseSlug.includes('final-copa')) return 'Final';
+    if (faseSlug.includes('fase-unica')) return 'Fase';
+    return '';
+  }
+
   async buscarPorId(id: string) {
     const jogo = await this.jogoRepo.buscarPorId(id);
     if (!jogo) {

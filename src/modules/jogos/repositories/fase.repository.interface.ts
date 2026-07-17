@@ -37,4 +37,8 @@ export interface FaseRepository {
   criarVarios(data: CriarFaseData[]): Promise<Fase[]>;
   buscarPorId(id: string): Promise<FaseComTemporada | null>;
   buscarPorTemporada(temporadaId: string): Promise<Fase[]>;
+  buscarPorCampeonatoENome(
+    nomeCampeonato: string,
+    nomeFase: string,
+  ): Promise<{ id: string } | null>;
 }

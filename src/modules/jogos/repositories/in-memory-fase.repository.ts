@@ -50,4 +50,14 @@ export class InMemoryFaseRepository implements FaseRepository {
       .filter((f) => f.temporadaId === temporadaId)
       .sort((a, b) => a.ordem - b.ordem);
   }
+
+  async buscarPorCampeonatoENome(
+    _nomeCampeonato: string,
+    nomeFase: string,
+  ): Promise<{ id: string } | null> {
+    const fase = nomeFase
+      ? this.items.find((f) => f.nome.includes(nomeFase))
+      : this.items[0];
+    return fase ? { id: fase.id } : null;
+  }
 }

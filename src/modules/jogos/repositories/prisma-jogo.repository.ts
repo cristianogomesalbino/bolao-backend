@@ -240,4 +240,43 @@ export class PrismaJogoRepository implements JogoRepository {
       orderBy: { dataHora: 'asc' },
     }) as unknown as Promise<JogoComRelacoes[]>;
   }
+
+  async contarAtrasados(): Promise<number> {
+    return this.prisma.jogo.count({
+      where: {
+        status: 'AGENDADO',
+        fonteResultado: 'API_EXTERNA',
+        dataHora: { not: null, lte: new Date() },
+      },
+    });
+  }
+
+  async contarEmAndamento(): Promise<number> {
+    return this.prisma.jogo.count({
+      where: {
+        status: 'EM_ANDAMENTO',
+        fonteResultado: 'API_EXTERNA',
+      },
+    });
+  }
+
+  async buscarProximoAgendado(): Promise<{
+    dataHora: Date | null;
+    timeCasa?: { sigla: string } | null;
+    timeFora?: { sigla: string } | null;
+  } | null> {
+    return this.prisma.jogo.findFirst({
+      where: {
+        status: 'AGENDADO',
+        fonteResultado: 'API_EXTERNA',
+        dataHora: { gt: new Date() },
+      },
+      orderBy: { dataHora: 'asc' },
+      select: {
+        dataHora: true,
+        timeCasa: { select: { sigla: true } },
+        timeFora: { select: { sigla: true } },
+      },
+    });
+  }
 }

@@ -36,4 +36,25 @@ export class PrismaFaseRepository implements FaseRepository {
       orderBy: { ordem: 'asc' },
     }) as unknown as Promise<Fase[]>;
   }
+
+  async buscarPorCampeonatoENome(
+    nomeCampeonato: string,
+    nomeFase: string,
+  ): Promise<{ id: string } | null> {
+    const where: Record<string, unknown> = {
+      temporada: {
+        campeonato: { nome: { contains: nomeCampeonato } },
+      },
+    };
+    if (nomeFase) {
+      where.nome = { contains: nomeFase };
+    }
+
+    const fase = await this.prisma.fase.findFirst({
+      where,
+      orderBy: { temporada: { ano: 'desc' } },
+      select: { id: true },
+    });
+    return fase;
+  }
 }

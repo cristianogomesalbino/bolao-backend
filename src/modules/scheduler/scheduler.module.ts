@@ -23,6 +23,12 @@ import { PrismaLogSincronizacaoRepository } from '../jogos/repositories/prisma-l
  * Responsabilidade: saber QUANDO executar.
  * Delega o QUE executar para use cases.
  * Delega o COMO executar para os módulos de domínio.
+ *
+ * NOTA: SincronizacaoController e PrismaLogSincronizacaoRepository estão aqui
+ * porque dependem do ExecutarSincronizacao (provider deste módulo).
+ * Mover pro JogosModule criaria dependência circular.
+ * Dívida técnica: avaliar quebrar esse acoplamento via abstrações quando
+ * a aplicação for escalada horizontalmente.
  */
 @Module({
   imports: [
@@ -45,7 +51,7 @@ import { PrismaLogSincronizacaoRepository } from '../jogos/repositories/prisma-l
     SincronizacaoScheduler,
     NotificacaoScheduler,
     ManutencaoScheduler,
-    // Repositories (para SincronizacaoController)
+    // Repository (para SincronizacaoController)
     {
       provide: JOGOS.LOG_SINCRONIZACAO_REPOSITORY_TOKEN,
       useClass: PrismaLogSincronizacaoRepository,

@@ -249,4 +249,54 @@ export class InMemoryJogoRepository implements JogoRepository {
           new Date(a.dataHora ?? 0).getTime() - new Date(b.dataHora ?? 0).getTime(),
       ) as JogoComRelacoes[];
   }
+
+  async contarAtrasados(): Promise<number> {
+    const agora = new Date();
+    return this.items.filter(
+      (j) =>
+        j.status === 'AGENDADO' &&
+        j.fonteResultado === 'API_EXTERNA' &&
+        j.dataHora != null &&
+        new Date(j.dataHora) <= agora,
+    ).length;
+  }
+
+  async contarEmAndamento(): Promise<number> {
+    return this.items.filter(
+      (j) =>
+        j.status === 'EM_ANDAMENTO' && j.fonteResultado === 'API_EXTERNA',
+    ).length;
+  }
+
+  async buscarProximoAgendado(): Promise<{
+    dataHora: Date | null;
+    timeCasa?: { sigla: string } | null;
+    timeFora?: { sigla: string } | null;
+  } | null> {
+    const agora = new Date();
+    const proximo = this.items
+      .filter(
+        (j) =>
+          j.status === 'AGENDADO' &&
+          j.fonteResultado === 'API_EXTERNA' &&
+          j.dataHora != null &&
+          new Date(j.dataHora) > agora,
+      )
+      .sort(
+        (a, b) =>
+          new Date(a.dataHora ?? 0).getTime() -
+          new Date(b.dataHora ?? 0).getTime(),
+      )[0];
+
+    if (!proximo) return null;
+    return {
+      dataHora: proximo.dataHora ? new Date(proximo.dataHora) : null,
+      timeCasa: proximo.timeCasa
+        ? { sigla: proximo.timeCasa.sigla }
+        : null,
+      timeFora: proximo.timeFora
+        ? { sigla: proximo.timeFora.sigla }
+        : null,
+    };
+  }
 }

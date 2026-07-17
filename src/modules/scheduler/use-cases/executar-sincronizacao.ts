@@ -1,12 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
-import { PrismaService } from '../../../prisma/prisma.service';
 import { AdvisoryLockService } from '../services/advisory-lock.service';
-import {
-  LOCK_IDS,
-  SCHEDULER,
-  type TriggerOrigem,
-} from '../scheduler.constants';
+import { SCHEDULER, type TriggerOrigem } from '../scheduler.constants';
 import { JogoService } from '../../jogos/services/jogo.service';
 import {
   obterCampeonatoConfig,
@@ -38,18 +33,28 @@ export interface ExecutarSincronizacaoOutput {
  * Use case unificado de sincronização.
  * Qualquer trigger (CRON, SUPER_ADMIN, API_KEY) chama este execute().
  *
- * Usa advisory lock para garantir exclusividade:
- * - Tenta lock dentro de transação curta (apenas para verificar)
- * - Se obteve, executa sync fora da transação (API externa pode demorar)
- * - Flag in-memory previne concorrência no mesmo processo
+ * Estratégia de exclusividade:
+ * - Flag in-memory `executando`: evita reentrância na mesma instância (otimização local).
+ * - pg_try_advisory_xact_lock: verificação pontual entre instâncias (best-effort).
+ *   NÃO persiste durante toda a sync — apenas detecta se outra instância iniciou recentemente.
+ * - Idempotência dos efeitos derivados: garante segurança mesmo com execuções sobrepostas.
+ *
+ * A estratégia atual assume execução em uma única instância.
+ * Caso a aplicação seja escalada horizontalmente, deverá ser implementado
+ * um mecanismo de lock distribuído (ex: tabela SchedulerLock com row-level locking).
  */
 @Injectable()
 export class ExecutarSincronizacao {
   private readonly logger = new Logger(ExecutarSincronizacao.name);
+
+  /**
+   * Flag local — evita reentrância na mesma instância (otimização).
+   * NÃO garante exclusividade entre instâncias. Para isso, depende do
+   * advisory lock + idempotência dos efeitos.
+   */
   private executando = false;
 
   constructor(
-    private readonly prisma: PrismaService,
     private readonly lockService: AdvisoryLockService,
     private readonly jogoService: JogoService,
   ) {}
@@ -60,7 +65,7 @@ export class ExecutarSincronizacao {
     const syncId = randomUUID();
     const inicio = Date.now();
 
-    // Guard in-memory — impede concorrência no mesmo processo
+    // Guard in-memory — otimização local (não é mutex entre instâncias)
     if (this.executando) {
       this.logger.log(
         `[SCHEDULER:${syncId}] ${input.trigger} → ${SCHEDULER.MENSAGENS.SYNC_JA_EM_EXECUCAO}`,
@@ -68,8 +73,10 @@ export class ExecutarSincronizacao {
       return this.buildOutput(syncId, input.trigger, inicio, 0, 0, true);
     }
 
-    // Tentar advisory lock (transação curta apenas para checar)
-    const obteveLock = await this.tentarAdvisoryLock();
+    // Advisory lock transacional — check pontual de exclusividade entre instâncias.
+    // Não persiste durante a sync (PgBouncer transacional não suporta session-level).
+    // A idempotência dos efeitos garante segurança mesmo com execuções sobrepostas.
+    const obteveLock = await this.lockService.tentarExclusividadeSincronizacao();
     if (!obteveLock) {
       this.logger.log(
         `[SCHEDULER:${syncId}] ${input.trigger} → ${SCHEDULER.MENSAGENS.SYNC_JA_EM_EXECUCAO} (outra instância)`,
@@ -83,22 +90,15 @@ export class ExecutarSincronizacao {
       const resultado = await this.executarSync(input, syncId);
       const duracaoMs = Date.now() - inicio;
 
-      // Loga quando há mudanças ou falhas
       if (resultado.sincronizados > 0 || resultado.falhas > 0) {
         this.logger.log(
           `[SCHEDULER:${syncId}] ${input.trigger} → ${resultado.sincronizados} sincronizados, ${resultado.falhas} falhas, ${duracaoMs}ms`,
         );
       }
 
-      // Diagnóstico: se há jogos atrasados mas nenhum foi sincronizado, logar warning
+      // Diagnóstico: delega pro JogoService contar atrasados (sem acesso direto ao banco)
       if (resultado.sincronizados === 0 && resultado.falhas === 0) {
-        const atrasados = await this.prisma.jogo.count({
-          where: {
-            status: 'AGENDADO',
-            fonteResultado: 'API_EXTERNA',
-            dataHora: { not: null, lte: new Date() },
-          },
-        });
+        const atrasados = await this.jogoService.contarJogosAtrasados();
         if (atrasados > 0) {
           this.logger.warn(
             `[SCHEDULER:${syncId}] ⚠️ ${atrasados} jogo(s) atrasado(s) detectado(s) mas 0 sincronizados — possível falha de match com API`,
@@ -117,14 +117,6 @@ export class ExecutarSincronizacao {
     } finally {
       this.executando = false;
     }
-  }
-
-  private async tentarAdvisoryLock(): Promise<boolean> {
-    const resultado = await this.prisma.$transaction(
-      async (tx) => this.lockService.tryXactLock(LOCK_IDS.SINCRONIZACAO, tx),
-      { timeout: 3000 },
-    );
-    return resultado;
   }
 
   private async executarSync(
@@ -162,7 +154,10 @@ export class ExecutarSincronizacao {
     let sincronizados = 0;
 
     for (const faseConfig of config.fases) {
-      const resolvedId = await this.resolverFaseId(slug, faseConfig.slug);
+      const resolvedId = await this.jogoService.resolverFaseIdParaSync(
+        slug,
+        faseConfig.slug,
+      );
       const faseId = input.faseId ?? resolvedId;
       if (!faseId) continue;
       if (faseIdsProcessados.has(faseId)) continue;
@@ -178,52 +173,6 @@ export class ExecutarSincronizacao {
     }
 
     return sincronizados;
-  }
-
-  private async resolverFaseId(
-    campeonatoSlug: string,
-    faseSlug: string,
-  ): Promise<string | null> {
-    const nomeBusca = campeonatoSlug.includes('copa') ? 'Copa' : 'Brasileirão';
-
-    const fase = await this.prisma.fase.findFirst({
-      where: {
-        temporada: {
-          campeonato: { nome: { contains: nomeBusca } },
-        },
-        nome: { contains: this.extrairNomeFase(faseSlug) },
-      },
-      orderBy: { temporada: { ano: 'desc' } },
-      select: { id: true },
-    });
-
-    // Fallback: buscar qualquer fase da temporada mais recente
-    if (!fase) {
-      const fallback = await this.prisma.fase.findFirst({
-        where: {
-          temporada: {
-            campeonato: { nome: { contains: nomeBusca } },
-          },
-        },
-        orderBy: { temporada: { ano: 'desc' } },
-        select: { id: true },
-      });
-      return fallback?.id ?? null;
-    }
-
-    return fase.id;
-  }
-
-  private extrairNomeFase(faseSlug: string): string {
-    if (faseSlug.includes('fase-de-grupos')) return 'Grupo';
-    if (faseSlug.includes('segunda-fase')) return '16 Avos';
-    if (faseSlug.includes('oitavas')) return 'Oitavas';
-    if (faseSlug.includes('quartas')) return 'Quartas';
-    if (faseSlug.includes('semifinal')) return 'Semifin';
-    if (faseSlug.includes('terceiro')) return 'Terceiro';
-    if (faseSlug.includes('final-copa')) return 'Final';
-    if (faseSlug.includes('fase-unica')) return 'Fase';
-    return '';
   }
 
   private buildOutput(

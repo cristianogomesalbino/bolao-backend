@@ -135,4 +135,11 @@ export interface JogoRepository {
     placeholderTimeId: string,
   ): Promise<JogoComRelacoes[]>;
   buscarAgendadosEntre(inicio: Date, fim: Date): Promise<JogoComRelacoes[]>;
+  contarAtrasados(): Promise<number>;
+  contarEmAndamento(): Promise<number>;
+  buscarProximoAgendado(): Promise<{
+    dataHora: Date | null;
+    timeCasa?: { sigla: string } | null;
+    timeFora?: { sigla: string } | null;
+  } | null>;
 }

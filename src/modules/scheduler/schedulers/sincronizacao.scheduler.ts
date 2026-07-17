@@ -5,7 +5,7 @@ import {
   SyncPolicyService,
   type EstadoJogos,
 } from '../services/sync-policy.service';
-import { PrismaService } from '../../../prisma/prisma.service';
+import { JogoService } from '../../jogos/services/jogo.service';
 import { SYNC_INTERVALOS } from '../scheduler.constants';
 
 /** Timeout máximo para uma execução de sync (evita travar o ciclo) */
@@ -17,8 +17,10 @@ const SYNC_TIMEOUT_MS = 60 * 1000; // 60 segundos
  *
  * Proteções contra travamento:
  * - Timeout de 60s por execução (evita promise pendurada travar ciclo)
- * - Log quando ciclo é reagendado após timeout
  * - Sempre reagenda próximo ciclo, mesmo em caso de erro
+ *
+ * NOTA: Este scheduler apenas orquestra. Não acessa banco diretamente.
+ * Estado dos jogos é obtido via JogoService.detectarEstadoParaSync().
  */
 @Injectable()
 export class SincronizacaoScheduler implements OnModuleInit {
@@ -31,7 +33,7 @@ export class SincronizacaoScheduler implements OnModuleInit {
     private readonly executarSincronizacao: ExecutarSincronizacao,
     private readonly syncPolicy: SyncPolicyService,
     private readonly configService: ConfigService,
-    private readonly prisma: PrismaService,
+    private readonly jogoService: JogoService,
   ) {
     this.habilitada =
       this.configService.get<string>('SYNC_AUTOMATICA_HABILITADA') === 'true';
@@ -68,8 +70,7 @@ export class SincronizacaoScheduler implements OnModuleInit {
       this.timeout = setTimeout(() => {
         void this.ciclo();
       }, intervalo);
-    } catch (error: unknown) {
-      // Fallback: se até detectarEstado falhar, reagendar com intervalo padrão
+    } catch {
       this.logger.error(
         '[SYNC-SCHEDULER] Erro ao detectar estado — reagendando em 2min',
       );
@@ -106,7 +107,6 @@ export class SincronizacaoScheduler implements OnModuleInit {
     const minutos = Math.round(intervalo / 60000);
 
     if (estado.jogosEmAndamento > 0) {
-      // Quando ao vivo, não loga a cada 2min — o log de sync já mostra mudanças
       return;
     }
 
@@ -128,61 +128,19 @@ export class SincronizacaoScheduler implements OnModuleInit {
         `[SYNC-SCHEDULER] 🏟️ Jogo iminente: ${jogoLabel} (em ${minAteJogo}min)`,
       );
     } else {
-      const msParaHoras = estado.proximoJogoEm / 3600000;
-      const horasAteJogo = Math.round(msParaHoras * 10) / 10;
+      const horasAteJogo =
+        Math.round((estado.proximoJogoEm / 3600000) * 10) / 10;
       this.logger.log(
         `[SYNC-SCHEDULER] ⏳ Próximo: ${jogoLabel} (em ${horasAteJogo}h) → dormindo ${minutos}min`,
       );
     }
   }
 
+  /**
+   * Detecta estado dos jogos via JogoService (sem acesso direto ao banco).
+   */
   private async detectarEstado(): Promise<EstadoJogos> {
-    const emAndamento = await this.prisma.jogo.count({
-      where: {
-        status: 'EM_ANDAMENTO',
-        fonteResultado: 'API_EXTERNA',
-      },
-    });
-
-    const atrasados = await this.prisma.jogo.count({
-      where: {
-        status: 'AGENDADO',
-        fonteResultado: 'API_EXTERNA',
-        dataHora: { not: null, lte: new Date() },
-      },
-    });
-
-    const proximoJogo = await this.prisma.jogo.findFirst({
-      where: {
-        status: 'AGENDADO',
-        fonteResultado: 'API_EXTERNA',
-        dataHora: { gt: new Date() },
-      },
-      orderBy: { dataHora: 'asc' },
-      select: {
-        dataHora: true,
-        timeCasa: { select: { sigla: true } },
-        timeFora: { select: { sigla: true } },
-      },
-    });
-
-    const proximoJogoEm = proximoJogo?.dataHora
-      ? proximoJogo.dataHora.getTime() - Date.now()
-      : null;
-
-    const proximoJogoInfo = proximoJogo?.dataHora
-      ? {
-          timeCasa: proximoJogo.timeCasa?.sigla ?? '?',
-          timeFora: proximoJogo.timeFora?.sigla ?? '?',
-          dataHora: proximoJogo.dataHora,
-        }
-      : null;
-
-    return {
-      jogosEmAndamento: emAndamento + atrasados,
-      proximoJogoEm,
-      proximoJogoInfo,
-    };
+    return this.jogoService.detectarEstadoParaSync();
   }
 
   obterEstado(): { habilitada: boolean; proximoTimeout: boolean } {
