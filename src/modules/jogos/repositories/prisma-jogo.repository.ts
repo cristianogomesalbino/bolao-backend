@@ -1,73 +1,111 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
-import { JogoRepository } from './jogo.repository.interface';
+import type {
+  Jogo,
+  JogoComTimes,
+  JogoComRelacoes,
+  JogoExternoId,
+  CriarJogoData,
+  AtualizarJogoData,
+  JogoRepository,
+} from './jogo.repository.interface';
 
 @Injectable()
 export class PrismaJogoRepository implements JogoRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  criar(data: any) {
-    return this.prisma.jogo.create({ data });
+  async criar(data: CriarJogoData): Promise<Jogo> {
+    return this.prisma.jogo.create({
+      data: data as Parameters<typeof this.prisma.jogo.create>[0]['data'],
+    }) as unknown as Promise<Jogo>;
   }
 
-  atualizar(id: string, data: any) {
-    return this.prisma.jogo.update({ where: { id }, data });
+  async atualizar(id: string, data: AtualizarJogoData): Promise<Jogo> {
+    return this.prisma.jogo.update({
+      where: { id },
+      data: data as Parameters<typeof this.prisma.jogo.update>[0]['data'],
+    }) as unknown as Promise<Jogo>;
   }
 
-  buscarPorId(id: string) {
+  async buscarPorId(id: string): Promise<JogoComRelacoes | null> {
     return this.prisma.jogo.findUnique({
       where: { id },
       include: { fase: true, timeCasa: true, timeFora: true },
-    });
+    }) as unknown as Promise<JogoComRelacoes | null>;
   }
 
-  buscarPorIds(ids: string[]) {
-    return this.prisma.jogo.findMany({ where: { id: { in: ids } } });
+  async buscarPorIds(ids: string[]): Promise<Jogo[]> {
+    return this.prisma.jogo.findMany({
+      where: { id: { in: ids } },
+    }) as unknown as Promise<Jogo[]>;
   }
 
-  buscarPorExternoIds(externoIds: string[]) {
+  async buscarPorExternoIds(externoIds: string[]): Promise<JogoExternoId[]> {
     return this.prisma.jogo.findMany({
       where: { externoId: { in: externoIds } },
       select: { externoId: true },
-    });
+    }) as unknown as Promise<JogoExternoId[]>;
   }
 
-  buscarPorFase(faseId: string, rodada?: number) {
-    const where: any = { faseId };
+  async buscarPorFase(
+    faseId: string,
+    rodada?: number,
+  ): Promise<JogoComTimes[]> {
+    const where: Record<string, unknown> = { faseId };
     if (rodada !== undefined) where.rodada = rodada;
     return this.prisma.jogo.findMany({
       where,
       include: { timeCasa: true, timeFora: true },
       orderBy: { dataHora: 'asc' },
-    });
+    }) as unknown as Promise<JogoComTimes[]>;
   }
 
-  buscarPorFaseAteRodada(faseId: string, ateRodada: number) {
+  async buscarPorFaseAteRodada(
+    faseId: string,
+    ateRodada: number,
+  ): Promise<JogoComTimes[]> {
     return this.prisma.jogo.findMany({
       where: { faseId, rodada: { lte: ateRodada } },
       include: { timeCasa: true, timeFora: true },
       orderBy: { dataHora: 'asc' },
-    });
+    }) as unknown as Promise<JogoComTimes[]>;
   }
 
-  buscarPorFaseEStatus(faseId: string, status: string) {
+  async buscarPorFaseEStatus(
+    faseId: string,
+    status: string,
+  ): Promise<JogoComTimes[]> {
     return this.prisma.jogo.findMany({
-      where: { faseId, status: status as any },
+      where: {
+        faseId,
+        status: status as Parameters<
+          typeof this.prisma.jogo.findMany
+        >[0] extends { where?: infer W }
+          ? W extends { status?: infer S }
+            ? S
+            : never
+          : never,
+      },
       include: { timeCasa: true, timeFora: true },
       orderBy: [{ rodada: 'asc' }, { dataHora: 'asc' }],
-    });
+    }) as unknown as Promise<JogoComTimes[]>;
   }
 
-  buscarPorExternoId(externoId: string) {
-    return this.prisma.jogo.findUnique({ where: { externoId } });
+  async buscarPorExternoId(externoId: string): Promise<Jogo | null> {
+    return this.prisma.jogo.findUnique({
+      where: { externoId },
+    }) as unknown as Promise<Jogo | null>;
   }
 
-  buscarPorGrupoIdaVolta(grupoIdaVolta: string) {
-    return this.prisma.jogo.findMany({ where: { grupoIdaVolta } });
+  async buscarPorGrupoIdaVolta(grupoIdaVolta: string): Promise<Jogo[]> {
+    return this.prisma.jogo.findMany({
+      where: { grupoIdaVolta },
+    }) as unknown as Promise<Jogo[]>;
   }
 
-  async buscarProximoJogoPorTemporada(temporadaId: string) {
-    // Prioridade 1: jogos em andamento
+  async buscarProximoJogoPorTemporada(
+    temporadaId: string,
+  ): Promise<JogoComRelacoes | null> {
     const emAndamento = await this.prisma.jogo.findFirst({
       where: {
         fase: { temporadaId },
@@ -77,9 +115,8 @@ export class PrismaJogoRepository implements JogoRepository {
       orderBy: { dataHora: 'asc' },
     });
 
-    if (emAndamento) return emAndamento;
+    if (emAndamento) return emAndamento as unknown as JogoComRelacoes;
 
-    // Prioridade 2: próximo agendado
     return this.prisma.jogo.findFirst({
       where: {
         fase: { temporadaId },
@@ -88,11 +125,12 @@ export class PrismaJogoRepository implements JogoRepository {
       },
       include: { fase: true, timeCasa: true, timeFora: true },
       orderBy: { dataHora: 'asc' },
-    });
+    }) as unknown as Promise<JogoComRelacoes | null>;
   }
 
-  async buscarProximosJogosPorTemporada(temporadaId: string) {
-    // Prioridade 1: jogos em andamento agora
+  async buscarProximosJogosPorTemporada(
+    temporadaId: string,
+  ): Promise<JogoComRelacoes[]> {
     const emAndamento = await this.prisma.jogo.findMany({
       where: {
         fase: { temporadaId },
@@ -102,9 +140,9 @@ export class PrismaJogoRepository implements JogoRepository {
       orderBy: { dataHora: 'asc' },
     });
 
-    if (emAndamento.length > 0) return emAndamento;
+    if (emAndamento.length > 0)
+      return emAndamento as unknown as JogoComRelacoes[];
 
-    // Prioridade 2: próximos jogos agendados (mesmo horário)
     const primeiro = await this.prisma.jogo.findFirst({
       where: {
         fase: { temporadaId },
@@ -125,10 +163,10 @@ export class PrismaJogoRepository implements JogoRepository {
       },
       include: { fase: true, timeCasa: true, timeFora: true },
       orderBy: { dataHora: 'asc' },
-    });
+    }) as unknown as Promise<JogoComRelacoes[]>;
   }
 
-  contarAdiadosPorTemporada(temporadaId: string) {
+  async contarAdiadosPorTemporada(temporadaId: string): Promise<number> {
     return this.prisma.jogo.count({
       where: {
         fase: { temporadaId },
@@ -137,7 +175,9 @@ export class PrismaJogoRepository implements JogoRepository {
     });
   }
 
-  buscarTodosPorTemporada(temporadaId: string) {
+  async buscarTodosPorTemporada(
+    temporadaId: string,
+  ): Promise<JogoComRelacoes[]> {
     return this.prisma.jogo.findMany({
       where: { fase: { temporadaId } },
       include: { fase: true, timeCasa: true, timeFora: true },
@@ -146,11 +186,10 @@ export class PrismaJogoRepository implements JogoRepository {
         { rodada: 'asc' },
         { dataHora: 'asc' },
       ],
-    });
+    }) as unknown as Promise<JogoComRelacoes[]>;
   }
 
   async buscarRodadaAtual(faseId: string): Promise<number | null> {
-    // Menor rodada com pelo menos 1 jogo ativo (não finalizado, não adiado, com data definida)
     const jogo = await this.prisma.jogo.findFirst({
       where: {
         faseId,
@@ -163,7 +202,6 @@ export class PrismaJogoRepository implements JogoRepository {
     });
     if (jogo?.rodada) return jogo.rodada;
 
-    // Todas finalizadas → retornar a última rodada
     const ultimo = await this.prisma.jogo.findFirst({
       where: { faseId, rodada: { not: null } },
       orderBy: { rodada: 'desc' },
@@ -172,23 +210,31 @@ export class PrismaJogoRepository implements JogoRepository {
     return ultimo?.rodada ?? null;
   }
 
-  buscarPendentesSync(faseIds: string[], limiteRodada: number) {
+  async buscarPendentesSync(
+    faseIds: string[],
+    limiteRodada: number,
+  ): Promise<JogoComTimes[]> {
     return this.prisma.jogo.findMany({
       where: {
         faseId: { in: faseIds },
         fonteResultado: 'API_EXTERNA',
         status: { notIn: ['FINALIZADO', 'CANCELADO'] },
-        OR: [{ rodada: null }, { rodada: { lte: limiteRodada } }],
+        OR: [
+          { rodada: null },
+          { rodada: { lte: limiteRodada } },
+          // Incluir jogos atrasados (dataHora já passou) independente da rodada
+          { dataHora: { not: null, lte: new Date() } },
+        ],
       },
       include: { timeCasa: true, timeFora: true },
       orderBy: { dataHora: 'asc' },
-    });
+    }) as unknown as Promise<JogoComTimes[]>;
   }
 
-  buscarJogosComTimePlaceholder(
+  async buscarJogosComTimePlaceholder(
     temporadaId: string,
     placeholderTimeId: string,
-  ) {
+  ): Promise<JogoComRelacoes[]> {
     return this.prisma.jogo.findMany({
       where: {
         fase: { temporadaId },
@@ -199,10 +245,13 @@ export class PrismaJogoRepository implements JogoRepository {
       },
       include: { timeCasa: true, timeFora: true, fase: true },
       orderBy: [{ fase: { ordem: 'asc' } }, { rodada: 'asc' }],
-    });
+    }) as unknown as Promise<JogoComRelacoes[]>;
   }
 
-  buscarAgendadosEntre(inicio: Date, fim: Date) {
+  async buscarAgendadosEntre(
+    inicio: Date,
+    fim: Date,
+  ): Promise<JogoComRelacoes[]> {
     return this.prisma.jogo.findMany({
       where: {
         status: 'AGENDADO',
@@ -210,6 +259,45 @@ export class PrismaJogoRepository implements JogoRepository {
       },
       include: { timeCasa: true, timeFora: true, fase: true },
       orderBy: { dataHora: 'asc' },
+    }) as unknown as Promise<JogoComRelacoes[]>;
+  }
+
+  async contarAtrasados(): Promise<number> {
+    return this.prisma.jogo.count({
+      where: {
+        status: 'AGENDADO',
+        fonteResultado: 'API_EXTERNA',
+        dataHora: { not: null, lte: new Date() },
+      },
+    });
+  }
+
+  async contarEmAndamento(): Promise<number> {
+    return this.prisma.jogo.count({
+      where: {
+        status: 'EM_ANDAMENTO',
+        fonteResultado: 'API_EXTERNA',
+      },
+    });
+  }
+
+  async buscarProximoAgendado(): Promise<{
+    dataHora: Date | null;
+    timeCasa?: { sigla: string } | null;
+    timeFora?: { sigla: string } | null;
+  } | null> {
+    return this.prisma.jogo.findFirst({
+      where: {
+        status: 'AGENDADO',
+        fonteResultado: 'API_EXTERNA',
+        dataHora: { gt: new Date() },
+      },
+      orderBy: { dataHora: 'asc' },
+      select: {
+        dataHora: true,
+        timeCasa: { select: { sigla: true } },
+        timeFora: { select: { sigla: true } },
+      },
     });
   }
 }

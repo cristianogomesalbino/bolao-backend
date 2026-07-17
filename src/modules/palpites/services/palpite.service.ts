@@ -60,6 +60,7 @@ export class PalpiteService {
     const palpite = await this.buscarEValidarOwnership(id, usuarioId);
 
     const jogo = await this.jogoRepo.buscarPorId(palpite.jogoId);
+    if (!jogo) throw new JogoNaoEncontradoError();
     this.validarJogoAceitaPalpites(jogo);
 
     return this.palpiteRepo.atualizar(id, {
@@ -72,6 +73,7 @@ export class PalpiteService {
     const palpite = await this.buscarEValidarOwnership(id, usuarioId);
 
     const jogo = await this.jogoRepo.buscarPorId(palpite.jogoId);
+    if (!jogo) throw new JogoNaoEncontradoError();
     this.validarJogoAceitaPalpites(jogo);
 
     await this.palpiteRepo.remover(id);

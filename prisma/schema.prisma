@@ -345,3 +345,29 @@ model PreferenciaNotificacao {
 
   usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 }
+
+// --- Módulo Eventos (outbox pattern local) ---
+
+enum StatusEvento {
+  PENDENTE
+  PROCESSANDO
+  PROCESSADO
+  FALHA_DEFINITIVA
+}
+
+model EventoPendente {
+  id                String       @id @default(uuid())
+  tipo              String       @db.VarChar(50)
+  chaveIdempotencia String       @unique @db.VarChar(200)
+  payload           Json
+  status            StatusEvento @default(PENDENTE)
+  tentativas        Int          @default(0)
+  ultimoErro        String?      @db.VarChar(500)
+  syncId            String?
+  dataCriacao       DateTime     @default(now())
+  processadoEm      DateTime?
+  atualizadoEm      DateTime     @updatedAt
+
+  @@index([status])
+  @@index([tipo, status])
+}

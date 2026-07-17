@@ -23,7 +23,10 @@ jobs:
           node-version: 22
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
+
+      - name: Generate Prisma Client
+        run: npx prisma generate
 
       - name: Run lint
         run: npx eslint "{src,apps,libs,test}/**/*.ts"
@@ -33,6 +36,6 @@ jobs:
 
       - name: Sonar Scan
         uses: SonarSource/sonarcloud-github-action@v2
-        continue-on-error: true
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
