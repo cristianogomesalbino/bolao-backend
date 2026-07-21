@@ -88,5 +88,16 @@ export const NOTIFICACOES = {
       mensagem: (timeCasa: string, timeFora: string) =>
         `O jogo ${timeCasa} × ${timeFora} está definido. Dê seu palpite!`,
     },
+    VENCEDOR_BOLAO: {
+      titulo: 'Temos um campeão!',
+      mensagemVencedor: (grupoNome: string, pontos: number) =>
+        `Parabéns! Você é o campeão do bolão "${grupoNome}" com ${pontos} pontos!`,
+      mensagemMembros: (
+        vencedorNome: string,
+        grupoNome: string,
+        pontos: number,
+      ) =>
+        `${vencedorNome} venceu o bolão "${grupoNome}" com ${pontos} pontos! Confira o ranking final.`,
+    },
   },
 } as const;

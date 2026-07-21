@@ -36,4 +36,9 @@ export class AtualizarPreferenciasDto {
   @IsOptional()
   @IsBoolean({ message: 'jogoLiberado deve ser true ou false' })
   jogoLiberado?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean({ message: 'vencedorBolao deve ser true ou false' })
+  vencedorBolao?: boolean;
 }

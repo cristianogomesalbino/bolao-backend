@@ -5,6 +5,7 @@ import { NotificacaoAcertoService } from './notificacao-acerto.service';
 import { NotificacaoRodadaService } from './notificacao-rodada.service';
 import { NotificacaoRankingService } from './notificacao-ranking.service';
 import { NotificacaoLembreteService } from './notificacao-lembrete.service';
+import { NotificacaoVencedorService } from './notificacao-vencedor.service';
 import type { JogoRepository } from '../../jogos/repositories/jogo.repository.interface';
 import type { FaseRepository } from '../../jogos/repositories/fase.repository.interface';
 import type { JogoNotif, FaseNotif } from '../types/notificacao.types';
@@ -18,6 +19,7 @@ export class NotificacaoEventService {
     private readonly rodadaService: NotificacaoRodadaService,
     private readonly rankingService: NotificacaoRankingService,
     private readonly lembreteService: NotificacaoLembreteService,
+    private readonly vencedorService: NotificacaoVencedorService,
     @Inject(JOGOS.JOGO_REPOSITORY_TOKEN)
     private readonly jogoRepo: JogoRepository,
     @Inject(JOGOS.FASE_REPOSITORY_TOKEN)
@@ -39,6 +41,7 @@ export class NotificacaoEventService {
       await this.acertoService.verificarAcertosEmCheio(jogo, fase);
       await this.rodadaService.verificarRodadaEncerrada(jogo, fase);
       await this.rankingService.verificarMudancasPosicao(jogo, fase);
+      await this.vencedorService.verificarTemporadaEncerrada(fase);
     } catch (error) {
       this.logger.error(
         `Erro ao processar notificações do jogo ${jogoId}: ${(error as Error).message}`,
