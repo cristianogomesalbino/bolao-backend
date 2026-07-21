@@ -27,6 +27,7 @@ export class InMemoryPreferenciaRepository implements PreferenciaRepository {
       desceuPosicao: data?.desceuPosicao ?? true,
       palpitesPendentes: data?.palpitesPendentes ?? true,
       jogoLiberado: data?.jogoLiberado ?? true,
+      vencedorBolao: data?.vencedorBolao ?? true,
     };
     this.items.push(preferencia);
     return preferencia;

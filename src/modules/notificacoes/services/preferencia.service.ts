@@ -14,6 +14,7 @@ const TIPO_PARA_CAMPO: Record<string, keyof PreferenciaCampos> = {
   DESCEU_POSICAO: 'desceuPosicao',
   PALPITES_PENDENTES: 'palpitesPendentes',
   JOGO_LIBERADO: 'jogoLiberado',
+  VENCEDOR_BOLAO: 'vencedorBolao',
 };
 
 @Injectable()

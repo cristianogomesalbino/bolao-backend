@@ -47,7 +47,9 @@ export class PrismaFaseRepository implements FaseRepository {
       },
     };
     if (nomeFase) {
-      where.nome = { contains: nomeFase };
+      const ehExato = nomeFase.startsWith('EXACT:');
+      const nome = ehExato ? nomeFase.slice(6) : nomeFase;
+      where.nome = ehExato ? { equals: nome } : { contains: nome };
     }
 
     const fase = await this.prisma.fase.findFirst({
