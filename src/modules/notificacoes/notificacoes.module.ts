@@ -14,6 +14,7 @@ import { NotificacaoAcertoService } from './services/notificacao-acerto.service'
 import { NotificacaoRodadaService } from './services/notificacao-rodada.service';
 import { NotificacaoRankingService } from './services/notificacao-ranking.service';
 import { NotificacaoLembreteService } from './services/notificacao-lembrete.service';
+import { NotificacaoVencedorService } from './services/notificacao-vencedor.service';
 import { PushService } from './services/push.service';
 import { PreferenciaService } from './services/preferencia.service';
 import { PontuacaoService } from '../ranking/services/pontuacao.service';
@@ -40,6 +41,7 @@ import { PrismaGrupoRepository } from '../grupos/repositories/prisma-grupo.repos
     NotificacaoRodadaService,
     NotificacaoRankingService,
     NotificacaoLembreteService,
+    NotificacaoVencedorService,
     PushService,
     PreferenciaService,
     // Services de outros módulos (instanciados localmente para evitar circular deps)

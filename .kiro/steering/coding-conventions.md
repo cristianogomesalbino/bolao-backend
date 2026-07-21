@@ -6,6 +6,7 @@ inclusion: always
 
 ## Regras Críticas (NUNCA violar)
 
+- **NUNCA entregar código sem testes unitários** — TODO service, controller ou use case novo DEVE ter arquivo `.spec.ts` correspondente criado NA MESMA ENTREGA. Código sem teste é código incompleto. Não existe "criar testes depois". A cobertura mínima de código novo é 80%. Se o usuário não pedir testes explicitamente, criar mesmo assim — é obrigação do desenvolvedor, não responsabilidade do usuário pedir
 - **NUNCA usar `any` em código novo** — ZERO tolerância. Usar interfaces locais, tipos do Prisma, ou `as TipoEsperado` no ponto de uso. Se um repository retorna `any`, fazer cast imediatamente: `const jogo = await repo.buscarPorId(id) as Jogo | null`. NÃO propagar `any` para parâmetros de métodos
 - **NUNCA criar um arquivo .ts com mais de 300 linhas** — dividir em arquivos menores com responsabilidade única. Se o arquivo está crescendo, parar e refatorar ANTES de continuar
 - **SEMPRE documentar funcionalidades novas no steering `project-overview.md`** — ao finalizar uma feature, atualizar endpoints, regras de domínio, services especializados e módulos no steering. Funcionalidade não documentada no steering é funcionalidade incompleta
@@ -191,14 +192,16 @@ Não usar `"campo": "geral"`. O campo `campo` é opcional — omitir quando não
 ## Protocolo de Validação (obrigatório em TODA entrega)
 
 1. **getDiagnostics** em cada arquivo criado/editado — 0 errors obrigatório
-2. **Rodar testes** (`npx vitest run`) — 0 falhas obrigatório
-3. **Verificar container Docker** — `Nest application successfully started` sem erros
-4. Se getDiagnostics retorna warnings de complexidade ou `any`:
+2. **Rodar `npx eslint` nos arquivos criados/editados** — 0 errors obrigatório. getDiagnostics NÃO é suficiente sozinho — o CI usa eslint com Prettier plugin que detecta formatação. SEMPRE rodar eslint explicitamente antes de declarar pronto
+3. **Verificar que testes existem** — todo service/controller novo DEVE ter `.spec.ts` correspondente. Se não existe, CRIAR ANTES de prosseguir
+4. **Rodar testes** (`npx vitest run`) — 0 falhas obrigatório
+5. **Verificar container Docker** — `Nest application successfully started` sem erros
+6. Se getDiagnostics retorna warnings de complexidade ou `any`:
    - Complexidade > 15: extrair helper ANTES de entregar
    - `any` em código novo: tipar ANTES de entregar
    - `any` em código legado tocado: aplicar regra dos 10%
-5. **Verificar integridade de migrations** — se `schema.prisma` foi alterado, confirmar que TODA tabela/enum tem uma migration correspondente commitada em `prisma/migrations/`. NUNCA usar `db push` como substituto de `migrate dev`
-6. **Nunca declarar "pronto" sem rodar os 5 passos acima**
+7. **Verificar integridade de migrations** — se `schema.prisma` foi alterado, confirmar que TODA tabela/enum tem uma migration correspondente commitada em `prisma/migrations/`. NUNCA usar `db push` como substituto de `migrate dev`
+8. **Nunca declarar "pronto" sem rodar os 7 passos acima**
 
 ## Redução Gradual de Dívida Técnica (Regra dos 20%)
 
@@ -236,9 +239,23 @@ Não usar `"campo": "geral"`. O campo `campo` é opcional — omitir quando não
 - Services testados com InMemory repositories: `new ServiceClass(inMemoryRepo)`
 - Controllers testados com `new ControllerClass(mockService as unknown as ServiceClass)`
 - Guards testados com instanciação direta e mock de `ExecutionContext`
-- **NUNCA usar `as any` em testes** — usar `as unknown as TipoEsperado` para mocks parciais
+- **NUNCA usar `as any` em testes** — usar `as unknown as TipoEsperado` para mocks parciais, ou preferencialmente usar `vi.fn()` com mocks tipados via `as unknown as Interface`. Para dados de repositório, usar `as never` em arrays mockados de retorno. O objetivo é ZERO warnings de lint nos testes — não apenas zero errors
 - Imports explícitos: `import { describe, it, expect, beforeEach, vi } from 'vitest'`
 - Rodar testes: `npx vitest run` (host — InMemory repos, sem banco)
+
+### Obrigatoriedade de Testes (REGRA INVIOLÁVEL)
+
+- **TODO service novo DEVE ter arquivo `.spec.ts` criado na mesma entrega** — sem exceção
+- **TODO controller novo DEVE ter arquivo `.spec.ts` criado na mesma entrega** — sem exceção
+- **Cenários mínimos obrigatórios para cada service:**
+  - Caminho feliz (operação sucede)
+  - Validação de entrada (dados inválidos ou recurso inexistente)
+  - Idempotência (se aplicável — operação repetida não duplica efeito)
+  - Guard de estado (não opera se pré-condição falha)
+- **Cobertura mínima de código novo: 80%** — se o SonarCloud reportar abaixo disso, a entrega está incompleta
+- **ZERO warnings de lint em testes novos** — não usar `as any`, não fazer `push` com objetos parciais sem tipagem. Usar mocks tipados (`as unknown as Interface`) e `vi.fn()` com `mockResolvedValue`. O mesmo padrão de qualidade do código de produção se aplica aos testes
+- **Se eu (Kiro) não criar testes automaticamente, o usuário deve me cobrar** — mas a responsabilidade é minha, não do usuário
+- **Testes devem estar no diretório `test/modules/<modulo>/`** seguindo a estrutura existente
 
 ## Postman Collection
 

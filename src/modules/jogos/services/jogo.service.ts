@@ -8,6 +8,7 @@ import {
 import type { CampeonatoConfig } from '../jogos.constants';
 import { TIMES } from '../../times/time.constants';
 import { NOTIFICACOES } from '../../notificacoes/notificacoes.constants';
+import { CAMPEONATOS } from '../../campeonatos/campeonatos.constants';
 import type {
   JogoRepository,
   CriarJogoData,
@@ -15,6 +16,7 @@ import type {
 import type { FaseRepository } from '../repositories/fase.repository.interface';
 import type { TimeRepository } from '../../times/repositories/time.repository.interface';
 import type { NotificacaoEventService } from '../../notificacoes/services/notificacao-event.service';
+import type { CampeonatoStatusService } from '../../campeonatos/services/campeonato-status.service';
 import { FutebolApiService } from './futebol-api.service';
 import type { JogoApiRaw } from './futebol-api.types';
 import { ChaveamentoService } from './chaveamento.service';
@@ -132,6 +134,9 @@ export class JogoService {
     @Optional()
     @Inject(NOTIFICACOES.EVENT_SERVICE_TOKEN)
     private readonly notificacaoEventService?: NotificacaoEventService,
+    @Optional()
+    @Inject(CAMPEONATOS.STATUS_SERVICE_TOKEN)
+    private readonly campeonatoStatusService?: CampeonatoStatusService,
   ) {}
 
   async criar(dto: CriarJogoDto & { faseId: string }, userId: string) {
@@ -265,6 +270,7 @@ export class JogoService {
         : await this.finalizarMataMata(jogo, fase, dto);
 
     this.dispararNotificacoesJogoFinalizado(jogoFinalizado.id);
+    this.dispararVerificacaoStatusCampeonato(jogo.faseId);
 
     return jogoFinalizado;
   }
@@ -278,6 +284,28 @@ export class JogoService {
         this.logger.error(
           `Erro notificações pós-finalização: ${err.message}`,
           err.stack,
+        ),
+      );
+  }
+
+  private dispararVerificacaoStatusCampeonato(faseId: string): void {
+    if (!this.campeonatoStatusService) return;
+    this.campeonatoStatusService
+      .verificarFinalizacaoCampeonato(faseId)
+      .catch((err) =>
+        this.logger.error(
+          `Erro ao verificar status campeonato: ${(err as Error).message}`,
+        ),
+      );
+  }
+
+  private dispararVerificacaoInicioCampeonato(faseId: string): void {
+    if (!this.campeonatoStatusService) return;
+    this.campeonatoStatusService
+      .verificarInicioCampeonato(faseId)
+      .catch((err) =>
+        this.logger.error(
+          `Erro ao verificar início campeonato: ${(err as Error).message}`,
         ),
       );
   }
@@ -702,8 +730,8 @@ export class JogoService {
     if (faseSlug.includes('oitavas')) return 'Oitavas';
     if (faseSlug.includes('quartas')) return 'Quartas';
     if (faseSlug.includes('semifinal')) return 'Semifin';
-    if (faseSlug.includes('terceiro')) return 'Terceiro';
-    if (faseSlug.includes('final-copa')) return 'Final';
+    if (faseSlug.includes('terceiro')) return '3º Lugar';
+    if (faseSlug.includes('final-copa')) return 'EXACT:Final';
     if (faseSlug.includes('fase-unica')) return 'Fase';
     return '';
   }
@@ -1048,6 +1076,14 @@ export class JogoService {
       );
     }
 
+    // Pós-sync: se algum jogo iniciou, verificar status do campeonato
+    const jogosIniciadosAgora = jogosAtualizados.filter(
+      (j) => j.status === 'EM_ANDAMENTO' && j.statusAnterior !== 'EM_ANDAMENTO',
+    );
+    if (jogosIniciadosAgora.length > 0) {
+      this.dispararVerificacaoInicioCampeonato(fase.id);
+    }
+
     // Pós-sync: se algum jogo foi finalizado
     const jogosFinalizedAgora = jogosAtualizados.filter(
       (j) => j.status === 'FINALIZADO',
@@ -1057,6 +1093,7 @@ export class JogoService {
         jogosFinalizedAgora,
         fase.temporadaId,
         config,
+        fase.id,
       );
     }
 
@@ -1433,6 +1470,7 @@ export class JogoService {
     jogosFinalizados: { id: string; status: string }[],
     temporadaId: string,
     config: CampeonatoConfig,
+    faseId: string,
   ): Promise<void> {
     const temMataMata = config.fases.some((f) => f.tipo === 'MATA_MATA');
 
@@ -1454,6 +1492,8 @@ export class JogoService {
     for (const jogo of jogosFinalizados) {
       this.dispararNotificacoesJogoFinalizado(jogo.id);
     }
+
+    this.dispararVerificacaoStatusCampeonato(faseId);
   }
 
   private aplicarProtecaoSemData(

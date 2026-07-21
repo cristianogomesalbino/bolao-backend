@@ -1,6 +1,10 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { ValidationPipe, BadRequestException } from '@nestjs/common';
+import {
+  ValidationPipe,
+  BadRequestException,
+  type ValidationError,
+} from '@nestjs/common';
 import { PrismaExceptionFilter } from './common/filters/prisma-exception.filter';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { DomainExceptionFilter } from './common/filters/domain-exception.filter';
@@ -8,7 +12,39 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import cookieParser from 'cookie-parser';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const silencedContexts = new Set([
+    'InstanceLoader',
+    'RoutesResolver',
+    'RouterExplorer',
+    'NestFactory',
+  ]);
+
+  const app = await NestFactory.create(AppModule, {
+    logger: {
+      log(message: string, context?: string) {
+        if (context && silencedContexts.has(context)) return;
+        console.log(`[Nest] LOG [${context ?? ''}] ${message}`);
+      },
+      error(message: string, trace?: string, context?: string) {
+        console.error(
+          `[Nest] ERROR [${context ?? ''}] ${message}`,
+          trace ?? '',
+        );
+      },
+      warn(message: string, context?: string) {
+        console.warn(`[Nest] WARN [${context ?? ''}] ${message}`);
+      },
+      debug(_message: string, _context?: string) {
+        // silenciado
+      },
+      verbose(_message: string, _context?: string) {
+        // silenciado
+      },
+      fatal(message: string, context?: string) {
+        console.error(`[Nest] FATAL [${context ?? ''}] ${message}`);
+      },
+    },
+  });
 
   app.use(cookieParser());
 
@@ -51,8 +87,15 @@ async function bootstrap() {
       transform: true,
       stopAtFirstError: true,
 
-      exceptionFactory: (errors) => {
-        const formatErrors = (validationErrors) => {
+      exceptionFactory: (errors: ValidationError[]) => {
+        interface FormattedError {
+          campo: string;
+          mensagens: string[];
+        }
+
+        const formatErrors = (
+          validationErrors: ValidationError[],
+        ): FormattedError[] => {
           return validationErrors.flatMap((error) => {
             if (error.children?.length) {
               return formatErrors(error.children);
@@ -98,15 +141,23 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
 
   // Aplica autenticação automaticamente em todas as rotas, exceto as públicas
-  Object.values(document.paths).forEach((path: any) => {
-    Object.values(path).forEach((operation: any) => {
-      if (operation.tags) {
-        const isPublic = operation['x-public'] === true;
-        if (!isPublic) {
-          operation.security = [{ 'JWT-auth': [] }];
+  interface SwaggerOperation {
+    tags?: string[];
+    'x-public'?: boolean;
+    security?: Record<string, string[]>[];
+  }
+
+  Object.values(document.paths).forEach((path) => {
+    Object.values(path as Record<string, SwaggerOperation>).forEach(
+      (operation) => {
+        if (operation.tags) {
+          const isPublic = operation['x-public'] === true;
+          if (!isPublic) {
+            operation.security = [{ 'JWT-auth': [] }];
+          }
         }
-      }
-    });
+      },
+    );
   });
 
   const isDev = process.env.NODE_ENV !== 'production';
@@ -203,4 +254,4 @@ async function bootstrap() {
   await app.listen(port, '0.0.0.0');
 }
 
-bootstrap();
+void bootstrap();

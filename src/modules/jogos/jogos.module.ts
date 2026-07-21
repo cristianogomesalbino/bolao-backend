@@ -12,12 +12,14 @@ import { PrismaLogSincronizacaoRepository } from './repositories/prisma-log-sinc
 import { TemporadasModule } from '../temporadas/temporadas.module';
 import { TimesModule } from '../times/times.module';
 import { NotificacoesModule } from '../notificacoes/notificacoes.module';
+import { CampeonatosModule } from '../campeonatos/campeonatos.module';
 
 @Module({
   imports: [
     forwardRef(() => TemporadasModule),
     TimesModule,
     forwardRef(() => NotificacoesModule),
+    CampeonatosModule,
   ],
   controllers: [FaseController, JogoController],
   providers: [

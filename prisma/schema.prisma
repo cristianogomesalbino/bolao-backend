@@ -9,10 +9,11 @@ datasource db {
 }
 
 model Campeonato {
-  id           String      @id @default(uuid())
+  id           String           @id @default(uuid())
   nome         String
-  dataCriacao  DateTime    @default(now())
-  atualizadoEm DateTime    @updatedAt
+  status       StatusCampeonato @default(NAO_INICIADO)
+  dataCriacao  DateTime         @default(now())
+  atualizadoEm DateTime         @updatedAt
   temporadas   Temporada[]
 }
 
@@ -218,6 +219,12 @@ enum Perfil {
   USER
 }
 
+enum StatusCampeonato {
+  NAO_INICIADO
+  EM_ANDAMENTO
+  FINALIZADO
+}
+
 enum GrupoRole {
   ADMIN
   MEMBER
@@ -288,6 +295,7 @@ enum TipoNotificacao {
   DESCEU_POSICAO
   PALPITES_PENDENTES
   JOGO_LIBERADO
+  VENCEDOR_BOLAO
 }
 
 enum StatusNotificacao {
@@ -342,6 +350,7 @@ model PreferenciaNotificacao {
   desceuPosicao     Boolean @default(true)
   palpitesPendentes Boolean @default(true)
   jogoLiberado      Boolean @default(true)
+  vencedorBolao     Boolean @default(true)
 
   usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 }

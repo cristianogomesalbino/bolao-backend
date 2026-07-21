@@ -55,9 +55,14 @@ export class InMemoryFaseRepository implements FaseRepository {
     _nomeCampeonato: string,
     nomeFase: string,
   ): Promise<{ id: string } | null> {
-    const fase = nomeFase
-      ? this.items.find((f) => f.nome.includes(nomeFase))
-      : this.items[0];
+    if (!nomeFase) {
+      return this.items[0] ? { id: this.items[0].id } : null;
+    }
+    const ehExato = nomeFase.startsWith('EXACT:');
+    const nome = ehExato ? nomeFase.slice(6) : nomeFase;
+    const fase = ehExato
+      ? this.items.find((f) => f.nome === nome)
+      : this.items.find((f) => f.nome.includes(nome));
     return fase ? { id: fase.id } : null;
   }
 }
