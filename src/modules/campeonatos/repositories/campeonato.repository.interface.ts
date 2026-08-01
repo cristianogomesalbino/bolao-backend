@@ -13,4 +13,5 @@ export interface CampeonatoRepository {
   buscarTodos(): Promise<Campeonato[]>;
   buscarPorId(id: string): Promise<Campeonato | null>;
   atualizarStatus(id: string, status: StatusCampeonato): Promise<Campeonato>;
+  buscarTemporadasPorCampeonato(campeonatoId: string): Promise<{ id: string }[]>;
 }

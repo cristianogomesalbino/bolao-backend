@@ -1,3 +1,11 @@
+export interface AtualizarUsuarioData {
+  nome?: string;
+  email?: string;
+  senha?: string;
+  grupoFavoritoId?: string | null;
+  toursCompletos?: string[];
+}
+
 export interface UsuarioRepository {
   criar(data: {
     nome: string;
@@ -8,14 +16,6 @@ export interface UsuarioRepository {
   buscarPorId(id: string): Promise<any>;
   buscarPorEmail(email: string): Promise<any>;
   listar(filtros: { ativo: boolean }): Promise<any[]>;
-  atualizar(
-    id: string,
-    data: Partial<{
-      nome: string;
-      email: string;
-      senha: string;
-      grupoFavoritoId: string | null;
-    }>,
-  ): Promise<any>;
+  atualizar(id: string, data: AtualizarUsuarioData): Promise<any>;
   desativar(id: string): Promise<any>;
 }

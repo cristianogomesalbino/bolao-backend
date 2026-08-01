@@ -1450,9 +1450,15 @@ export class JogoService {
 
   private logarJogosAtrasadosDetectados(jogos: JogoInterno[]): void {
     const agora = new Date();
-    const atrasados = jogos.filter(
-      (j) => j.dataHora && new Date(j.dataHora) <= agora,
-    );
+    const DURACAO_JOGO_MS = 2 * 60 * 60 * 1000; // 2 horas (90min + acréscimos + intervalo)
+
+    const atrasados = jogos.filter((j) => {
+      if (!j.dataHora) return false;
+      if (j.status === 'EM_ANDAMENTO' || j.status === 'FINALIZADO') return false;
+      const fimEstimado = new Date(j.dataHora).getTime() + DURACAO_JOGO_MS;
+      return fimEstimado <= agora.getTime();
+    });
+
     if (atrasados.length === 0) return;
 
     const descricao = atrasados

@@ -215,8 +215,22 @@ export class InMemoryJogoRepository implements JogoRepository {
   }
 
   async contarAdiadosPorTemporada(temporadaId: string): Promise<number> {
-    return this.items.filter(
-      (j) => j.fase?.temporadaId === temporadaId && j.status === 'ADIADO',
+    // Determinar rodada atual (menor rodada com jogos não finalizados/cancelados/adiados)
+    const jogosTemporada = this.items.filter(
+      (j) => j.fase?.temporadaId === temporadaId,
+    );
+    const rodadaAtual = jogosTemporada
+      .filter((j) => j.status !== 'FINALIZADO' && j.status !== 'CANCELADO' && j.status !== 'ADIADO')
+      .reduce((min, j) => (j.rodada && j.rodada < min ? j.rodada : min), Infinity);
+
+    // Se não há rodada atual, contar todos os adiados
+    if (rodadaAtual === Infinity) {
+      return jogosTemporada.filter((j) => j.status === 'ADIADO').length;
+    }
+
+    // Contar apenas adiados de rodadas anteriores à atual
+    return jogosTemporada.filter(
+      (j) => j.status === 'ADIADO' && j.rodada !== null && j.rodada < rodadaAtual,
     ).length;
   }
 

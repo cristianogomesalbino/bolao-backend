@@ -9,7 +9,7 @@ import { JogoService } from '../../jogos/services/jogo.service';
 import { SYNC_INTERVALOS } from '../scheduler.constants';
 
 /** Timeout máximo para uma execução de sync (evita travar o ciclo) */
-const SYNC_TIMEOUT_MS = 60 * 1000; // 60 segundos
+const SYNC_TIMEOUT_MS = 120 * 1000; // 120 segundos
 
 /**
  * Scheduler de sincronização com política adaptativa.
@@ -88,7 +88,7 @@ export class SincronizacaoScheduler implements OnModuleInit {
     let timer: NodeJS.Timeout | undefined;
     const timeoutPromise = new Promise<never>((_, reject) => {
       timer = setTimeout(
-        () => reject(new Error('Sync timeout — ciclo travado por 60s')),
+        () => reject(new Error('Sync timeout — ciclo travado por 120s')),
         SYNC_TIMEOUT_MS,
       );
     });
