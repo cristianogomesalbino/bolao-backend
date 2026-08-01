@@ -1,4 +1,7 @@
-import { UsuarioRepository } from './usuario.repository.interface';
+import {
+  AtualizarUsuarioData,
+  UsuarioRepository,
+} from './usuario.repository.interface';
 
 export class InMemoryUsuarioRepository implements UsuarioRepository {
   items: any[] = [];
@@ -16,6 +19,8 @@ export class InMemoryUsuarioRepository implements UsuarioRepository {
       senha: data.senha,
       perfil: 'USER',
       ativo: data.ativo,
+      grupoFavoritoId: null,
+      toursCompletos: [],
       dataCriacao: new Date(),
       atualizadoEm: new Date(),
     };
@@ -35,15 +40,7 @@ export class InMemoryUsuarioRepository implements UsuarioRepository {
     return this.items.filter((u) => u.ativo === filtros.ativo);
   }
 
-  async atualizar(
-    id: string,
-    data: Partial<{
-      nome: string;
-      email: string;
-      senha: string;
-      grupoFavoritoId: string | null;
-    }>,
-  ) {
+  async atualizar(id: string, data: AtualizarUsuarioData) {
     const index = this.items.findIndex((u) => u.id === id);
     if (index === -1) return null;
     this.items[index] = {

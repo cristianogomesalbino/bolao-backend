@@ -118,4 +118,22 @@ export class UsuariosService {
 
     return this.usuarioRepo.atualizar(usuarioId, { grupoFavoritoId: grupoId });
   }
+
+  async marcarTourCompleto(usuarioId: string, tourId: string): Promise<void> {
+    const usuario = await this.usuarioRepo.buscarPorId(usuarioId);
+
+    if (!usuario?.ativo) {
+      throw new UsuarioNaoEncontradoError();
+    }
+
+    const toursAtuais: string[] = usuario.toursCompletos ?? [];
+
+    if (toursAtuais.includes(tourId)) {
+      return; // idempotente
+    }
+
+    await this.usuarioRepo.atualizar(usuarioId, {
+      toursCompletos: [...toursAtuais, tourId],
+    });
+  }
 }
