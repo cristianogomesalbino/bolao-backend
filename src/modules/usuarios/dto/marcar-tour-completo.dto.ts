@@ -12,5 +12,5 @@ export class MarcarTourCompletoDto {
   @IsIn([...TOURS_VALIDOS], {
     message: 'tourId deve ser um dos valores válidos',
   })
-  tourId: 'tour-home' | 'tour-grupo' | 'tour-palpites';
+  tourId: (typeof TOURS_VALIDOS)[number];
 }

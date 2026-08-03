@@ -189,6 +189,49 @@ Nomes de classes, decorators e padrões do NestJS seguem inglês (Controller, Se
 
 ### Usuários
 - `PATCH /usuarios/me/grupo-favorito` — definir grupo favorito
+- `PATCH /usuarios/me/tours` — marcar tour como completo (body: `{ tourId }`)
+
+## Tour de Onboarding
+
+Sistema de guided tour que apresenta funcionalidades ao usuário na primeira visita a cada página.
+
+### Arquitetura
+
+- **Backend:** campo `toursCompletos: String[]` no modelo `Usuario`. Endpoint idempotente que adiciona tourId ao array.
+- **Frontend:** `TourProvider` (react-joyride) com auto-ativação via polling DOM + persistência fire-and-forget no backend.
+- **Resiliência offline:** se a chamada ao backend falha, o tourId é salvo em `localStorage` como pendente e sincronizado no próximo login via `sincronizarToursPendentes()`.
+
+### Tours disponíveis
+
+| ID | Página | Steps |
+|----|--------|-------|
+| `tour-palpites` | `/palpites` | 7 |
+| `tour-grupo` | `/grupos/:id` | 9 |
+| `tour-ranking` | `/ranking` | 4 |
+| `tour-conta` | `/minha-conta` | 7 |
+| `tour-grupos-publicos` | `/grupos/buscar` | 5 |
+| `tour-meus-grupos` | `/grupos/explorar` | 4 |
+
+### Componentes Frontend
+
+- `src/lib/tour-registry.ts` — definição declarativa de todos os tours (steps + targets)
+- `src/lib/tour-sync.ts` — storage de pendentes + sincronização com backend
+- `src/services/tour.service.ts` — chamada HTTP `PATCH /usuarios/me/tours`
+- `src/components/tour/tour-provider.tsx` — core: Joyride, auto-ativação, persistência
+- `src/components/tour/tooltip-tour.tsx` — componente visual do tooltip
+- `src/components/tour/botao-refazer-tour.tsx` — botão de refazer com dropdown
+- `src/components/tour/tour-page-wrapper.tsx` — wrapper DRY (`TourPageWrapper` + `TourRefazerBotao`)
+
+### Integração nas pages
+
+```tsx
+import { TourPageWrapper, TourRefazerBotao } from '@/components/tour/tour-page-wrapper';
+
+// No JSX:
+<TourPageWrapper />                           // auto-detecta pathname
+<TourPageWrapper pathname={`/grupos/${id}`} /> // override para dynamic routes
+<TourRefazerBotao />                          // botão de refazer no header
+```
 
 ## Services Especializados
 

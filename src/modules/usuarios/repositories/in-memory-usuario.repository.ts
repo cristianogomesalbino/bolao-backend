@@ -1,10 +1,11 @@
 import {
   AtualizarUsuarioData,
+  Usuario,
   UsuarioRepository,
 } from './usuario.repository.interface';
 
 export class InMemoryUsuarioRepository implements UsuarioRepository {
-  items: any[] = [];
+  items: Usuario[] = [];
 
   async criar(data: {
     nome: string;

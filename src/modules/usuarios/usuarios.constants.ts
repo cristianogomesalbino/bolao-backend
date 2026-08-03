@@ -2,6 +2,10 @@ export const TOURS_VALIDOS = [
   'tour-home',
   'tour-grupo',
   'tour-palpites',
+  'tour-ranking',
+  'tour-conta',
+  'tour-grupos-publicos',
+  'tour-meus-grupos',
 ] as const;
 
 export type TourId = (typeof TOURS_VALIDOS)[number];
