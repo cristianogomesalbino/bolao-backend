@@ -1,5 +1,4 @@
 export const TOURS_VALIDOS = [
-  'tour-home',
   'tour-grupo',
   'tour-palpites',
   'tour-ranking',

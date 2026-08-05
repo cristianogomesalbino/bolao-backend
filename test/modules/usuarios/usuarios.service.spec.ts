@@ -305,10 +305,10 @@ describe('UsuariosService', () => {
         senha: 's',
       });
 
-      await service.marcarTourCompleto(criado.id, 'tour-home');
+      await service.marcarTourCompleto(criado.id, 'tour-palpites');
 
       const usuario = usuarioRepo.items.find((u) => u.id === criado.id);
-      expect(usuario.toursCompletos).toContain('tour-home');
+      expect(usuario.toursCompletos).toContain('tour-palpites');
     });
 
     it('deve ser idempotente — não duplicar tourId já presente', async () => {
@@ -318,12 +318,12 @@ describe('UsuariosService', () => {
         senha: 's',
       });
 
-      await service.marcarTourCompleto(criado.id, 'tour-home');
-      await service.marcarTourCompleto(criado.id, 'tour-home');
+      await service.marcarTourCompleto(criado.id, 'tour-palpites');
+      await service.marcarTourCompleto(criado.id, 'tour-palpites');
 
       const usuario = usuarioRepo.items.find((u) => u.id === criado.id);
       const ocorrencias = usuario.toursCompletos.filter(
-        (t: string) => t === 'tour-home',
+        (t: string) => t === 'tour-palpites',
       );
       expect(ocorrencias).toHaveLength(1);
     });
@@ -335,18 +335,18 @@ describe('UsuariosService', () => {
         senha: 's',
       });
 
-      await service.marcarTourCompleto(criado.id, 'tour-home');
+      await service.marcarTourCompleto(criado.id, 'tour-palpites');
       await service.marcarTourCompleto(criado.id, 'tour-grupo');
 
       const usuario = usuarioRepo.items.find((u) => u.id === criado.id);
-      expect(usuario.toursCompletos).toContain('tour-home');
+      expect(usuario.toursCompletos).toContain('tour-palpites');
       expect(usuario.toursCompletos).toContain('tour-grupo');
       expect(usuario.toursCompletos).toHaveLength(2);
     });
 
     it('deve lançar UsuarioNaoEncontradoError se usuário não existe', async () => {
       await expect(
-        service.marcarTourCompleto('inexistente', 'tour-home'),
+        service.marcarTourCompleto('inexistente', 'tour-palpites'),
       ).rejects.toThrow(UsuarioNaoEncontradoError);
     });
 
@@ -359,7 +359,7 @@ describe('UsuariosService', () => {
       await usuarioRepo.desativar(criado.id);
 
       await expect(
-        service.marcarTourCompleto(criado.id, 'tour-home'),
+        service.marcarTourCompleto(criado.id, 'tour-palpites'),
       ).rejects.toThrow(UsuarioNaoEncontradoError);
     });
   });

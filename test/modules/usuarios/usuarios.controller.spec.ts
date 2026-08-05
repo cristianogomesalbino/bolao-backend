@@ -90,4 +90,14 @@ describe('UsuariosController', () => {
     expect(mockService.remover).toHaveBeenCalledWith(userId);
     expect(result.mensagem).toBeDefined();
   });
+
+  it('marcarTourCompleto deve chamar service com user.id e tourId', async () => {
+    mockService.marcarTourCompleto = vi.fn().mockResolvedValue(undefined);
+    const dto = { tourId: 'tour-palpites' as const };
+
+    const result = await controller.marcarTourCompleto(dto, user);
+
+    expect(mockService.marcarTourCompleto).toHaveBeenCalledWith(userId, 'tour-palpites');
+    expect(result).toEqual({ mensagem: 'Tour marcado como completo' });
+  });
 });

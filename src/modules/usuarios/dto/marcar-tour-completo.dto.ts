@@ -4,7 +4,7 @@ import { TOURS_VALIDOS } from '../usuarios.constants';
 
 export class MarcarTourCompletoDto {
   @ApiProperty({
-    example: 'tour-home',
+    example: 'tour-palpites',
     description: 'ID do tour a marcar como completo',
     enum: TOURS_VALIDOS,
   })
