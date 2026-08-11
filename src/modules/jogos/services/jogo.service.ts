@@ -1454,7 +1454,8 @@ export class JogoService {
 
     const atrasados = jogos.filter((j) => {
       if (!j.dataHora) return false;
-      if (j.status === 'EM_ANDAMENTO' || j.status === 'FINALIZADO') return false;
+      if (j.status === 'EM_ANDAMENTO' || j.status === 'FINALIZADO')
+        return false;
       const fimEstimado = new Date(j.dataHora).getTime() + DURACAO_JOGO_MS;
       return fimEstimado <= agora.getTime();
     });

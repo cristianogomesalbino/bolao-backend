@@ -76,7 +76,9 @@ export class CampeonatoStatusService {
     let finalizados = 0;
 
     for (const campeonato of emAndamento) {
-      const encerrou = await this.verificarEncerramentoCampeonato(campeonato.id);
+      const encerrou = await this.verificarEncerramentoCampeonato(
+        campeonato.id,
+      );
       if (encerrou) {
         await this.campeonatoRepo.atualizarStatus(campeonato.id, 'FINALIZADO');
         this.logger.log(
@@ -92,14 +94,19 @@ export class CampeonatoStatusService {
   /**
    * Verifica se TODOS os jogos de TODAS as fases de um campeonato estão encerrados.
    */
-  private async verificarEncerramentoCampeonato(campeonatoId: string): Promise<boolean> {
-    const temporadas = await this.campeonatoRepo.buscarTemporadasPorCampeonato(campeonatoId);
+  private async verificarEncerramentoCampeonato(
+    campeonatoId: string,
+  ): Promise<boolean> {
+    const temporadas =
+      await this.campeonatoRepo.buscarTemporadasPorCampeonato(campeonatoId);
     if (temporadas.length === 0) return false;
 
     for (const temporada of temporadas) {
       const fases = await this.faseRepo.buscarPorTemporada(temporada.id);
       for (const fase of fases) {
-        const jogos = (await this.jogoRepo.buscarPorFase(fase.id)) as JogoParaStatus[];
+        const jogos = (await this.jogoRepo.buscarPorFase(
+          fase.id,
+        )) as JogoParaStatus[];
         if (jogos.length === 0) continue;
         const todosEncerrados = jogos.every(
           (j) => j.status === 'FINALIZADO' || j.status === 'CANCELADO',
