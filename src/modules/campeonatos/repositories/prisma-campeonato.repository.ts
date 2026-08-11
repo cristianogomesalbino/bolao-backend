@@ -27,4 +27,11 @@ export class PrismaCampeonatoRepository implements CampeonatoRepository {
       data: { status },
     });
   }
+
+  buscarTemporadasPorCampeonato(campeonatoId: string) {
+    return this.prisma.temporada.findMany({
+      where: { campeonatoId },
+      select: { id: true },
+    });
+  }
 }

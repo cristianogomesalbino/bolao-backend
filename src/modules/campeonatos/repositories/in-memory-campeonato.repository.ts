@@ -37,4 +37,11 @@ export class InMemoryCampeonatoRepository implements CampeonatoRepository {
     campeonato.atualizadoEm = new Date();
     return campeonato;
   }
+
+  async buscarTemporadasPorCampeonato(
+    campeonatoId: string,
+  ): Promise<{ id: string }[]> {
+    // InMemory não tem temporadas — retorna vazio (testes que precisam devem mockar)
+    return [{ id: `temporada-${campeonatoId}` }];
+  }
 }

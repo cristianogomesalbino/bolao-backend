@@ -38,6 +38,7 @@ model Usuario {
   perfil            Perfil             @default(USER)
   ativo             Boolean            @default(true)
   grupoFavoritoId   String?
+  toursCompletos    String[]           @default([])
   grupoFavorito     Grupo?             @relation("GrupoFavorito", fields: [grupoFavoritoId], references: [id])
   gruposCriados          Grupo[]                 @relation("GrupoCriador")
   grupos                 GrupoUsuario[]

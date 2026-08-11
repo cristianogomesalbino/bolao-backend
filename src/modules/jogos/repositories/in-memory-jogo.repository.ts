@@ -36,7 +36,7 @@ interface JogoInternal extends Jogo {
 export class InMemoryJogoRepository implements JogoRepository {
   items: JogoInternal[] = [];
 
-  async criar(data: CriarJogoData): Promise<Jogo> {
+  criar(data: CriarJogoData): Promise<Jogo> {
     const jogo: JogoInternal = {
       id: data.id ?? crypto.randomUUID(),
       faseId: data.faseId,
@@ -64,84 +64,96 @@ export class InMemoryJogoRepository implements JogoRepository {
       atualizadoEm: new Date(),
     };
     this.items.push(jogo);
-    return jogo;
+    return Promise.resolve(jogo);
   }
 
-  async atualizar(id: string, data: AtualizarJogoData): Promise<Jogo> {
+  atualizar(id: string, data: AtualizarJogoData): Promise<Jogo> {
     const index = this.items.findIndex((j) => j.id === id);
-    if (index === -1) return null as unknown as Jogo;
+    if (index === -1) return Promise.resolve(null as unknown as Jogo);
     this.items[index] = {
       ...this.items[index],
       ...data,
       atualizadoEm: new Date(),
     };
-    return this.items[index];
+    return Promise.resolve(this.items[index]);
   }
 
-  async buscarPorId(id: string): Promise<JogoComRelacoes | null> {
-    return (this.items.find((j) => j.id === id) as JogoComRelacoes) ?? null;
+  buscarPorId(id: string): Promise<JogoComRelacoes | null> {
+    return Promise.resolve(
+      (this.items.find((j) => j.id === id) as JogoComRelacoes) ?? null,
+    );
   }
 
-  async buscarPorIds(ids: string[]): Promise<Jogo[]> {
-    return this.items.filter((j) => ids.includes(j.id));
+  buscarPorIds(ids: string[]): Promise<Jogo[]> {
+    return Promise.resolve(this.items.filter((j) => ids.includes(j.id)));
   }
 
-  async buscarPorExternoIds(externoIds: string[]): Promise<JogoExternoId[]> {
-    return this.items
-      .filter((j) => j.externoId && externoIds.includes(j.externoId))
-      .map((j) => ({ externoId: j.externoId }));
+  buscarPorExternoIds(externoIds: string[]): Promise<JogoExternoId[]> {
+    return Promise.resolve(
+      this.items
+        .filter((j) => j.externoId && externoIds.includes(j.externoId))
+        .map((j) => ({ externoId: j.externoId })),
+    );
   }
 
-  async buscarPorFase(
-    faseId: string,
-    rodada?: number,
-  ): Promise<JogoComTimes[]> {
-    return this.items
-      .filter(
-        (j) =>
-          j.faseId === faseId && (rodada === undefined || j.rodada === rodada),
-      )
-      .sort(
-        (a, b) =>
-          new Date(a.dataHora ?? 0).getTime() -
-          new Date(b.dataHora ?? 0).getTime(),
-      ) as JogoComTimes[];
+  buscarPorFase(faseId: string, rodada?: number): Promise<JogoComTimes[]> {
+    return Promise.resolve(
+      this.items
+        .filter(
+          (j) =>
+            j.faseId === faseId &&
+            (rodada === undefined || j.rodada === rodada),
+        )
+        .sort(
+          (a, b) =>
+            new Date(a.dataHora ?? 0).getTime() -
+            new Date(b.dataHora ?? 0).getTime(),
+        ) as JogoComTimes[],
+    );
   }
 
-  async buscarPorFaseAteRodada(
+  buscarPorFaseAteRodada(
     faseId: string,
     ateRodada: number,
   ): Promise<JogoComTimes[]> {
-    return this.items
-      .filter(
-        (j) =>
-          j.faseId === faseId && j.rodada !== null && j.rodada <= ateRodada,
-      )
-      .sort(
-        (a, b) =>
-          new Date(a.dataHora ?? 0).getTime() -
-          new Date(b.dataHora ?? 0).getTime(),
-      ) as JogoComTimes[];
+    return Promise.resolve(
+      this.items
+        .filter(
+          (j) =>
+            j.faseId === faseId && j.rodada !== null && j.rodada <= ateRodada,
+        )
+        .sort(
+          (a, b) =>
+            new Date(a.dataHora ?? 0).getTime() -
+            new Date(b.dataHora ?? 0).getTime(),
+        ) as JogoComTimes[],
+    );
   }
 
-  async buscarPorFaseEStatus(
+  buscarPorFaseEStatus(
     faseId: string,
     status: string,
   ): Promise<JogoComTimes[]> {
-    return this.items
-      .filter((j) => j.faseId === faseId && j.status === status)
-      .sort((a, b) => (a.rodada ?? 0) - (b.rodada ?? 0)) as JogoComTimes[];
+    return Promise.resolve(
+      this.items
+        .filter((j) => j.faseId === faseId && j.status === status)
+        .sort((a, b) => (a.rodada ?? 0) - (b.rodada ?? 0)) as JogoComTimes[],
+    );
   }
 
-  async buscarPorExternoId(externoId: string): Promise<Jogo | null> {
-    return this.items.find((j) => j.externoId === externoId) ?? null;
+  buscarPorExternoId(externoId: string): Promise<Jogo | null> {
+    return Promise.resolve(
+      this.items.find((j) => j.externoId === externoId) ?? null,
+    );
   }
 
-  async buscarPorGrupoIdaVolta(grupoIdaVolta: string): Promise<Jogo[]> {
-    return this.items.filter((j) => j.grupoIdaVolta === grupoIdaVolta);
+  buscarPorGrupoIdaVolta(grupoIdaVolta: string): Promise<Jogo[]> {
+    return Promise.resolve(
+      this.items.filter((j) => j.grupoIdaVolta === grupoIdaVolta),
+    );
   }
 
-  async buscarProximoJogoPorTemporada(
+  buscarProximoJogoPorTemporada(
     temporadaId: string,
   ): Promise<JogoComRelacoes | null> {
     const agora = Date.now();
@@ -157,7 +169,8 @@ export class InMemoryJogoRepository implements JogoRepository {
           new Date(b.dataHora ?? 0).getTime(),
       );
 
-    if (emAndamento.length > 0) return emAndamento[0] as JogoComRelacoes;
+    if (emAndamento.length > 0)
+      return Promise.resolve(emAndamento[0] as JogoComRelacoes);
 
     const candidatos = this.items
       .filter(
@@ -172,10 +185,10 @@ export class InMemoryJogoRepository implements JogoRepository {
           new Date(a.dataHora ?? 0).getTime() -
           new Date(b.dataHora ?? 0).getTime(),
       );
-    return (candidatos[0] as JogoComRelacoes) ?? null;
+    return Promise.resolve((candidatos[0] as JogoComRelacoes) ?? null);
   }
 
-  async buscarProximosJogosPorTemporada(
+  buscarProximosJogosPorTemporada(
     temporadaId: string,
   ): Promise<JogoComRelacoes[]> {
     const emAndamento = this.items
@@ -189,7 +202,8 @@ export class InMemoryJogoRepository implements JogoRepository {
           new Date(b.dataHora ?? 0).getTime(),
       );
 
-    if (emAndamento.length > 0) return emAndamento as JogoComRelacoes[];
+    if (emAndamento.length > 0)
+      return Promise.resolve(emAndamento as JogoComRelacoes[]);
 
     const agora = Date.now();
     const candidatos = this.items
@@ -206,29 +220,55 @@ export class InMemoryJogoRepository implements JogoRepository {
           new Date(b.dataHora ?? 0).getTime(),
       );
 
-    if (candidatos.length === 0) return [];
+    if (candidatos.length === 0) return Promise.resolve([]);
 
     const primeiroHorario = new Date(candidatos[0].dataHora!).getTime();
-    return candidatos.filter(
-      (j) => new Date(j.dataHora!).getTime() === primeiroHorario,
-    ) as JogoComRelacoes[];
+    return Promise.resolve(
+      candidatos.filter(
+        (j) => new Date(j.dataHora!).getTime() === primeiroHorario,
+      ) as JogoComRelacoes[],
+    );
   }
 
-  async contarAdiadosPorTemporada(temporadaId: string): Promise<number> {
-    return this.items.filter(
-      (j) => j.fase?.temporadaId === temporadaId && j.status === 'ADIADO',
-    ).length;
-  }
-
-  async buscarTodosPorTemporada(
-    temporadaId: string,
-  ): Promise<JogoComRelacoes[]> {
-    return this.items.filter(
+  contarAdiadosPorTemporada(temporadaId: string): Promise<number> {
+    const jogosTemporada = this.items.filter(
       (j) => j.fase?.temporadaId === temporadaId,
-    ) as JogoComRelacoes[];
+    );
+    const rodadaAtual = jogosTemporada
+      .filter(
+        (j) =>
+          j.status !== 'FINALIZADO' &&
+          j.status !== 'CANCELADO' &&
+          j.status !== 'ADIADO',
+      )
+      .reduce(
+        (min, j) => (j.rodada && j.rodada < min ? j.rodada : min),
+        Infinity,
+      );
+
+    if (rodadaAtual === Infinity) {
+      return Promise.resolve(
+        jogosTemporada.filter((j) => j.status === 'ADIADO').length,
+      );
+    }
+
+    return Promise.resolve(
+      jogosTemporada.filter(
+        (j) =>
+          j.status === 'ADIADO' && j.rodada !== null && j.rodada < rodadaAtual,
+      ).length,
+    );
   }
 
-  async buscarRodadaAtual(faseId: string): Promise<number | null> {
+  buscarTodosPorTemporada(temporadaId: string): Promise<JogoComRelacoes[]> {
+    return Promise.resolve(
+      this.items.filter(
+        (j) => j.fase?.temporadaId === temporadaId,
+      ) as JogoComRelacoes[],
+    );
+  }
+
+  buscarRodadaAtual(faseId: string): Promise<number | null> {
     const naoFinalizados = this.items
       .filter(
         (j) =>
@@ -239,82 +279,91 @@ export class InMemoryJogoRepository implements JogoRepository {
       )
       .sort((a, b) => (a.rodada ?? 0) - (b.rodada ?? 0));
 
-    if (naoFinalizados.length > 0) return naoFinalizados[0].rodada;
+    if (naoFinalizados.length > 0)
+      return Promise.resolve(naoFinalizados[0].rodada);
 
     const todos = this.items
       .filter((j) => j.faseId === faseId && j.rodada != null)
       .sort((a, b) => (b.rodada ?? 0) - (a.rodada ?? 0));
 
-    return todos.length > 0 ? todos[0].rodada : null;
+    return Promise.resolve(todos.length > 0 ? todos[0].rodada : null);
   }
 
-  async buscarPendentesSync(
+  buscarPendentesSync(
     faseIds: string[],
     limiteRodada: number,
   ): Promise<JogoComTimes[]> {
     const agora = new Date();
-    return this.items.filter(
-      (j) =>
-        faseIds.includes(j.faseId) &&
-        j.fonteResultado === 'API_EXTERNA' &&
-        j.status !== 'FINALIZADO' &&
-        j.status !== 'CANCELADO' &&
-        (j.rodada == null ||
-          j.rodada <= limiteRodada ||
-          (j.dataHora != null && new Date(j.dataHora) <= agora)),
-    ) as JogoComTimes[];
+    return Promise.resolve(
+      this.items.filter(
+        (j) =>
+          faseIds.includes(j.faseId) &&
+          j.fonteResultado === 'API_EXTERNA' &&
+          j.status !== 'FINALIZADO' &&
+          j.status !== 'CANCELADO' &&
+          (j.rodada == null ||
+            j.rodada <= limiteRodada ||
+            (j.dataHora != null && new Date(j.dataHora) <= agora)),
+      ) as JogoComTimes[],
+    );
   }
 
-  async buscarJogosComTimePlaceholder(
+  buscarJogosComTimePlaceholder(
     _temporadaId: string,
     placeholderTimeId: string,
   ): Promise<JogoComRelacoes[]> {
-    return this.items.filter(
-      (j) =>
-        j.timeCasaId === placeholderTimeId ||
-        j.timeForaId === placeholderTimeId,
-    ) as JogoComRelacoes[];
+    return Promise.resolve(
+      this.items.filter(
+        (j) =>
+          j.timeCasaId === placeholderTimeId ||
+          j.timeForaId === placeholderTimeId,
+      ) as JogoComRelacoes[],
+    );
   }
 
-  async buscarAgendadosEntre(
-    inicio: Date,
-    fim: Date,
-  ): Promise<JogoComRelacoes[]> {
+  buscarAgendadosEntre(inicio: Date, fim: Date): Promise<JogoComRelacoes[]> {
     const inicioMs = inicio.getTime();
     const fimMs = fim.getTime();
-    return this.items
-      .filter(
+    return Promise.resolve(
+      this.items
+        .filter(
+          (j) =>
+            j.status === 'AGENDADO' &&
+            j.dataHora &&
+            new Date(j.dataHora).getTime() >= inicioMs &&
+            new Date(j.dataHora).getTime() <= fimMs,
+        )
+        .sort(
+          (a, b) =>
+            new Date(a.dataHora ?? 0).getTime() -
+            new Date(b.dataHora ?? 0).getTime(),
+        ) as JogoComRelacoes[],
+    );
+  }
+
+  contarAtrasados(): Promise<number> {
+    const agora = new Date();
+    return Promise.resolve(
+      this.items.filter(
         (j) =>
           j.status === 'AGENDADO' &&
-          j.dataHora &&
-          new Date(j.dataHora).getTime() >= inicioMs &&
-          new Date(j.dataHora).getTime() <= fimMs,
-      )
-      .sort(
-        (a, b) =>
-          new Date(a.dataHora ?? 0).getTime() -
-          new Date(b.dataHora ?? 0).getTime(),
-      ) as JogoComRelacoes[];
+          j.fonteResultado === 'API_EXTERNA' &&
+          j.dataHora != null &&
+          new Date(j.dataHora) <= agora,
+      ).length,
+    );
   }
 
-  async contarAtrasados(): Promise<number> {
-    const agora = new Date();
-    return this.items.filter(
-      (j) =>
-        j.status === 'AGENDADO' &&
-        j.fonteResultado === 'API_EXTERNA' &&
-        j.dataHora != null &&
-        new Date(j.dataHora) <= agora,
-    ).length;
+  contarEmAndamento(): Promise<number> {
+    return Promise.resolve(
+      this.items.filter(
+        (j) =>
+          j.status === 'EM_ANDAMENTO' && j.fonteResultado === 'API_EXTERNA',
+      ).length,
+    );
   }
 
-  async contarEmAndamento(): Promise<number> {
-    return this.items.filter(
-      (j) => j.status === 'EM_ANDAMENTO' && j.fonteResultado === 'API_EXTERNA',
-    ).length;
-  }
-
-  async buscarProximoAgendado(): Promise<{
+  buscarProximoAgendado(): Promise<{
     dataHora: Date | null;
     timeCasa?: { sigla: string } | null;
     timeFora?: { sigla: string } | null;
@@ -334,11 +383,11 @@ export class InMemoryJogoRepository implements JogoRepository {
           new Date(b.dataHora ?? 0).getTime(),
       )[0];
 
-    if (!proximo) return null;
-    return {
+    if (!proximo) return Promise.resolve(null);
+    return Promise.resolve({
       dataHora: proximo.dataHora ? new Date(proximo.dataHora) : null,
       timeCasa: proximo.timeCasa ? { sigla: proximo.timeCasa.sigla } : null,
       timeFora: proximo.timeFora ? { sigla: proximo.timeFora.sigla } : null,
-    };
+    });
   }
 }

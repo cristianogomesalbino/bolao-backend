@@ -7,7 +7,10 @@ import { ErrorFactory } from '../../common/errors/error.factory';
 import * as bcrypt from 'bcryptjs';
 import { USUARIOS } from './usuarios.constants';
 import { AUTH } from '../auth/auth.constants';
-import type { UsuarioRepository } from './repositories/usuario.repository.interface';
+import type {
+  UsuarioRepository,
+  Usuario,
+} from './repositories/usuario.repository.interface';
 import { GRUPO_USUARIO } from '../grupo-usuario/grupo-usuario.constants';
 import type { GrupoUsuarioRepository } from '../grupo-usuario/repositories/grupo-usuario.repository.interface';
 
@@ -71,7 +74,7 @@ export class UsuariosService {
       nome: data.nome,
       email: data.email,
       senha: senhaHash,
-    });
+    }) as Promise<Usuario>;
   }
 
   async remover(id: string) {
@@ -103,7 +106,9 @@ export class UsuariosService {
 
     // Se grupoId é null, remove o favorito
     if (!grupoId) {
-      return this.usuarioRepo.atualizar(usuarioId, { grupoFavoritoId: null });
+      return this.usuarioRepo.atualizar(usuarioId, {
+        grupoFavoritoId: null,
+      }) as Promise<Usuario>;
     }
 
     // Validar que o usuário pertence ao grupo
@@ -116,6 +121,26 @@ export class UsuariosService {
       throw ErrorFactory.badRequest('Usuário não pertence ao grupo');
     }
 
-    return this.usuarioRepo.atualizar(usuarioId, { grupoFavoritoId: grupoId });
+    return this.usuarioRepo.atualizar(usuarioId, {
+      grupoFavoritoId: grupoId,
+    }) as Promise<Usuario>;
+  }
+
+  async marcarTourCompleto(usuarioId: string, tourId: string): Promise<void> {
+    const usuario = await this.usuarioRepo.buscarPorId(usuarioId);
+
+    if (!usuario?.ativo) {
+      throw new UsuarioNaoEncontradoError();
+    }
+
+    const toursAtuais: string[] = usuario.toursCompletos ?? [];
+
+    if (toursAtuais.includes(tourId)) {
+      return; // idempotente
+    }
+
+    await this.usuarioRepo.atualizar(usuarioId, {
+      toursCompletos: [...toursAtuais, tourId],
+    });
   }
 }

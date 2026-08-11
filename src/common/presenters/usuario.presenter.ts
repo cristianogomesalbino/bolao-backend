@@ -5,6 +5,7 @@ interface UsuarioData {
   perfil: string;
   ativo: boolean;
   grupoFavoritoId: string | null;
+  toursCompletos?: string[];
   dataCriacao: Date;
   atualizadoEm: Date;
 }
@@ -18,6 +19,7 @@ export class UsuarioPresenter {
       perfil: usuario.perfil,
       ativo: usuario.ativo,
       grupoFavoritoId: usuario.grupoFavoritoId ?? null,
+      toursCompletos: usuario.toursCompletos ?? [],
       dataCriacao: usuario.dataCriacao,
       atualizadoEm: usuario.atualizadoEm,
     };

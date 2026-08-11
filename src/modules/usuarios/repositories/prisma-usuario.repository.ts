@@ -1,6 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
-import { UsuarioRepository } from './usuario.repository.interface';
+import {
+  AtualizarUsuarioData,
+  UsuarioRepository,
+} from './usuario.repository.interface';
 
 @Injectable()
 export class PrismaUsuarioRepository implements UsuarioRepository {
@@ -22,15 +25,7 @@ export class PrismaUsuarioRepository implements UsuarioRepository {
     return this.prisma.usuario.findMany({ where: { ativo: filtros.ativo } });
   }
 
-  atualizar(
-    id: string,
-    data: Partial<{
-      nome: string;
-      email: string;
-      senha: string;
-      grupoFavoritoId: string | null;
-    }>,
-  ) {
+  atualizar(id: string, data: AtualizarUsuarioData) {
     return this.prisma.usuario.update({ where: { id }, data });
   }
 

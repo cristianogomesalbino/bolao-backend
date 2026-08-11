@@ -6,6 +6,7 @@ import {
 interface CampeonatoData {
   id: string;
   nome: string;
+  status?: string;
   dataCriacao: Date;
   atualizadoEm: Date;
 }
@@ -23,6 +24,7 @@ export class CampeonatoPresenter {
     return {
       id: campeonato.id,
       nome: campeonato.nome,
+      status: campeonato.status ?? 'EM_ANDAMENTO',
       dataCriacao: campeonato.dataCriacao,
       atualizadoEm: campeonato.atualizadoEm,
       ...(tema && { tema }),

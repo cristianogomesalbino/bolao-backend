@@ -66,6 +66,59 @@ export class CampeonatoStatusService {
   }
 
   /**
+   * Verifica TODOS os campeonatos EM_ANDAMENTO e finaliza os que encerraram.
+   * Chamado periodicamente pelo scheduler de manutenção.
+   */
+  async verificarTodosCampeonatosEmAndamento(): Promise<number> {
+    const campeonatos = await this.campeonatoRepo.buscarTodos();
+    const emAndamento = campeonatos.filter((c) => c.status === 'EM_ANDAMENTO');
+
+    let finalizados = 0;
+
+    for (const campeonato of emAndamento) {
+      const encerrou = await this.verificarEncerramentoCampeonato(
+        campeonato.id,
+      );
+      if (encerrou) {
+        await this.campeonatoRepo.atualizarStatus(campeonato.id, 'FINALIZADO');
+        this.logger.log(
+          `[STATUS] Campeonato "${campeonato.nome}" finalizado automaticamente (verificação batch)`,
+        );
+        finalizados++;
+      }
+    }
+
+    return finalizados;
+  }
+
+  /**
+   * Verifica se TODOS os jogos de TODAS as fases de um campeonato estão encerrados.
+   */
+  private async verificarEncerramentoCampeonato(
+    campeonatoId: string,
+  ): Promise<boolean> {
+    const temporadas =
+      await this.campeonatoRepo.buscarTemporadasPorCampeonato(campeonatoId);
+    if (temporadas.length === 0) return false;
+
+    for (const temporada of temporadas) {
+      const fases = await this.faseRepo.buscarPorTemporada(temporada.id);
+      for (const fase of fases) {
+        const jogos = (await this.jogoRepo.buscarPorFase(
+          fase.id,
+        )) as JogoParaStatus[];
+        if (jogos.length === 0) continue;
+        const todosEncerrados = jogos.every(
+          (j) => j.status === 'FINALIZADO' || j.status === 'CANCELADO',
+        );
+        if (!todosEncerrados) return false;
+      }
+    }
+
+    return true;
+  }
+
+  /**
    * Marca o campeonato como EM_ANDAMENTO quando o primeiro jogo inicia.
    */
   async verificarInicioCampeonato(faseId: string): Promise<void> {
