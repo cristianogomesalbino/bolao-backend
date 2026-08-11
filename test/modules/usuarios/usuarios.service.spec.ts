@@ -294,4 +294,73 @@ describe('UsuariosService', () => {
       ).rejects.toThrow(UsuarioNaoEncontradoError);
     });
   });
+
+  // ==================== marcarTourCompleto ====================
+
+  describe('marcarTourCompleto', () => {
+    it('deve adicionar tourId ao array de toursCompletos', async () => {
+      const criado = await service.criar({
+        nome: 'João',
+        email: 'joao@example.com',
+        senha: 's',
+      });
+
+      await service.marcarTourCompleto(criado.id, 'tour-palpites');
+
+      const usuario = usuarioRepo.items.find((u) => u.id === criado.id);
+      expect(usuario.toursCompletos).toContain('tour-palpites');
+    });
+
+    it('deve ser idempotente — não duplicar tourId já presente', async () => {
+      const criado = await service.criar({
+        nome: 'João',
+        email: 'joao@example.com',
+        senha: 's',
+      });
+
+      await service.marcarTourCompleto(criado.id, 'tour-palpites');
+      await service.marcarTourCompleto(criado.id, 'tour-palpites');
+
+      const usuario = usuarioRepo.items.find((u) => u.id === criado.id);
+      const ocorrencias = usuario.toursCompletos.filter(
+        (t: string) => t === 'tour-palpites',
+      );
+      expect(ocorrencias).toHaveLength(1);
+    });
+
+    it('deve preservar tours já existentes ao adicionar novo', async () => {
+      const criado = await service.criar({
+        nome: 'João',
+        email: 'joao@example.com',
+        senha: 's',
+      });
+
+      await service.marcarTourCompleto(criado.id, 'tour-palpites');
+      await service.marcarTourCompleto(criado.id, 'tour-grupo');
+
+      const usuario = usuarioRepo.items.find((u) => u.id === criado.id);
+      expect(usuario.toursCompletos).toContain('tour-palpites');
+      expect(usuario.toursCompletos).toContain('tour-grupo');
+      expect(usuario.toursCompletos).toHaveLength(2);
+    });
+
+    it('deve lançar UsuarioNaoEncontradoError se usuário não existe', async () => {
+      await expect(
+        service.marcarTourCompleto('inexistente', 'tour-palpites'),
+      ).rejects.toThrow(UsuarioNaoEncontradoError);
+    });
+
+    it('deve lançar UsuarioNaoEncontradoError se usuário está inativo', async () => {
+      const criado = await service.criar({
+        nome: 'João',
+        email: 'joao@example.com',
+        senha: 's',
+      });
+      await usuarioRepo.desativar(criado.id);
+
+      await expect(
+        service.marcarTourCompleto(criado.id, 'tour-palpites'),
+      ).rejects.toThrow(UsuarioNaoEncontradoError);
+    });
+  });
 });

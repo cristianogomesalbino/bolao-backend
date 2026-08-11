@@ -167,10 +167,34 @@ export class PrismaJogoRepository implements JogoRepository {
   }
 
   async contarAdiadosPorTemporada(temporadaId: string): Promise<number> {
+    // Buscar rodada atual (menor rodada com jogos não finalizados/cancelados)
+    const rodadaAtualResult = await this.prisma.jogo.findFirst({
+      where: {
+        fase: { temporadaId },
+        status: { notIn: ['FINALIZADO', 'CANCELADO', 'ADIADO'] },
+      },
+      orderBy: { rodada: 'asc' },
+      select: { rodada: true },
+    });
+
+    const rodadaAtual = rodadaAtualResult?.rodada;
+
+    // Se não há rodada atual, contar todos os adiados (temporada encerrada)
+    if (!rodadaAtual) {
+      return this.prisma.jogo.count({
+        where: {
+          fase: { temporadaId },
+          status: 'ADIADO',
+        },
+      });
+    }
+
+    // Contar apenas adiados de rodadas anteriores à atual
     return this.prisma.jogo.count({
       where: {
         fase: { temporadaId },
         status: 'ADIADO',
+        rodada: { lt: rodadaAtual },
       },
     });
   }

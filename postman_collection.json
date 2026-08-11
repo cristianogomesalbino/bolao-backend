@@ -246,6 +246,38 @@
               "path": ["usuarios", "{{usuarioId}}"]
             }
           }
+        },
+        {
+          "name": "Definir Grupo Favorito",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grupoId\": \"{{grupoId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/usuarios/me/grupo-favorito",
+              "host": ["{{baseUrl}}"],
+              "path": ["usuarios", "me", "grupo-favorito"]
+            }
+          }
+        },
+        {
+          "name": "Marcar Tour Completo",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tourId\": \"tour-palpites\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/usuarios/me/tours",
+              "host": ["{{baseUrl}}"],
+              "path": ["usuarios", "me", "tours"]
+            }
+          }
         }
       ]
     },

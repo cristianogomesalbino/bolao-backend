@@ -4,6 +4,7 @@ import { PrismaModule } from '../../prisma/prisma.module';
 import { JogosModule } from '../jogos/jogos.module';
 import { NotificacoesModule } from '../notificacoes/notificacoes.module';
 import { EventosModule } from '../eventos/eventos.module';
+import { CampeonatosModule } from '../campeonatos/campeonatos.module';
 import { AdvisoryLockService } from './services/advisory-lock.service';
 import { SyncPolicyService } from './services/sync-policy.service';
 import { ExecutarSincronizacao } from './use-cases/executar-sincronizacao';
@@ -37,6 +38,7 @@ import { PrismaLogSincronizacaoRepository } from '../jogos/repositories/prisma-l
     forwardRef(() => JogosModule),
     NotificacoesModule,
     EventosModule,
+    CampeonatosModule,
   ],
   controllers: [SchedulerController, SincronizacaoController],
   providers: [

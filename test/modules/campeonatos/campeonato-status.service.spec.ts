@@ -289,5 +289,199 @@ describe('CampeonatoStatusService', () => {
 
       expect(jogoRepo.buscarPorFase).not.toHaveBeenCalled();
     });
+
+    it('não deve processar se fase existe mas sem temporada', async () => {
+      vi.mocked(faseRepo.buscarPorId).mockResolvedValue({
+        id: 'fase-1',
+        nome: 'Grupo A',
+        tipo: 'PONTOS_CORRIDOS',
+        ordem: 1,
+        idaVolta: false,
+        temporadaId: 'temp-1',
+        dataCriacao: new Date(),
+        atualizadoEm: new Date(),
+        temporada: undefined,
+      });
+
+      await service.verificarFinalizacaoCampeonato('fase-1');
+      expect(jogoRepo.buscarPorFase).not.toHaveBeenCalled();
+    });
+
+    it('não deve finalizar pontos corridos se não há jogos na fase', async () => {
+      const campeonato = await campeonatoRepo.criar({ nome: 'Liga' });
+      await campeonatoRepo.atualizarStatus(campeonato.id, 'EM_ANDAMENTO');
+
+      vi.mocked(faseRepo.buscarPorId).mockResolvedValue({
+        id: 'fase-vazia',
+        nome: 'Fase Única',
+        tipo: 'PONTOS_CORRIDOS',
+        ordem: 1,
+        idaVolta: false,
+        temporadaId: 'temp-1',
+        dataCriacao: new Date(),
+        atualizadoEm: new Date(),
+        temporada: {
+          id: 'temp-1',
+          ano: 2026,
+          campeonato: { id: campeonato.id, nome: 'Liga' },
+        },
+      });
+
+      vi.mocked(jogoRepo.buscarPorFase).mockResolvedValue([]);
+
+      await service.verificarFinalizacaoCampeonato('fase-vazia');
+
+      const atualizado = await campeonatoRepo.buscarPorId(campeonato.id);
+      expect(atualizado?.status).toBe('EM_ANDAMENTO');
+    });
+
+    it('não deve finalizar pontos corridos se jogos têm rodada null/0', async () => {
+      const campeonato = await campeonatoRepo.criar({ nome: 'Liga' });
+      await campeonatoRepo.atualizarStatus(campeonato.id, 'EM_ANDAMENTO');
+
+      vi.mocked(faseRepo.buscarPorId).mockResolvedValue({
+        id: 'fase-1',
+        nome: 'Fase Única',
+        tipo: 'PONTOS_CORRIDOS',
+        ordem: 1,
+        idaVolta: false,
+        temporadaId: 'temp-1',
+        dataCriacao: new Date(),
+        atualizadoEm: new Date(),
+        temporada: {
+          id: 'temp-1',
+          ano: 2026,
+          campeonato: { id: campeonato.id, nome: 'Liga' },
+        },
+      });
+
+      vi.mocked(jogoRepo.buscarPorFase).mockResolvedValue([
+        { id: 'j1', faseId: 'fase-1', status: 'FINALIZADO', rodada: null },
+      ] as never);
+
+      await service.verificarFinalizacaoCampeonato('fase-1');
+
+      const atualizado = await campeonatoRepo.buscarPorId(campeonato.id);
+      expect(atualizado?.status).toBe('EM_ANDAMENTO');
+    });
+
+    it('não deve finalizar mata-mata (Final) se não há jogos', async () => {
+      const campeonato = await campeonatoRepo.criar({ nome: 'Copa' });
+      await campeonatoRepo.atualizarStatus(campeonato.id, 'EM_ANDAMENTO');
+
+      vi.mocked(faseRepo.buscarPorId).mockResolvedValue({
+        id: 'fase-final',
+        nome: 'Final',
+        tipo: 'MATA_MATA',
+        ordem: 7,
+        idaVolta: false,
+        temporadaId: 'temp-1',
+        dataCriacao: new Date(),
+        atualizadoEm: new Date(),
+        temporada: {
+          id: 'temp-1',
+          ano: 2026,
+          campeonato: { id: campeonato.id, nome: 'Copa' },
+        },
+      });
+
+      vi.mocked(jogoRepo.buscarPorFase).mockResolvedValue([]);
+
+      await service.verificarFinalizacaoCampeonato('fase-final');
+
+      const atualizado = await campeonatoRepo.buscarPorId(campeonato.id);
+      expect(atualizado?.status).toBe('EM_ANDAMENTO');
+    });
+  });
+
+  describe('verificarTodosCampeonatosEmAndamento', () => {
+    it('deve finalizar campeonatos cujas fases estão todas encerradas', async () => {
+      const campeonato = await campeonatoRepo.criar({ nome: 'Brasileirão' });
+      await campeonatoRepo.atualizarStatus(campeonato.id, 'EM_ANDAMENTO');
+
+      vi.mocked(faseRepo.buscarPorTemporada).mockResolvedValue([
+        {
+          id: 'fase-1',
+          nome: 'Fase Única',
+          tipo: 'PONTOS_CORRIDOS',
+          ordem: 1,
+          idaVolta: false,
+          temporadaId: `temporada-${campeonato.id}`,
+          dataCriacao: new Date(),
+          atualizadoEm: new Date(),
+        },
+      ]);
+
+      vi.mocked(jogoRepo.buscarPorFase).mockResolvedValue([
+        { id: 'j1', faseId: 'fase-1', status: 'FINALIZADO', rodada: 38 },
+        { id: 'j2', faseId: 'fase-1', status: 'FINALIZADO', rodada: 38 },
+      ] as never);
+
+      const resultado = await service.verificarTodosCampeonatosEmAndamento();
+
+      expect(resultado).toBe(1);
+      const atualizado = await campeonatoRepo.buscarPorId(campeonato.id);
+      expect(atualizado?.status).toBe('FINALIZADO');
+    });
+
+    it('não deve finalizar se algum jogo não está encerrado', async () => {
+      const campeonato = await campeonatoRepo.criar({ nome: 'Brasileirão' });
+      await campeonatoRepo.atualizarStatus(campeonato.id, 'EM_ANDAMENTO');
+
+      vi.mocked(faseRepo.buscarPorTemporada).mockResolvedValue([
+        {
+          id: 'fase-1',
+          nome: 'Fase Única',
+          tipo: 'PONTOS_CORRIDOS',
+          ordem: 1,
+          idaVolta: false,
+          temporadaId: `temporada-${campeonato.id}`,
+          dataCriacao: new Date(),
+          atualizadoEm: new Date(),
+        },
+      ]);
+
+      vi.mocked(jogoRepo.buscarPorFase).mockResolvedValue([
+        { id: 'j1', faseId: 'fase-1', status: 'FINALIZADO', rodada: 38 },
+        { id: 'j2', faseId: 'fase-1', status: 'AGENDADO', rodada: 38 },
+      ] as never);
+
+      const resultado = await service.verificarTodosCampeonatosEmAndamento();
+
+      expect(resultado).toBe(0);
+      const atualizado = await campeonatoRepo.buscarPorId(campeonato.id);
+      expect(atualizado?.status).toBe('EM_ANDAMENTO');
+    });
+
+    it('deve retornar 0 se nenhum campeonato está EM_ANDAMENTO', async () => {
+      await campeonatoRepo.criar({ nome: 'Copa' }); // status = NAO_INICIADO
+
+      const resultado = await service.verificarTodosCampeonatosEmAndamento();
+      expect(resultado).toBe(0);
+    });
+
+    it('não deve finalizar se não há temporadas', async () => {
+      const campeonato = await campeonatoRepo.criar({ nome: 'Liga' });
+      await campeonatoRepo.atualizarStatus(campeonato.id, 'EM_ANDAMENTO');
+
+      // Override buscarTemporadasPorCampeonato para retornar vazio
+      campeonatoRepo.buscarTemporadasPorCampeonato = vi
+        .fn()
+        .mockResolvedValue([]);
+
+      const resultado = await service.verificarTodosCampeonatosEmAndamento();
+
+      expect(resultado).toBe(0);
+      const atualizado = await campeonatoRepo.buscarPorId(campeonato.id);
+      expect(atualizado?.status).toBe('EM_ANDAMENTO');
+    });
+  });
+
+  describe('InMemoryCampeonatoRepository — branch coverage', () => {
+    it('atualizarStatus deve lançar erro se campeonato não encontrado', async () => {
+      await expect(
+        campeonatoRepo.atualizarStatus('id-inexistente', 'FINALIZADO'),
+      ).rejects.toThrow('Campeonato não encontrado');
+    });
   });
 });
