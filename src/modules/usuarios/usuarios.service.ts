@@ -8,8 +8,8 @@ import * as bcrypt from 'bcryptjs';
 import { USUARIOS } from './usuarios.constants';
 import { AUTH } from '../auth/auth.constants';
 import type {
-  UsuarioRepository,
   Usuario,
+  UsuarioRepository,
 } from './repositories/usuario.repository.interface';
 import { GRUPO_USUARIO } from '../grupo-usuario/grupo-usuario.constants';
 import type { GrupoUsuarioRepository } from '../grupo-usuario/repositories/grupo-usuario.repository.interface';
@@ -112,10 +112,10 @@ export class UsuariosService {
     }
 
     // Validar que o usuário pertence ao grupo
-    const membro = await this.grupoUsuarioRepo.buscarPorChave(
+    const membro = (await this.grupoUsuarioRepo.buscarPorChave(
       usuarioId,
       grupoId,
-    );
+    )) as { usuarioId: string; grupoId: string } | null;
 
     if (!membro) {
       throw ErrorFactory.badRequest('Usuário não pertence ao grupo');
@@ -141,6 +141,37 @@ export class UsuariosService {
 
     await this.usuarioRepo.atualizar(usuarioId, {
       toursCompletos: [...toursAtuais, tourId],
+    });
+  }
+
+  async dispensarDica(usuarioId: string, dicaId: string): Promise<void> {
+    const usuario = await this.usuarioRepo.buscarPorId(usuarioId);
+
+    if (!usuario || !usuario.ativo) {
+      throw new UsuarioNaoEncontradoError();
+    }
+
+    const dicasAtuais: string[] = usuario.dicasDispensadas ?? [];
+
+    if (dicasAtuais.includes(dicaId)) {
+      return; // idempotente
+    }
+
+    await this.usuarioRepo.atualizar(usuarioId, {
+      dicasDispensadas: [...dicasAtuais, dicaId],
+    });
+  }
+
+  async resetarDicas(usuarioId: string): Promise<void> {
+    const usuario = await this.usuarioRepo.buscarPorId(usuarioId);
+
+    if (!usuario?.ativo) {
+      throw new UsuarioNaoEncontradoError();
+    }
+
+    await this.usuarioRepo.atualizar(usuarioId, {
+      dicasDispensadas: [],
+      toastDescobrilidadeVisto: false,
     });
   }
 }

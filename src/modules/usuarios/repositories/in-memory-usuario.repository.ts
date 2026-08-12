@@ -13,7 +13,7 @@ export class InMemoryUsuarioRepository implements UsuarioRepository {
     senha: string;
     ativo: boolean;
   }) {
-    const usuario = {
+    const usuario: Usuario = {
       id: crypto.randomUUID(),
       nome: data.nome,
       email: data.email,
@@ -22,6 +22,8 @@ export class InMemoryUsuarioRepository implements UsuarioRepository {
       ativo: data.ativo,
       grupoFavoritoId: null,
       toursCompletos: [],
+      dicasDispensadas: [],
+      toastDescobrilidadeVisto: false,
       dataCriacao: new Date(),
       atualizadoEm: new Date(),
     };

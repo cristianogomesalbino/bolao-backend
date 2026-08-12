@@ -19,5 +19,7 @@ export const USUARIOS = {
     USUARIO_DESATIVADO: 'Usuário desativado com sucesso',
     TOUR_MARCADO_COMPLETO: 'Tour marcado como completo',
     TOUR_ID_INVALIDO: 'tourId deve ser um dos valores válidos',
+    DICA_DISPENSADA: 'Dica dispensada com sucesso',
+    DICAS_RESETADAS: 'Todas as dicas foram resetadas',
   },
 } as const;

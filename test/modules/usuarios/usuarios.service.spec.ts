@@ -363,4 +363,140 @@ describe('UsuariosService', () => {
       ).rejects.toThrow(UsuarioNaoEncontradoError);
     });
   });
+
+  // ==================== dispensarDica ====================
+
+  describe('dispensarDica', () => {
+    it('deve adicionar dicaId ao array de dicasDispensadas', async () => {
+      const criado = await service.criar({
+        nome: 'João',
+        email: 'joao@example.com',
+        senha: 's',
+      });
+
+      await service.dispensarDica(criado.id, 'dica-palpites-primeiro-card');
+
+      const usuario = usuarioRepo.items.find((u) => u.id === criado.id)!;
+      expect(usuario.dicasDispensadas).toContain('dica-palpites-primeiro-card');
+    });
+
+    it('deve ser idempotente — não duplicar dicaId já presente', async () => {
+      const criado = await service.criar({
+        nome: 'João',
+        email: 'joao@example.com',
+        senha: 's',
+      });
+
+      await service.dispensarDica(criado.id, 'dica-palpites-primeiro-card');
+      await service.dispensarDica(criado.id, 'dica-palpites-primeiro-card');
+
+      const usuario = usuarioRepo.items.find((u) => u.id === criado.id)!;
+      const ocorrencias = usuario.dicasDispensadas.filter(
+        (h: string) => h === 'dica-palpites-primeiro-card',
+      );
+      expect(ocorrencias).toHaveLength(1);
+    });
+
+    it('deve preservar hints anteriores ao adicionar novo', async () => {
+      const criado = await service.criar({
+        nome: 'João',
+        email: 'joao@example.com',
+        senha: 's',
+      });
+
+      await service.dispensarDica(criado.id, 'dica-palpites-primeiro-card');
+      await service.dispensarDica(criado.id, 'dica-grupo-convite');
+
+      const usuario = usuarioRepo.items.find((u) => u.id === criado.id)!;
+      expect(usuario.dicasDispensadas).toContain('dica-palpites-primeiro-card');
+      expect(usuario.dicasDispensadas).toContain('dica-grupo-convite');
+      expect(usuario.dicasDispensadas).toHaveLength(2);
+    });
+
+    it('deve lançar UsuarioNaoEncontradoError se usuário não existe', async () => {
+      await expect(
+        service.dispensarDica('inexistente', 'dica-qualquer'),
+      ).rejects.toThrow(UsuarioNaoEncontradoError);
+    });
+
+    it('deve lançar UsuarioNaoEncontradoError se usuário está inativo', async () => {
+      const criado = await service.criar({
+        nome: 'João',
+        email: 'joao@example.com',
+        senha: 's',
+      });
+      await usuarioRepo.desativar(criado.id);
+
+      await expect(
+        service.dispensarDica(criado.id, 'dica-qualquer'),
+      ).rejects.toThrow(UsuarioNaoEncontradoError);
+    });
+  });
+
+  // ==================== resetarDicas ====================
+
+  describe('resetarDicas', () => {
+    it('deve limpar array de dicasDispensadas', async () => {
+      const criado = await service.criar({
+        nome: 'João',
+        email: 'joao@example.com',
+        senha: 's',
+      });
+
+      await service.dispensarDica(criado.id, 'dica-palpites-primeiro-card');
+      await service.dispensarDica(criado.id, 'dica-grupo-convite');
+      await service.resetarDicas(criado.id);
+
+      const usuario = usuarioRepo.items.find((u) => u.id === criado.id);
+      expect(usuario.dicasDispensadas).toHaveLength(0);
+    });
+
+    it('deve resetar toastDescobrilidadeVisto para false', async () => {
+      const criado = await service.criar({
+        nome: 'João',
+        email: 'joao@example.com',
+        senha: 's',
+      });
+      await usuarioRepo.atualizar(criado.id, {
+        toastDescobrilidadeVisto: true,
+      });
+
+      await service.resetarDicas(criado.id);
+
+      const usuario = usuarioRepo.items.find((u) => u.id === criado.id);
+      expect(usuario.toastDescobrilidadeVisto).toBe(false);
+    });
+
+    it('deve funcionar quando array já está vazio (idempotente)', async () => {
+      const criado = await service.criar({
+        nome: 'João',
+        email: 'joao@example.com',
+        senha: 's',
+      });
+
+      await service.resetarDicas(criado.id);
+
+      const usuario = usuarioRepo.items.find((u) => u.id === criado.id);
+      expect(usuario.dicasDispensadas).toHaveLength(0);
+    });
+
+    it('deve lançar UsuarioNaoEncontradoError se usuário não existe', async () => {
+      await expect(service.resetarDicas('inexistente')).rejects.toThrow(
+        UsuarioNaoEncontradoError,
+      );
+    });
+
+    it('deve lançar UsuarioNaoEncontradoError se usuário está inativo', async () => {
+      const criado = await service.criar({
+        nome: 'João',
+        email: 'joao@example.com',
+        senha: 's',
+      });
+      await usuarioRepo.desativar(criado.id);
+
+      await expect(service.resetarDicas(criado.id)).rejects.toThrow(
+        UsuarioNaoEncontradoError,
+      );
+    });
+  });
 });
