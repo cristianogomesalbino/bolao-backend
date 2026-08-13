@@ -126,24 +126,6 @@ export class UsuariosService {
     }) as Promise<Usuario>;
   }
 
-  async marcarTourCompleto(usuarioId: string, tourId: string): Promise<void> {
-    const usuario = await this.usuarioRepo.buscarPorId(usuarioId);
-
-    if (!usuario?.ativo) {
-      throw new UsuarioNaoEncontradoError();
-    }
-
-    const toursAtuais: string[] = usuario.toursCompletos ?? [];
-
-    if (toursAtuais.includes(tourId)) {
-      return; // idempotente
-    }
-
-    await this.usuarioRepo.atualizar(usuarioId, {
-      toursCompletos: [...toursAtuais, tourId],
-    });
-  }
-
   async dispensarDica(usuarioId: string, dicaId: string): Promise<void> {
     const usuario = await this.usuarioRepo.buscarPorId(usuarioId);
 

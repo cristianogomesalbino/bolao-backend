@@ -5,7 +5,6 @@ import type { UsuariosService } from '@src/modules/usuarios/usuarios.service';
 import type { CriarUsuarioDto } from '@src/modules/usuarios/dto/criar-usuario.dto';
 import type { AtualizarUsuarioDto } from '@src/modules/usuarios/dto/atualizar-usuario.dto';
 import type { DefinirGrupoFavoritoDto } from '@src/modules/usuarios/dto/definir-grupo-favorito.dto';
-import type { MarcarTourCompletoDto } from '@src/modules/usuarios/dto/marcar-tour-completo.dto';
 
 describe('UsuariosController', () => {
   let controller: UsuariosController;
@@ -15,7 +14,6 @@ describe('UsuariosController', () => {
     atualizar: ReturnType<typeof vi.fn>;
     remover: ReturnType<typeof vi.fn>;
     definirGrupoFavorito: ReturnType<typeof vi.fn>;
-    marcarTourCompleto: ReturnType<typeof vi.fn>;
   };
 
   const userId = 'user-1';
@@ -43,7 +41,6 @@ describe('UsuariosController', () => {
       definirGrupoFavorito: vi
         .fn()
         .mockResolvedValue({ ...usuarioMock, grupoFavoritoId: 'grupo-1' }),
-      marcarTourCompleto: vi.fn().mockResolvedValue(undefined),
     };
 
     controller = new UsuariosController(
@@ -108,17 +105,5 @@ describe('UsuariosController', () => {
 
     expect(mockService.remover).toHaveBeenCalledWith(userId);
     expect(result.mensagem).toBeDefined();
-  });
-
-  it('marcarTourCompleto deve chamar service com user.id e tourId', async () => {
-    const dto: MarcarTourCompletoDto = { tourId: 'tour-palpites' };
-
-    const result = await controller.marcarTourCompleto(dto, user);
-
-    expect(mockService.marcarTourCompleto).toHaveBeenCalledWith(
-      userId,
-      'tour-palpites',
-    );
-    expect(result).toEqual({ mensagem: 'Tour marcado como completo' });
   });
 });

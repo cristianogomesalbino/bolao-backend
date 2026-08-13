@@ -22,7 +22,7 @@ describe('UsuariosService', () => {
     grupoUsuarioRepo = new InMemoryGrupoUsuarioRepository();
     service = new UsuariosService(usuarioRepo, grupoUsuarioRepo);
     vi.clearAllMocks();
-    (bcrypt.hash as any).mockResolvedValue('hashed');
+    vi.mocked(bcrypt.hash).mockResolvedValue('hashed' as never);
   });
 
   // ==================== criar ====================
@@ -141,12 +141,12 @@ describe('UsuariosService', () => {
         email: 'joao@example.com',
         senha: 'senha123',
       });
-      (bcrypt.hash as any).mockResolvedValue('new-hash');
+      vi.mocked(bcrypt.hash).mockResolvedValue('new-hash' as never);
 
       await service.atualizar(criado.id, { senha: 'novasenha' });
 
       expect(bcrypt.hash).toHaveBeenCalledWith('novasenha', AUTH.BCRYPT_ROUNDS);
-      const atualizado = usuarioRepo.items.find((u) => u.id === criado.id);
+      const atualizado = usuarioRepo.items.find((u) => u.id === criado.id)!;
       expect(atualizado.senha).toBe('new-hash');
     });
 
@@ -183,7 +183,7 @@ describe('UsuariosService', () => {
       const result = await service.remover(criado.id);
 
       expect(result.mensagem).toBe('Usuário desativado com sucesso');
-      const usuario = usuarioRepo.items.find((u) => u.id === criado.id);
+      const usuario = usuarioRepo.items.find((u) => u.id === criado.id)!;
       expect(usuario.ativo).toBe(false);
     });
 
@@ -220,7 +220,7 @@ describe('UsuariosService', () => {
       const result = await service.buscarPorEmail('joao@example.com');
 
       expect(result).not.toBeNull();
-      expect(result.nome).toBe('João Silva');
+      expect(result!.nome).toBe('João Silva');
     });
 
     it('deve retornar null se email não existe', async () => {
@@ -291,75 +291,6 @@ describe('UsuariosService', () => {
 
       await expect(
         service.definirGrupoFavorito(criado.id, 'grupo-1'),
-      ).rejects.toThrow(UsuarioNaoEncontradoError);
-    });
-  });
-
-  // ==================== marcarTourCompleto ====================
-
-  describe('marcarTourCompleto', () => {
-    it('deve adicionar tourId ao array de toursCompletos', async () => {
-      const criado = await service.criar({
-        nome: 'João',
-        email: 'joao@example.com',
-        senha: 's',
-      });
-
-      await service.marcarTourCompleto(criado.id, 'tour-palpites');
-
-      const usuario = usuarioRepo.items.find((u) => u.id === criado.id);
-      expect(usuario.toursCompletos).toContain('tour-palpites');
-    });
-
-    it('deve ser idempotente — não duplicar tourId já presente', async () => {
-      const criado = await service.criar({
-        nome: 'João',
-        email: 'joao@example.com',
-        senha: 's',
-      });
-
-      await service.marcarTourCompleto(criado.id, 'tour-palpites');
-      await service.marcarTourCompleto(criado.id, 'tour-palpites');
-
-      const usuario = usuarioRepo.items.find((u) => u.id === criado.id);
-      const ocorrencias = usuario.toursCompletos.filter(
-        (t: string) => t === 'tour-palpites',
-      );
-      expect(ocorrencias).toHaveLength(1);
-    });
-
-    it('deve preservar tours já existentes ao adicionar novo', async () => {
-      const criado = await service.criar({
-        nome: 'João',
-        email: 'joao@example.com',
-        senha: 's',
-      });
-
-      await service.marcarTourCompleto(criado.id, 'tour-palpites');
-      await service.marcarTourCompleto(criado.id, 'tour-grupo');
-
-      const usuario = usuarioRepo.items.find((u) => u.id === criado.id);
-      expect(usuario.toursCompletos).toContain('tour-palpites');
-      expect(usuario.toursCompletos).toContain('tour-grupo');
-      expect(usuario.toursCompletos).toHaveLength(2);
-    });
-
-    it('deve lançar UsuarioNaoEncontradoError se usuário não existe', async () => {
-      await expect(
-        service.marcarTourCompleto('inexistente', 'tour-palpites'),
-      ).rejects.toThrow(UsuarioNaoEncontradoError);
-    });
-
-    it('deve lançar UsuarioNaoEncontradoError se usuário está inativo', async () => {
-      const criado = await service.criar({
-        nome: 'João',
-        email: 'joao@example.com',
-        senha: 's',
-      });
-      await usuarioRepo.desativar(criado.id);
-
-      await expect(
-        service.marcarTourCompleto(criado.id, 'tour-palpites'),
       ).rejects.toThrow(UsuarioNaoEncontradoError);
     });
   });
@@ -447,7 +378,7 @@ describe('UsuariosService', () => {
       await service.dispensarDica(criado.id, 'dica-grupo-convite');
       await service.resetarDicas(criado.id);
 
-      const usuario = usuarioRepo.items.find((u) => u.id === criado.id);
+      const usuario = usuarioRepo.items.find((u) => u.id === criado.id)!;
       expect(usuario.dicasDispensadas).toHaveLength(0);
     });
 
@@ -463,7 +394,7 @@ describe('UsuariosService', () => {
 
       await service.resetarDicas(criado.id);
 
-      const usuario = usuarioRepo.items.find((u) => u.id === criado.id);
+      const usuario = usuarioRepo.items.find((u) => u.id === criado.id)!;
       expect(usuario.toastDescobrilidadeVisto).toBe(false);
     });
 
@@ -476,7 +407,7 @@ describe('UsuariosService', () => {
 
       await service.resetarDicas(criado.id);
 
-      const usuario = usuarioRepo.items.find((u) => u.id === criado.id);
+      const usuario = usuarioRepo.items.find((u) => u.id === criado.id)!;
       expect(usuario.dicasDispensadas).toHaveLength(0);
     });
 

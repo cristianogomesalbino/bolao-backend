@@ -19,7 +19,6 @@ import { UsuariosService } from './usuarios.service';
 import { CriarUsuarioDto } from './dto/criar-usuario.dto';
 import { AtualizarUsuarioDto } from './dto/atualizar-usuario.dto';
 import { DefinirGrupoFavoritoDto } from './dto/definir-grupo-favorito.dto';
-import { MarcarTourCompletoDto } from './dto/marcar-tour-completo.dto';
 import { DispensarDicaDto } from './dto/dispensar-dica.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { ParseUUIDCustomPipe } from '../../common/pipes/parse-uuid-custom.pipe';
@@ -70,21 +69,6 @@ export class UsuariosController {
         dto.grupoId ?? null,
       ),
     );
-  }
-
-  @ApiOperation({ summary: 'Marcar tour como completo' })
-  @ApiResponse({
-    status: 200,
-    description: 'Tour marcado como completo.',
-  })
-  @ApiBadRequestResponse({ description: 'tourId inválido.' })
-  @Patch('me/tours')
-  async marcarTourCompleto(
-    @Body() dto: MarcarTourCompletoDto,
-    @CurrentUser() user: { id: string },
-  ) {
-    await this.usuariosService.marcarTourCompleto(user.id, dto.tourId);
-    return { mensagem: USUARIOS.MENSAGENS.TOUR_MARCADO_COMPLETO };
   }
 
   @ApiOperation({ summary: 'Dispensar uma dica' })
