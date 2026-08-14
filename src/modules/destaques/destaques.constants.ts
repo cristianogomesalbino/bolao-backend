@@ -1,17 +1,17 @@
-export const STORIES = {
-  TAG: 'Stories',
-  STORY_REPOSITORY_TOKEN: 'STORY_REPOSITORY',
+export const DESTAQUES = {
+  TAG: 'Destaques',
+  DESTAQUE_REPOSITORY_TOKEN: 'DESTAQUE_REPOSITORY',
   RECORDE_REPOSITORY_TOKEN: 'RECORDE_REPOSITORY',
   RANKING_SNAPSHOT_REPOSITORY_TOKEN: 'RANKING_SNAPSHOT_REPOSITORY',
-  EVENT_SERVICE_TOKEN: 'STORY_EVENT_SERVICE',
+  EVENT_SERVICE_TOKEN: 'DESTAQUE_EVENT_SERVICE',
 
   LIMITES: {
     EXPIRACAO_DIAS: 30,
     SEQUENCIA_MOSCA_MINIMA: 2,
     SEQUENCIA_RESULTADO_CONSULTA_RODADAS: 3,
     ULTIMOS_JOGOS_SEQUENCIA: 5,
-    MAX_STORIES_LISTAGEM: 20,
-    MIN_STORIES_VIEWER: 5,
+    MAX_DESTAQUES_LISTAGEM: 20,
+    MIN_DESTAQUES_VIEWER: 5,
     SUBIU_RANKING_MINIMO: 2,
     SUBIU_RANKING_TOP: 5,
   },
@@ -41,17 +41,17 @@ export const STORIES = {
   },
 
   MENSAGENS: {
-    STORY_NAO_ENCONTRADO: 'Story não encontrado',
-    STORY_FORA_DO_ESCOPO: 'Story não está mais visível',
+    DESTAQUE_NAO_ENCONTRADO: 'Destaque não encontrado',
+    DESTAQUE_FORA_DO_ESCOPO: 'Destaque não está mais visível',
     REACAO_APENAS_NAO_PALPITOU:
-      'Reações do tipo F são permitidas apenas em stories NAO_PALPITOU',
+      'Reações do tipo F são permitidas apenas em destaques NAO_PALPITOU',
     NAO_PODE_F_PARA_SI_MESMO: 'Não é permitido enviar F para si mesmo',
-    USUARIO_JA_ENVIOU_F: 'Você já enviou um F para este story',
+    USUARIO_JA_ENVIOU_F: 'Você já enviou um F para este destaque',
     F_ENVIADO_SUCESSO: 'F enviado com sucesso',
   },
 
   TEMPLATES: {
-    NOVOS_STORIES: {
+    NOVOS_DESTAQUES: {
       titulo: 'Novos destaques!',
       mensagem: (grupoNome: string, quantidade: number) =>
         `${quantidade} novos destaques no grupo ${grupoNome}. Veja o que aconteceu!`,

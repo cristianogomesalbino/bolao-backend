@@ -13,13 +13,12 @@ import type {
   JogoRepository,
   CriarJogoData,
 } from '../repositories/jogo.repository.interface';
-import { STORIES } from '../../stories/stories.constants';
-import type { JogoRepository } from '../repositories/jogo.repository.interface';
+import { DESTAQUES } from '../../destaques/destaques.constants';
 import type { FaseRepository } from '../repositories/fase.repository.interface';
 import type { TimeRepository } from '../../times/repositories/time.repository.interface';
 import type { NotificacaoEventService } from '../../notificacoes/services/notificacao-event.service';
 import type { CampeonatoStatusService } from '../../campeonatos/services/campeonato-status.service';
-import type { StoryEventService } from '../../stories/services/story-event.service';
+import type { DestaqueEventService } from '../../destaques/services/destaque-event.service';
 import { FutebolApiService } from './futebol-api.service';
 import type { JogoApiRaw } from './futebol-api.types';
 import { ChaveamentoService } from './chaveamento.service';
@@ -140,8 +139,8 @@ export class JogoService {
     @Optional()
     @Inject(CAMPEONATOS.STATUS_SERVICE_TOKEN)
     private readonly campeonatoStatusService?: CampeonatoStatusService,
-    @Inject(STORIES.EVENT_SERVICE_TOKEN)
-    private readonly storyEventService?: StoryEventService,
+    @Inject(DESTAQUES.EVENT_SERVICE_TOKEN)
+    private readonly destaqueEventService?: DestaqueEventService,
   ) {}
 
   async criar(dto: CriarJogoDto & { faseId: string }, userId: string) {
@@ -276,7 +275,7 @@ export class JogoService {
 
     this.dispararNotificacoesJogoFinalizado(jogoFinalizado.id);
     this.dispararVerificacaoStatusCampeonato(jogo.faseId);
-    this.dispararStoriesJogoFinalizado(jogoFinalizado.id);
+    this.dispararDestaquesJogoFinalizado(jogoFinalizado.id);
 
     return jogoFinalizado;
   }
@@ -312,13 +311,17 @@ export class JogoService {
       .catch((err) =>
         this.logger.error(
           `Erro ao verificar início campeonato: ${(err as Error).message}`,
-  private dispararStoriesJogoFinalizado(jogoId: string): void {
-    if (!this.storyEventService) return;
-    this.storyEventService
+        ),
+      );
+  }
+
+  private dispararDestaquesJogoFinalizado(jogoId: string): void {
+    if (!this.destaqueEventService) return;
+    this.destaqueEventService
       .processarJogoFinalizado(jogoId)
       .catch((err) =>
         this.logger.error(
-          `Erro stories pós-finalização: ${err.message}`,
+          `Erro destaques pós-finalização: ${err.message}`,
           err.stack,
         ),
       );
@@ -1116,7 +1119,7 @@ export class JogoService {
       // Disparar notificações para cada jogo finalizado
       for (const jogoFinalizado of jogosFinalizedAgora) {
         this.dispararNotificacoesJogoFinalizado(jogoFinalizado.id);
-        this.dispararStoriesJogoFinalizado(jogoFinalizado.id);
+        this.dispararDestaquesJogoFinalizado(jogoFinalizado.id);
       }
     }
 

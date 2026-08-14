@@ -55,7 +55,7 @@ src/modules/
 ├── notificacoes/    # Push notifications, lembretes, acertos, ranking changes
 ├── scheduler/       # Centralização de todos os jobs (sync, notificações, limpeza)
 └── eventos/         # Outbox pattern local (eventos pendentes com retry)
-└── stories/         # Stories/Destaques do grupo — geração automática, interação F, recordes
+└── destaques/       # Destaques do grupo — geração automática, interação F, recordes
 ```
 
 ## Modelos Prisma
@@ -156,19 +156,19 @@ EM_ANDAMENTO → CANCELADO
 11. ~~Eventos (outbox pattern)~~ ✅
 12. Planos/Monetização — Limites por plano (max participantes, etc.)
 
-## Módulo de Stories
+## Módulo de Destaques
 
 ### Arquitetura
 
 Services divididos por responsabilidade (SRP):
-- `StoryEventService` — orquestrador: recebe evento de jogo finalizado, coordena geração para todos os grupos
-- `StoryGeneratorService` — avalia 7 critérios por membro e gera stories em batch
-- `StorySequenciaService` — calcula sequências (mosca + resultado) e gerencia recordes
-- `StoryReactionService` — lógica do "Mandar um F" com validações
-- `StoryNotificacaoService` — push consolidado + notificação de F recebido
-- `StoryCronService` — limpeza de stories > 30 dias
+- `DestaqueEventService` — orquestrador: recebe evento de jogo finalizado, coordena geração para todos os grupos
+- `DestaqueGeneratorService` — avalia 7 critérios por membro e gera destaques em batch
+- `DestaqueSequenciaService` — calcula sequências (mosca + resultado) e gerencia recordes
+- `DestaqueReactionService` — lógica do "Mandar um F" com validações
+- `DestaqueNotificacaoService` — push consolidado + notificação de F recebido
+- `DestaqueCronService` — limpeza de destaques > 30 dias
 
-### Tipos de Story
+### Tipos de Destaque
 
 | Tipo | Gatilho |
 |------|---------|
@@ -182,18 +182,18 @@ Services divididos por responsabilidade (SRP):
 
 ### Endpoints
 
-- `GET /grupos/:grupoId/stories` — listagem cronológica (rodada atual + anterior, mín 5 / máx 20)
-- `POST /grupos/:grupoId/stories/:storyId/mandar-f` — enviar F (apenas NAO_PALPITOU)
-- `POST /grupos/:grupoId/stories/visualizar` — batch de visualizações (ao fechar viewer)
+- `GET /grupos/:grupoId/destaques` — listagem cronológica (rodada atual + anterior, mín 5 / máx 20)
+- `POST /grupos/:grupoId/destaques/:destaqueId/mandar-f` — enviar F (apenas NAO_PALPITOU)
+- `POST /grupos/:grupoId/destaques/visualizar` — batch de visualizações (ao fechar viewer)
 
 ### Regras de Domínio
 
-- Stories persistidos em banco (não calculados on-the-fly)
+- Destaques persistidos em banco (não calculados on-the-fly)
 - Gerados fire-and-forget após finalização de jogo
 - Deduplicação: unique(grupoId, usuarioId, jogoId, tipo)
 - Visibilidade: rodada atual + anterior
 - Hard delete: cron 30 dias
-- F: 1 por remetente por story, não pode enviar pra si mesmo
+- F: 1 por remetente por destaque, não pode enviar pra si mesmo
 - Recordes: por grupo + temporada + categoria (MOSCA/RESULTADO), empate mantém múltiplos detentores
 - Prioridade de exibição: UNICO_NA_MOSCA > NAO_PALPITOU > SEQUENCIA_MOSCA > SEQUENCIA_RESULTADO > ACERTOU_EM_CHEIO > SUBIU_RANKING > DOBROU_E_ACERTOU
 - Título randomizado por tipo (sem repetição imediata via pickRandomTitle)
@@ -201,7 +201,7 @@ Services divididos por responsabilidade (SRP):
 
 ### Integração com JogoService
 
-`JogoService.dispararStoriesJogoFinalizado(jogoId)` chama `StoryEventService.processarJogoFinalizado(jogoId)` fire-and-forget após finalizar/sincronizar um jogo. Não bloqueia o fluxo principal. Injetado via `@Optional() @Inject(STORIES.EVENT_SERVICE_TOKEN)`.
+`JogoService.dispararDestaquesJogoFinalizado(jogoId)` chama `DestaqueEventService.processarJogoFinalizado(jogoId)` fire-and-forget após finalizar/sincronizar um jogo. Não bloqueia o fluxo principal. Injetado via `@Optional() @Inject(DESTAQUES.EVENT_SERVICE_TOKEN)`.
 
 ## Idioma
 

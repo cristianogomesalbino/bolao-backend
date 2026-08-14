@@ -1,22 +1,22 @@
 import type {
-  StoryRepository,
-  CriarStoryData,
+  DestaqueRepository,
+  CriarDestaqueData,
   CriarReacaoData,
   CriarVisualizacaoData,
-  Story,
-  StoryComAutor,
-  StoryReacao,
-} from './story.repository.interface';
-import type { TipoStory } from '../types/story.types';
-import { STORIES } from '../stories.constants';
+  Destaque,
+  DestaqueComAutor,
+  DestaqueReacao,
+} from './destaque.repository.interface';
+import type { TipoDestaque } from '../types/destaque.types';
+import { DESTAQUES } from '../destaques.constants';
 import { randomUUID } from 'node:crypto';
 
-export class InMemoryStoryRepository implements StoryRepository {
-  readonly stories: Story[] = [];
-  readonly reacoes: StoryReacao[] = [];
+export class InMemoryDestaqueRepository implements DestaqueRepository {
+  readonly destaques: Destaque[] = [];
+  readonly reacoes: DestaqueReacao[] = [];
   readonly visualizacoes: Array<{
     id: string;
-    storyId: string;
+    destaqueId: string;
     usuarioId: string;
     visualizadoEm: Date;
   }> = [];
@@ -27,35 +27,35 @@ export class InMemoryStoryRepository implements StoryRepository {
     this.usuarios.set(id, { id, nome });
   }
 
-  criar(data: CriarStoryData): Promise<Story> {
-    const story: Story = {
+  criar(data: CriarDestaqueData): Promise<Destaque> {
+    const destaque: Destaque = {
       id: randomUUID(),
       ...data,
       contadorFs: 0,
       criadoEm: new Date(),
     };
-    this.stories.push(story);
-    return Promise.resolve(story);
+    this.destaques.push(destaque);
+    return Promise.resolve(destaque);
   }
 
-  async criarVarios(data: CriarStoryData[]): Promise<void> {
+  async criarVarios(data: CriarDestaqueData[]): Promise<void> {
     for (const item of data) {
       await this.criar(item);
     }
   }
 
-  buscarPorId(id: string): Promise<Story | null> {
-    return Promise.resolve(this.stories.find((s) => s.id === id) ?? null);
+  buscarPorId(id: string): Promise<Destaque | null> {
+    return Promise.resolve(this.destaques.find((s) => s.id === id) ?? null);
   }
 
   buscarPorGrupoERodadas(
     grupoId: string,
     rodadas: number[],
     limite: number,
-  ): Promise<StoryComAutor[]> {
-    const prioridades = STORIES.PRIORIDADE_POR_TIPO;
+  ): Promise<DestaqueComAutor[]> {
+    const prioridades = DESTAQUES.PRIORIDADE_POR_TIPO;
 
-    const resultado = this.stories
+    const resultado = this.destaques
       .filter(
         (s) =>
           s.grupoId === grupoId &&
@@ -86,7 +86,7 @@ export class InMemoryStoryRepository implements StoryRepository {
   }
 
   contarPorGrupoERodadas(grupoId: string, rodadas: number[]): Promise<number> {
-    const count = this.stories.filter(
+    const count = this.destaques.filter(
       (s) =>
         s.grupoId === grupoId &&
         s.rodada !== null &&
@@ -95,22 +95,22 @@ export class InMemoryStoryRepository implements StoryRepository {
     return Promise.resolve(count);
   }
 
-  incrementarContadorFs(storyId: string): Promise<number> {
-    const story = this.stories.find((s) => s.id === storyId);
-    if (!story) return Promise.resolve(0);
-    story.contadorFs += 1;
-    return Promise.resolve(story.contadorFs);
+  incrementarContadorFs(destaqueId: string): Promise<number> {
+    const destaque = this.destaques.find((s) => s.id === destaqueId);
+    if (!destaque) return Promise.resolve(0);
+    destaque.contadorFs += 1;
+    return Promise.resolve(destaque.contadorFs);
   }
 
-  existeReacao(remetenteId: string, storyId: string): Promise<boolean> {
+  existeReacao(remetenteId: string, destaqueId: string): Promise<boolean> {
     const existe = this.reacoes.some(
-      (r) => r.remetenteId === remetenteId && r.storyId === storyId,
+      (r) => r.remetenteId === remetenteId && r.destaqueId === destaqueId,
     );
     return Promise.resolve(existe);
   }
 
-  criarReacao(data: CriarReacaoData): Promise<StoryReacao> {
-    const reacao: StoryReacao = {
+  criarReacao(data: CriarReacaoData): Promise<DestaqueReacao> {
+    const reacao: DestaqueReacao = {
       id: randomUUID(),
       ...data,
       criadoEm: new Date(),
@@ -122,12 +122,14 @@ export class InMemoryStoryRepository implements StoryRepository {
   criarVisualizacoesBatch(dados: CriarVisualizacaoData[]): Promise<void> {
     for (const item of dados) {
       const jaExiste = this.visualizacoes.some(
-        (v) => v.storyId === item.storyId && v.usuarioId === item.usuarioId,
+        (v) =>
+          v.destaqueId === item.destaqueId && v.usuarioId === item.usuarioId,
       );
       if (!jaExiste) {
         this.visualizacoes.push({
           id: randomUUID(),
-          ...item,
+          destaqueId: item.destaqueId,
+          usuarioId: item.usuarioId,
           visualizadoEm: new Date(),
         });
       }
@@ -136,22 +138,24 @@ export class InMemoryStoryRepository implements StoryRepository {
   }
 
   buscarVisualizacoes(
-    storyIds: string[],
+    destaqueIds: string[],
     usuarioId: string,
   ): Promise<Set<string>> {
     const visualizados = this.visualizacoes
-      .filter((v) => storyIds.includes(v.storyId) && v.usuarioId === usuarioId)
-      .map((v) => v.storyId);
+      .filter(
+        (v) => destaqueIds.includes(v.destaqueId) && v.usuarioId === usuarioId,
+      )
+      .map((v) => v.destaqueId);
     return Promise.resolve(new Set(visualizados));
   }
 
-  existeStory(
+  existeDestaque(
     grupoId: string,
     usuarioId: string,
     jogoId: string,
-    tipo: TipoStory,
+    tipo: TipoDestaque,
   ): Promise<boolean> {
-    const existe = this.stories.some(
+    const existe = this.destaques.some(
       (s) =>
         s.grupoId === grupoId &&
         s.usuarioId === usuarioId &&
@@ -165,29 +169,29 @@ export class InMemoryStoryRepository implements StoryRepository {
     const limite = new Date();
     limite.setDate(limite.getDate() - diasLimite);
 
-    const antes = this.stories.length;
+    const antes = this.destaques.length;
     const idsParaRemover = new Set(
-      this.stories.filter((s) => s.criadoEm < limite).map((s) => s.id),
+      this.destaques.filter((s) => s.criadoEm < limite).map((s) => s.id),
     );
 
-    for (let i = this.stories.length - 1; i >= 0; i--) {
-      if (idsParaRemover.has(this.stories[i].id)) {
-        this.stories.splice(i, 1);
+    for (let i = this.destaques.length - 1; i >= 0; i--) {
+      if (idsParaRemover.has(this.destaques[i].id)) {
+        this.destaques.splice(i, 1);
       }
     }
 
     // Cascade: remove reações e visualizações
     for (let i = this.reacoes.length - 1; i >= 0; i--) {
-      if (idsParaRemover.has(this.reacoes[i].storyId)) {
+      if (idsParaRemover.has(this.reacoes[i].destaqueId)) {
         this.reacoes.splice(i, 1);
       }
     }
     for (let i = this.visualizacoes.length - 1; i >= 0; i--) {
-      if (idsParaRemover.has(this.visualizacoes[i].storyId)) {
+      if (idsParaRemover.has(this.visualizacoes[i].destaqueId)) {
         this.visualizacoes.splice(i, 1);
       }
     }
 
-    return Promise.resolve(antes - this.stories.length);
+    return Promise.resolve(antes - this.destaques.length);
   }
 }

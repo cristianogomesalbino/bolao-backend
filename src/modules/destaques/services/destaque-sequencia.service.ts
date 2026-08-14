@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { STORIES } from '../stories.constants';
+import { DESTAQUES } from '../destaques.constants';
 import { PALPITES } from '../../palpites/palpites.constants';
 import { JOGOS } from '../../jogos/jogos.constants';
 import { PontuacaoService } from '../../ranking/services/pontuacao.service';
@@ -10,7 +10,7 @@ import type {
   CategoriaRecorde,
   JogoSequencia,
   RecordeInfo,
-} from '../types/story.types';
+} from '../types/destaque.types';
 
 interface JogoInterno {
   id: string;
@@ -40,9 +40,9 @@ interface SequenciaResultado {
 }
 
 @Injectable()
-export class StorySequenciaService {
+export class DestaqueSequenciaService {
   constructor(
-    @Inject(STORIES.RECORDE_REPOSITORY_TOKEN)
+    @Inject(DESTAQUES.RECORDE_REPOSITORY_TOKEN)
     private readonly recordeRepo: RecordeRepository,
     @Inject(PALPITES.PALPITE_REPOSITORY_TOKEN)
     private readonly palpiteRepo: PalpiteRepository,
@@ -62,7 +62,7 @@ export class StorySequenciaService {
     const jogosRaw = await this.jogoRepo.buscarPorFase(faseId, rodada);
     const jogos = this.filtrarFinalizadosOrdenados(jogosRaw as JogoInterno[]);
 
-    if (jogos.length < STORIES.LIMITES.SEQUENCIA_MOSCA_MINIMA) return null;
+    if (jogos.length < DESTAQUES.LIMITES.SEQUENCIA_MOSCA_MINIMA) return null;
 
     const palpiteMap = await this.buscarPalpitesDoUsuario(jogos, usuarioId);
     const indiceAtual = jogos.findIndex((j) => j.id === jogoAtualId);
@@ -76,12 +76,12 @@ export class StorySequenciaService {
       'ACERTO_EM_CHEIO',
     );
 
-    if (quantidade < STORIES.LIMITES.SEQUENCIA_MOSCA_MINIMA) return null;
+    if (quantidade < DESTAQUES.LIMITES.SEQUENCIA_MOSCA_MINIMA) return null;
 
     return {
       quantidade,
       ultimosJogos: ultimosJogos.slice(
-        -STORIES.LIMITES.ULTIMOS_JOGOS_SEQUENCIA,
+        -DESTAQUES.LIMITES.ULTIMOS_JOGOS_SEQUENCIA,
       ),
       rodadaInicio: rodada,
     };
@@ -129,7 +129,7 @@ export class StorySequenciaService {
     return {
       quantidade,
       ultimosJogos: ultimosJogos.slice(
-        -STORIES.LIMITES.ULTIMOS_JOGOS_SEQUENCIA,
+        -DESTAQUES.LIMITES.ULTIMOS_JOGOS_SEQUENCIA,
       ),
       rodadaInicio,
     };
@@ -287,7 +287,7 @@ export class StorySequenciaService {
 
   private calcularRodadasParaConsulta(rodadaAtual: number): number[] {
     const rodadas: number[] = [];
-    const limite = STORIES.LIMITES.SEQUENCIA_RESULTADO_CONSULTA_RODADAS;
+    const limite = DESTAQUES.LIMITES.SEQUENCIA_RESULTADO_CONSULTA_RODADAS;
     for (let i = 0; i <= limite; i++) {
       const rodada = rodadaAtual - i;
       if (rodada >= 1) rodadas.push(rodada);
