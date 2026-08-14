@@ -17,7 +17,7 @@ import { TemporadasModule } from './modules/temporadas/temporadas.module';
 import { TimesModule } from './modules/times/times.module';
 import { UsuariosModule } from './modules/usuarios/usuarios.module';
 import { NotificacoesModule } from './modules/notificacoes/notificacoes.module';
-import { StoriesModule } from './modules/stories/stories.module';
+import { DestaquesModule } from './modules/destaques/destaques.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 
@@ -38,7 +38,7 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
     TimesModule,
     UsuariosModule,
     NotificacoesModule,
-    StoriesModule,
+    DestaquesModule,
   ],
   controllers: [AppController],
   providers: [

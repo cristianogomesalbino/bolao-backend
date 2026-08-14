@@ -1,23 +1,23 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { StoryGeneratorService } from '../../../../src/modules/stories/services/story-generator.service';
-import { StorySequenciaService } from '../../../../src/modules/stories/services/story-sequencia.service';
+import { DestaqueGeneratorService } from '../../../../src/modules/destaques/services/destaque-generator.service';
+import { DestaqueSequenciaService } from '../../../../src/modules/destaques/services/destaque-sequencia.service';
 import { PontuacaoService } from '../../../../src/modules/ranking/services/pontuacao.service';
-import { InMemoryStoryRepository } from '../../../../src/modules/stories/repositories/in-memory-story.repository';
-import { InMemoryRankingSnapshotRepository } from '../../../../src/modules/stories/repositories/in-memory-ranking-snapshot.repository';
+import { InMemoryDestaqueRepository } from '../../../../src/modules/destaques/repositories/in-memory-destaque.repository';
+import { InMemoryRankingSnapshotRepository } from '../../../../src/modules/destaques/repositories/in-memory-ranking-snapshot.repository';
 import type {
   JogoComTimes,
   GrupoBasico,
   MembroComUsuario,
-  TipoStory,
-} from '../../../../src/modules/stories/types/story.types';
+  TipoDestaque,
+} from '../../../../src/modules/destaques/types/destaque.types';
 import type { PalpiteRepository } from '../../../../src/modules/palpites/repositories/palpite.repository.interface';
 import type { PalpiteDobradoRepository } from '../../../../src/modules/palpites/repositories/palpite-dobrado.repository.interface';
 
-describe('StoryGeneratorService', () => {
-  let service: StoryGeneratorService;
-  let storyRepo: InMemoryStoryRepository;
+describe('DestaqueGeneratorService', () => {
+  let service: DestaqueGeneratorService;
+  let destaqueRepo: InMemoryDestaqueRepository;
   let snapshotRepo: InMemoryRankingSnapshotRepository;
-  let sequenciaService: StorySequenciaService;
+  let sequenciaService: DestaqueSequenciaService;
   let pontuacaoService: PontuacaoService;
 
   const mockPalpiteRepo = {
@@ -78,7 +78,7 @@ describe('StoryGeneratorService', () => {
   ];
 
   beforeEach(() => {
-    storyRepo = new InMemoryStoryRepository();
+    destaqueRepo = new InMemoryDestaqueRepository();
     snapshotRepo = new InMemoryRankingSnapshotRepository();
     pontuacaoService = new PontuacaoService();
     sequenciaService = {
@@ -87,13 +87,13 @@ describe('StoryGeneratorService', () => {
       atualizarRecorde: vi
         .fn()
         .mockResolvedValue({ valor: 0, detentores: [], ehNovoRecorde: false }),
-    } as unknown as StorySequenciaService;
+    } as unknown as DestaqueSequenciaService;
 
     mockPalpiteRepo.listarPorJogoEUsuarios.mockResolvedValue([]);
     mockPalpiteDobradoRepo.listarPorJogosEGrupo.mockResolvedValue([]);
 
-    service = new StoryGeneratorService(
-      storyRepo,
+    service = new DestaqueGeneratorService(
+      destaqueRepo,
       snapshotRepo,
       mockPalpiteRepo as unknown as PalpiteRepository,
       mockPalpiteDobradoRepo as unknown as PalpiteDobradoRepository,
@@ -105,10 +105,10 @@ describe('StoryGeneratorService', () => {
   it('deve gerar NAO_PALPITOU para membros sem palpite', async () => {
     mockPalpiteRepo.listarPorJogoEUsuarios.mockResolvedValue([]);
 
-    await service.gerarStoriesParaGrupo(jogo, grupo, membros);
+    await service.gerarDestaquesParaGrupo(jogo, grupo, membros);
 
-    const stories = storyRepo.stories;
-    const naoPalpitou = stories.filter((s) => s.tipo === 'NAO_PALPITOU');
+    const destaquesCriados = destaqueRepo.destaques;
+    const naoPalpitou = destaquesCriados.filter((s) => s.tipo === 'NAO_PALPITOU');
     expect(naoPalpitou).toHaveLength(3);
   });
 
@@ -118,9 +118,9 @@ describe('StoryGeneratorService', () => {
       { usuarioId: 'user-2', jogoId: 'jogo-1', golsCasa: 2, golsFora: 1 },
     ]);
 
-    await service.gerarStoriesParaGrupo(jogo, grupo, membros);
+    await service.gerarDestaquesParaGrupo(jogo, grupo, membros);
 
-    const acertou = storyRepo.stories.filter(
+    const acertou = destaqueRepo.destaques.filter(
       (s) => s.tipo === 'ACERTOU_EM_CHEIO',
     );
     expect(acertou).toHaveLength(2);
@@ -132,10 +132,10 @@ describe('StoryGeneratorService', () => {
       { usuarioId: 'user-2', jogoId: 'jogo-1', golsCasa: 1, golsFora: 0 },
     ]);
 
-    await service.gerarStoriesParaGrupo(jogo, grupo, membros);
+    await service.gerarDestaquesParaGrupo(jogo, grupo, membros);
 
-    const unico = storyRepo.stories.filter((s) => s.tipo === 'UNICO_NA_MOSCA');
-    const acertou = storyRepo.stories.filter(
+    const unico = destaqueRepo.destaques.filter((s) => s.tipo === 'UNICO_NA_MOSCA');
+    const acertou = destaqueRepo.destaques.filter(
       (s) => s.tipo === 'ACERTOU_EM_CHEIO',
     );
     expect(unico).toHaveLength(1);
@@ -179,9 +179,9 @@ describe('StoryGeneratorService', () => {
       { usuarioId: 'user-3', jogoId: 'jogo-1', golsCasa: 0, golsFora: 3 },
     ]);
 
-    await service.gerarStoriesParaGrupo(jogo, grupo, membros);
+    await service.gerarDestaquesParaGrupo(jogo, grupo, membros);
 
-    const subiu = storyRepo.stories.filter((s) => s.tipo === 'SUBIU_RANKING');
+    const subiu = destaqueRepo.destaques.filter((s) => s.tipo === 'SUBIU_RANKING');
     expect(subiu).toHaveLength(1);
     expect(subiu[0].usuarioId).toBe('user-1');
   });
@@ -221,9 +221,9 @@ describe('StoryGeneratorService', () => {
       { usuarioId: 'user-3', jogoId: 'jogo-1', golsCasa: 0, golsFora: 3 },
     ]);
 
-    await service.gerarStoriesParaGrupo(jogo, grupo, membros);
+    await service.gerarDestaquesParaGrupo(jogo, grupo, membros);
 
-    const subiu = storyRepo.stories.filter((s) => s.tipo === 'SUBIU_RANKING');
+    const subiu = destaqueRepo.destaques.filter((s) => s.tipo === 'SUBIU_RANKING');
     expect(subiu).toHaveLength(0);
   });
 
@@ -240,16 +240,16 @@ describe('StoryGeneratorService', () => {
       { usuarioId: 'user-1', jogoId: 'jogo-1' },
     ]);
 
-    await service.gerarStoriesParaGrupo(jogo, grupoComDobro, membros);
+    await service.gerarDestaquesParaGrupo(jogo, grupoComDobro, membros);
 
-    const dobrou = storyRepo.stories.filter(
+    const dobrou = destaqueRepo.destaques.filter(
       (s) => s.tipo === 'DOBROU_E_ACERTOU',
     );
     expect(dobrou).toHaveLength(1);
     expect(dobrou[0].usuarioId).toBe('user-1');
   });
 
-  it('deve gerar múltiplos stories para o mesmo membro se atender múltiplos critérios', async () => {
+  it('deve gerar múltiplos destaques para o mesmo membro se atender múltiplos critérios', async () => {
     const grupoComDobro: GrupoBasico = {
       ...grupo,
       permitirPalpiteDobrado: true,
@@ -291,38 +291,38 @@ describe('StoryGeneratorService', () => {
       { usuarioId: 'user-1', jogoId: 'jogo-1' },
     ]);
 
-    await service.gerarStoriesParaGrupo(jogo, grupoComDobro, membros);
+    await service.gerarDestaquesParaGrupo(jogo, grupoComDobro, membros);
 
-    const storiesUser1 = storyRepo.stories.filter(
+    const destaquesUser1 = destaqueRepo.destaques.filter(
       (s) => s.usuarioId === 'user-1',
     );
-    // UNICO_NA_MOSCA + SUBIU_RANKING + DOBROU_E_ACERTOU = 3 stories
-    expect(storiesUser1.length).toBeGreaterThanOrEqual(3);
+    // UNICO_NA_MOSCA + SUBIU_RANKING + DOBROU_E_ACERTOU = 3 destaques
+    expect(destaquesUser1.length).toBeGreaterThanOrEqual(3);
   });
 
-  it('não deve gerar stories duplicados (deduplicação)', async () => {
+  it('não deve gerar destaques duplicados (deduplicação)', async () => {
     mockPalpiteRepo.listarPorJogoEUsuarios.mockResolvedValue([]);
 
-    await service.gerarStoriesParaGrupo(jogo, grupo, membros);
-    const primeiraExecucao = storyRepo.stories.length;
+    await service.gerarDestaquesParaGrupo(jogo, grupo, membros);
+    const primeiraExecucao = destaqueRepo.destaques.length;
 
     // Segunda execução — não deve duplicar
-    await service.gerarStoriesParaGrupo(jogo, grupo, membros);
-    expect(storyRepo.stories).toHaveLength(primeiraExecucao);
+    await service.gerarDestaquesParaGrupo(jogo, grupo, membros);
+    expect(destaqueRepo.destaques).toHaveLength(primeiraExecucao);
   });
 
   it('deve continuar gerando se falhar para um membro individual', async () => {
     // Salva referência antes de espiar
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-    const originalMethod: typeof storyRepo.existeStory =
-      storyRepo.existeStory.bind(storyRepo);
+    const originalMethod: typeof destaqueRepo.existeDestaque =
+      destaqueRepo.existeDestaque.bind(destaqueRepo);
     let callCount = 0;
-    vi.spyOn(storyRepo, 'existeStory').mockImplementation(
+    vi.spyOn(destaqueRepo, 'existeDestaque').mockImplementation(
       async (
         grupoId: string,
         usuarioId: string,
         jogoId: string,
-        tipo: TipoStory,
+        tipo: TipoDestaque,
       ): Promise<boolean> => {
         callCount++;
         if (callCount === 2) throw new Error('Erro simulado');
@@ -332,19 +332,19 @@ describe('StoryGeneratorService', () => {
 
     mockPalpiteRepo.listarPorJogoEUsuarios.mockResolvedValue([]);
 
-    await service.gerarStoriesParaGrupo(jogo, grupo, membros);
+    await service.gerarDestaquesParaGrupo(jogo, grupo, membros);
 
-    // Deve ter gerado stories pra pelo menos 2 membros (1 falhou)
-    expect(storyRepo.stories.length).toBeGreaterThanOrEqual(2);
+    // Deve ter gerado destaques pra pelo menos 2 membros (1 falhou)
+    expect(destaqueRepo.destaques.length).toBeGreaterThanOrEqual(2);
   });
 
-  it('deve persistir título randomizado no story', async () => {
+  it('deve persistir título randomizado no destaque', async () => {
     mockPalpiteRepo.listarPorJogoEUsuarios.mockResolvedValue([]);
 
-    await service.gerarStoriesParaGrupo(jogo, grupo, membros);
+    await service.gerarDestaquesParaGrupo(jogo, grupo, membros);
 
-    const story = storyRepo.stories[0];
-    expect(story.titulo).toBeDefined();
-    expect(story.titulo.length).toBeGreaterThan(0);
+    const destaque = destaqueRepo.destaques[0];
+    expect(destaque.titulo).toBeDefined();
+    expect(destaque.titulo.length).toBeGreaterThan(0);
   });
 });

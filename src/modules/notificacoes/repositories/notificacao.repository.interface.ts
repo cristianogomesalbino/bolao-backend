@@ -7,7 +7,7 @@ export type TipoNotificacao =
   | 'PALPITES_PENDENTES'
   | 'JOGO_LIBERADO'
   | 'VENCEDOR_BOLAO'
-  | 'STORIES_GRUPO'
+  | 'DESTAQUES_GRUPO'
   | 'RECEBEU_F';
 
 export interface CriarNotificacaoData {

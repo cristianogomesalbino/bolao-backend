@@ -1,6 +1,6 @@
-import type { TipoStory, StoryTitle } from './types/story.types';
+import type { TipoDestaque, DestaqueTitle } from './types/destaque.types';
 
-export const STORY_TITULOS: Record<TipoStory, StoryTitle[]> = {
+export const DESTAQUE_TITULOS: Record<TipoDestaque, DestaqueTitle[]> = {
   ACERTOU_EM_CHEIO: [
     { id: 'cheio-01', title: 'Cravou!', emoji: '🎯' },
     { id: 'cheio-02', title: 'Na mosca!', emoji: '🎯' },
@@ -89,10 +89,10 @@ export const STORY_TITULOS: Record<TipoStory, StoryTitle[]> = {
  * Seleciona um título aleatório sem repetir o último usado na batch.
  */
 export function pickRandomTitle(
-  tipo: TipoStory,
+  tipo: TipoDestaque,
   ultimoTituloUsadoId?: string,
-): StoryTitle {
-  const titulos = STORY_TITULOS[tipo];
+): DestaqueTitle {
+  const titulos = DESTAQUE_TITULOS[tipo];
   const disponiveis = ultimoTituloUsadoId
     ? titulos.filter((t) => t.id !== ultimoTituloUsadoId)
     : titulos;

@@ -53,9 +53,9 @@ model Usuario {
   notificacoes           Notificacao[]
   inscricoesPush         InscricaoPush[]
   preferenciaNotificacao PreferenciaNotificacao?
-  stories                Story[]
-  storyReacoes           StoryReacao[]
-  storyVisualizacoes     StoryVisualizacao[]
+  destaques              Destaque[]
+  destaqueReacoes        DestaqueReacao[]
+  destaqueVisualizacoes  DestaqueVisualizacao[]
 }
 
 model Grupo {
@@ -78,7 +78,7 @@ model Grupo {
   usuariosFavorito          Usuario[]          @relation("GrupoFavorito")
   palpitesDobrados          PalpiteDobrado[]
   tokensDobro               TokenDobro[]
-  stories                   Story[]
+  destaques                 Destaque[]
   recordesSequencia         RecordeSequencia[]
   rankingSnapshots          RankingSnapshot[]
 }
@@ -174,7 +174,7 @@ model Jogo {
   timeFora            Time             @relation("TimeFora", fields: [timeForaId], references: [id])
   palpites            Palpite[]
   palpitesDobrados    PalpiteDobrado[]
-  stories             Story[]
+  destaques           Destaque[]
 
   @@index([faseId])
   @@index([timeCasaId])
@@ -307,7 +307,7 @@ enum TipoNotificacao {
   PALPITES_PENDENTES
   JOGO_LIBERADO
   VENCEDOR_BOLAO
-  STORIES_GRUPO
+  DESTAQUES_GRUPO
   RECEBEU_F
 }
 
@@ -397,10 +397,10 @@ model EventoPendente {
 }
 
 // ============================================
-// MÓDULO STORIES
+// MÓDULO DESTAQUES
 // ============================================
 
-enum TipoStory {
+enum TipoDestaque {
   ACERTOU_EM_CHEIO
   UNICO_NA_MOSCA
   SUBIU_RANKING
@@ -410,23 +410,23 @@ enum TipoStory {
   DOBROU_E_ACERTOU
 }
 
-model Story {
-  id         String    @id @default(uuid())
+model Destaque {
+  id         String       @id @default(uuid())
   grupoId    String
   usuarioId  String
   jogoId     String
   rodada     Int?
-  tipo       TipoStory
+  tipo       TipoDestaque
   dados      Json
-  titulo     String    @db.VarChar(100)
-  contadorFs Int       @default(0)
-  criadoEm   DateTime  @default(now())
+  titulo     String       @db.VarChar(100)
+  contadorFs Int          @default(0)
+  criadoEm   DateTime     @default(now())
 
-  grupo         Grupo               @relation(fields: [grupoId], references: [id], onDelete: Cascade)
-  usuario       Usuario             @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
-  jogo          Jogo                @relation(fields: [jogoId], references: [id], onDelete: Cascade)
-  reacoes       StoryReacao[]
-  visualizacoes StoryVisualizacao[]
+  grupo         Grupo                  @relation(fields: [grupoId], references: [id], onDelete: Cascade)
+  usuario       Usuario                @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  jogo          Jogo                   @relation(fields: [jogoId], references: [id], onDelete: Cascade)
+  reacoes       DestaqueReacao[]
+  visualizacoes DestaqueVisualizacao[]
 
   @@unique([grupoId, usuarioId, jogoId, tipo])
   @@index([grupoId, criadoEm])
@@ -434,31 +434,31 @@ model Story {
   @@index([grupoId, rodada])
 }
 
-model StoryReacao {
+model DestaqueReacao {
   id          String   @id @default(uuid())
-  storyId     String
+  destaqueId  String
   remetenteId String
   criadoEm    DateTime @default(now())
 
-  story     Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  destaque  Destaque @relation(fields: [destaqueId], references: [id], onDelete: Cascade)
   usuario   Usuario? @relation(fields: [usuarioId], references: [id])
   usuarioId String?
 
-  @@unique([remetenteId, storyId])
-  @@index([storyId])
+  @@unique([remetenteId, destaqueId])
+  @@index([destaqueId])
 }
 
-model StoryVisualizacao {
+model DestaqueVisualizacao {
   id            String   @id @default(uuid())
-  storyId       String
+  destaqueId    String
   usuarioId     String
   visualizadoEm DateTime @default(now())
 
-  story   Story   @relation(fields: [storyId], references: [id], onDelete: Cascade)
-  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  destaque Destaque @relation(fields: [destaqueId], references: [id], onDelete: Cascade)
+  usuario  Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 
-  @@unique([storyId, usuarioId])
-  @@index([storyId])
+  @@unique([destaqueId, usuarioId])
+  @@index([destaqueId])
   @@index([usuarioId])
 }
 

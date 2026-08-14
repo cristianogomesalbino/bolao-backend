@@ -1,12 +1,12 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { NOTIFICACOES } from '../../notificacoes/notificacoes.constants';
-import { STORIES } from '../stories.constants';
+import { DESTAQUES } from '../destaques.constants';
 import type { NotificacaoRepository } from '../../notificacoes/repositories/notificacao.repository.interface';
-import type { GrupoBasico } from '../types/story.types';
+import type { GrupoBasico } from '../types/destaque.types';
 
 @Injectable()
-export class StoryNotificacaoService {
-  private readonly logger = new Logger(StoryNotificacaoService.name);
+export class DestaqueNotificacaoService {
+  private readonly logger = new Logger(DestaqueNotificacaoService.name);
 
   constructor(
     @Inject(NOTIFICACOES.NOTIFICACAO_REPOSITORY_TOKEN)
@@ -14,17 +14,17 @@ export class StoryNotificacaoService {
   ) {}
 
   /**
-   * Envia notificação consolidada quando novos stories são gerados.
+   * Envia notificação consolidada quando novos destaques são gerados.
    * Deduplicação: 1 notificação por grupo por jogo finalizado.
    */
-  async notificarNovosStories(
+  async notificarNovosDestaques(
     grupo: GrupoBasico,
     jogoId: string,
     quantidade: number,
   ): Promise<void> {
     try {
       const jaNotificou = await this.notificacaoRepo.existeNotificacao({
-        tipo: 'STORIES_GRUPO',
+        tipo: 'DESTAQUES_GRUPO',
         grupoId: grupo.id,
         jogoId,
       });
@@ -33,21 +33,21 @@ export class StoryNotificacaoService {
 
       // Buscar membros elegíveis seria via PushService/PreferenciaService
       // Por agora, cria a notificação no banco (push será disparado pelo módulo de notificações)
-      const titulo = STORIES.TEMPLATES.NOVOS_STORIES.titulo;
-      const mensagem = STORIES.TEMPLATES.NOVOS_STORIES.mensagem(
+      const titulo = DESTAQUES.TEMPLATES.NOVOS_DESTAQUES.titulo;
+      const mensagem = DESTAQUES.TEMPLATES.NOVOS_DESTAQUES.mensagem(
         grupo.nome,
         quantidade,
       );
 
       this.logger.log(
-        `[STORIES-NOTIF] ${grupo.nome}: "${titulo}" — ${mensagem}`,
+        `[DESTAQUES-NOTIF] ${grupo.nome}: "${titulo}" — ${mensagem}`,
       );
 
       // A notificação consolidada será criada para cada membro via batch
       // no módulo de notificações existente (integração futura com PushService)
     } catch (error) {
       this.logger.error(
-        `Erro ao notificar stories do grupo ${grupo.id}: ${(error as Error).message}`,
+        `Erro ao notificar destaques do grupo ${grupo.id}: ${(error as Error).message}`,
       );
     }
   }
@@ -74,8 +74,8 @@ export class StoryNotificacaoService {
         return;
       }
 
-      const titulo = STORIES.TEMPLATES.RECEBEU_F.titulo;
-      const mensagem = STORIES.TEMPLATES.RECEBEU_F.mensagem('Alguém');
+      const titulo = DESTAQUES.TEMPLATES.RECEBEU_F.titulo;
+      const mensagem = DESTAQUES.TEMPLATES.RECEBEU_F.mensagem('Alguém');
 
       await this.notificacaoRepo.criar({
         tipo: 'RECEBEU_F',

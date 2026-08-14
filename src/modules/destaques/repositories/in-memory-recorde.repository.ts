@@ -3,7 +3,7 @@ import type {
   RecordeSequencia,
   RecordeDetentor,
 } from './recorde.repository.interface';
-import type { CategoriaRecorde } from '../types/story.types';
+import type { CategoriaRecorde } from '../types/destaque.types';
 import { randomUUID } from 'node:crypto';
 
 export class InMemoryRecordeRepository implements RecordeRepository {

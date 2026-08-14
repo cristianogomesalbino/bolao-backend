@@ -1,19 +1,19 @@
 import { Module } from '@nestjs/common';
-import { STORIES } from './stories.constants';
+import { DESTAQUES } from './destaques.constants';
 import { JOGOS } from '../jogos/jogos.constants';
 import { PALPITES } from '../palpites/palpites.constants';
 import { GRUPOS } from '../grupos/grupos.constants';
 import { GRUPO_USUARIO } from '../grupo-usuario/grupo-usuario.constants';
 import { NOTIFICACOES } from '../notificacoes/notificacoes.constants';
-import { StoryController } from './controllers/story.controller';
-import { StoryEventService } from './services/story-event.service';
-import { StoryGeneratorService } from './services/story-generator.service';
-import { StorySequenciaService } from './services/story-sequencia.service';
-import { StoryReactionService } from './services/story-reaction.service';
-import { StoryNotificacaoService } from './services/story-notificacao.service';
-import { StoryCronService } from './services/story-cron.service';
+import { DestaqueController } from './controllers/destaque.controller';
+import { DestaqueEventService } from './services/destaque-event.service';
+import { DestaqueGeneratorService } from './services/destaque-generator.service';
+import { DestaqueSequenciaService } from './services/destaque-sequencia.service';
+import { DestaqueReactionService } from './services/destaque-reaction.service';
+import { DestaqueNotificacaoService } from './services/destaque-notificacao.service';
+import { DestaqueCronService } from './services/destaque-cron.service';
 import { PontuacaoService } from '../ranking/services/pontuacao.service';
-import { PrismaStoryRepository } from './repositories/prisma-story.repository';
+import { PrismaDestaqueRepository } from './repositories/prisma-destaque.repository';
 import { PrismaRecordeRepository } from './repositories/prisma-recorde.repository';
 import { PrismaRankingSnapshotRepository } from './repositories/prisma-ranking-snapshot.repository';
 import { PrismaJogoRepository } from '../jogos/repositories/prisma-jogo.repository';
@@ -25,34 +25,34 @@ import { PrismaGrupoUsuarioRepository } from '../grupo-usuario/repositories/pris
 import { PrismaNotificacaoRepository } from '../notificacoes/repositories/prisma-notificacao.repository';
 
 @Module({
-  controllers: [StoryController],
+  controllers: [DestaqueController],
   providers: [
     // Services do módulo
-    StoryEventService,
-    StoryGeneratorService,
-    StorySequenciaService,
-    StoryReactionService,
-    StoryNotificacaoService,
-    StoryCronService,
+    DestaqueEventService,
+    DestaqueGeneratorService,
+    DestaqueSequenciaService,
+    DestaqueReactionService,
+    DestaqueNotificacaoService,
+    DestaqueCronService,
     // Services de outros módulos (instanciados localmente)
     PontuacaoService,
     // Repositories próprios (Prisma)
     {
-      provide: STORIES.STORY_REPOSITORY_TOKEN,
-      useClass: PrismaStoryRepository,
+      provide: DESTAQUES.DESTAQUE_REPOSITORY_TOKEN,
+      useClass: PrismaDestaqueRepository,
     },
     {
-      provide: STORIES.RECORDE_REPOSITORY_TOKEN,
+      provide: DESTAQUES.RECORDE_REPOSITORY_TOKEN,
       useClass: PrismaRecordeRepository,
     },
     {
-      provide: STORIES.RANKING_SNAPSHOT_REPOSITORY_TOKEN,
+      provide: DESTAQUES.RANKING_SNAPSHOT_REPOSITORY_TOKEN,
       useClass: PrismaRankingSnapshotRepository,
     },
     // Token de exportação
     {
-      provide: STORIES.EVENT_SERVICE_TOKEN,
-      useExisting: StoryEventService,
+      provide: DESTAQUES.EVENT_SERVICE_TOKEN,
+      useExisting: DestaqueEventService,
     },
     // Repositories de outros módulos
     { provide: JOGOS.JOGO_REPOSITORY_TOKEN, useClass: PrismaJogoRepository },
@@ -75,6 +75,6 @@ import { PrismaNotificacaoRepository } from '../notificacoes/repositories/prisma
       useClass: PrismaNotificacaoRepository,
     },
   ],
-  exports: [StoryEventService, STORIES.EVENT_SERVICE_TOKEN],
+  exports: [DestaqueEventService, DESTAQUES.EVENT_SERVICE_TOKEN],
 })
-export class StoriesModule {}
+export class DestaquesModule {}
