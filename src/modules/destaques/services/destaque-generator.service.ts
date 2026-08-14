@@ -1,13 +1,13 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import { STORIES } from '../stories.constants';
+import { DESTAQUES } from '../destaques.constants';
 import { PALPITES } from '../../palpites/palpites.constants';
 import { PontuacaoService } from '../../ranking/services/pontuacao.service';
-import { StorySequenciaService } from './story-sequencia.service';
-import { pickRandomTitle } from '../stories.titulos';
+import { DestaqueSequenciaService } from './destaque-sequencia.service';
+import { pickRandomTitle } from '../destaques.titulos';
 import type {
-  StoryRepository,
-  CriarStoryData,
-} from '../repositories/story.repository.interface';
+  DestaqueRepository,
+  CriarDestaqueData,
+} from '../repositories/destaque.repository.interface';
 import type {
   RankingSnapshotRepository,
   UpsertSnapshotData,
@@ -15,7 +15,7 @@ import type {
 import type { PalpiteRepository } from '../../palpites/repositories/palpite.repository.interface';
 import type { PalpiteDobradoRepository } from '../../palpites/repositories/palpite-dobrado.repository.interface';
 import type {
-  TipoStory,
+  TipoDestaque,
   JogoComTimes,
   GrupoBasico,
   MembroComUsuario,
@@ -25,7 +25,7 @@ import type {
   DadosNaoPalpitou,
   DadosDobrouEAcertou,
   TimeInfo,
-} from '../types/story.types';
+} from '../types/destaque.types';
 
 interface ResultadoMembro {
   usuarioId: string;
@@ -44,47 +44,47 @@ interface GeracaoContexto {
   posicaoAnteriorMap: Map<string, number>;
   rankingAtual: Map<string, number>;
   resultados: ResultadoMembro[];
-  ultimoTituloPorTipo: Map<TipoStory, string>;
+  ultimoTituloPorTipo: Map<TipoDestaque, string>;
 }
 
 @Injectable()
-export class StoryGeneratorService {
-  private readonly logger = new Logger(StoryGeneratorService.name);
+export class DestaqueGeneratorService {
+  private readonly logger = new Logger(DestaqueGeneratorService.name);
 
   constructor(
-    @Inject(STORIES.STORY_REPOSITORY_TOKEN)
-    private readonly storyRepo: StoryRepository,
-    @Inject(STORIES.RANKING_SNAPSHOT_REPOSITORY_TOKEN)
+    @Inject(DESTAQUES.DESTAQUE_REPOSITORY_TOKEN)
+    private readonly destaqueRepo: DestaqueRepository,
+    @Inject(DESTAQUES.RANKING_SNAPSHOT_REPOSITORY_TOKEN)
     private readonly snapshotRepo: RankingSnapshotRepository,
     @Inject(PALPITES.PALPITE_REPOSITORY_TOKEN)
     private readonly palpiteRepo: PalpiteRepository,
     @Inject(PALPITES.PALPITE_DOBRADO_REPOSITORY_TOKEN)
     private readonly palpiteDobradoRepo: PalpiteDobradoRepository,
     private readonly pontuacaoService: PontuacaoService,
-    private readonly sequenciaService: StorySequenciaService,
+    private readonly sequenciaService: DestaqueSequenciaService,
   ) {}
 
-  async gerarStoriesParaGrupo(
+  async gerarDestaquesParaGrupo(
     jogo: JogoComTimes,
     grupo: GrupoBasico,
     membros: MembroComUsuario[],
   ): Promise<number> {
     const ctx = await this.construirContexto(jogo, grupo, membros);
-    const storiesParaCriar: CriarStoryData[] = [];
+    const destaquesParaCriar: CriarDestaqueData[] = [];
 
     for (const membro of membros) {
       try {
-        const stories = await this.avaliarMembro(membro, ctx);
-        storiesParaCriar.push(...stories);
+        const destaques = await this.avaliarMembro(membro, ctx);
+        destaquesParaCriar.push(...destaques);
       } catch (error) {
         this.logger.error(
-          `Erro ao gerar stories para membro ${membro.usuarioId} no grupo ${grupo.id}: ${(error as Error).message}`,
+          `Erro ao gerar destaques para membro ${membro.usuarioId} no grupo ${grupo.id}: ${(error as Error).message}`,
         );
       }
     }
 
-    if (storiesParaCriar.length > 0) {
-      await this.storyRepo.criarVarios(storiesParaCriar);
+    if (destaquesParaCriar.length > 0) {
+      await this.destaqueRepo.criarVarios(destaquesParaCriar);
     }
 
     await this.salvarSnapshotAtual(
@@ -93,7 +93,7 @@ export class StoryGeneratorService {
       jogo.rodada,
       ctx.rankingAtual,
     );
-    return storiesParaCriar.length;
+    return destaquesParaCriar.length;
   }
 
   private async construirContexto(
@@ -161,7 +161,7 @@ export class StoryGeneratorService {
   private async avaliarMembro(
     membro: MembroComUsuario,
     ctx: GeracaoContexto,
-  ): Promise<CriarStoryData[]> {
+  ): Promise<CriarDestaqueData[]> {
     const palpite = ctx.palpiteMap.get(membro.usuarioId);
 
     if (!palpite) {
@@ -173,19 +173,19 @@ export class StoryGeneratorService {
     );
     if (!resultado) return [];
 
-    const stories: CriarStoryData[] = [];
-    this.avaliarAcerto(membro, resultado, ctx, stories);
-    this.avaliarSubiuRanking(membro, ctx, stories);
-    this.avaliarDobrouEAcertou(membro, resultado, ctx, stories);
-    await this.avaliarSequencias(membro, ctx, stories);
-    return stories;
+    const destaques: CriarDestaqueData[] = [];
+    this.avaliarAcerto(membro, resultado, ctx, destaques);
+    this.avaliarSubiuRanking(membro, ctx, destaques);
+    this.avaliarDobrouEAcertou(membro, resultado, ctx, destaques);
+    await this.avaliarSequencias(membro, ctx, destaques);
+    return destaques;
   }
 
   private async avaliarNaoPalpitou(
     membro: MembroComUsuario,
     ctx: GeracaoContexto,
-  ): Promise<CriarStoryData[]> {
-    const jaExiste = await this.storyRepo.existeStory(
+  ): Promise<CriarDestaqueData[]> {
+    const jaExiste = await this.destaqueRepo.existeDestaque(
       ctx.grupo.id,
       membro.usuarioId,
       ctx.jogo.id,
@@ -194,7 +194,7 @@ export class StoryGeneratorService {
     if (jaExiste) return [];
 
     return [
-      this.buildStory('NAO_PALPITOU', membro, ctx, {
+      this.buildDestaque('NAO_PALPITOU', membro, ctx, {
         jogosEsquecidos: [this.buildJogoEsquecido(ctx.jogo)],
         totalJogosRodada: 1,
         rodada: ctx.jogo.rodada,
@@ -206,7 +206,7 @@ export class StoryGeneratorService {
     membro: MembroComUsuario,
     resultado: ResultadoMembro,
     ctx: GeracaoContexto,
-    stories: CriarStoryData[],
+    destaques: CriarDestaqueData[],
   ): void {
     const timeCasaInfo = this.buildTimeInfo(ctx.jogo.timeCasa);
     const timeForaInfo = this.buildTimeInfo(ctx.jogo.timeFora);
@@ -215,8 +215,8 @@ export class StoryGeneratorService {
       ctx.unicoNaMosca && ctx.membrosNaMosca[0].usuarioId === membro.usuarioId;
 
     if (ehUnico) {
-      stories.push(
-        this.buildStory('UNICO_NA_MOSCA', membro, ctx, {
+      destaques.push(
+        this.buildDestaque('UNICO_NA_MOSCA', membro, ctx, {
           golsCasa: ctx.jogo.golsCasa!,
           golsFora: ctx.jogo.golsFora!,
           timeCasa: timeCasaInfo,
@@ -228,8 +228,8 @@ export class StoryGeneratorService {
     }
 
     if (resultado.categoriaAcerto === 'ACERTO_EM_CHEIO') {
-      stories.push(
-        this.buildStory('ACERTOU_EM_CHEIO', membro, ctx, {
+      destaques.push(
+        this.buildDestaque('ACERTOU_EM_CHEIO', membro, ctx, {
           golsCasa: ctx.jogo.golsCasa!,
           golsFora: ctx.jogo.golsFora!,
           timeCasa: timeCasaInfo,
@@ -242,22 +242,22 @@ export class StoryGeneratorService {
   private avaliarSubiuRanking(
     membro: MembroComUsuario,
     ctx: GeracaoContexto,
-    stories: CriarStoryData[],
+    destaques: CriarDestaqueData[],
   ): void {
     const posicaoNova = ctx.rankingAtual.get(membro.usuarioId);
     const posicaoAnterior = ctx.posicaoAnteriorMap.get(membro.usuarioId);
     if (!posicaoNova || !posicaoAnterior) return;
 
     const subiu = posicaoAnterior - posicaoNova;
-    const dentroDoTop5 = posicaoNova <= STORIES.LIMITES.SUBIU_RANKING_TOP;
+    const dentroDoTop5 = posicaoNova <= DESTAQUES.LIMITES.SUBIU_RANKING_TOP;
     const subiuSuficiente =
-      subiu >= STORIES.LIMITES.SUBIU_RANKING_MINIMO ||
+      subiu >= DESTAQUES.LIMITES.SUBIU_RANKING_MINIMO ||
       (subiu >= 1 && dentroDoTop5);
 
     if (!subiuSuficiente) return;
 
-    stories.push(
-      this.buildStory('SUBIU_RANKING', membro, ctx, {
+    destaques.push(
+      this.buildDestaque('SUBIU_RANKING', membro, ctx, {
         posicaoAnterior,
         posicaoNova,
         top5: this.buildTop5(ctx.resultados, ctx.rankingAtual),
@@ -269,7 +269,7 @@ export class StoryGeneratorService {
     membro: MembroComUsuario,
     resultado: ResultadoMembro,
     ctx: GeracaoContexto,
-    stories: CriarStoryData[],
+    destaques: CriarDestaqueData[],
   ): void {
     const dobrou = ctx.dobradoSet.has(membro.usuarioId);
     const acertou =
@@ -277,8 +277,8 @@ export class StoryGeneratorService {
       resultado.categoriaAcerto !== 'ERRO_TOTAL';
     if (!dobrou || !acertou) return;
 
-    stories.push(
-      this.buildStory('DOBROU_E_ACERTOU', membro, ctx, {
+    destaques.push(
+      this.buildDestaque('DOBROU_E_ACERTOU', membro, ctx, {
         golsCasa: ctx.jogo.golsCasa!,
         golsFora: ctx.jogo.golsFora!,
         timeCasa: this.buildTimeInfo(ctx.jogo.timeCasa),
@@ -291,7 +291,7 @@ export class StoryGeneratorService {
   private async avaliarSequencias(
     membro: MembroComUsuario,
     ctx: GeracaoContexto,
-    stories: CriarStoryData[],
+    destaques: CriarDestaqueData[],
   ): Promise<void> {
     const seqMosca = await this.sequenciaService.calcularSequenciaMosca(
       membro.usuarioId,
@@ -307,8 +307,8 @@ export class StoryGeneratorService {
         membro.usuarioId,
         seqMosca.quantidade,
       );
-      stories.push(
-        this.buildStory('SEQUENCIA_MOSCA', membro, ctx, {
+      destaques.push(
+        this.buildDestaque('SEQUENCIA_MOSCA', membro, ctx, {
           quantidadeAcertos: seqMosca.quantidade,
           ultimosJogos: seqMosca.ultimosJogos.map((j) => ({
             ...j,
@@ -333,8 +333,8 @@ export class StoryGeneratorService {
         membro.usuarioId,
         seqResultado.quantidade,
       );
-      stories.push(
-        this.buildStory('SEQUENCIA_RESULTADO', membro, ctx, {
+      destaques.push(
+        this.buildDestaque('SEQUENCIA_RESULTADO', membro, ctx, {
           quantidadeAcertos: seqResultado.quantidade,
           rodadaInicio: seqResultado.rodadaInicio,
           rodadaFim: ctx.jogo.rodada,
@@ -347,14 +347,14 @@ export class StoryGeneratorService {
 
   // --- Helpers ---
 
-  private buildStory(
-    tipo: TipoStory,
+  private buildDestaque(
+    tipo: TipoDestaque,
     membro: MembroComUsuario,
     ctx: GeracaoContexto,
     dados: Record<string, unknown>,
-  ): CriarStoryData {
-    const storyTitle = pickRandomTitle(tipo, ctx.ultimoTituloPorTipo.get(tipo));
-    ctx.ultimoTituloPorTipo.set(tipo, storyTitle.id);
+  ): CriarDestaqueData {
+    const destaqueTitle = pickRandomTitle(tipo, ctx.ultimoTituloPorTipo.get(tipo));
+    ctx.ultimoTituloPorTipo.set(tipo, destaqueTitle.id);
 
     return {
       grupoId: ctx.grupo.id,
@@ -363,7 +363,7 @@ export class StoryGeneratorService {
       rodada: ctx.jogo.rodada,
       tipo,
       dados,
-      titulo: storyTitle.title,
+      titulo: destaqueTitle.title,
     };
   }
 

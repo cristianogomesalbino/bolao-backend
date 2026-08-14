@@ -4,7 +4,7 @@ import type {
   RecordeRepository,
   RecordeSequencia,
 } from './recorde.repository.interface';
-import type { CategoriaRecorde } from '../types/story.types';
+import type { CategoriaRecorde } from '../types/destaque.types';
 
 @Injectable()
 export class PrismaRecordeRepository implements RecordeRepository {

@@ -2,8 +2,8 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import { JOGOS } from '../../jogos/jogos.constants';
 import { GRUPOS } from '../../grupos/grupos.constants';
 import { GRUPO_USUARIO } from '../../grupo-usuario/grupo-usuario.constants';
-import { StoryGeneratorService } from './story-generator.service';
-import { StoryNotificacaoService } from './story-notificacao.service';
+import { DestaqueGeneratorService } from './destaque-generator.service';
+import { DestaqueNotificacaoService } from './destaque-notificacao.service';
 import type { JogoRepository } from '../../jogos/repositories/jogo.repository.interface';
 import type { FaseRepository } from '../../jogos/repositories/fase.repository.interface';
 import type { GrupoRepository } from '../../grupos/repositories/grupo.repository.interface';
@@ -12,15 +12,15 @@ import type {
   JogoComTimes,
   GrupoBasico,
   MembroComUsuario,
-} from '../types/story.types';
+} from '../types/destaque.types';
 
 @Injectable()
-export class StoryEventService {
-  private readonly logger = new Logger(StoryEventService.name);
+export class DestaqueEventService {
+  private readonly logger = new Logger(DestaqueEventService.name);
 
   constructor(
-    private readonly generatorService: StoryGeneratorService,
-    private readonly notificacaoService: StoryNotificacaoService,
+    private readonly generatorService: DestaqueGeneratorService,
+    private readonly notificacaoService: DestaqueNotificacaoService,
     @Inject(JOGOS.JOGO_REPOSITORY_TOKEN)
     private readonly jogoRepo: JogoRepository,
     @Inject(JOGOS.FASE_REPOSITORY_TOKEN)
@@ -50,7 +50,7 @@ export class StoryEventService {
       }
     } catch (error) {
       this.logger.error(
-        `[STORIES] Erro ao processar jogo ${jogoId}: ${(error as Error).message}`,
+        `[DESTAQUES] Erro ao processar jogo ${jogoId}: ${(error as Error).message}`,
         (error as Error).stack,
       );
     }
@@ -68,10 +68,10 @@ export class StoryEventService {
       if (membros.length === 0) return;
 
       const quantidadeGerada =
-        await this.generatorService.gerarStoriesParaGrupo(jogo, grupo, membros);
+        await this.generatorService.gerarDestaquesParaGrupo(jogo, grupo, membros);
 
       if (quantidadeGerada > 0) {
-        await this.notificacaoService.notificarNovosStories(
+        await this.notificacaoService.notificarNovosDestaques(
           grupo,
           jogo.id,
           quantidadeGerada,
@@ -79,11 +79,11 @@ export class StoryEventService {
       }
 
       this.logger.log(
-        `[STORIES] ${grupo.nome}: ${quantidadeGerada} stories gerados para jogo ${jogo.timeCasa.sigla} × ${jogo.timeFora.sigla}`,
+        `[DESTAQUES] ${grupo.nome}: ${quantidadeGerada} destaques gerados para jogo ${jogo.timeCasa.sigla} × ${jogo.timeFora.sigla}`,
       );
     } catch (error) {
       this.logger.error(
-        `[STORIES] Erro no grupo ${grupo.id}: ${(error as Error).message}`,
+        `[DESTAQUES] Erro no grupo ${grupo.id}: ${(error as Error).message}`,
         (error as Error).stack,
       );
     }

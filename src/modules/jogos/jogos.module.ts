@@ -13,6 +13,7 @@ import { TemporadasModule } from '../temporadas/temporadas.module';
 import { TimesModule } from '../times/times.module';
 import { NotificacoesModule } from '../notificacoes/notificacoes.module';
 import { CampeonatosModule } from '../campeonatos/campeonatos.module';
+import { DestaquesModule } from '../destaques/destaques.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { CampeonatosModule } from '../campeonatos/campeonatos.module';
     TimesModule,
     forwardRef(() => NotificacoesModule),
     CampeonatosModule,
+    forwardRef(() => DestaquesModule),
   ],
   controllers: [FaseController, JogoController],
   providers: [
