@@ -2,35 +2,35 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
-import { STORIES } from '../stories.constants';
+import { DESTAQUES } from '../destaques.constants';
 import type {
-  StoryRepository,
-  CriarStoryData,
+  DestaqueRepository,
+  CriarDestaqueData,
   CriarReacaoData,
   CriarVisualizacaoData,
-  Story,
-  StoryComAutor,
-  StoryReacao,
-} from './story.repository.interface';
-import type { TipoStory } from '../types/story.types';
+  Destaque,
+  DestaqueComAutor,
+  DestaqueReacao,
+} from './destaque.repository.interface';
+import type { TipoDestaque } from '../types/destaque.types';
 
 @Injectable()
-export class PrismaStoryRepository implements StoryRepository {
+export class PrismaDestaqueRepository implements DestaqueRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async criar(data: CriarStoryData): Promise<Story> {
-    const story = await this.prisma.story.create({
+  async criar(data: CriarDestaqueData): Promise<Destaque> {
+    const destaque = await this.prisma.destaque.create({
       data: {
         ...data,
         dados: data.dados as unknown as Prisma.InputJsonValue,
       },
     });
-    return this.mapear(story);
+    return this.mapear(destaque);
   }
 
-  async criarVarios(data: CriarStoryData[]): Promise<void> {
+  async criarVarios(data: CriarDestaqueData[]): Promise<void> {
     if (data.length === 0) return;
-    await this.prisma.story.createMany({
+    await this.prisma.destaque.createMany({
       data: data.map((d) => ({
         ...d,
         dados: d.dados as unknown as Prisma.InputJsonValue,
@@ -39,19 +39,19 @@ export class PrismaStoryRepository implements StoryRepository {
     });
   }
 
-  async buscarPorId(id: string): Promise<Story | null> {
-    const story = await this.prisma.story.findUnique({ where: { id } });
-    return story ? this.mapear(story) : null;
+  async buscarPorId(id: string): Promise<Destaque | null> {
+    const destaque = await this.prisma.destaque.findUnique({ where: { id } });
+    return destaque ? this.mapear(destaque) : null;
   }
 
   async buscarPorGrupoERodadas(
     grupoId: string,
     rodadas: number[],
     limite: number,
-  ): Promise<StoryComAutor[]> {
+  ): Promise<DestaqueComAutor[]> {
     if (rodadas.length === 0) return [];
 
-    const stories = await this.prisma.story.findMany({
+    const destaques = await this.prisma.destaque.findMany({
       where: {
         grupoId,
         rodada: { in: rodadas },
@@ -64,8 +64,8 @@ export class PrismaStoryRepository implements StoryRepository {
     });
 
     // Re-ordena em memória para aplicar prioridade por tipo (não possível no SQL)
-    const prioridades = STORIES.PRIORIDADE_POR_TIPO;
-    return stories
+    const prioridades = DESTAQUES.PRIORIDADE_POR_TIPO;
+    return destaques
       .sort((a, b) => {
         if (a.rodada !== b.rodada) return (b.rodada ?? 0) - (a.rodada ?? 0);
         const dateDiff = b.criadoEm.getTime() - a.criadoEm.getTime();
@@ -85,41 +85,48 @@ export class PrismaStoryRepository implements StoryRepository {
     rodadas: number[],
   ): Promise<number> {
     if (rodadas.length === 0) return 0;
-    return this.prisma.story.count({
+    return this.prisma.destaque.count({
       where: { grupoId, rodada: { in: rodadas } },
     });
   }
 
-  async incrementarContadorFs(storyId: string): Promise<number> {
-    const updated = await this.prisma.story.update({
-      where: { id: storyId },
+  async incrementarContadorFs(destaqueId: string): Promise<number> {
+    const updated = await this.prisma.destaque.update({
+      where: { id: destaqueId },
       data: { contadorFs: { increment: 1 } },
     });
     return updated.contadorFs;
   }
 
-  async existeReacao(remetenteId: string, storyId: string): Promise<boolean> {
-    const reacao = await this.prisma.storyReacao.findUnique({
-      where: { remetenteId_storyId: { remetenteId, storyId } },
+  async existeReacao(
+    remetenteId: string,
+    destaqueId: string,
+  ): Promise<boolean> {
+    const reacao = await this.prisma.destaqueReacao.findUnique({
+      where: {
+        remetenteId_destaqueId: { remetenteId, destaqueId },
+      },
     });
     return reacao !== null;
   }
 
-  async criarReacao(data: CriarReacaoData): Promise<StoryReacao> {
-    const reacao = await this.prisma.storyReacao.create({ data });
+  async criarReacao(data: CriarReacaoData): Promise<DestaqueReacao> {
+    const reacao = await this.prisma.destaqueReacao.create({ data });
     return {
       id: reacao.id,
-      storyId: reacao.storyId,
+      destaqueId: reacao.destaqueId,
       remetenteId: reacao.remetenteId,
       criadoEm: reacao.criadoEm,
     };
   }
 
-  async criarVisualizacoesBatch(dados: CriarVisualizacaoData[]): Promise<void> {
+  async criarVisualizacoesBatch(
+    dados: CriarVisualizacaoData[],
+  ): Promise<void> {
     if (dados.length === 0) return;
-    await this.prisma.storyVisualizacao.createMany({
+    await this.prisma.destaqueVisualizacao.createMany({
       data: dados.map((d) => ({
-        storyId: d.storyId,
+        destaqueId: d.destaqueId,
         usuarioId: d.usuarioId,
       })),
       skipDuplicates: true,
@@ -127,42 +134,42 @@ export class PrismaStoryRepository implements StoryRepository {
   }
 
   async buscarVisualizacoes(
-    storyIds: string[],
+    destaqueIds: string[],
     usuarioId: string,
   ): Promise<Set<string>> {
-    if (storyIds.length === 0) return new Set();
-    const visualizacoes = await this.prisma.storyVisualizacao.findMany({
-      where: { storyId: { in: storyIds }, usuarioId },
-      select: { storyId: true },
+    if (destaqueIds.length === 0) return new Set();
+    const visualizacoes = await this.prisma.destaqueVisualizacao.findMany({
+      where: { destaqueId: { in: destaqueIds }, usuarioId },
+      select: { destaqueId: true },
     });
-    return new Set(visualizacoes.map((v) => v.storyId));
+    return new Set(visualizacoes.map((v) => v.destaqueId));
   }
 
-  async existeStory(
+  async existeDestaque(
     grupoId: string,
     usuarioId: string,
     jogoId: string,
-    tipo: TipoStory,
+    tipo: TipoDestaque,
   ): Promise<boolean> {
-    const story = await this.prisma.story.findUnique({
+    const destaque = await this.prisma.destaque.findUnique({
       where: {
         grupoId_usuarioId_jogoId_tipo: { grupoId, usuarioId, jogoId, tipo },
       },
     });
-    return story !== null;
+    return destaque !== null;
   }
 
   async removerAntigos(diasLimite: number): Promise<number> {
     const limite = new Date();
     limite.setDate(limite.getDate() - diasLimite);
 
-    const result = await this.prisma.story.deleteMany({
+    const result = await this.prisma.destaque.deleteMany({
       where: { criadoEm: { lt: limite } },
     });
     return result.count;
   }
 
-  private mapear(story: {
+  private mapear(destaque: {
     id: string;
     grupoId: string;
     usuarioId: string;
@@ -173,18 +180,18 @@ export class PrismaStoryRepository implements StoryRepository {
     titulo: string;
     contadorFs: number;
     criadoEm: Date;
-  }): Story {
+  }): Destaque {
     return {
-      id: story.id,
-      grupoId: story.grupoId,
-      usuarioId: story.usuarioId,
-      jogoId: story.jogoId,
-      rodada: story.rodada,
-      tipo: story.tipo as TipoStory,
-      dados: story.dados as Record<string, unknown>,
-      titulo: story.titulo,
-      contadorFs: story.contadorFs,
-      criadoEm: story.criadoEm,
+      id: destaque.id,
+      grupoId: destaque.grupoId,
+      usuarioId: destaque.usuarioId,
+      jogoId: destaque.jogoId,
+      rodada: destaque.rodada,
+      tipo: destaque.tipo as TipoDestaque,
+      dados: destaque.dados as Record<string, unknown>,
+      titulo: destaque.titulo,
+      contadorFs: destaque.contadorFs,
+      criadoEm: destaque.criadoEm,
     };
   }
 }

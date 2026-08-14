@@ -1,4 +1,4 @@
-export type TipoStory =
+export type TipoDestaque =
   | 'ACERTOU_EM_CHEIO'
   | 'UNICO_NA_MOSCA'
   | 'SUBIU_RANKING'
@@ -9,9 +9,9 @@ export type TipoStory =
 
 export type CategoriaRecorde = 'MOSCA' | 'RESULTADO';
 
-// --- StoryTitle (catálogo de títulos) ---
+// --- DestaqueTitle (catálogo de títulos) ---
 
-export interface StoryTitle {
+export interface DestaqueTitle {
   readonly id: string;
   readonly title: string;
   readonly emoji: string;
@@ -129,15 +129,15 @@ export interface MembroComUsuario {
 
 // --- Tipos de resposta ---
 
-export interface StoryAutor {
+export interface DestaqueAutor {
   usuarioId: string;
   nome: string;
   avatar: string | null;
 }
 
-export interface StoryItemListagem {
+export interface DestaqueItemListagem {
   id: string;
-  tipo: TipoStory;
+  tipo: TipoDestaque;
   titulo: string;
   dados: Record<string, unknown>;
   jogoId: string;
@@ -146,10 +146,10 @@ export interface StoryItemListagem {
   contadorFs: number;
   jaEnviouF: boolean;
   visualizado: boolean;
-  autor: StoryAutor;
+  autor: DestaqueAutor;
 }
 
-export interface StoryListagemResponse {
-  stories: StoryItemListagem[];
+export interface DestaqueListagemResponse {
+  destaques: DestaqueItemListagem[];
   grupoNome?: string;
 }

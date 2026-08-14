@@ -1,74 +1,74 @@
-import type { TipoStory } from '../types/story.types';
+import type { TipoDestaque } from '../types/destaque.types';
 
 // --- Tipos de entrada ---
 
-export interface CriarStoryData {
+export interface CriarDestaqueData {
   grupoId: string;
   usuarioId: string;
   jogoId: string;
   rodada: number | null;
-  tipo: TipoStory;
+  tipo: TipoDestaque;
   dados: Record<string, unknown>;
   titulo: string;
 }
 
 export interface CriarReacaoData {
-  storyId: string;
+  destaqueId: string;
   remetenteId: string;
 }
 
 export interface CriarVisualizacaoData {
-  storyId: string;
+  destaqueId: string;
   usuarioId: string;
 }
 
 // --- Tipos de saída ---
 
-export interface Story {
+export interface Destaque {
   id: string;
   grupoId: string;
   usuarioId: string;
   jogoId: string;
   rodada: number | null;
-  tipo: TipoStory;
+  tipo: TipoDestaque;
   dados: Record<string, unknown>;
   titulo: string;
   contadorFs: number;
   criadoEm: Date;
 }
 
-export interface StoryComAutor extends Story {
+export interface DestaqueComAutor extends Destaque {
   usuario: {
     id: string;
     nome: string;
   };
 }
 
-export interface StoryReacao {
+export interface DestaqueReacao {
   id: string;
-  storyId: string;
+  destaqueId: string;
   remetenteId: string;
   criadoEm: Date;
 }
 
-export interface StoryVisualizacao {
+export interface DestaqueVisualizacao {
   id: string;
-  storyId: string;
+  destaqueId: string;
   usuarioId: string;
   visualizadoEm: Date;
 }
 
 // --- Interface do Repository ---
 
-export interface StoryRepository {
-  criar(data: CriarStoryData): Promise<Story>;
+export interface DestaqueRepository {
+  criar(data: CriarDestaqueData): Promise<Destaque>;
 
-  criarVarios(data: CriarStoryData[]): Promise<void>;
+  criarVarios(data: CriarDestaqueData[]): Promise<void>;
 
-  buscarPorId(id: string): Promise<Story | null>;
+  buscarPorId(id: string): Promise<Destaque | null>;
 
   /**
-   * Busca stories de um grupo por rodadas (atual + anterior).
+   * Busca destaques de um grupo por rodadas (atual + anterior).
    * Ordenação: rodada DESC, criadoEm DESC, prioridade por tipo.
    * Inclui dados do autor.
    */
@@ -76,28 +76,28 @@ export interface StoryRepository {
     grupoId: string,
     rodadas: number[],
     limite: number,
-  ): Promise<StoryComAutor[]>;
+  ): Promise<DestaqueComAutor[]>;
 
   /**
-   * Conta stories de um grupo por rodada (para saber se precisa complementar).
+   * Conta destaques de um grupo por rodada (para saber se precisa complementar).
    */
   contarPorGrupoERodadas(grupoId: string, rodadas: number[]): Promise<number>;
 
   /**
-   * Incrementa o contador de Fs de um story.
+   * Incrementa o contador de Fs de um destaque.
    * Retorna o novo valor.
    */
-  incrementarContadorFs(storyId: string): Promise<number>;
+  incrementarContadorFs(destaqueId: string): Promise<number>;
 
   /**
-   * Verifica se já existe uma reação do remetente para o story.
+   * Verifica se já existe uma reação do remetente para o destaque.
    */
-  existeReacao(remetenteId: string, storyId: string): Promise<boolean>;
+  existeReacao(remetenteId: string, destaqueId: string): Promise<boolean>;
 
   /**
-   * Cria uma reação (F) para um story.
+   * Cria uma reação (F) para um destaque.
    */
-  criarReacao(data: CriarReacaoData): Promise<StoryReacao>;
+  criarReacao(data: CriarReacaoData): Promise<DestaqueReacao>;
 
   /**
    * Registra visualizações em batch (ignora duplicatas).
@@ -105,25 +105,25 @@ export interface StoryRepository {
   criarVisualizacoesBatch(dados: CriarVisualizacaoData[]): Promise<void>;
 
   /**
-   * Retorna set de storyIds que o usuário já visualizou.
+   * Retorna set de destaqueIds que o usuário já visualizou.
    */
   buscarVisualizacoes(
-    storyIds: string[],
+    destaqueIds: string[],
     usuarioId: string,
   ): Promise<Set<string>>;
 
   /**
-   * Verifica se um story do mesmo tipo já existe (deduplicação).
+   * Verifica se um destaque do mesmo tipo já existe (deduplicação).
    */
-  existeStory(
+  existeDestaque(
     grupoId: string,
     usuarioId: string,
     jogoId: string,
-    tipo: TipoStory,
+    tipo: TipoDestaque,
   ): Promise<boolean>;
 
   /**
-   * Remove stories antigos (criadoEm < diasLimite dias atrás).
+   * Remove destaques antigos (criadoEm < diasLimite dias atrás).
    * Cascade remove reações e visualizações via DB.
    * Retorna quantidade removida.
    */

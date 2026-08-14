@@ -1,4 +1,4 @@
-import type { CategoriaRecorde } from '../types/story.types';
+import type { CategoriaRecorde } from '../types/destaque.types';
 
 // --- Tipos de saída ---
 

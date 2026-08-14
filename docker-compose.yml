@@ -1,4 +1,21 @@
 services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: bolao-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: bolao
+      POSTGRES_PASSWORD: bolao123
+      POSTGRES_DB: bolao_dev
+      TZ: America/Sao_Paulo
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    command: postgres -c log_checkpoints=off -c log_min_messages=warning
+    profiles:
+      - dev
+
   app:
     build:
       context: .
@@ -22,16 +39,21 @@ services:
     volumes:
       - .:/app
       - backend_node_modules:/app/node_modules
-    network_mode: host
+    ports:
+      - "3000:3000"
     env_file:
       - .env
     environment:
       NODE_ENV: development
-      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_URL: postgresql://bolao:bolao123@postgres:5432/bolao_dev
+      DIRECT_URL: postgresql://bolao:bolao123@postgres:5432/bolao_dev
       TZ: America/Sao_Paulo
-    command: sh -c "npm install && npx prisma generate && npm run start:dev"
+    depends_on:
+      - postgres
+    command: sh -c "npm install && npx prisma generate && npx prisma migrate deploy && npm run start:dev"
     profiles:
       - dev
 
 volumes:
   backend_node_modules:
+  postgres_data:
