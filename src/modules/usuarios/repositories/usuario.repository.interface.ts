@@ -7,6 +7,8 @@ export interface Usuario {
   ativo: boolean;
   grupoFavoritoId: string | null;
   toursCompletos: string[];
+  dicasDispensadas: string[];
+  toastDescobrilidadeVisto: boolean;
   dataCriacao: Date;
   atualizadoEm: Date;
 }
@@ -17,6 +19,8 @@ export interface AtualizarUsuarioData {
   senha?: string;
   grupoFavoritoId?: string | null;
   toursCompletos?: string[];
+  dicasDispensadas?: string[];
+  toastDescobrilidadeVisto?: boolean;
 }
 
 export interface UsuarioRepository {

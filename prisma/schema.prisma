@@ -39,6 +39,8 @@ model Usuario {
   ativo             Boolean            @default(true)
   grupoFavoritoId   String?
   toursCompletos    String[]           @default([])
+  dicasDispensadas  String[]           @default([])
+  toastDescobrilidadeVisto Boolean     @default(false) @map("toast_descobrilidade_visto")
   grupoFavorito     Grupo?             @relation("GrupoFavorito", fields: [grupoFavoritoId], references: [id])
   gruposCriados          Grupo[]                 @relation("GrupoCriador")
   grupos                 GrupoUsuario[]

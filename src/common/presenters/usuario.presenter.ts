@@ -6,6 +6,8 @@ interface UsuarioData {
   ativo: boolean;
   grupoFavoritoId: string | null;
   toursCompletos?: string[];
+  dicasDispensadas?: string[];
+  toastDescobrilidadeVisto?: boolean;
   dataCriacao: Date;
   atualizadoEm: Date;
 }
@@ -20,6 +22,8 @@ export class UsuarioPresenter {
       ativo: usuario.ativo,
       grupoFavoritoId: usuario.grupoFavoritoId ?? null,
       toursCompletos: usuario.toursCompletos ?? [],
+      dicasDispensadas: usuario.dicasDispensadas ?? [],
+      toastDescobrilidadeVisto: usuario.toastDescobrilidadeVisto ?? false,
       dataCriacao: usuario.dataCriacao,
       atualizadoEm: usuario.atualizadoEm,
     };

@@ -7,6 +7,7 @@ inclusion: always
 ## Regras Críticas (NUNCA violar)
 
 - **NUNCA entregar código sem testes unitários** — TODO service, controller ou use case novo DEVE ter arquivo `.spec.ts` correspondente criado NA MESMA ENTREGA. Código sem teste é código incompleto. Não existe "criar testes depois". A cobertura mínima de código novo é 80%. Se o usuário não pedir testes explicitamente, criar mesmo assim — é obrigação do desenvolvedor, não responsabilidade do usuário pedir
+- **NUNCA adicionar método em controller sem teste correspondente** — ao criar um novo endpoint (rota no controller), o arquivo `.controller.spec.ts` DEVE ser atualizado NA MESMA ENTREGA com pelo menos 1 teste que valide a chamada ao service e o retorno. Cobertura 0% em controller é bloqueador de merge
 - **NUNCA usar `any` em código novo** — ZERO tolerância. Usar interfaces locais, tipos do Prisma, ou `as TipoEsperado` no ponto de uso. Se um repository retorna `any`, fazer cast imediatamente: `const jogo = await repo.buscarPorId(id) as Jogo | null`. NÃO propagar `any` para parâmetros de métodos
 - **NUNCA criar um arquivo .ts com mais de 300 linhas** — dividir em arquivos menores com responsabilidade única. Se o arquivo está crescendo, parar e refatorar ANTES de continuar
 - **SEMPRE documentar funcionalidades novas no steering `project-overview.md`** — ao finalizar uma feature, atualizar endpoints, regras de domínio, services especializados e módulos no steering. Funcionalidade não documentada no steering é funcionalidade incompleta

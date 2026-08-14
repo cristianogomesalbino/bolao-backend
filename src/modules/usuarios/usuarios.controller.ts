@@ -19,7 +19,7 @@ import { UsuariosService } from './usuarios.service';
 import { CriarUsuarioDto } from './dto/criar-usuario.dto';
 import { AtualizarUsuarioDto } from './dto/atualizar-usuario.dto';
 import { DefinirGrupoFavoritoDto } from './dto/definir-grupo-favorito.dto';
-import { MarcarTourCompletoDto } from './dto/marcar-tour-completo.dto';
+import { DispensarDicaDto } from './dto/dispensar-dica.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { ParseUUIDCustomPipe } from '../../common/pipes/parse-uuid-custom.pipe';
 import { SelfOrAdminGuard } from '../../common/guards/self-or-admin.guard';
@@ -71,19 +71,24 @@ export class UsuariosController {
     );
   }
 
-  @ApiOperation({ summary: 'Marcar tour como completo' })
-  @ApiResponse({
-    status: 200,
-    description: 'Tour marcado como completo.',
-  })
-  @ApiBadRequestResponse({ description: 'tourId inválido.' })
-  @Patch('me/tours')
-  async marcarTourCompleto(
-    @Body() dto: MarcarTourCompletoDto,
+  @ApiOperation({ summary: 'Dispensar uma dica' })
+  @ApiResponse({ status: 200, description: 'Dica dispensada com sucesso.' })
+  @ApiBadRequestResponse({ description: 'dicaId inválido.' })
+  @Patch('me/dicas')
+  async dispensarDica(
+    @Body() dto: DispensarDicaDto,
     @CurrentUser() user: { id: string },
   ) {
-    await this.usuariosService.marcarTourCompleto(user.id, dto.tourId);
-    return { mensagem: USUARIOS.MENSAGENS.TOUR_MARCADO_COMPLETO };
+    await this.usuariosService.dispensarDica(user.id, dto.dicaId);
+    return { mensagem: USUARIOS.MENSAGENS.DICA_DISPENSADA };
+  }
+
+  @ApiOperation({ summary: 'Resetar todas as dicas dispensadas' })
+  @ApiResponse({ status: 200, description: 'Dicas resetadas com sucesso.' })
+  @Delete('me/dicas')
+  async resetarDicas(@CurrentUser() user: { id: string }) {
+    await this.usuariosService.resetarDicas(user.id);
+    return { mensagem: USUARIOS.MENSAGENS.DICAS_RESETADAS };
   }
 
   @ApiOperation({ summary: 'Buscar usuário por ID' })
