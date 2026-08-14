@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import * as fc from 'fast-check';
 import { UsuariosService } from '@src/modules/usuarios/usuarios.service';
 import { InMemoryUsuarioRepository } from '@src/modules/usuarios/repositories/in-memory-usuario.repository';
@@ -6,8 +6,6 @@ import { InMemoryGrupoUsuarioRepository } from '@src/modules/grupo-usuario/repos
 import * as bcrypt from 'bcryptjs';
 
 vi.mock('bcryptjs');
-
-import { vi } from 'vitest';
 
 describe('UsuariosService — Property Test: Idempotência dispensarDica', () => {
   let service: UsuariosService;

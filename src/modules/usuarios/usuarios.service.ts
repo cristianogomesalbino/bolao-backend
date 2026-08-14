@@ -129,7 +129,7 @@ export class UsuariosService {
   async dispensarDica(usuarioId: string, dicaId: string): Promise<void> {
     const usuario = await this.usuarioRepo.buscarPorId(usuarioId);
 
-    if (!usuario || !usuario.ativo) {
+    if (!usuario?.ativo) {
       throw new UsuarioNaoEncontradoError();
     }
 
