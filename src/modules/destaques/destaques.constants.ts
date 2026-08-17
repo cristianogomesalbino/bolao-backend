@@ -24,7 +24,7 @@ export const DESTAQUES = {
     SEQUENCIA_RESULTADO: 7,
     NAO_PALPITOU: 5,
     DOBROU_E_ACERTOU: 6,
-  } as Record<string, number>,
+  },
 
   PRIORIDADE_POR_TIPO: {
     UNICO_NA_MOSCA: 1,
@@ -34,7 +34,7 @@ export const DESTAQUES = {
     ACERTOU_EM_CHEIO: 5,
     SUBIU_RANKING: 6,
     DOBROU_E_ACERTOU: 7,
-  } as Record<string, number>,
+  },
 
   CRON: {
     LIMPEZA_DIARIA: '0 5 * * *', // 02:00 BRT

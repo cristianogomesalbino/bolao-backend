@@ -92,6 +92,7 @@ export class DestaqueGeneratorService {
       jogo.faseId,
       jogo.rodada,
       ctx.rankingAtual,
+      ctx.resultados,
     );
     return destaquesParaCriar.length;
   }
@@ -353,7 +354,10 @@ export class DestaqueGeneratorService {
     ctx: GeracaoContexto,
     dados: Record<string, unknown>,
   ): CriarDestaqueData {
-    const destaqueTitle = pickRandomTitle(tipo, ctx.ultimoTituloPorTipo.get(tipo));
+    const destaqueTitle = pickRandomTitle(
+      tipo,
+      ctx.ultimoTituloPorTipo.get(tipo),
+    );
     ctx.ultimoTituloPorTipo.set(tipo, destaqueTitle.id);
 
     return {
@@ -438,10 +442,21 @@ export class DestaqueGeneratorService {
     faseId: string,
     rodada: number | null,
     rankingAtual: Map<string, number>,
+    resultados: ResultadoMembro[],
   ): Promise<void> {
+    const pontosMap = new Map(
+      resultados.map((r) => [r.usuarioId, r.pontosBase]),
+    );
     const dados: UpsertSnapshotData[] = [];
     for (const [usuarioId, posicao] of rankingAtual.entries()) {
-      dados.push({ grupoId, usuarioId, faseId, rodada, posicao, pontuacao: 0 });
+      dados.push({
+        grupoId,
+        usuarioId,
+        faseId,
+        rodada,
+        posicao,
+        pontuacao: pontosMap.get(usuarioId) ?? 0,
+      });
     }
     if (dados.length > 0) {
       await this.snapshotRepo.upsertBatch(dados);

@@ -36,10 +36,8 @@ export class DestaqueEventService {
       const jogo = await this.buscarJogoComTimes(jogoId);
       if (!jogo) return;
 
-      const fase = (await this.faseRepo.buscarPorId(jogo.faseId)) as {
-        temporadaId: string;
-      } | null;
-      if (!fase) return;
+      const fase = await this.faseRepo.buscarPorId(jogo.faseId);
+      if (!fase?.temporadaId) return;
 
       const grupos = await this.grupoRepo.buscarPorTemporadaId(
         fase.temporadaId,
@@ -61,6 +59,7 @@ export class DestaqueEventService {
     grupo: GrupoBasico,
   ): Promise<void> {
     try {
+      // TODO: tipar interface GrupoUsuarioRepository
       const membros = (await this.grupoUsuarioRepo.listarPorGrupoComUsuario(
         grupo.id,
       )) as MembroComUsuario[];
@@ -75,6 +74,7 @@ export class DestaqueEventService {
           grupo,
           jogo.id,
           quantidadeGerada,
+          membros,
         );
       }
 
@@ -92,12 +92,10 @@ export class DestaqueEventService {
   private async buscarJogoComTimes(
     jogoId: string,
   ): Promise<JogoComTimes | null> {
-    const jogo = (await this.jogoRepo.buscarPorId(jogoId)) as {
-      status: string;
-    } | null;
+    const jogo = (await this.jogoRepo.buscarPorId(jogoId)) as JogoComTimes | null;
     if (!jogo) return null;
     if (jogo.status !== 'FINALIZADO') return null;
 
-    return jogo as unknown as JogoComTimes;
+    return jogo;
   }
 }

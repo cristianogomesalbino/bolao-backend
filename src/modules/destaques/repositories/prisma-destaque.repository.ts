@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument, @typescript-eslint/require-await */
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
@@ -22,6 +21,7 @@ export class PrismaDestaqueRepository implements DestaqueRepository {
     const destaque = await this.prisma.destaque.create({
       data: {
         ...data,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         dados: data.dados as unknown as Prisma.InputJsonValue,
       },
     });
@@ -33,6 +33,7 @@ export class PrismaDestaqueRepository implements DestaqueRepository {
     await this.prisma.destaque.createMany({
       data: data.map((d) => ({
         ...d,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         dados: d.dados as unknown as Prisma.InputJsonValue,
       })),
       skipDuplicates: true,
@@ -132,9 +133,7 @@ export class PrismaDestaqueRepository implements DestaqueRepository {
     };
   }
 
-  async criarVisualizacoesBatch(
-    dados: CriarVisualizacaoData[],
-  ): Promise<void> {
+  async criarVisualizacoesBatch(dados: CriarVisualizacaoData[]): Promise<void> {
     if (dados.length === 0) return;
     await this.prisma.destaqueVisualizacao.createMany({
       data: dados.map((d) => ({
