@@ -9,15 +9,19 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { DESTAQUES } from '../destaques.constants';
+import { GRUPOS } from '../../grupos/grupos.constants';
+import { JOGOS } from '../../jogos/jogos.constants';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 import { GroupRoleGuard } from '../../../common/guards/group-role.guard';
 import { GroupRoles } from '../../../common/decorators/group-roles.decorator';
 import { GRUPO_ROLE } from '../../../common/constants/roles.constants';
 import { DestaqueReactionService } from '../services/destaque-reaction.service';
 import type { DestaqueRepository } from '../repositories/destaque.repository.interface';
-import { JOGOS } from '../../jogos/jogos.constants';
 import type { JogoRepository } from '../../jogos/repositories/jogo.repository.interface';
+import type { GrupoRepository } from '../../grupos/repositories/grupo.repository.interface';
+import type { FaseRepository } from '../../jogos/repositories/fase.repository.interface';
 import { ParseUUIDCustomPipe } from '../../../common/pipes/parse-uuid-custom.pipe';
+import { MarcarVisualizadosDto } from '../dto/marcar-visualizados.dto';
 
 @ApiTags(DESTAQUES.TAG)
 @Controller()
@@ -27,6 +31,10 @@ export class DestaqueController {
     private readonly destaqueRepo: DestaqueRepository,
     @Inject(JOGOS.JOGO_REPOSITORY_TOKEN)
     private readonly jogoRepo: JogoRepository,
+    @Inject(JOGOS.FASE_REPOSITORY_TOKEN)
+    private readonly faseRepo: FaseRepository,
+    @Inject(GRUPOS.REPOSITORY_TOKEN)
+    private readonly grupoRepo: GrupoRepository,
     private readonly reactionService: DestaqueReactionService,
   ) {}
 
@@ -64,23 +72,21 @@ export class DestaqueController {
       }
     }
 
-    // Buscar visualizações e reações do usuário autenticado
+    // Buscar visualizações e reações do usuário autenticado (batch)
     const destaqueIds = destaques.map((s) => s.id);
     const visualizados = await this.destaqueRepo.buscarVisualizacoes(
       destaqueIds,
       usuario.id,
     );
 
-    const reacoesPorDestaque = new Map<string, boolean>();
-    for (const destaque of destaques) {
-      if (destaque.tipo === 'NAO_PALPITOU') {
-        const jaEnviou = await this.destaqueRepo.existeReacao(
-          usuario.id,
-          destaque.id,
-        );
-        reacoesPorDestaque.set(destaque.id, jaEnviou);
-      }
-    }
+    const naoPalpitouIds = destaques
+      .filter((d) => d.tipo === 'NAO_PALPITOU')
+      .map((d) => d.id);
+
+    const idsComReacao = await this.destaqueRepo.buscarReacoesDoUsuario(
+      usuario.id,
+      naoPalpitouIds,
+    );
 
     return {
       destaques: destaques.map((s) => ({
@@ -92,7 +98,7 @@ export class DestaqueController {
         rodada: s.rodada,
         criadoEm: s.criadoEm.toISOString(),
         contadorFs: s.contadorFs,
-        jaEnviouF: reacoesPorDestaque.get(s.id) ?? false,
+        jaEnviouF: idsComReacao.has(s.id),
         visualizado: visualizados.has(s.id),
         autor: {
           usuarioId: s.usuario.id,
@@ -110,7 +116,8 @@ export class DestaqueController {
   @ApiResponse({ status: 200, description: 'F enviado com sucesso' })
   async mandarF(
     @Param('grupoId', new ParseUUIDCustomPipe('grupoId')) grupoId: string,
-    @Param('destaqueId', new ParseUUIDCustomPipe('destaqueId')) destaqueId: string,
+    @Param('destaqueId', new ParseUUIDCustomPipe('destaqueId'))
+    destaqueId: string,
     @CurrentUser() usuario: { id: string },
   ) {
     const rodadaAtual = await this.obterRodadaAtualDoGrupo(grupoId);
@@ -133,7 +140,7 @@ export class DestaqueController {
   @ApiResponse({ status: 200, description: 'Visualizações registradas' })
   async marcarVisualizados(
     @Param('grupoId', new ParseUUIDCustomPipe('grupoId')) _grupoId: string,
-    @Body() body: { destaqueIds: string[] },
+    @Body() body: MarcarVisualizadosDto,
     @CurrentUser() usuario: { id: string },
   ) {
     const dados = body.destaqueIds.map((destaqueId) => ({
@@ -147,10 +154,19 @@ export class DestaqueController {
 
   // --- Helpers ---
 
-  private obterRodadaAtualDoGrupo(_grupoId: string): Promise<number | null> {
-    // Buscar a fase ativa do grupo (via temporada) e a rodada atual
-    // Integração com JogoRepository.buscarRodadaAtual será resolvida no DestaquesModule
-    return Promise.resolve(null);
+  private async obterRodadaAtualDoGrupo(
+    grupoId: string,
+  ): Promise<number | null> {
+    const grupo = await this.grupoRepo.buscarPorId(grupoId);
+    if (!grupo?.temporadaId) return null;
+
+    const fases = await this.faseRepo.buscarPorTemporada(grupo.temporadaId);
+    const fasePontosCorridos = fases.find(
+      (f) => f.tipo === 'PONTOS_CORRIDOS',
+    );
+    if (!fasePontosCorridos) return null;
+
+    return this.jogoRepo.buscarRodadaAtual(fasePontosCorridos.id);
   }
 
   private calcularRodadasVisiveis(rodadaAtual: number | null): number[] {
