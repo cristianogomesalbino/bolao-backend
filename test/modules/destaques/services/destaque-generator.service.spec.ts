@@ -108,7 +108,9 @@ describe('DestaqueGeneratorService', () => {
     await service.gerarDestaquesParaGrupo(jogo, grupo, membros);
 
     const destaquesCriados = destaqueRepo.destaques;
-    const naoPalpitou = destaquesCriados.filter((s) => s.tipo === 'NAO_PALPITOU');
+    const naoPalpitou = destaquesCriados.filter(
+      (s) => s.tipo === 'NAO_PALPITOU',
+    );
     expect(naoPalpitou).toHaveLength(3);
   });
 
@@ -134,7 +136,9 @@ describe('DestaqueGeneratorService', () => {
 
     await service.gerarDestaquesParaGrupo(jogo, grupo, membros);
 
-    const unico = destaqueRepo.destaques.filter((s) => s.tipo === 'UNICO_NA_MOSCA');
+    const unico = destaqueRepo.destaques.filter(
+      (s) => s.tipo === 'UNICO_NA_MOSCA',
+    );
     const acertou = destaqueRepo.destaques.filter(
       (s) => s.tipo === 'ACERTOU_EM_CHEIO',
     );
@@ -181,7 +185,9 @@ describe('DestaqueGeneratorService', () => {
 
     await service.gerarDestaquesParaGrupo(jogo, grupo, membros);
 
-    const subiu = destaqueRepo.destaques.filter((s) => s.tipo === 'SUBIU_RANKING');
+    const subiu = destaqueRepo.destaques.filter(
+      (s) => s.tipo === 'SUBIU_RANKING',
+    );
     expect(subiu).toHaveLength(1);
     expect(subiu[0].usuarioId).toBe('user-1');
   });
@@ -223,7 +229,9 @@ describe('DestaqueGeneratorService', () => {
 
     await service.gerarDestaquesParaGrupo(jogo, grupo, membros);
 
-    const subiu = destaqueRepo.destaques.filter((s) => s.tipo === 'SUBIU_RANKING');
+    const subiu = destaqueRepo.destaques.filter(
+      (s) => s.tipo === 'SUBIU_RANKING',
+    );
     expect(subiu).toHaveLength(0);
   });
 

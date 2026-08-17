@@ -59,7 +59,7 @@ export class DestaqueEventService {
     grupo: GrupoBasico,
   ): Promise<void> {
     try {
-      // TODO: tipar interface GrupoUsuarioRepository
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- GrupoUsuarioRepository retorna any (dívida técnica do módulo grupo-usuario)
       const membros = (await this.grupoUsuarioRepo.listarPorGrupoComUsuario(
         grupo.id,
       )) as MembroComUsuario[];
@@ -67,7 +67,11 @@ export class DestaqueEventService {
       if (membros.length === 0) return;
 
       const quantidadeGerada =
-        await this.generatorService.gerarDestaquesParaGrupo(jogo, grupo, membros);
+        await this.generatorService.gerarDestaquesParaGrupo(
+          jogo,
+          grupo,
+          membros,
+        );
 
       if (quantidadeGerada > 0) {
         await this.notificacaoService.notificarNovosDestaques(
@@ -92,7 +96,9 @@ export class DestaqueEventService {
   private async buscarJogoComTimes(
     jogoId: string,
   ): Promise<JogoComTimes | null> {
-    const jogo = (await this.jogoRepo.buscarPorId(jogoId)) as JogoComTimes | null;
+    const jogo = (await this.jogoRepo.buscarPorId(
+      jogoId,
+    )) as JogoComTimes | null;
     if (!jogo) return null;
     if (jogo.status !== 'FINALIZADO') return null;
 
