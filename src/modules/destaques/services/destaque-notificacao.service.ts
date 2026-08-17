@@ -2,7 +2,7 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import { NOTIFICACOES } from '../../notificacoes/notificacoes.constants';
 import { DESTAQUES } from '../destaques.constants';
 import type { NotificacaoRepository } from '../../notificacoes/repositories/notificacao.repository.interface';
-import type { GrupoBasico } from '../types/destaque.types';
+import type { GrupoBasico, MembroComUsuario } from '../types/destaque.types';
 
 @Injectable()
 export class DestaqueNotificacaoService {
@@ -21,6 +21,7 @@ export class DestaqueNotificacaoService {
     grupo: GrupoBasico,
     jogoId: string,
     quantidade: number,
+    membros: MembroComUsuario[],
   ): Promise<void> {
     try {
       const jaNotificou = await this.notificacaoRepo.existeNotificacao({
@@ -31,20 +32,26 @@ export class DestaqueNotificacaoService {
 
       if (jaNotificou) return;
 
-      // Buscar membros elegíveis seria via PushService/PreferenciaService
-      // Por agora, cria a notificação no banco (push será disparado pelo módulo de notificações)
       const titulo = DESTAQUES.TEMPLATES.NOVOS_DESTAQUES.titulo;
       const mensagem = DESTAQUES.TEMPLATES.NOVOS_DESTAQUES.mensagem(
         grupo.nome,
         quantidade,
       );
 
+      await this.notificacaoRepo.criarVarios(
+        membros.map((m) => ({
+          tipo: 'DESTAQUES_GRUPO' as const,
+          titulo,
+          mensagem,
+          usuarioId: m.usuarioId,
+          grupoId: grupo.id,
+          jogoId,
+        })),
+      );
+
       this.logger.log(
         `[DESTAQUES-NOTIF] ${grupo.nome}: "${titulo}" — ${mensagem}`,
       );
-
-      // A notificação consolidada será criada para cada membro via batch
-      // no módulo de notificações existente (integração futura com PushService)
     } catch (error) {
       this.logger.error(
         `Erro ao notificar destaques do grupo ${grupo.id}: ${(error as Error).message}`,

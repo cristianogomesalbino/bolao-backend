@@ -1,10 +1,5 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { DESTAQUES } from './destaques.constants';
-import { JOGOS } from '../jogos/jogos.constants';
-import { PALPITES } from '../palpites/palpites.constants';
-import { GRUPOS } from '../grupos/grupos.constants';
-import { GRUPO_USUARIO } from '../grupo-usuario/grupo-usuario.constants';
-import { NOTIFICACOES } from '../notificacoes/notificacoes.constants';
 import { DestaqueController } from './controllers/destaque.controller';
 import { DestaqueEventService } from './services/destaque-event.service';
 import { DestaqueGeneratorService } from './services/destaque-generator.service';
@@ -16,15 +11,20 @@ import { PontuacaoService } from '../ranking/services/pontuacao.service';
 import { PrismaDestaqueRepository } from './repositories/prisma-destaque.repository';
 import { PrismaRecordeRepository } from './repositories/prisma-recorde.repository';
 import { PrismaRankingSnapshotRepository } from './repositories/prisma-ranking-snapshot.repository';
-import { PrismaJogoRepository } from '../jogos/repositories/prisma-jogo.repository';
-import { PrismaFaseRepository } from '../jogos/repositories/prisma-fase.repository';
-import { PrismaPalpiteRepository } from '../palpites/repositories/prisma-palpite.repository';
-import { PrismaPalpiteDobradoRepository } from '../palpites/repositories/prisma-palpite-dobrado.repository';
-import { PrismaGrupoRepository } from '../grupos/repositories/prisma-grupo.repository';
-import { PrismaGrupoUsuarioRepository } from '../grupo-usuario/repositories/prisma-grupo-usuario.repository';
-import { PrismaNotificacaoRepository } from '../notificacoes/repositories/prisma-notificacao.repository';
+import { JogosModule } from '../jogos/jogos.module';
+import { PalpitesModule } from '../palpites/palpites.module';
+import { GruposModule } from '../grupos/grupos.module';
+import { GrupoUsuarioModule } from '../grupo-usuario/grupo-usuario.module';
+import { NotificacoesModule } from '../notificacoes/notificacoes.module';
 
 @Module({
+  imports: [
+    forwardRef(() => JogosModule),
+    forwardRef(() => PalpitesModule),
+    forwardRef(() => GruposModule),
+    forwardRef(() => GrupoUsuarioModule),
+    forwardRef(() => NotificacoesModule),
+  ],
   controllers: [DestaqueController],
   providers: [
     // Services do módulo
@@ -34,7 +34,7 @@ import { PrismaNotificacaoRepository } from '../notificacoes/repositories/prisma
     DestaqueReactionService,
     DestaqueNotificacaoService,
     DestaqueCronService,
-    // Services de outros módulos (instanciados localmente)
+    // Services de outros módulos (sem dependências — instanciação direta)
     PontuacaoService,
     // Repositories próprios (Prisma)
     {
@@ -53,26 +53,6 @@ import { PrismaNotificacaoRepository } from '../notificacoes/repositories/prisma
     {
       provide: DESTAQUES.EVENT_SERVICE_TOKEN,
       useExisting: DestaqueEventService,
-    },
-    // Repositories de outros módulos
-    { provide: JOGOS.JOGO_REPOSITORY_TOKEN, useClass: PrismaJogoRepository },
-    { provide: JOGOS.FASE_REPOSITORY_TOKEN, useClass: PrismaFaseRepository },
-    {
-      provide: PALPITES.PALPITE_REPOSITORY_TOKEN,
-      useClass: PrismaPalpiteRepository,
-    },
-    {
-      provide: PALPITES.PALPITE_DOBRADO_REPOSITORY_TOKEN,
-      useClass: PrismaPalpiteDobradoRepository,
-    },
-    { provide: GRUPOS.REPOSITORY_TOKEN, useClass: PrismaGrupoRepository },
-    {
-      provide: GRUPO_USUARIO.REPOSITORY_TOKEN,
-      useClass: PrismaGrupoUsuarioRepository,
-    },
-    {
-      provide: NOTIFICACOES.NOTIFICACAO_REPOSITORY_TOKEN,
-      useClass: PrismaNotificacaoRepository,
     },
   ],
   exports: [DestaqueEventService, DESTAQUES.EVENT_SERVICE_TOKEN],

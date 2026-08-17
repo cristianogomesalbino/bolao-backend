@@ -209,13 +209,10 @@ export class DestaqueSequenciaService {
     usuarioId: string,
   ): Promise<Map<string, PalpiteInterno>> {
     const jogoIds = jogos.map((j) => j.id);
-    const todosPalpites: PalpiteInterno[] = [];
-    for (const jogoId of jogoIds) {
-      const p = (await this.palpiteRepo.listarPorJogoEUsuarios(jogoId, [
-        usuarioId,
-      ])) as PalpiteInterno[];
-      todosPalpites.push(...p);
-    }
+    const todosPalpites = (await this.palpiteRepo.buscarPorUsuarioEJogos(
+      usuarioId,
+      jogoIds,
+    )) as PalpiteInterno[];
     return new Map(todosPalpites.map((p) => [p.jogoId, p]));
   }
 
