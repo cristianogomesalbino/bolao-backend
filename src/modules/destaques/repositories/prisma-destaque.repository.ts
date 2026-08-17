@@ -21,7 +21,7 @@ export class PrismaDestaqueRepository implements DestaqueRepository {
     const destaque = await this.prisma.destaque.create({
       data: {
         ...data,
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+
         dados: data.dados as unknown as Prisma.InputJsonValue,
       },
     });
@@ -33,7 +33,7 @@ export class PrismaDestaqueRepository implements DestaqueRepository {
     await this.prisma.destaque.createMany({
       data: data.map((d) => ({
         ...d,
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+
         dados: d.dados as unknown as Prisma.InputJsonValue,
       })),
       skipDuplicates: true,

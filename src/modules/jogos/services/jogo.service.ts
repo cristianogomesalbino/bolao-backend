@@ -347,10 +347,10 @@ export class JogoService {
     if (!this.destaqueEventService) return;
     this.destaqueEventService
       .processarJogoFinalizado(jogoId)
-      .catch((err) =>
+      .catch((err: unknown) =>
         this.logger.error(
-          `Erro destaques pós-finalização: ${err.message}`,
-          err.stack,
+          `Erro destaques pós-finalização: ${(err as Error).message}`,
+          (err as Error).stack,
         ),
       );
   }
@@ -411,7 +411,14 @@ export class JogoService {
       throw new JogoIdaNaoEncontradoError();
     }
 
-    const vencedorId = this.calcularVencedorAgregado(jogoIda, jogo, dto);
+    const jogoIdaInterno: JogoInterno = {
+      ...jogoIda,
+      timeCasa: undefined,
+      timeFora: undefined,
+      temporadaId: undefined,
+    };
+
+    const vencedorId = this.calcularVencedorAgregado(jogoIdaInterno, jogo, dto);
 
     const temProrrogacao = dto.temProrrogacao ?? false;
     const temPenaltis = dto.temPenaltis ?? false;
@@ -1675,10 +1682,10 @@ export class JogoService {
     if (!casaMudou && !foraMudou) return false;
 
     if (casaMudou) {
-      const timeCasa = (await this.resolverOuCriarTime(
+      const timeCasa = await this.resolverOuCriarTime(
         jogoApi.timeCasa,
         new Map(),
-      )) as { id: string };
+      );
       updateData.timeCasaId = timeCasa.id;
       this.logger.log(
         `[SYNC] 🔄 Jogo ${jogo.id}: time casa atualizado → ${jogoApi.timeCasa.nome}`,
@@ -1686,10 +1693,10 @@ export class JogoService {
     }
 
     if (foraMudou) {
-      const timeFora = (await this.resolverOuCriarTime(
+      const timeFora = await this.resolverOuCriarTime(
         jogoApi.timeFora,
         new Map(),
-      )) as { id: string };
+      );
       updateData.timeForaId = timeFora.id;
       this.logger.log(
         `[SYNC] 🔄 Jogo ${jogo.id}: time fora atualizado → ${jogoApi.timeFora.nome}`,
