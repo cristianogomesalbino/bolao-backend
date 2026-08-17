@@ -202,7 +202,7 @@ describe('JogoService', () => {
         dataHora: '2026-04-01T20:00:00.000Z',
       });
 
-      expect(result.dataHora).toBe('2026-04-01T20:00:00.000Z');
+      expect(result.dataHora).toEqual(new Date('2026-04-01T20:00:00.000Z'));
     });
 
     it('deve lançar JogoFinalizadoError ao atualizar jogo FINALIZADO', async () => {

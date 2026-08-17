@@ -12,10 +12,18 @@ import { CAMPEONATOS } from '../../campeonatos/campeonatos.constants';
 import type {
   JogoRepository,
   CriarJogoData,
+  AtualizarJogoData,
+  JogoExternoId,
 } from '../repositories/jogo.repository.interface';
 import { DESTAQUES } from '../../destaques/destaques.constants';
-import type { FaseRepository } from '../repositories/fase.repository.interface';
-import type { TimeRepository } from '../../times/repositories/time.repository.interface';
+import type {
+  Fase,
+  FaseRepository,
+} from '../repositories/fase.repository.interface';
+import type {
+  Time,
+  TimeRepository,
+} from '../../times/repositories/time.repository.interface';
 import type { NotificacaoEventService } from '../../notificacoes/services/notificacao-event.service';
 import type { CampeonatoStatusService } from '../../campeonatos/services/campeonato-status.service';
 import type { DestaqueEventService } from '../../destaques/services/destaque-event.service';
@@ -220,10 +228,15 @@ export class JogoService {
     }
 
     // Modo híbrido — qualquer edição manual em jogo API_EXTERNA flip para MANUAL
-    const updateData: any = { ...dto };
-    if (jogo.fonteResultado === 'API_EXTERNA') {
-      updateData.fonteResultado = 'MANUAL';
-    }
+    const updateData: AtualizarJogoData = {
+      status: dto.status,
+      timeCasaId: dto.timeCasaId,
+      timeForaId: dto.timeForaId,
+      ...(dto.dataHora ? { dataHora: new Date(dto.dataHora) } : {}),
+      ...(jogo.fonteResultado === 'API_EXTERNA'
+        ? { fonteResultado: 'MANUAL' }
+        : {}),
+    };
 
     return this.jogoRepo.atualizar(id, updateData);
   }
@@ -286,10 +299,10 @@ export class JogoService {
     this.logger.log(`[SYNC] 📣 Disparando notificações para jogo ${jogoId}`);
     this.notificacaoEventService
       .processarJogoFinalizado(jogoId)
-      .catch((err) =>
+      .catch((err: unknown) =>
         this.logger.error(
-          `Erro notificações pós-finalização: ${err.message}`,
-          err.stack,
+          `Erro notificações pós-finalização: ${(err as Error).message}`,
+          (err as Error).stack,
         ),
       );
   }
@@ -320,10 +333,10 @@ export class JogoService {
     if (!this.destaqueEventService) return;
     this.destaqueEventService
       .processarJogoFinalizado(jogoId)
-      .catch((err) =>
+      .catch((err: unknown) =>
         this.logger.error(
-          `Erro destaques pós-finalização: ${err.message}`,
-          err.stack,
+          `Erro destaques pós-finalização: ${(err as Error).message}`,
+          (err as Error).stack,
         ),
       );
   }
@@ -349,7 +362,7 @@ export class JogoService {
 
   private async finalizarMataMata(
     jogo: JogoInterno,
-    fase: any,
+    fase: Fase,
     dto: FinalizarJogoDto,
   ) {
     if (fase.idaVolta && !jogo.ehJogoVolta) {
@@ -378,13 +391,20 @@ export class JogoService {
     const jogosDoGrupo = await this.jogoRepo.buscarPorGrupoIdaVolta(
       jogo.grupoIdaVolta,
     );
-    const jogoIda = jogosDoGrupo.find((j: any) => !j.ehJogoVolta);
+    const jogoIda = jogosDoGrupo.find((j) => !j.ehJogoVolta);
 
     if (jogoIda?.status !== 'FINALIZADO') {
       throw new JogoIdaNaoEncontradoError();
     }
 
-    const vencedorId = this.calcularVencedorAgregado(jogoIda, jogo, dto);
+    const jogoIdaInterno: JogoInterno = {
+      ...jogoIda,
+      timeCasa: undefined,
+      timeFora: undefined,
+      temporadaId: undefined,
+    };
+
+    const vencedorId = this.calcularVencedorAgregado(jogoIdaInterno, jogo, dto);
 
     const temProrrogacao = dto.temProrrogacao ?? false;
     const temPenaltis = dto.temPenaltis ?? false;
@@ -554,7 +574,7 @@ export class JogoService {
   private buildUpdateFinalizado(
     dto: FinalizarJogoDto,
     vencedorId: string | null,
-    extras?: any,
+    extras?: Partial<AtualizarJogoData>,
   ) {
     return {
       status: 'FINALIZADO',
@@ -571,7 +591,7 @@ export class JogoService {
     };
   }
 
-  calcularVencedor(jogo: any): string | null {
+  calcularVencedor(jogo: JogoInterno): string | null {
     if (jogo.status !== 'FINALIZADO') return null;
     if (jogo.golsCasa == null || jogo.golsFora == null) return null;
 
@@ -606,8 +626,8 @@ export class JogoService {
   }
 
   calcularVencedorAgregado(
-    jogoIda: any,
-    jogoVolta: any,
+    jogoIda: JogoInterno,
+    jogoVolta: JogoInterno,
     dto: FinalizarJogoDto,
   ): string {
     const golsTimeA = (jogoIda.golsCasa ?? 0) + dto.golsFora;
@@ -862,13 +882,16 @@ export class JogoService {
     externoIds: string[],
   ): Promise<string[]> {
     if (externoIds.length === 0) return [];
-    const jogos = await this.jogoRepo.buscarPorExternoIds(externoIds);
-    return jogos.map((j: any) => j.externoId);
+    const jogos: JogoExternoId[] =
+      await this.jogoRepo.buscarPorExternoIds(externoIds);
+    return jogos
+      .map((j) => j.externoId)
+      .filter((id): id is string => id != null);
   }
 
   private async carregarCacheTimes(
-    normalizados: any[],
-  ): Promise<Map<string, any>> {
+    normalizados: JogoApiNormalizado[],
+  ): Promise<Map<string, Time>> {
     const externoIds = new Set<string>();
     for (const n of normalizados) {
       if (n.timeCasa?.externoId) externoIds.add(n.timeCasa.externoId);
@@ -878,7 +901,7 @@ export class JogoService {
     const timesExistentes = await this.timeRepo.buscarPorExternoIds([
       ...externoIds,
     ]);
-    const cache = new Map<string, any>();
+    const cache = new Map<string, Time>();
     for (const time of timesExistentes) {
       if (time.externoId) cache.set(time.externoId, time);
     }
@@ -892,8 +915,8 @@ export class JogoService {
       sigla: string;
       escudo: string;
     },
-    cache: Map<string, any>,
-  ): Promise<any> {
+    cache: Map<string, Time>,
+  ): Promise<Time> {
     // Detectar nomes compostos placeholder da API (ex: "Costa do Marfim ou Noruega")
     if (this.ehTimePlaceholder(timeData.nome, timeData.sigla)) {
       return this.garantirTimeTBD();
@@ -1189,6 +1212,8 @@ export class JogoService {
   }
 
   private async obterFasesParaSync(fase: {
+    id: string;
+    nome: string;
     temporadaId: string;
     tipo: string;
   }): Promise<{ id: string; nome: string; tipo: string }[]> {
@@ -1196,8 +1221,8 @@ export class JogoService {
     if (fase.tipo === 'MATA_MATA') {
       return [
         {
-          id: (fase as any).id as string,
-          nome: (fase as any).nome as string,
+          id: fase.id,
+          nome: fase.nome,
           tipo: fase.tipo,
         },
       ];
@@ -1215,8 +1240,8 @@ export class JogoService {
 
     return [
       {
-        id: (fase as any).id as string,
-        nome: (fase as any).nome as string,
+        id: fase.id,
+        nome: fase.nome,
         tipo: fase.tipo,
       },
     ];
@@ -1231,8 +1256,10 @@ export class JogoService {
     apiDisponivel: boolean;
   }> {
     const rodadasPendentes = [
-      ...new Set(jogos.map((j: any) => j.rodada).filter(Boolean)),
-    ] as number[];
+      ...new Set(
+        jogos.map((j) => j.rodada).filter((r): r is number => r != null),
+      ),
+    ];
 
     // Para fases MATA_MATA, a API do GE usa rodada 1 para todos os jogos
     // Sempre incluir rodada 1 para garantir que encontramos os jogos
@@ -1567,10 +1594,10 @@ export class JogoService {
     if (!casaMudou && !foraMudou) return false;
 
     if (casaMudou) {
-      const timeCasa = (await this.resolverOuCriarTime(
+      const timeCasa = await this.resolverOuCriarTime(
         jogoApi.timeCasa,
         new Map(),
-      )) as { id: string };
+      );
       updateData.timeCasaId = timeCasa.id;
       this.logger.log(
         `[SYNC] 🔄 Jogo ${jogo.id}: time casa atualizado → ${jogoApi.timeCasa.nome}`,
@@ -1578,10 +1605,10 @@ export class JogoService {
     }
 
     if (foraMudou) {
-      const timeFora = (await this.resolverOuCriarTime(
+      const timeFora = await this.resolverOuCriarTime(
         jogoApi.timeFora,
         new Map(),
-      )) as { id: string };
+      );
       updateData.timeForaId = timeFora.id;
       this.logger.log(
         `[SYNC] 🔄 Jogo ${jogo.id}: time fora atualizado → ${jogoApi.timeFora.nome}`,
@@ -1791,7 +1818,7 @@ export class JogoService {
 
   // --- Status híbrido ---
 
-  definirStatusFinal(jogo: any, statusApi?: string): string {
+  definirStatusFinal(jogo: JogoInterno, statusApi?: string): string {
     if (jogo.status === 'FINALIZADO') {
       return 'FINALIZADO';
     }
@@ -1803,8 +1830,9 @@ export class JogoService {
     return this.calcularStatusInterno(jogo);
   }
 
-  calcularStatusInterno(jogo: any): string {
+  calcularStatusInterno(jogo: JogoInterno): string {
     const agora = Date.now();
+    if (!jogo.dataHora) return 'ADIADO';
     const dataHora = new Date(jogo.dataHora).getTime();
 
     if (agora < dataHora) {
@@ -1869,16 +1897,16 @@ export class JogoService {
   }
 
   /** Retorna o time TBD placeholder, criando-o se não existir */
-  private async garantirTimeTBD(): Promise<{ id: string }> {
+  private async garantirTimeTBD(): Promise<Time> {
     const TBD_ID = '00000000-0000-0000-0000-000000000001';
     const existente = await this.timeRepo.buscarPorId(TBD_ID);
-    if (existente) return existente as { id: string };
+    if (existente) return existente;
 
     return this.timeRepo.criar({
       id: TBD_ID,
       nome: 'A Definir',
       sigla: 'TBD',
       escudo: '',
-    }) as unknown as { id: string };
+    });
   }
 }

@@ -1,7 +1,10 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { DestaqueNotificacaoService } from '../../../../src/modules/destaques/services/destaque-notificacao.service';
 import { InMemoryNotificacaoRepository } from '../../../../src/modules/notificacoes/repositories/in-memory-notificacao.repository';
-import type { GrupoBasico, MembroComUsuario } from '../../../../src/modules/destaques/types/destaque.types';
+import type {
+  GrupoBasico,
+  MembroComUsuario,
+} from '../../../../src/modules/destaques/types/destaque.types';
 
 describe('DestaqueNotificacaoService', () => {
   let service: DestaqueNotificacaoService;
