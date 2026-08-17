@@ -89,6 +89,7 @@ import { PrismaGrupoRepository } from '../grupos/repositories/prisma-grupo.repos
     NotificacaoEventService,
     NotificacaoService,
     NOTIFICACOES.EVENT_SERVICE_TOKEN,
+    NOTIFICACOES.NOTIFICACAO_REPOSITORY_TOKEN,
   ],
 })
 export class NotificacoesModule {}
