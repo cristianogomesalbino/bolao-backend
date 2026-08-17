@@ -122,7 +122,9 @@ describe('DestaqueEventService', () => {
   });
 
   it('não deve chamar notificação quando nenhum destaque gerado', async () => {
-    (generatorService.gerarDestaquesParaGrupo as ReturnType<typeof vi.fn>).mockResolvedValue(0);
+    (
+      generatorService.gerarDestaquesParaGrupo as ReturnType<typeof vi.fn>
+    ).mockResolvedValue(0);
 
     await service.processarJogoFinalizado('jogo-1');
 

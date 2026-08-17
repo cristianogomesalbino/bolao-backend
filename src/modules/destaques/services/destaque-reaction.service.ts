@@ -50,13 +50,17 @@ export class DestaqueReactionService {
       throw new NaoPodeEnviarFParaSiMesmoError();
     }
 
-    const jaEnviou = await this.destaqueRepo.existeReacao(remetenteId, destaqueId);
+    const jaEnviou = await this.destaqueRepo.existeReacao(
+      remetenteId,
+      destaqueId,
+    );
     if (jaEnviou) {
       throw new UsuarioJaEnviouFError();
     }
 
     await this.destaqueRepo.criarReacao({ destaqueId, remetenteId });
-    const novoContador = await this.destaqueRepo.incrementarContadorFs(destaqueId);
+    const novoContador =
+      await this.destaqueRepo.incrementarContadorFs(destaqueId);
 
     // Notificação fire-and-forget
     this.notificacaoService

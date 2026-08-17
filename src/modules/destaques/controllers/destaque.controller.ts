@@ -157,13 +157,14 @@ export class DestaqueController {
   private async obterRodadaAtualDoGrupo(
     grupoId: string,
   ): Promise<number | null> {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- Repo retorna any (dívida técnica)
     const grupo = await this.grupoRepo.buscarPorId(grupoId);
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access -- Repo retorna any (dívida técnica)
     if (!grupo?.temporadaId) return null;
 
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access -- Repo retorna any (dívida técnica)
     const fases = await this.faseRepo.buscarPorTemporada(grupo.temporadaId);
-    const fasePontosCorridos = fases.find(
-      (f) => f.tipo === 'PONTOS_CORRIDOS',
-    );
+    const fasePontosCorridos = fases.find((f) => f.tipo === 'PONTOS_CORRIDOS');
     if (!fasePontosCorridos) return null;
 
     return this.jogoRepo.buscarRodadaAtual(fasePontosCorridos.id);
