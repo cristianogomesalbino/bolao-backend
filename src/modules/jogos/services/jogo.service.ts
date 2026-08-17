@@ -139,6 +139,7 @@ export class JogoService {
     @Optional()
     @Inject(CAMPEONATOS.STATUS_SERVICE_TOKEN)
     private readonly campeonatoStatusService?: CampeonatoStatusService,
+    @Optional()
     @Inject(DESTAQUES.EVENT_SERVICE_TOKEN)
     private readonly destaqueEventService?: DestaqueEventService,
   ) {}

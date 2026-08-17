@@ -109,6 +109,20 @@ export class InMemoryDestaqueRepository implements DestaqueRepository {
     return Promise.resolve(existe);
   }
 
+  buscarReacoesDoUsuario(
+    remetenteId: string,
+    destaqueIds: string[],
+  ): Promise<Set<string>> {
+    if (destaqueIds.length === 0) return Promise.resolve(new Set());
+    const reagidos = this.reacoes
+      .filter(
+        (r) =>
+          r.remetenteId === remetenteId && destaqueIds.includes(r.destaqueId),
+      )
+      .map((r) => r.destaqueId);
+    return Promise.resolve(new Set(reagidos));
+  }
+
   criarReacao(data: CriarReacaoData): Promise<DestaqueReacao> {
     const reacao: DestaqueReacao = {
       id: randomUUID(),

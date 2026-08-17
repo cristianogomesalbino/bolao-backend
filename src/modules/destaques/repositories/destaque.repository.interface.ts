@@ -95,6 +95,15 @@ export interface DestaqueRepository {
   existeReacao(remetenteId: string, destaqueId: string): Promise<boolean>;
 
   /**
+   * Busca reações do usuário em batch para múltiplos destaques.
+   * Retorna set de destaqueIds onde o usuário já reagiu.
+   */
+  buscarReacoesDoUsuario(
+    remetenteId: string,
+    destaqueIds: string[],
+  ): Promise<Set<string>>;
+
+  /**
    * Cria uma reação (F) para um destaque.
    */
   criarReacao(data: CriarReacaoData): Promise<DestaqueReacao>;

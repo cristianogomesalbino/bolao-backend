@@ -110,6 +110,18 @@ export class PrismaDestaqueRepository implements DestaqueRepository {
     return reacao !== null;
   }
 
+  async buscarReacoesDoUsuario(
+    remetenteId: string,
+    destaqueIds: string[],
+  ): Promise<Set<string>> {
+    if (destaqueIds.length === 0) return new Set();
+    const reacoes = await this.prisma.destaqueReacao.findMany({
+      where: { remetenteId, destaqueId: { in: destaqueIds } },
+      select: { destaqueId: true },
+    });
+    return new Set(reacoes.map((r) => r.destaqueId));
+  }
+
   async criarReacao(data: CriarReacaoData): Promise<DestaqueReacao> {
     const reacao = await this.prisma.destaqueReacao.create({ data });
     return {
