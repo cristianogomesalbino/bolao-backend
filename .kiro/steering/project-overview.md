@@ -121,11 +121,15 @@ EM_ANDAMENTO → CANCELADO
 - Body: `{ campeonatoSlug, faseSlug }`
 - **Comportamento multi-grupo:** ao sincronizar uma fase que pertence a uma temporada com múltiplas fases do mesmo tipo (ex: 12 grupos da Copa), o sistema automaticamente sincroniza TODAS as fases equivalentes — basta passar qualquer `faseId` dos grupos
 - Filtra jogos com `fonteResultado = API_EXTERNA` e `status != FINALIZADO/CANCELADO`
-- Limite de rodada: sincroniza até `rodadaAtual + 1` (evita buscar rodadas futuras distantes)
-- Detecta mudança de horário e atualiza `dataHora`
+- Limite de rodada: sincroniza até `rodadaAtual + 1` (evita buscar rodadas futuras distantes); inclui também atrasados e jogos nas próximas 24h independente da rodada
+- **Rodada oficial GE (Brasileirão):** consulta `rodada.atual` na classificação e ancora a busca nas rodadas `atual-1..atual+1` quando o banco está atrás (ex.: remarcações)
+- Atrasados entram na mesma passagem (`dataHora` no passado, qualquer rodada). Não há segunda chamada à API só porque o jogo segue `AGENDADO`
+- Status da API: `LIVE`/`AO_VIVO`/`jogo_ja_comecou` → `EM_ANDAMENTO`; `ENCERRADA` → `FINALIZADO`; horário sozinho não promove status
+- Detecta mudança de horário e atualiza `dataHora` (datas BRT sem offset recebem `-03:00`)
 - Jogo adiado que recebe data na API → volta para AGENDADO com `foiAdiado = true`
 - Suporte a pênaltis (jogos mata-mata da Copa)
 - Fallback: se API externa indisponível, calcula status internamente (baseado em horário)
+- Env: `SYNC_AUTOMATICA_HABILITADA`, `SYNC_CAMPEONATOS` (filtra quais campeonatos o scheduler sincroniza)
 
 ### Frontend Admin (Tela de Importação)
 
@@ -135,10 +139,11 @@ EM_ANDAMENTO → CANCELADO
 
 ## Endpoint de Listagem de Jogos
 
-- `GET /fases/:faseId/jogos` — sem `?rodada` retorna a rodada atual (menor rodada com jogos não finalizados)
+- `GET /fases/:faseId/jogos` — sem `?rodada` retorna a rodada atual (prioridade: ao vivo → jogo mais próximo na janela ±2/3 dias → próximo horário futuro; evita ficar preso em remarcações antigas)
 - `GET /fases/:faseId/jogos?rodada=5` — retorna rodada específica
 - `GET /fases/:faseId/jogos?status=ADIADO` — retorna todos os jogos adiados da fase
 - Resposta inclui `rodadaAtual`, dados dos times (nome, sigla, escudo) e `foiAdiado`
+- Datas na resposta usam offset de Brasília (`-03:00`)
 
 ## Roadmap de Módulos
 

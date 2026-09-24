@@ -4,6 +4,8 @@ import { JogoService } from '@src/modules/jogos/services/jogo.service';
 import { InMemoryJogoRepository } from '@src/modules/jogos/repositories/in-memory-jogo.repository';
 import { InMemoryFaseRepository } from '@src/modules/jogos/repositories/in-memory-fase.repository';
 import { InMemoryTimeRepository } from '@src/modules/times/repositories/in-memory-time.repository';
+import { FutebolApiService } from '@src/modules/jogos/services/futebol-api.service';
+import { ChaveamentoService } from '@src/modules/jogos/services/chaveamento.service';
 import {
   TimesIguaisError,
   JogoFinalizadoError,
@@ -64,13 +66,15 @@ describe('JogoService — Property-Based Tests', () => {
     const futebolApiService = {
       buscarJogosPorRodada: vi.fn(),
       buscarJogosPorIds: vi.fn(),
+      buscarJogosPorRodadas: vi.fn().mockResolvedValue([]),
+      buscarRodadaOficialGe: vi.fn().mockResolvedValue(null),
       normalizarJogo: vi.fn(),
       mapearStatus: vi.fn(),
-    } as any;
+    } as unknown as FutebolApiService;
     service = new JogoService(jogoRepo, faseRepo, futebolApiService, timeRepo, {
       preencherProximaFaseEliminatoria: vi.fn(),
       propagarVencedoresParaProximaFase: vi.fn(),
-    } as any);
+    } as unknown as ChaveamentoService);
   });
 
   // Generators reutilizáveis
@@ -418,9 +422,9 @@ describe('JogoService — Property-Based Tests', () => {
   // ==================== Propriedade 16 ====================
   // Feature: modulo-jogos, Property 16: Invariante de vencedorId
   // Valida: Requisitos 7.4, 9.7
-  it('Propriedade 16: vencedorId é sempre timeCasaId ou timeForaId quando definido', async () => {
-    await fc.assert(
-      fc.asyncProperty(arbPlacar, arbPlacar, async (golsCasa, golsFora) => {
+  it('Propriedade 16: vencedorId é sempre timeCasaId ou timeForaId quando definido', () => {
+    fc.assert(
+      fc.property(arbPlacar, arbPlacar, (golsCasa, golsFora) => {
         const timeCasaId = 'time-casa';
         const timeForaId = 'time-fora';
 
@@ -431,7 +435,7 @@ describe('JogoService — Property-Based Tests', () => {
           timeCasaId,
           timeForaId,
           temProrrogacao: false,
-        });
+        } as never);
 
         if (result !== null) {
           expect(result === timeCasaId || result === timeForaId).toBe(true);
@@ -444,14 +448,14 @@ describe('JogoService — Property-Based Tests', () => {
   // ==================== Propriedade 17 ====================
   // Feature: modulo-jogos, Property 17: Jogo não finalizado tem placares null
   // Valida: Requisito 9.6
-  it('Propriedade 17: calcularVencedor retorna null para jogo não finalizado', async () => {
+  it('Propriedade 17: calcularVencedor retorna null para jogo não finalizado', () => {
     const arbStatusNaoFinal = fc.constantFrom(
       'AGENDADO',
       'EM_ANDAMENTO',
       'CANCELADO',
     );
 
-    await fc.assert(
+    fc.assert(
       fc.property(arbStatusNaoFinal, arbPlacar, arbPlacar, (status, gc, gf) => {
         const result = service.calcularVencedor({
           status,
@@ -459,7 +463,7 @@ describe('JogoService — Property-Based Tests', () => {
           golsFora: gf,
           timeCasaId: 'time-a',
           timeForaId: 'time-b',
-        });
+        } as never);
 
         expect(result).toBeNull();
       }),
@@ -724,16 +728,20 @@ describe('JogoService — Property-Based Tests', () => {
   // Feature: modulo-jogos, Property 23: Idempotência de importação
   // Valida: Requisitos 12.7, 11.5
   it('Propriedade 23: importar mesmos jogos duas vezes não duplica', async () => {
+    const buscarJogosPorRodada = vi.fn();
+    const normalizarJogo = vi.fn();
     const mockApi = {
-      buscarJogosPorRodada: vi.fn(),
+      buscarJogosPorRodada,
       buscarJogosPorIds: vi.fn(),
-      normalizarJogo: vi.fn(),
+      buscarJogosPorRodadas: vi.fn().mockResolvedValue([]),
+      buscarRodadaOficialGe: vi.fn().mockResolvedValue(null),
+      normalizarJogo,
       mapearStatus: vi.fn(),
-    } as any;
+    } as unknown as FutebolApiService;
     const svc = new JogoService(jogoRepo, faseRepo, mockApi, timeRepo, {
       preencherProximaFaseEliminatoria: vi.fn(),
       propagarVencedoresParaProximaFase: vi.fn(),
-    } as any);
+    } as unknown as ChaveamentoService);
 
     await fc.assert(
       fc.asyncProperty(fc.integer({ min: 1, max: 5 }), async (n) => {
@@ -763,49 +771,48 @@ describe('JogoService — Property-Based Tests', () => {
           transmissao: { broadcast: { id: 'PRE_JOGO' } },
           jogo_ja_comecou: false,
         }));
-        mockApi.buscarJogosPorRodada.mockResolvedValue(jogosApi);
-        mockApi.normalizarJogo.mockImplementation((jogo: any) => ({
-          externoId: String(jogo.id),
-          dataHora: jogo.data_realizacao,
-          timeCasaId: String(jogo.equipes.mandante.id),
-          timeForaId: String(jogo.equipes.visitante.id),
-          golsCasa: null,
-          golsFora: null,
-          status: 'AGENDADO',
-          penaltisCasa: null,
-          penaltisFora: null,
-          timeCasa: {
-            externoId: String(jogo.equipes.mandante.id),
-            nome: jogo.equipes.mandante.nome_popular,
-            sigla: `S${jogo.equipes.mandante.id}`,
-            escudo: null,
-          },
-          timeFora: {
-            externoId: String(jogo.equipes.visitante.id),
-            nome: jogo.equipes.visitante.nome_popular,
-            sigla: `S${jogo.equipes.visitante.id}`,
-            escudo: null,
-          },
-        }));
+        buscarJogosPorRodada.mockResolvedValue(jogosApi);
+        normalizarJogo.mockImplementation(
+          (jogo: {
+            id: number;
+            data_realizacao: string;
+            equipes: {
+              mandante: { id: number; nome_popular: string };
+              visitante: { id: number; nome_popular: string };
+            };
+          }) => ({
+            externoId: String(jogo.id),
+            dataHora: jogo.data_realizacao,
+            timeCasaId: String(jogo.equipes.mandante.id),
+            timeForaId: String(jogo.equipes.visitante.id),
+            golsCasa: null,
+            golsFora: null,
+            status: 'AGENDADO',
+            penaltisCasa: null,
+            penaltisFora: null,
+            timeCasa: {
+              externoId: String(jogo.equipes.mandante.id),
+              nome: jogo.equipes.mandante.nome_popular,
+              sigla: `S${jogo.equipes.mandante.id}`,
+              escudo: null,
+            },
+            timeFora: {
+              externoId: String(jogo.equipes.visitante.id),
+              nome: jogo.equipes.visitante.nome_popular,
+              sigla: `S${jogo.equipes.visitante.id}`,
+              escudo: null,
+            },
+          }),
+        );
 
-        const r1 = await svc.importarJogos(
-          {
-            campeonatoSlug: 'brasileirao',
-            faseSlug: 'fase-unica-campeonato-brasileiro-2026',
-            rodada: 1,
-            faseId: 'fase-pc',
-          } as any,
-          userId,
-        );
-        const r2 = await svc.importarJogos(
-          {
-            campeonatoSlug: 'brasileirao',
-            faseSlug: 'fase-unica-campeonato-brasileiro-2026',
-            rodada: 1,
-            faseId: 'fase-pc',
-          } as any,
-          userId,
-        );
+        const dto = {
+          campeonatoSlug: 'brasileirao',
+          faseSlug: 'fase-unica-campeonato-brasileiro-2026',
+          rodada: 1,
+          faseId: 'fase-pc',
+        } as never;
+        const r1 = await svc.importarJogos(dto, userId);
+        const r2 = await svc.importarJogos(dto, userId);
 
         expect(r1.importados).toBe(n);
         expect(r2.importados).toBe(0);
@@ -819,16 +826,20 @@ describe('JogoService — Property-Based Tests', () => {
   // Feature: modulo-jogos, Property 24: Sincronização respeita fonteResultado
   // Valida: Requisitos 13.2, 13.3
   it('Propriedade 24: sync não altera jogos com fonteResultado MANUAL', async () => {
+    const buscarJogosPorIds = vi.fn();
+    const normalizarJogo = vi.fn();
     const mockApi = {
       buscarJogosPorRodada: vi.fn(),
-      buscarJogosPorIds: vi.fn(),
-      normalizarJogo: vi.fn(),
+      buscarJogosPorIds,
+      buscarJogosPorRodadas: vi.fn().mockResolvedValue([]),
+      buscarRodadaOficialGe: vi.fn().mockResolvedValue(null),
+      normalizarJogo,
       mapearStatus: vi.fn(),
-    } as any;
+    } as unknown as FutebolApiService;
     const svc = new JogoService(jogoRepo, faseRepo, mockApi, timeRepo, {
       preencherProximaFaseEliminatoria: vi.fn(),
       propagarVencedoresParaProximaFase: vi.fn(),
-    } as any);
+    } as unknown as ChaveamentoService);
 
     jogoRepo.items = [];
     await jogoRepo.criar({
@@ -846,7 +857,7 @@ describe('JogoService — Property-Based Tests', () => {
       temPenaltis: false,
     });
 
-    mockApi.buscarJogosPorIds.mockResolvedValue([
+    buscarJogosPorIds.mockResolvedValue([
       {
         id: 9999,
         data_realizacao: '2026-06-15T16:00:00Z',
@@ -857,7 +868,7 @@ describe('JogoService — Property-Based Tests', () => {
         jogo_ja_comecou: true,
       },
     ]);
-    mockApi.normalizarJogo.mockReturnValue({
+    normalizarJogo.mockReturnValue({
       externoId: '9999',
       dataHora: '2026-06-15T16:00:00Z',
       timeCasaId: '1',

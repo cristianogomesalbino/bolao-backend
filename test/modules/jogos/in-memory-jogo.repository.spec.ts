@@ -353,10 +353,101 @@ describe('InMemoryJogoRepository', () => {
   });
 
   describe('buscarRodadaAtual', () => {
-    it('deve retornar menor rodada não finalizada com dataHora', async () => {
-      await repo.criar(criarJogoData({ rodada: 1, status: 'FINALIZADO' }));
-      await repo.criar(criarJogoData({ rodada: 2, status: 'AGENDADO' }));
-      await repo.criar(criarJogoData({ rodada: 3, status: 'AGENDADO' }));
+    it('deve priorizar rodada com jogo EM_ANDAMENTO', async () => {
+      await repo.criar(
+        criarJogoData({
+          rodada: 21,
+          status: 'AGENDADO',
+          dataHora: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+        }),
+      );
+      await repo.criar(
+        criarJogoData({
+          rodada: 28,
+          status: 'EM_ANDAMENTO',
+          dataHora: new Date(),
+        }),
+      );
+
+      const resultado = await repo.buscarRodadaAtual('fase-1');
+      expect(resultado).toBe(28);
+    });
+
+    it('deve ignorar remarcação antiga e pegar rodada na janela de datas', async () => {
+      await repo.criar(
+        criarJogoData({
+          rodada: 21,
+          status: 'AGENDADO',
+          dataHora: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+        }),
+      );
+      await repo.criar(
+        criarJogoData({
+          rodada: 28,
+          status: 'AGENDADO',
+          dataHora: new Date(Date.now() + 2 * 60 * 60 * 1000),
+        }),
+      );
+
+      const resultado = await repo.buscarRodadaAtual('fase-1');
+      expect(resultado).toBe(28);
+    });
+
+    it('deve preferir o jogo mais próximo quando duas rodadas caem na janela', async () => {
+      await repo.criar(
+        criarJogoData({
+          rodada: 27,
+          status: 'AGENDADO',
+          dataHora: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        }),
+      );
+      await repo.criar(
+        criarJogoData({
+          rodada: 28,
+          status: 'AGENDADO',
+          dataHora: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
+        }),
+      );
+
+      const resultado = await repo.buscarRodadaAtual('fase-1');
+      expect(resultado).toBe(27);
+    });
+
+    it('deve ignorar pendente antigo e pegar o próximo horário futuro', async () => {
+      await repo.criar(
+        criarJogoData({
+          rodada: 5,
+          status: 'AGENDADO',
+          dataHora: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+        }),
+      );
+      await repo.criar(
+        criarJogoData({
+          rodada: 28,
+          status: 'AGENDADO',
+          dataHora: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000),
+        }),
+      );
+
+      const resultado = await repo.buscarRodadaAtual('fase-1');
+      expect(resultado).toBe(28);
+    });
+
+    it('deve retornar rodada do próximo jogo por data quando fora da janela', async () => {
+      await repo.criar(
+        criarJogoData({
+          rodada: 2,
+          status: 'AGENDADO',
+          dataHora: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000),
+        }),
+      );
+      await repo.criar(
+        criarJogoData({
+          rodada: 3,
+          status: 'AGENDADO',
+          dataHora: new Date(Date.now() + 20 * 24 * 60 * 60 * 1000),
+        }),
+      );
 
       const resultado = await repo.buscarRodadaAtual('fase-1');
       expect(resultado).toBe(2);
@@ -391,6 +482,40 @@ describe('InMemoryJogoRepository', () => {
 
       const resultado = await repo.contarAtrasados();
       expect(resultado).toBe(1);
+    });
+
+    it('deve contar apenas atrasados das fases informadas', async () => {
+      const passado = new Date(Date.now() - 3600000);
+      await repo.criar(
+        criarJogoData({
+          faseId: 'fase-br',
+          dataHora: passado,
+          status: 'AGENDADO',
+        }),
+      );
+      await repo.criar(
+        criarJogoData({
+          faseId: 'fase-copa',
+          dataHora: passado,
+          status: 'AGENDADO',
+        }),
+      );
+
+      expect(await repo.contarAtrasados(['fase-br'])).toBe(1);
+      expect(await repo.contarAtrasados(['fase-br', 'fase-copa'])).toBe(2);
+    });
+
+    it('deve retornar 0 quando faseIds está vazio', async () => {
+      const passado = new Date(Date.now() - 3600000);
+      await repo.criar(
+        criarJogoData({
+          faseId: 'fase-br',
+          dataHora: passado,
+          status: 'AGENDADO',
+        }),
+      );
+
+      expect(await repo.contarAtrasados([])).toBe(0);
     });
   });
 
@@ -495,6 +620,7 @@ describe('InMemoryJogoRepository', () => {
           rodada: 5,
           status: 'AGENDADO',
           fonteResultado: 'API_EXTERNA',
+          dataHora: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000),
         }),
       );
       await repo.criar(

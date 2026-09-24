@@ -1,3 +1,5 @@
+import { formatarDataHoraBrasilia } from '../utils/data-hora.util';
+
 interface TimeRelacao {
   id: string;
   nome: string;
@@ -41,7 +43,7 @@ export class JogoPresenter {
       faseId: jogo.faseId,
       rodada: jogo.rodada,
       status: jogo.status,
-      dataHora: jogo.dataHora,
+      dataHora: formatarDataHoraBrasilia(jogo.dataHora),
       golsCasa: jogo.golsCasa,
       golsFora: jogo.golsFora,
       foiAdiado: jogo.foiAdiado,
@@ -87,7 +89,7 @@ export class JogoPresenter {
           escudo: jogo.timeFora.escudo,
         },
       }),
-      dataHora: jogo.dataHora,
+      dataHora: formatarDataHoraBrasilia(jogo.dataHora),
       status: jogo.status,
       foiAdiado: jogo.foiAdiado,
       golsCasa: jogo.golsCasa,

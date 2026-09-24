@@ -12,13 +12,17 @@ import { CAMPEONATOS } from '../../campeonatos/campeonatos.constants';
 import type {
   JogoRepository,
   CriarJogoData,
+  AtualizarJogoData,
 } from '../repositories/jogo.repository.interface';
 import type { FaseRepository } from '../repositories/fase.repository.interface';
-import type { TimeRepository } from '../../times/repositories/time.repository.interface';
+import type {
+  Time,
+  TimeRepository,
+} from '../../times/repositories/time.repository.interface';
 import type { NotificacaoEventService } from '../../notificacoes/services/notificacao-event.service';
 import type { CampeonatoStatusService } from '../../campeonatos/services/campeonato-status.service';
 import { FutebolApiService } from './futebol-api.service';
-import type { JogoApiRaw } from './futebol-api.types';
+import type { JogoApiRaw, JogoNormalizado } from './futebol-api.types';
 import { ChaveamentoService } from './chaveamento.service';
 import { ErrorFactory } from '../../../common/errors/error.factory';
 import { CriarJogoDto } from '../dto/criar-jogo.dto';
@@ -215,10 +219,12 @@ export class JogoService {
     }
 
     // Modo híbrido — qualquer edição manual em jogo API_EXTERNA flip para MANUAL
-    const updateData: any = { ...dto };
-    if (jogo.fonteResultado === 'API_EXTERNA') {
-      updateData.fonteResultado = 'MANUAL';
-    }
+    const updateData: AtualizarJogoData = {
+      ...dto,
+      ...(jogo.fonteResultado === 'API_EXTERNA'
+        ? { fonteResultado: 'MANUAL' as const }
+        : {}),
+    };
 
     return this.jogoRepo.atualizar(id, updateData);
   }
@@ -280,10 +286,10 @@ export class JogoService {
     this.logger.log(`[SYNC] 📣 Disparando notificações para jogo ${jogoId}`);
     this.notificacaoEventService
       .processarJogoFinalizado(jogoId)
-      .catch((err) =>
+      .catch((err: unknown) =>
         this.logger.error(
-          `Erro notificações pós-finalização: ${err.message}`,
-          err.stack,
+          `Erro notificações pós-finalização: ${(err as Error).message}`,
+          (err as Error).stack,
         ),
       );
   }
@@ -331,7 +337,7 @@ export class JogoService {
 
   private async finalizarMataMata(
     jogo: JogoInterno,
-    fase: any,
+    fase: { idaVolta: boolean },
     dto: FinalizarJogoDto,
   ) {
     if (fase.idaVolta && !jogo.ehJogoVolta) {
@@ -360,7 +366,7 @@ export class JogoService {
     const jogosDoGrupo = await this.jogoRepo.buscarPorGrupoIdaVolta(
       jogo.grupoIdaVolta,
     );
-    const jogoIda = jogosDoGrupo.find((j: any) => !j.ehJogoVolta);
+    const jogoIda = jogosDoGrupo.find((j) => !j.ehJogoVolta);
 
     if (jogoIda?.status !== 'FINALIZADO') {
       throw new JogoIdaNaoEncontradoError();
@@ -536,8 +542,8 @@ export class JogoService {
   private buildUpdateFinalizado(
     dto: FinalizarJogoDto,
     vencedorId: string | null,
-    extras?: any,
-  ) {
+    extras?: Partial<AtualizarJogoData>,
+  ): AtualizarJogoData {
     return {
       status: 'FINALIZADO',
       golsCasa: dto.golsCasa,
@@ -553,7 +559,7 @@ export class JogoService {
     };
   }
 
-  calcularVencedor(jogo: any): string | null {
+  calcularVencedor(jogo: JogoInterno): string | null {
     if (jogo.status !== 'FINALIZADO') return null;
     if (jogo.golsCasa == null || jogo.golsFora == null) return null;
 
@@ -588,8 +594,8 @@ export class JogoService {
   }
 
   calcularVencedorAgregado(
-    jogoIda: any,
-    jogoVolta: any,
+    jogoIda: JogoInterno,
+    jogoVolta: JogoInterno,
     dto: FinalizarJogoDto,
   ): string {
     const golsTimeA = (jogoIda.golsCasa ?? 0) + dto.golsFora;
@@ -845,12 +851,14 @@ export class JogoService {
   ): Promise<string[]> {
     if (externoIds.length === 0) return [];
     const jogos = await this.jogoRepo.buscarPorExternoIds(externoIds);
-    return jogos.map((j: any) => j.externoId);
+    return jogos
+      .map((j) => j.externoId)
+      .filter((id): id is string => id != null);
   }
 
   private async carregarCacheTimes(
-    normalizados: any[],
-  ): Promise<Map<string, any>> {
+    normalizados: JogoNormalizado[],
+  ): Promise<Map<string, Time>> {
     const externoIds = new Set<string>();
     for (const n of normalizados) {
       if (n.timeCasa?.externoId) externoIds.add(n.timeCasa.externoId);
@@ -860,7 +868,7 @@ export class JogoService {
     const timesExistentes = await this.timeRepo.buscarPorExternoIds([
       ...externoIds,
     ]);
-    const cache = new Map<string, any>();
+    const cache = new Map<string, Time>();
     for (const time of timesExistentes) {
       if (time.externoId) cache.set(time.externoId, time);
     }
@@ -874,8 +882,8 @@ export class JogoService {
       sigla: string;
       escudo: string;
     },
-    cache: Map<string, any>,
-  ): Promise<any> {
+    cache: Map<string, Time>,
+  ): Promise<Time> {
     // Detectar nomes compostos placeholder da API (ex: "Costa do Marfim ou Noruega")
     if (this.ehTimePlaceholder(timeData.nome, timeData.sigla)) {
       return this.garantirTimeTBD();
@@ -929,7 +937,10 @@ export class JogoService {
         return novo;
       }
       // Mesmo time sem externoId — vincular externoId + escudo
-      const updateData: Record<string, any> = { externoId: timeData.externoId };
+      const updateData: {
+        externoId: string;
+        escudo?: string | null;
+      } = { externoId: timeData.externoId };
       if (timeData.escudo && !existentePorSigla.escudo)
         updateData.escudo = timeData.escudo;
       const atualizado = await this.timeRepo.atualizar(
@@ -969,15 +980,14 @@ export class JogoService {
     const fasesParaSync = await this.obterFasesParaSync(fase);
     const faseIds = fasesParaSync.map((f) => f.id);
 
-    // Calcular rodada atual (1 query) e buscar jogos pendentes em uma única query
-    const rodadaAtual = await this.obterRodadaAtual(faseIds[0]);
-    const rodadaEfetiva = rodadaAtual ?? 1;
-    // Para mata-mata, sincronizar TODOS os jogos (rodada é apenas ID da chave)
     const faseTipo = (fase as { tipo: string }).tipo;
     const ehMataMata = faseTipo === 'MATA_MATA';
-    const limiteRodada = ehMataMata
-      ? JOGOS.LIMITE_RODADA_MATA_MATA
-      : rodadaEfetiva + 1;
+
+    const { limiteRodada, rodadasAncora } = await this.resolverJanelaSync(
+      campeonatoSlug,
+      faseIds[0],
+      ehMataMata,
+    );
 
     const jogosParaSync = await this.jogoRepo.buscarPendentesSync(
       faseIds,
@@ -994,6 +1004,7 @@ export class JogoService {
       jogosParaSync as JogoInterno[],
       config.campeonatoId,
       faseSlugCompleto,
+      rodadasAncora,
     );
 
     let sincronizados = 0;
@@ -1101,6 +1112,61 @@ export class JogoService {
   }
 
   /**
+   * Define limite de rodada e âncoras da API GE.
+   * Se a GE estiver à frente do banco (remarcações antigas), alinha automaticamente.
+   * Atrasados já entram na mesma passagem (dataHora no passado, qualquer rodada):
+   * uma segunda chamada não muda a resposta da GE e dobraria o tráfego.
+   */
+  private async resolverJanelaSync(
+    campeonatoSlug: string,
+    faseId: string,
+    ehMataMata: boolean,
+  ): Promise<{ limiteRodada: number; rodadasAncora: number[] }> {
+    if (ehMataMata) {
+      return {
+        limiteRodada: JOGOS.LIMITE_RODADA_MATA_MATA,
+        rodadasAncora: [1],
+      };
+    }
+
+    const rodadaLocal = (await this.obterRodadaAtual(faseId)) ?? 1;
+    const rodadaGe = await this.obterRodadaGeSeBrasileirao(
+      campeonatoSlug,
+      rodadaLocal,
+    );
+    const rodadaEfetiva = Math.max(rodadaLocal, rodadaGe ?? 0);
+
+    return {
+      limiteRodada: rodadaEfetiva + 1,
+      rodadasAncora: this.montarRodadasAncora(rodadaGe),
+    };
+  }
+
+  private async obterRodadaGeSeBrasileirao(
+    campeonatoSlug: string,
+    rodadaLocal: number,
+  ): Promise<number | null> {
+    if (campeonatoSlug !== 'brasileirao') return null;
+
+    const rodadaGe = await this.futebolApiService.buscarRodadaOficialGe();
+    if (rodadaGe == null) return null;
+
+    if (rodadaGe > rodadaLocal + 1) {
+      this.logger.warn(
+        `[SYNC] 🧠 Rodada local (${rodadaLocal}) atrás da GE (${rodadaGe}) — alinhando janela de sync`,
+      );
+    }
+
+    return rodadaGe;
+  }
+
+  private montarRodadasAncora(rodadaGe: number | null): number[] {
+    if (rodadaGe == null) return [];
+
+    return [rodadaGe - 1, rodadaGe, rodadaGe + 1].filter((r) => r >= 1);
+  }
+
+  /**
    * Verifica se há jogos eliminatórios que deveriam ter sido criados
    * e propaga vencedores para próximas fases.
    * Roda sempre no startup e após finalizações — é idempotente.
@@ -1162,6 +1228,8 @@ export class JogoService {
   }
 
   private async obterFasesParaSync(fase: {
+    id: string;
+    nome: string;
     temporadaId: string;
     tipo: string;
   }): Promise<{ id: string; nome: string; tipo: string }[]> {
@@ -1169,8 +1237,8 @@ export class JogoService {
     if (fase.tipo === 'MATA_MATA') {
       return [
         {
-          id: (fase as any).id as string,
-          nome: (fase as any).nome as string,
+          id: fase.id,
+          nome: fase.nome,
           tipo: fase.tipo,
         },
       ];
@@ -1178,18 +1246,20 @@ export class JogoService {
 
     // PONTOS_CORRIDOS: múltiplas fases usam o mesmo endpoint (ex: 12 grupos da Copa)
     const todasFases = await this.faseRepo.buscarPorTemporada(fase.temporadaId);
-    const fasesDoMesmoTipo = (
-      todasFases as { id: string; nome: string; tipo: string }[]
-    ).filter((f) => f.tipo === fase.tipo);
+    const fasesDoMesmoTipo = todasFases.filter((f) => f.tipo === fase.tipo);
 
     if (fasesDoMesmoTipo.length > 1) {
-      return fasesDoMesmoTipo;
+      return fasesDoMesmoTipo.map((f) => ({
+        id: f.id,
+        nome: f.nome,
+        tipo: f.tipo,
+      }));
     }
 
     return [
       {
-        id: (fase as any).id as string,
-        nome: (fase as any).nome as string,
+        id: fase.id,
+        nome: fase.nome,
         tipo: fase.tipo,
       },
     ];
@@ -1199,12 +1269,16 @@ export class JogoService {
     jogos: JogoInterno[],
     campeonatoId: string,
     faseSlug: string,
+    rodadasAncora: number[] = [],
   ): Promise<{
     jogoApiMap: Map<string, JogoApiNormalizado>;
     apiDisponivel: boolean;
   }> {
     const rodadasPendentes = [
-      ...new Set(jogos.map((j: any) => j.rodada).filter(Boolean)),
+      ...new Set([
+        ...jogos.map((j) => j.rodada).filter((r): r is number => r != null),
+        ...rodadasAncora,
+      ]),
     ] as number[];
 
     // Para fases MATA_MATA, a API do GE usa rodada 1 para todos os jogos
@@ -1764,7 +1838,10 @@ export class JogoService {
 
   // --- Status híbrido ---
 
-  definirStatusFinal(jogo: any, statusApi?: string): string {
+  definirStatusFinal(
+    jogo: Pick<JogoInterno, 'status' | 'dataHora'>,
+    statusApi?: string,
+  ): string {
     if (jogo.status === 'FINALIZADO') {
       return 'FINALIZADO';
     }
@@ -1776,9 +1853,9 @@ export class JogoService {
     return this.calcularStatusInterno(jogo);
   }
 
-  calcularStatusInterno(jogo: any): string {
+  calcularStatusInterno(jogo: Pick<JogoInterno, 'dataHora'>): string {
     const agora = Date.now();
-    const dataHora = new Date(jogo.dataHora).getTime();
+    const dataHora = new Date(jogo.dataHora ?? 0).getTime();
 
     if (agora < dataHora) {
       return 'AGENDADO';
@@ -1842,16 +1919,16 @@ export class JogoService {
   }
 
   /** Retorna o time TBD placeholder, criando-o se não existir */
-  private async garantirTimeTBD(): Promise<{ id: string }> {
+  private async garantirTimeTBD(): Promise<Time> {
     const TBD_ID = '00000000-0000-0000-0000-000000000001';
     const existente = await this.timeRepo.buscarPorId(TBD_ID);
-    if (existente) return existente as { id: string };
+    if (existente) return existente;
 
     return this.timeRepo.criar({
       id: TBD_ID,
       nome: 'A Definir',
       sigla: 'TBD',
       escudo: '',
-    }) as unknown as { id: string };
+    });
   }
 }
