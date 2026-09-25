@@ -135,7 +135,11 @@ export interface JogoRepository {
     placeholderTimeId: string,
   ): Promise<JogoComRelacoes[]>;
   buscarAgendadosEntre(inicio: Date, fim: Date): Promise<JogoComRelacoes[]>;
-  contarAtrasados(): Promise<number>;
+  /**
+   * Conta jogos AGENDADO da API com dataHora no passado.
+   * Sem `faseIds` → global; com IDs → só essas fases; array vazio → 0.
+   */
+  contarAtrasados(faseIds?: string[]): Promise<number>;
   contarEmAndamento(): Promise<number>;
   buscarProximoAgendado(): Promise<{
     dataHora: Date | null;

@@ -36,7 +36,7 @@ describe('FutebolApiService', () => {
         5,
       );
 
-      const urlChamada = fetchMock.mock.calls[0][0];
+      const urlChamada = fetchMock.mock.calls[0][0] as unknown as string;
       expect(urlChamada).toBe(
         `${GE_BASE_URL}/${BRASILEIRAO_CAMPEONATO_ID}/fase/${faseSlug}/rodada/5/jogos/`,
       );
@@ -55,7 +55,7 @@ describe('FutebolApiService', () => {
         2,
       );
 
-      const urlChamada = fetchMock.mock.calls[0][0];
+      const urlChamada = fetchMock.mock.calls[0][0] as unknown as string;
       expect(urlChamada).toBe(
         `${GE_BASE_URL}/${COPA_DO_MUNDO_CAMPEONATO_ID}/fase/${faseSlug}/rodada/2/jogos/`,
       );
@@ -248,6 +248,103 @@ describe('FutebolApiService', () => {
       expect(result.penaltisCasa).toBe(5);
       expect(result.penaltisFora).toBe(3);
     });
+
+    it('deve manter AGENDADO quando broadcast não indica jogo ao vivo', () => {
+      const result = service.normalizarJogo({
+        ...jogoApiMock,
+        data_realizacao: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
+        transmissao: { broadcast: { id: 'PRE_DIA' } },
+        jogo_ja_comecou: false,
+      });
+
+      expect(result.status).toBe('AGENDADO');
+    });
+
+    it('deve mapear LIVE para EM_ANDAMENTO mesmo com jogo_ja_comecou false', () => {
+      const result = service.normalizarJogo({
+        ...jogoApiMock,
+        transmissao: { broadcast: { id: 'LIVE' } },
+        jogo_ja_comecou: false,
+      });
+
+      expect(result.status).toBe('EM_ANDAMENTO');
+    });
+  });
+
+  describe('buscarClassificacao', () => {
+    const itemFlamengo = {
+      ordem: 1,
+      equipe_id: 262,
+      nome_popular: 'Flamengo',
+      sigla: 'FLA',
+      escudo: 'url-fla',
+      pontos: 57,
+      jogos: 27,
+      vitorias: 17,
+      empates: 6,
+      derrotas: 4,
+      gols_pro: 53,
+      gols_contra: 22,
+      saldo_gols: 31,
+      ultimos_jogos: ['v', 'd', 'v'],
+    };
+
+    it('deve mapear envelope atual da API GE ({ classificacao: [...] })', async () => {
+      fetchMock.mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            edicao: { nome: 'Campeonato Brasileiro 2026' },
+            classificacao: [itemFlamengo],
+          }),
+      });
+
+      const result = await service.buscarClassificacao(2026);
+
+      expect(result).toHaveLength(1);
+      expect(result[0]).toMatchObject({
+        posicao: 1,
+        timeId: '262',
+        nome: 'Flamengo',
+        sigla: 'FLA',
+        pontos: 57,
+        recentForm: ['v', 'd', 'v'],
+      });
+    });
+
+    it('deve mapear formato legado da API GE (array de grupos)', async () => {
+      fetchMock.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve([{ classificacao: [itemFlamengo] }]),
+      });
+
+      const result = await service.buscarClassificacao(2026);
+
+      expect(result).toHaveLength(1);
+      expect(result[0].nome).toBe('Flamengo');
+    });
+  });
+
+  describe('buscarRodadaOficialGe', () => {
+    it('deve ler rodada.atual do envelope da classificação', async () => {
+      fetchMock.mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            rodada: { atual: 28, ultima: 38 },
+            classificacao: [],
+          }),
+      });
+
+      const result = await service.buscarRodadaOficialGe(2026);
+      expect(result).toBe(28);
+    });
+
+    it('deve retornar null quando a API falha', async () => {
+      fetchMock.mockResolvedValue({ ok: false, status: 500 });
+      const result = await service.buscarRodadaOficialGe(2026);
+      expect(result).toBeNull();
+    });
   });
 
   describe('mapearStatus', () => {
@@ -257,6 +354,14 @@ describe('FutebolApiService', () => {
         jogo_ja_comecou: false,
       });
       expect(result).toBe('FINALIZADO');
+    });
+
+    it('deve retornar EM_ANDAMENTO para broadcast LIVE', () => {
+      const result = service.mapearStatus({
+        transmissao: { broadcast: { id: 'LIVE' } },
+        jogo_ja_comecou: false,
+      });
+      expect(result).toBe('EM_ANDAMENTO');
     });
 
     it('deve retornar EM_ANDAMENTO para jogo_ja_comecou true', () => {

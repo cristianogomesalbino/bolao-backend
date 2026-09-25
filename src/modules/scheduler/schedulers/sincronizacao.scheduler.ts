@@ -95,12 +95,25 @@ export class SincronizacaoScheduler implements OnModuleInit {
 
     try {
       await Promise.race([
-        this.executarSincronizacao.execute({ trigger: 'CRON' }),
+        this.executarSincronizacao.execute({
+          trigger: 'CRON',
+          ...this.montarInputCampeonatos(),
+        }),
         timeoutPromise,
       ]);
     } finally {
       clearTimeout(timer);
     }
+  }
+
+  /** Interpreta SYNC_CAMPEONATOS (slugs separados por vírgula). */
+  private montarInputCampeonatos(): { campeonatoSlugs?: string[] } {
+    const slugs = this.campeonatos
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    return slugs.length > 0 ? { campeonatoSlugs: slugs } : {};
   }
 
   private logarProximaExecucao(estado: EstadoJogos, intervalo: number): void {

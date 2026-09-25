@@ -5,6 +5,7 @@ import { InMemoryJogoRepository } from '@src/modules/jogos/repositories/in-memor
 import { InMemoryFaseRepository } from '@src/modules/jogos/repositories/in-memory-fase.repository';
 import { InMemoryTimeRepository } from '@src/modules/times/repositories/in-memory-time.repository';
 import { FutebolApiService } from '@src/modules/jogos/services/futebol-api.service';
+import { ChaveamentoService } from '@src/modules/jogos/services/chaveamento.service';
 import {
   FaseNaoEncontradaError,
   JogoNaoEncontradoError,
@@ -73,14 +74,16 @@ describe('JogoService', () => {
     futebolApiService = {
       buscarJogosPorRodada: vi.fn(),
       buscarJogosPorIds: vi.fn(),
+      buscarJogosPorRodadas: vi.fn().mockResolvedValue([]),
+      buscarRodadaOficialGe: vi.fn().mockResolvedValue(null),
       normalizarJogo: vi.fn(),
       mapearStatus: vi.fn(),
-    } as any;
+    } as unknown as FutebolApiService;
 
     service = new JogoService(jogoRepo, faseRepo, futebolApiService, timeRepo, {
       preencherProximaFaseEliminatoria: vi.fn(),
       propagarVencedoresParaProximaFase: vi.fn(),
-    } as any);
+    } as unknown as ChaveamentoService);
   });
 
   // ==================== criar ====================
@@ -202,7 +205,7 @@ describe('JogoService', () => {
         dataHora: '2026-04-01T20:00:00.000Z',
       });
 
-      expect(result.dataHora).toBe('2026-04-01T20:00:00.000Z');
+      expect(result.dataHora).toEqual(new Date('2026-04-01T20:00:00.000Z'));
     });
 
     it('deve lançar JogoFinalizadoError ao atualizar jogo FINALIZADO', async () => {

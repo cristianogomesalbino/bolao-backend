@@ -26,7 +26,7 @@ describe('JogoService — buscarPorFaseComDetalhes com filtro de rodada', () => 
     faseId: 'fase-1',
     timeCasaId: 'time-a',
     timeForaId: 'time-b',
-    dataHora: new Date('2026-04-01T16:00:00.000Z'),
+    dataHora: new Date(Date.now() + 60 * 60 * 1000),
     status: 'AGENDADO',
     rodada: 1,
   };
@@ -36,7 +36,7 @@ describe('JogoService — buscarPorFaseComDetalhes com filtro de rodada', () => 
     faseId: 'fase-1',
     timeCasaId: 'time-c',
     timeForaId: 'time-d',
-    dataHora: new Date('2026-04-01T18:00:00.000Z'),
+    dataHora: new Date(Date.now() + 2 * 60 * 60 * 1000),
     status: 'AGENDADO',
     rodada: 1,
   };
@@ -46,7 +46,7 @@ describe('JogoService — buscarPorFaseComDetalhes com filtro de rodada', () => 
     faseId: 'fase-1',
     timeCasaId: 'time-e',
     timeForaId: 'time-f',
-    dataHora: new Date('2026-04-08T16:00:00.000Z'),
+    dataHora: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000),
     status: 'AGENDADO',
     rodada: 2,
   };
@@ -115,7 +115,7 @@ describe('JogoService — buscarPorFaseComDetalhes com filtro de rodada', () => 
     it('deve retornar fase + todos os jogos sem filtro', async () => {
       const result = await service.buscarPorFaseComDetalhes('fase-1');
 
-      // Sem filtro de rodada, retorna a rodada atual (rodada 1 = menor com jogos não finalizados)
+      // Sem filtro: rodada atual (jogos na janela / próximo horário) = rodada 1
       expect(result.jogos).toHaveLength(2);
       expect(result.rodadaAtual).toBe(1);
     });
