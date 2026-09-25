@@ -24,6 +24,9 @@ import type {
 export class NotificacaoRodadaService {
   private readonly logger = new Logger(NotificacaoRodadaService.name);
 
+  /** Serializa verificação por fase+rodada (evita N pushes iguais no sync em lote). */
+  private readonly filasRodada = new Map<string, Promise<void>>();
+
   constructor(
     private readonly notificacaoService: NotificacaoService,
     private readonly pushService: PushService,
@@ -45,16 +48,44 @@ export class NotificacaoRodadaService {
     if (jogo.rodada == null) return;
     if (fase.tipo === 'MATA_MATA') return;
 
+    const chave = `${fase.id}:${String(jogo.rodada)}`;
+    const anterior = this.filasRodada.get(chave) ?? Promise.resolve();
+
+    let liberar!: () => void;
+    const porta = new Promise<void>((resolve) => {
+      liberar = resolve;
+    });
+    const fila = anterior.then(() => porta);
+    this.filasRodada.set(chave, fila);
+
+    await anterior;
+    try {
+      await this.executarVerificacaoRodadaEncerrada(jogo, fase);
+    } finally {
+      liberar();
+      if (this.filasRodada.get(chave) === fila) {
+        this.filasRodada.delete(chave);
+      }
+    }
+  }
+
+  private async executarVerificacaoRodadaEncerrada(
+    jogo: JogoNotif,
+    fase: FaseNotif,
+  ): Promise<void> {
+    const rodada = jogo.rodada;
+    if (rodada == null) return;
+
     const jaDuplicada = await this.notificacaoRepo.existeNotificacao({
       tipo: 'RODADA_ENCERRADA',
       faseId: fase.id,
-      rodada: jogo.rodada,
+      rodada,
     });
     if (jaDuplicada) return;
 
     const jogosDaRodada = (await this.jogoRepo.buscarPorFase(
       fase.id,
-      jogo.rodada,
+      rodada,
     )) as JogoNotif[];
     const todosEncerrados = jogosDaRodada.every(
       (j) =>
@@ -80,15 +111,14 @@ export class NotificacaoRodadaService {
       }
     }
 
-    const todosUsuarios = [...usuariosUnicos];
     const habilitados =
       await this.preferenciaService.filtrarUsuariosHabilitados(
-        todosUsuarios,
+        [...usuariosUnicos],
         'RODADA_ENCERRADA',
       );
 
     const mensagem = NOTIFICACOES.TEMPLATES.RODADA_ENCERRADA.mensagem(
-      jogo.rodada,
+      rodada,
       fase.temporada?.campeonato?.nome ?? fase.nome,
     );
 
@@ -98,7 +128,7 @@ export class NotificacaoRodadaService {
       mensagem,
       usuarioId: uid,
       faseId: fase.id,
-      rodada: jogo.rodada as number,
+      rodada,
     }));
 
     await this.notificacaoService.criarLote(notificacoes);
@@ -109,7 +139,7 @@ export class NotificacaoRodadaService {
     });
 
     this.logger.log(
-      `[NOTIF] RODADA_ENCERRADA: rodada ${String(jogo.rodada)} — ${String(habilitados.length)} notificados`,
+      `[NOTIF] RODADA_ENCERRADA: rodada ${String(rodada)} — ${String(habilitados.length)} notificados`,
     );
   }
 }

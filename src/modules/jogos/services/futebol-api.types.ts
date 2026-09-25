@@ -93,10 +93,19 @@ export interface ClassificacaoGeRawItem {
   readonly gols_pro?: number;
   readonly gols_contra?: number;
   readonly saldo_gols?: number;
+  readonly ultimos_jogos?: string[];
 }
 
 export interface ClassificacaoGeRawGrupo {
   readonly classificacao?: ClassificacaoGeRawItem[];
+}
+
+export interface ClassificacaoGeRawEnvelope {
+  readonly classificacao?: ClassificacaoGeRawItem[] | ClassificacaoGeRawGrupo[];
+  readonly rodada?: {
+    readonly atual?: number;
+    readonly ultima?: number;
+  };
 }
 
 // --- Tipos da estrutura eliminatória (seções/chaves) ---

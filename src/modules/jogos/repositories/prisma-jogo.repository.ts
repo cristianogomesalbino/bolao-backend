@@ -213,18 +213,50 @@ export class PrismaJogoRepository implements JogoRepository {
     }) as unknown as Promise<JogoComRelacoes[]>;
   }
 
+  /**
+   * Rodada "atual" para listagem/sync.
+   * Não usa a menor rodada pendente (isso prende em jogos remarcados de rodadas antigas).
+   * Prioridade: ao vivo → jogo mais próximo na janela de datas → próximo horário futuro.
+   */
   async buscarRodadaAtual(faseId: string): Promise<number | null> {
-    const jogo = await this.prisma.jogo.findFirst({
+    const aoVivo = await this.prisma.jogo.findFirst({
+      where: {
+        faseId,
+        status: 'EM_ANDAMENTO',
+        rodada: { not: null },
+      },
+      orderBy: [{ rodada: 'desc' }],
+      select: { rodada: true },
+    });
+    if (aoVivo?.rodada != null) return aoVivo.rodada;
+
+    const inicioJanela = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
+    const fimJanela = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
+
+    const naJanela = await this.prisma.jogo.findFirst({
       where: {
         faseId,
         status: { notIn: ['FINALIZADO', 'ADIADO', 'CANCELADO'] },
         rodada: { not: null },
-        dataHora: { not: null },
+        dataHora: { gte: inicioJanela, lte: fimJanela },
       },
-      orderBy: { rodada: 'asc' },
+      orderBy: [{ dataHora: 'asc' }, { rodada: 'asc' }],
       select: { rodada: true },
     });
-    if (jogo?.rodada) return jogo.rodada;
+    if (naJanela?.rodada != null) return naJanela.rodada;
+
+    const agora = new Date();
+    const proximo = await this.prisma.jogo.findFirst({
+      where: {
+        faseId,
+        status: { notIn: ['FINALIZADO', 'ADIADO', 'CANCELADO'] },
+        rodada: { not: null },
+        dataHora: { gt: agora },
+      },
+      orderBy: [{ dataHora: 'asc' }, { rodada: 'asc' }],
+      select: { rodada: true },
+    });
+    if (proximo?.rodada != null) return proximo.rodada;
 
     const ultimo = await this.prisma.jogo.findFirst({
       where: { faseId, rodada: { not: null } },
@@ -238,6 +270,10 @@ export class PrismaJogoRepository implements JogoRepository {
     faseIds: string[],
     limiteRodada: number,
   ): Promise<JogoComTimes[]> {
+    // Janela de 24h à frente: pega jogos da rodada seguinte mesmo com horário genérico no banco
+    const agora = new Date();
+    const janelaProximos = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
     return this.prisma.jogo.findMany({
       where: {
         faseId: { in: faseIds },
@@ -247,7 +283,9 @@ export class PrismaJogoRepository implements JogoRepository {
           { rodada: null },
           { rodada: { lte: limiteRodada } },
           // Incluir jogos atrasados (dataHora já passou) independente da rodada
-          { dataHora: { not: null, lte: new Date() } },
+          { dataHora: { not: null, lte: agora } },
+          // Incluir jogos das próximas 24h (corrige LIVE em rodada > limite)
+          { dataHora: { gt: agora, lte: janelaProximos } },
         ],
       },
       include: { timeCasa: true, timeFora: true },
@@ -286,9 +324,12 @@ export class PrismaJogoRepository implements JogoRepository {
     }) as unknown as Promise<JogoComRelacoes[]>;
   }
 
-  async contarAtrasados(): Promise<number> {
+  async contarAtrasados(faseIds?: string[]): Promise<number> {
+    if (faseIds != null && faseIds.length === 0) return 0;
+
     return this.prisma.jogo.count({
       where: {
+        ...(faseIds != null ? { faseId: { in: faseIds } } : {}),
         status: 'AGENDADO',
         fonteResultado: 'API_EXTERNA',
         dataHora: { not: null, lte: new Date() },

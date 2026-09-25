@@ -12,6 +12,7 @@ import type {
   ClassificacaoItem,
   ClassificacaoGeRawGrupo,
   ClassificacaoGeRawItem,
+  ClassificacaoGeRawEnvelope,
   SecaoRaw,
   SecaoJogoRaw,
   ClassificacaoEliminatoriaRaw,
@@ -34,30 +35,85 @@ export class FutebolApiService implements OnModuleInit {
     return this.buscarClassificacaoPacote();
   }
 
+  /**
+   * Rodada oficial publicada pela API do GE (`rodada.atual` no envelope de classificação).
+   * Usada para alinhar sync/listagem quando o banco tem remarcações de rodadas antigas.
+   */
+  async buscarRodadaOficialGe(
+    season: number = new Date().getFullYear(),
+  ): Promise<number | null> {
+    const data = await this.buscarEnvelopeClassificacaoGe(season);
+    if (!data) return null;
+
+    const atual = (data as ClassificacaoGeRawEnvelope).rodada?.atual;
+    return typeof atual === 'number' && atual > 0 ? atual : null;
+  }
+
   private async buscarClassificacaoGe(
     season: number,
   ): Promise<ClassificacaoItem[]> {
+    const data = await this.buscarEnvelopeClassificacaoGe(season);
+    if (!data) return [];
+
+    return this.extrairClassificacaoGe(data);
+  }
+
+  /**
+   * Fetch único do endpoint de classificação do Brasileirão na GE.
+   * Reutilizado por classificação e pela leitura de `rodada.atual`.
+   */
+  private async buscarEnvelopeClassificacaoGe(
+    season: number,
+  ): Promise<unknown> {
     const fase = `fase-unica-campeonato-brasileiro-${season}`;
     const url = `${GE_BASE_URL}/${BRASILEIRAO_CAMPEONATO_ID}/fase/${fase}/classificacao/`;
 
     try {
-      const response = await fetch(url, { method: 'GET' });
-
+      const response = await fetch(url, {
+        method: 'GET',
+        signal: AbortSignal.timeout(API_EXTERNA_CONFIG.TIMEOUT_MS),
+      });
       if (!response.ok) {
         this.logger.warn(
           `Classificação GE indisponível: status ${response.status}`,
         );
-        return [];
+        return null;
       }
 
-      const data: unknown = await response.json();
-      if (!Array.isArray(data)) return [];
-
-      return this.mapearClassificacaoGe(data as ClassificacaoGeRawGrupo[]);
+      return await response.json();
     } catch (error) {
       this.logger.warn('Erro ao buscar classificação da API GE', error);
-      return [];
+      return null;
     }
+  }
+
+  /**
+   * A API do GE já retornou array de grupos (`[{ classificacao: [...] }]`)
+   * e, nas temporadas recentes, um envelope (`{ classificacao: [...] }`).
+   */
+  private extrairClassificacaoGe(data: unknown): ClassificacaoItem[] {
+    if (Array.isArray(data)) {
+      return this.mapearClassificacaoGe(data as ClassificacaoGeRawGrupo[]);
+    }
+
+    if (!data || typeof data !== 'object') return [];
+
+    const envelope = data as ClassificacaoGeRawEnvelope;
+    const itens = envelope.classificacao;
+    if (!Array.isArray(itens) || itens.length === 0) return [];
+
+    if (this.ehItemClassificacao(itens[0])) {
+      return (itens as ClassificacaoGeRawItem[]).map((item) =>
+        this.mapearItemClassificacaoGe(item),
+      );
+    }
+
+    return this.mapearClassificacaoGe(itens as ClassificacaoGeRawGrupo[]);
+  }
+
+  private ehItemClassificacao(item: unknown): item is ClassificacaoGeRawItem {
+    if (!item || typeof item !== 'object') return false;
+    return 'equipe_id' in item || 'ordem' in item;
   }
 
   private mapearClassificacaoGe(
@@ -93,6 +149,7 @@ export class FutebolApiService implements OnModuleInit {
       golsPro: item.gols_pro ?? 0,
       golsContra: item.gols_contra ?? 0,
       saldoGols: item.saldo_gols ?? 0,
+      recentForm: item.ultimos_jogos ?? [],
     };
   }
 
@@ -374,23 +431,18 @@ export class FutebolApiService implements OnModuleInit {
   }
 
   normalizarJogo(jogo: JogoApiRaw): JogoNormalizado {
-    const status = this.mapearStatus(jogo);
     const dataHoraUtc = this.converterDataParaUtc(jogo.data_realizacao);
+    const status = dataHoraUtc ? this.mapearStatus(jogo) : 'ADIADO';
+    const comPlacar = status === 'FINALIZADO' || status === 'EM_ANDAMENTO';
 
     return {
       externoId: String(jogo.id),
       dataHora: dataHoraUtc,
-      status: dataHoraUtc ? status : 'ADIADO',
+      status,
       timeCasaId: String(jogo.equipes.mandante.id),
       timeForaId: String(jogo.equipes.visitante.id),
-      golsCasa:
-        status === 'FINALIZADO' || status === 'EM_ANDAMENTO'
-          ? (jogo.placar_oficial_mandante ?? null)
-          : null,
-      golsFora:
-        status === 'FINALIZADO' || status === 'EM_ANDAMENTO'
-          ? (jogo.placar_oficial_visitante ?? null)
-          : null,
+      golsCasa: comPlacar ? (jogo.placar_oficial_mandante ?? null) : null,
+      golsFora: comPlacar ? (jogo.placar_oficial_visitante ?? null) : null,
       penaltisCasa: jogo.placar_penaltis_mandante ?? null,
       penaltisFora: jogo.placar_penaltis_visitante ?? null,
       timeCasa: {
@@ -424,7 +476,13 @@ export class FutebolApiService implements OnModuleInit {
     const broadcastId = jogo.transmissao?.broadcast?.id;
 
     if (broadcastId === 'ENCERRADA') return 'FINALIZADO';
-    if (jogo.jogo_ja_comecou) return 'EM_ANDAMENTO';
+    if (
+      jogo.jogo_ja_comecou ||
+      broadcastId === 'LIVE' ||
+      broadcastId === 'AO_VIVO'
+    ) {
+      return 'EM_ANDAMENTO';
+    }
 
     return 'AGENDADO';
   }

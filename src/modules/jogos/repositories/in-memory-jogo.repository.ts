@@ -269,18 +269,44 @@ export class InMemoryJogoRepository implements JogoRepository {
   }
 
   buscarRodadaAtual(faseId: string): Promise<number | null> {
-    const naoFinalizados = this.items
-      .filter(
-        (j) =>
-          j.faseId === faseId &&
-          !['FINALIZADO', 'ADIADO', 'CANCELADO'].includes(j.status) &&
-          j.rodada != null &&
-          j.dataHora != null,
-      )
-      .sort((a, b) => (a.rodada ?? 0) - (b.rodada ?? 0));
+    const pendentes = this.items.filter(
+      (j) =>
+        j.faseId === faseId &&
+        !['FINALIZADO', 'ADIADO', 'CANCELADO'].includes(j.status) &&
+        j.rodada != null &&
+        j.dataHora != null,
+    );
 
-    if (naoFinalizados.length > 0)
-      return Promise.resolve(naoFinalizados[0].rodada);
+    const aoVivo = pendentes
+      .filter((j) => j.status === 'EM_ANDAMENTO')
+      .sort((a, b) => (b.rodada ?? 0) - (a.rodada ?? 0));
+    if (aoVivo.length > 0) return Promise.resolve(aoVivo[0].rodada);
+
+    const inicioJanela = Date.now() - 2 * 24 * 60 * 60 * 1000;
+    const fimJanela = Date.now() + 3 * 24 * 60 * 60 * 1000;
+    const naJanela = pendentes
+      .filter((j) => {
+        const t = new Date(j.dataHora!).getTime();
+        return t >= inicioJanela && t <= fimJanela;
+      })
+      .sort((a, b) => {
+        const diff =
+          new Date(a.dataHora!).getTime() - new Date(b.dataHora!).getTime();
+        if (diff !== 0) return diff;
+        return (a.rodada ?? 0) - (b.rodada ?? 0);
+      });
+    if (naJanela.length > 0) return Promise.resolve(naJanela[0].rodada);
+
+    const agora = Date.now();
+    const porData = pendentes
+      .filter((j) => new Date(j.dataHora!).getTime() > agora)
+      .sort((a, b) => {
+        const diff =
+          new Date(a.dataHora!).getTime() - new Date(b.dataHora!).getTime();
+        if (diff !== 0) return diff;
+        return (a.rodada ?? 0) - (b.rodada ?? 0);
+      });
+    if (porData.length > 0) return Promise.resolve(porData[0].rodada);
 
     const todos = this.items
       .filter((j) => j.faseId === faseId && j.rodada != null)
@@ -294,17 +320,21 @@ export class InMemoryJogoRepository implements JogoRepository {
     limiteRodada: number,
   ): Promise<JogoComTimes[]> {
     const agora = new Date();
+    const janelaProximos = new Date(Date.now() + 24 * 60 * 60 * 1000);
     return Promise.resolve(
-      this.items.filter(
-        (j) =>
-          faseIds.includes(j.faseId) &&
-          j.fonteResultado === 'API_EXTERNA' &&
-          j.status !== 'FINALIZADO' &&
-          j.status !== 'CANCELADO' &&
-          (j.rodada == null ||
-            j.rodada <= limiteRodada ||
-            (j.dataHora != null && new Date(j.dataHora) <= agora)),
-      ) as JogoComTimes[],
+      this.items.filter((j) => {
+        if (!faseIds.includes(j.faseId)) return false;
+        if (j.fonteResultado !== 'API_EXTERNA') return false;
+        if (j.status === 'FINALIZADO' || j.status === 'CANCELADO') return false;
+
+        if (j.rodada == null || j.rodada <= limiteRodada) return true;
+        if (j.dataHora == null) return false;
+
+        const t = new Date(j.dataHora).getTime();
+        if (t <= agora.getTime()) return true;
+        if (t > agora.getTime() && t <= janelaProximos.getTime()) return true;
+        return false;
+      }) as JogoComTimes[],
     );
   }
 
@@ -341,16 +371,22 @@ export class InMemoryJogoRepository implements JogoRepository {
     );
   }
 
-  contarAtrasados(): Promise<number> {
+  contarAtrasados(faseIds?: string[]): Promise<number> {
+    if (faseIds != null && faseIds.length === 0) return Promise.resolve(0);
+
     const agora = new Date();
+    const faseSet = faseIds != null ? new Set(faseIds) : null;
+
     return Promise.resolve(
-      this.items.filter(
-        (j) =>
+      this.items.filter((j) => {
+        if (faseSet && !faseSet.has(j.faseId)) return false;
+        return (
           j.status === 'AGENDADO' &&
           j.fonteResultado === 'API_EXTERNA' &&
           j.dataHora != null &&
-          new Date(j.dataHora) <= agora,
-      ).length,
+          new Date(j.dataHora) <= agora
+        );
+      }).length,
     );
   }
 

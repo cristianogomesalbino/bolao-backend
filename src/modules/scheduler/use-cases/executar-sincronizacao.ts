@@ -13,7 +13,10 @@ import {
  */
 export interface ExecutarSincronizacaoInput {
   readonly trigger: TriggerOrigem;
+  /** Um único campeonato (endpoint manual / admin). */
   readonly campeonatoSlug?: string;
+  /** Lista de campeonatos (cron via SYNC_CAMPEONATOS). */
+  readonly campeonatoSlugs?: readonly string[];
   readonly faseId?: string;
 }
 
@@ -127,9 +130,7 @@ export class ExecutarSincronizacao {
     let totalSincronizados = 0;
     let totalFalhas = 0;
 
-    const slugs = input.campeonatoSlug
-      ? [input.campeonatoSlug]
-      : Object.keys(CAMPEONATO_CONFIGS);
+    const slugs = this.resolverSlugs(input);
 
     for (const slug of slugs) {
       try {
@@ -144,6 +145,16 @@ export class ExecutarSincronizacao {
     }
 
     return { sincronizados: totalSincronizados, falhas: totalFalhas };
+  }
+
+  private resolverSlugs(input: ExecutarSincronizacaoInput): string[] {
+    if (input.campeonatoSlug) return [input.campeonatoSlug];
+
+    if (input.campeonatoSlugs && input.campeonatoSlugs.length > 0) {
+      return input.campeonatoSlugs.filter((slug) => slug in CAMPEONATO_CONFIGS);
+    }
+
+    return Object.keys(CAMPEONATO_CONFIGS);
   }
 
   private async sincronizarCampeonato(
