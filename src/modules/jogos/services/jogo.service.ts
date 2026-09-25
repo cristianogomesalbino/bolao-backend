@@ -219,8 +219,10 @@ export class JogoService {
     }
 
     // Modo híbrido — qualquer edição manual em jogo API_EXTERNA flip para MANUAL
+    const { dataHora, ...resto } = dto;
     const updateData: AtualizarJogoData = {
-      ...dto,
+      ...resto,
+      ...(dataHora != null ? { dataHora: new Date(dataHora) } : {}),
       ...(jogo.fonteResultado === 'API_EXTERNA'
         ? { fonteResultado: 'MANUAL' as const }
         : {}),
@@ -282,16 +284,22 @@ export class JogoService {
   }
 
   private dispararNotificacoesJogoFinalizado(jogoId: string): void {
+    void this.processarNotificacoesJogoFinalizado(jogoId);
+  }
+
+  private async processarNotificacoesJogoFinalizado(
+    jogoId: string,
+  ): Promise<void> {
     if (!this.notificacaoEventService) return;
     this.logger.log(`[SYNC] 📣 Disparando notificações para jogo ${jogoId}`);
-    this.notificacaoEventService
-      .processarJogoFinalizado(jogoId)
-      .catch((err: unknown) =>
-        this.logger.error(
-          `Erro notificações pós-finalização: ${(err as Error).message}`,
-          (err as Error).stack,
-        ),
+    try {
+      await this.notificacaoEventService.processarJogoFinalizado(jogoId);
+    } catch (err: unknown) {
+      this.logger.error(
+        `Erro notificações pós-finalização: ${(err as Error).message}`,
+        (err as Error).stack,
       );
+    }
   }
 
   private dispararVerificacaoStatusCampeonato(faseId: string): void {
@@ -1571,7 +1579,7 @@ export class JogoService {
     }
 
     for (const jogo of jogosFinalizados) {
-      this.dispararNotificacoesJogoFinalizado(jogo.id);
+      await this.processarNotificacoesJogoFinalizado(jogo.id);
     }
 
     this.dispararVerificacaoStatusCampeonato(faseId);

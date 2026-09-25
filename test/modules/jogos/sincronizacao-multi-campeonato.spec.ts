@@ -501,4 +501,86 @@ describe('JogoService — sincronização multi-campeonato', () => {
       );
     });
   });
+
+  describe('notificações pós-sync em série (RODADA_ENCERRADA)', () => {
+    it('deve processar notificações de jogos finalizados sequencialmente', async () => {
+      const ordem: string[] = [];
+      const processarJogoFinalizado = vi.fn(async (jogoId: string) => {
+        ordem.push(`start:${jogoId}`);
+        await new Promise((resolve) => setTimeout(resolve, 15));
+        ordem.push(`end:${jogoId}`);
+      });
+
+      service = new JogoService(
+        jogoRepo,
+        faseRepo,
+        futebolApiService,
+        timeRepo,
+        {
+          preencherProximaFaseEliminatoria: vi
+            .fn()
+            .mockResolvedValue(undefined),
+          propagarVencedoresParaProximaFase: vi
+            .fn()
+            .mockResolvedValue(undefined),
+        } as unknown as ChaveamentoService,
+        {
+          processarJogoFinalizado,
+          notificarJogoLiberado: vi.fn().mockResolvedValue(undefined),
+        } as never,
+      );
+
+      const jogo1 = criarJogoNoBanco({
+        id: 'jogo-final-1',
+        externoId: '100',
+        status: 'EM_ANDAMENTO',
+      });
+      const jogo2 = criarJogoNoBanco({
+        id: 'jogo-final-2',
+        externoId: '200',
+        status: 'EM_ANDAMENTO',
+        timeCasaId: 'time-c',
+        timeForaId: 'time-d',
+      });
+
+      buscarJogosPorRodadas.mockResolvedValue([{ id: 100 }, { id: 200 }]);
+      normalizarJogo.mockImplementation(
+        (raw: { id: number }): Record<string, unknown> => ({
+          externoId: String(raw.id),
+          dataHora: '2026-06-15T19:00:00.000Z',
+          status: 'FINALIZADO',
+          golsCasa: 1,
+          golsFora: 0,
+          penaltisCasa: null,
+          penaltisFora: null,
+          timeCasa: {
+            externoId: '1',
+            nome: 'A',
+            sigla: 'AAA',
+            escudo: '',
+          },
+          timeFora: {
+            externoId: '2',
+            nome: 'B',
+            sigla: 'BBB',
+            escudo: '',
+          },
+        }),
+      );
+
+      await service.sincronizarPlacares(
+        'fase-sync-1',
+        'copa-do-mundo-2026',
+        COPA_FASES.FASE_DE_GRUPOS,
+      );
+
+      expect(processarJogoFinalizado).toHaveBeenCalledTimes(2);
+      expect(ordem).toEqual([
+        `start:${jogo1.id}`,
+        `end:${jogo1.id}`,
+        `start:${jogo2.id}`,
+        `end:${jogo2.id}`,
+      ]);
+    });
+  });
 });

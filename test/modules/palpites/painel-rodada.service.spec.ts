@@ -43,7 +43,7 @@ describe('PainelRodadaService', () => {
     faseId,
     timeCasaId: 'time-a',
     timeForaId: 'time-b',
-    dataHora: new Date('2026-04-01T16:00:00.000Z'),
+    dataHora: new Date(Date.now() + 60 * 60 * 1000),
     status: 'AGENDADO',
     golsCasa: null,
     golsFora: null,
@@ -55,7 +55,7 @@ describe('PainelRodadaService', () => {
     faseId,
     timeCasaId: 'time-c',
     timeForaId: 'time-d',
-    dataHora: new Date('2026-04-01T18:00:00.000Z'),
+    dataHora: new Date(Date.now() + 2 * 60 * 60 * 1000),
     status: 'AGENDADO',
     golsCasa: null,
     golsFora: null,
@@ -67,7 +67,7 @@ describe('PainelRodadaService', () => {
     faseId,
     timeCasaId: 'time-e',
     timeForaId: 'time-f',
-    dataHora: new Date('2026-04-08T16:00:00.000Z'),
+    dataHora: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000),
     status: 'AGENDADO',
     golsCasa: null,
     golsFora: null,
@@ -108,7 +108,7 @@ describe('PainelRodadaService', () => {
     expect(result.fase.tipo).toBe('PONTOS_CORRIDOS');
     expect(result.saldoTokensDobro).toBe(0);
     expect(result.permitirPalpiteDobrado).toBe(true);
-    // Sem filtro de rodada, retorna a rodada atual (rodada 1 = 2 jogos)
+    // Sem filtro de rodada, retorna a rodada atual (rodada 1 na janela)
     expect(result.jogos).toHaveLength(2);
   });
 

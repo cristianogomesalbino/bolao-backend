@@ -367,7 +367,7 @@ Services divididos por responsabilidade (SRP):
 | Tipo | Trigger | Quem recebe |
 |------|---------|-------------|
 | `JOGO_PROXIMO` | 10min antes do jogo | Usuários que NÃO palpitaram |
-| `RODADA_ENCERRADA` | Todos os jogos da rodada finalizados | Todos os membros |
+| `RODADA_ENCERRADA` | Todos os jogos da rodada finalizados | Todos os membros — **1× por fase+rodada** (fila in-process + `existeNotificacao`; sync pós-finalização processa jogos em série) |
 | `ACERTO_EM_CHEIO` | Jogo finalizado + palpite exato | Quem acertou |
 | `SUBIU_POSICAO` | Jogo finalizado + ranking recalculado | Quem subiu |
 | `DESCEU_POSICAO` | Jogo finalizado + ranking recalculado | Quem desceu |
