@@ -13,6 +13,12 @@ import {
 import { UsuarioNaoEncontradoError } from '../../common/errors/domain-errors/usuarios.errors';
 import { AUTH } from './auth.constants';
 import { USUARIOS } from '../usuarios/usuarios.constants';
+import {
+  emitirAccessToken,
+  emitirNovoRefresh,
+  emitirRefreshToken,
+  lembrarDoPayload,
+} from './sessao-token';
 import type { EmailService } from './email/email.service.interface';
 import type { UsuarioRepository } from '../usuarios/repositories/usuario.repository.interface';
 import type { RefreshTokenRepository } from './repositories/refresh-token.repository.interface';
@@ -32,7 +38,7 @@ export class AuthService {
     private readonly emailService: EmailService,
   ) {}
 
-  async login(email: string, senha: string) {
+  async login(email: string, senha: string, continuarLogado = false) {
     const usuario = await this.usuarioRepo.buscarPorEmail(email);
 
     if (!usuario || !usuario.ativo) {
@@ -46,28 +52,38 @@ export class AuthService {
 
     await this.refreshTokenRepo.removerPorUsuarioId(usuario.id);
 
-    const payload = {
-      sub: usuario.id,
-      email: usuario.email,
-      perfil: usuario.perfil,
-    };
-    const accessToken = this.jwtService.sign(payload, {
-      expiresIn: AUTH.TOKEN.ACCESS_EXPIRATION,
-    });
-    const refreshToken = this.jwtService.sign(payload, {
-      expiresIn: AUTH.TOKEN.REFRESH_EXPIRATION,
-    });
+    const accessToken = emitirAccessToken(this.jwtService, usuario);
+    const { refreshToken, expiraEm } = emitirRefreshToken(
+      this.jwtService,
+      usuario,
+      continuarLogado,
+    );
 
     await this.refreshTokenRepo.criar({
       token: refreshToken,
       usuarioId: usuario.id,
-      expiraEm: new Date(Date.now() + AUTH.TOKEN.REFRESH_EXPIRATION_MS),
+      expiraEm,
     });
 
     return { accessToken, refreshToken };
   }
 
   async refresh(refreshToken: string) {
+    const sessao = await this.carregarSessao(refreshToken);
+    const accessToken = emitirAccessToken(this.jwtService, sessao.usuario);
+
+    if (!sessao.continuarLogado) {
+      return { accessToken, refreshToken, continuarLogado: false };
+    }
+
+    return this.renovarSessaoPersistente(
+      refreshToken,
+      sessao.usuario,
+      accessToken,
+    );
+  }
+
+  private async carregarSessao(refreshToken: string) {
     if (!refreshToken) {
       throw new RefreshNaoFornecidoError();
     }
@@ -79,28 +95,49 @@ export class AuthService {
       throw new RefreshInvalidoError();
     }
 
-    try {
-      this.jwtService.verify(tokenRegistro.token);
-    } catch {
-      throw new RefreshExpiradoError();
-    }
-
+    const continuarLogado = this.lerLembrar(tokenRegistro.token);
     const usuario = await this.usuarioRepo.buscarPorId(tokenRegistro.usuarioId);
 
     if (!usuario) {
       throw new UsuarioNaoEncontradoError();
     }
 
-    const payload = {
-      sub: usuario.id,
-      email: usuario.email,
-      perfil: usuario.perfil,
-    };
-    const accessToken = this.jwtService.sign(payload, {
-      expiresIn: AUTH.TOKEN.ACCESS_EXPIRATION,
-    });
+    if (!usuario.ativo) {
+      await this.refreshTokenRepo.removerPorUsuarioId(usuario.id);
+      throw new RefreshInvalidoError();
+    }
 
-    return { accessToken };
+    return { usuario, continuarLogado };
+  }
+
+  private lerLembrar(token: string): boolean {
+    try {
+      return lembrarDoPayload(this.jwtService.verify(token));
+    } catch {
+      throw new RefreshExpiradoError();
+    }
+  }
+
+  private async renovarSessaoPersistente(
+    refreshToken: string,
+    usuario: { id: string; email: string; perfil: string },
+    accessToken: string,
+  ) {
+    const rotacao = await this.refreshTokenRepo.rotacionar(
+      refreshToken,
+      AUTH.TOKEN.REFRESH_REUSO_MS,
+      () => emitirNovoRefresh(this.jwtService, usuario),
+    );
+
+    if (!rotacao) {
+      throw new RefreshInvalidoError();
+    }
+
+    return {
+      accessToken,
+      refreshToken: rotacao.refreshToken,
+      continuarLogado: true,
+    };
   }
 
   async logout(refreshToken: string) {

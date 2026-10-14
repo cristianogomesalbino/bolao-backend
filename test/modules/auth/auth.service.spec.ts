@@ -1,6 +1,11 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import * as bcrypt from 'bcryptjs';
+import { JwtService } from '@nestjs/jwt';
 import { AuthService } from '@src/modules/auth/auth.service';
+import type { EmailService } from '@src/modules/auth/email/email.service.interface';
+import type { RecuperacaoSenhaRepository } from '@src/modules/auth/repositories/recuperacao-senha.repository.interface';
+import type { RefreshTokenRepository } from '@src/modules/auth/repositories/refresh-token.repository.interface';
+import type { UsuarioRepository } from '@src/modules/usuarios/repositories/usuario.repository.interface';
 import {
   CredenciaisInvalidasError,
   RefreshNaoFornecidoError,
@@ -24,6 +29,7 @@ const mockRefreshTokenRepo = {
   buscarPorToken: vi.fn(),
   removerPorUsuarioId: vi.fn(),
   removerPorToken: vi.fn(),
+  rotacionar: vi.fn(),
 };
 
 const mockRecuperacaoSenhaRepo = {
@@ -55,11 +61,11 @@ describe('AuthService', () => {
 
   beforeEach(() => {
     service = new AuthService(
-      mockUsuarioRepo as any,
-      mockRefreshTokenRepo as any,
-      mockRecuperacaoSenhaRepo as any,
-      mockJwt as any,
-      mockEmailService as any,
+      mockUsuarioRepo as unknown as UsuarioRepository,
+      mockRefreshTokenRepo as unknown as RefreshTokenRepository,
+      mockRecuperacaoSenhaRepo as unknown as RecuperacaoSenhaRepository,
+      mockJwt as unknown as JwtService,
+      mockEmailService as unknown as EmailService,
     );
     vi.clearAllMocks();
   });
@@ -67,7 +73,7 @@ describe('AuthService', () => {
   describe('login', () => {
     it('deve limpar tokens antigos e retornar novos tokens', async () => {
       mockUsuarioRepo.buscarPorEmail.mockResolvedValue(mockUsuario);
-      (bcrypt.compare as any).mockResolvedValue(true);
+      vi.mocked(bcrypt.compare).mockResolvedValue(true);
       mockRefreshTokenRepo.removerPorUsuarioId.mockResolvedValue(undefined);
       mockJwt.sign.mockReturnValueOnce('at').mockReturnValueOnce('rt');
       mockRefreshTokenRepo.criar.mockResolvedValue({});
@@ -79,6 +85,40 @@ describe('AuthService', () => {
       expect(mockRefreshTokenRepo.removerPorUsuarioId).toHaveBeenCalledWith(
         'user-1',
       );
+      expect(mockJwt.sign).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({
+          lembrar: false,
+          tipo: 'refresh',
+          sub: 'user-1',
+        }),
+        { expiresIn: '7d' },
+      );
+    });
+
+    it('deve estender o refresh para 30 dias quando continuar logado', async () => {
+      mockUsuarioRepo.buscarPorEmail.mockResolvedValue(mockUsuario);
+      vi.mocked(bcrypt.compare).mockResolvedValue(true);
+      mockJwt.sign.mockReturnValueOnce('at').mockReturnValueOnce('rt');
+      const antes = Date.now();
+
+      await service.login('joao@example.com', 'senha123', true);
+
+      expect(mockJwt.sign).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({
+          lembrar: true,
+          tipo: 'refresh',
+          sub: 'user-1',
+        }),
+        { expiresIn: '30d' },
+      );
+      const chamadas = mockRefreshTokenRepo.criar.mock
+        .calls as unknown as Array<[{ expiraEm: Date }]>;
+      const expiraEm = chamadas[0][0].expiraEm;
+      const duracao = expiraEm.getTime() - antes;
+      expect(duracao).toBeGreaterThan(29 * 24 * 60 * 60 * 1000);
+      expect(duracao).toBeLessThan(31 * 24 * 60 * 60 * 1000);
     });
 
     it('deve lançar se usuário não existe', async () => {
@@ -100,7 +140,7 @@ describe('AuthService', () => {
 
     it('deve lançar se senha inválida', async () => {
       mockUsuarioRepo.buscarPorEmail.mockResolvedValue(mockUsuario);
-      (bcrypt.compare as any).mockResolvedValue(false);
+      vi.mocked(bcrypt.compare).mockResolvedValue(false);
       await expect(service.login('joao@example.com', 'x')).rejects.toThrow(
         CredenciaisInvalidasError,
       );
@@ -108,15 +148,113 @@ describe('AuthService', () => {
   });
 
   describe('refresh', () => {
-    it('deve retornar novo access token', async () => {
+    it('deve manter o refresh quando a sessão não é persistente', async () => {
       mockRefreshTokenRepo.buscarPorToken.mockResolvedValue({
         token: 'v',
         usuarioId: 'user-1',
       });
+      mockJwt.verify.mockReturnValue({ lembrar: false });
+      mockUsuarioRepo.buscarPorId.mockResolvedValue(mockUsuario);
+      mockJwt.sign.mockReturnValueOnce('new-at');
+
+      await expect(service.refresh('v')).resolves.toEqual({
+        accessToken: 'new-at',
+        refreshToken: 'v',
+        continuarLogado: false,
+      });
+      expect(mockRefreshTokenRepo.rotacionar).not.toHaveBeenCalled();
+      expect(mockJwt.sign).toHaveBeenCalledTimes(1);
+    });
+
+    it('deve manter o refresh de tokens antigos sem o campo lembrar', async () => {
+      mockRefreshTokenRepo.buscarPorToken.mockResolvedValue({
+        token: 'legado',
+        usuarioId: 'user-1',
+      });
       mockJwt.verify.mockReturnValue({});
       mockUsuarioRepo.buscarPorId.mockResolvedValue(mockUsuario);
+      mockJwt.sign.mockReturnValueOnce('new-at');
+
+      await expect(service.refresh('legado')).resolves.toEqual({
+        accessToken: 'new-at',
+        refreshToken: 'legado',
+        continuarLogado: false,
+      });
+      expect(mockRefreshTokenRepo.rotacionar).not.toHaveBeenCalled();
+    });
+
+    it('deve renovar o prazo de 30 dias quando o token era de continuar logado', async () => {
+      mockRefreshTokenRepo.buscarPorToken.mockResolvedValue({
+        token: 'v',
+        usuarioId: 'user-1',
+      });
+      mockJwt.verify.mockReturnValue({ lembrar: true });
+      mockUsuarioRepo.buscarPorId.mockResolvedValue(mockUsuario);
+      mockJwt.sign.mockReturnValueOnce('new-at').mockReturnValueOnce('new-rt');
+      let expiraEm = new Date(0);
+      mockRefreshTokenRepo.rotacionar.mockImplementation(
+        (
+          _antigo: string,
+          _graciaMs: number,
+          emitir: () => { token: string; expiraEm: Date },
+        ) => {
+          const novo = emitir();
+          expiraEm = novo.expiraEm;
+          return { status: 'rotacionado', refreshToken: novo.token };
+        },
+      );
+      const antes = Date.now();
+
+      const result = await service.refresh('v');
+
+      expect(result).toEqual({
+        accessToken: 'new-at',
+        refreshToken: 'new-rt',
+        continuarLogado: true,
+      });
+      expect(mockRefreshTokenRepo.rotacionar.mock.calls[0][1]).toBe(60 * 1000);
+      expect(mockJwt.sign).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({ lembrar: true, tipo: 'refresh' }),
+        { expiresIn: '30d' },
+      );
+      const duracao = expiraEm.getTime() - antes;
+      expect(duracao).toBeGreaterThan(29 * 24 * 60 * 60 * 1000);
+      expect(duracao).toBeLessThan(31 * 24 * 60 * 60 * 1000);
+    });
+
+    it('deve reutilizar o refresh já emitido quando a rotação foi feita agora', async () => {
+      mockRefreshTokenRepo.buscarPorToken.mockResolvedValue({
+        token: 'v',
+        usuarioId: 'user-1',
+      });
+      mockJwt.verify.mockReturnValue({ lembrar: true });
+      mockUsuarioRepo.buscarPorId.mockResolvedValue(mockUsuario);
+      mockJwt.sign.mockReturnValueOnce('new-at');
+      mockRefreshTokenRepo.rotacionar.mockResolvedValue({
+        status: 'reusado',
+        refreshToken: 'ja-emitido',
+      });
+
+      await expect(service.refresh('v')).resolves.toEqual({
+        accessToken: 'new-at',
+        refreshToken: 'ja-emitido',
+        continuarLogado: true,
+      });
+      expect(mockJwt.sign).toHaveBeenCalledTimes(1);
+    });
+
+    it('deve invalidar quando o token já foi substituído fora da janela', async () => {
+      mockRefreshTokenRepo.buscarPorToken.mockResolvedValue({
+        token: 'v',
+        usuarioId: 'user-1',
+      });
+      mockJwt.verify.mockReturnValue({ lembrar: true });
+      mockUsuarioRepo.buscarPorId.mockResolvedValue(mockUsuario);
       mockJwt.sign.mockReturnValue('new-at');
-      expect(await service.refresh('v')).toEqual({ accessToken: 'new-at' });
+      mockRefreshTokenRepo.rotacionar.mockResolvedValue(null);
+
+      await expect(service.refresh('v')).rejects.toThrow(RefreshInvalidoError);
     });
 
     it('deve lançar se vazio', async () => {
@@ -151,6 +289,25 @@ describe('AuthService', () => {
       await expect(service.refresh('v')).rejects.toThrow(
         UsuarioNaoEncontradoError,
       );
+    });
+
+    it('deve invalidar os tokens quando o usuário está inativo', async () => {
+      mockRefreshTokenRepo.buscarPorToken.mockResolvedValue({
+        token: 'v',
+        usuarioId: 'user-1',
+      });
+      mockJwt.verify.mockReturnValue({ lembrar: true });
+      mockUsuarioRepo.buscarPorId.mockResolvedValue({
+        ...mockUsuario,
+        ativo: false,
+      });
+
+      await expect(service.refresh('v')).rejects.toThrow(RefreshInvalidoError);
+      expect(mockRefreshTokenRepo.removerPorUsuarioId).toHaveBeenCalledWith(
+        'user-1',
+      );
+      expect(mockRefreshTokenRepo.rotacionar).not.toHaveBeenCalled();
+      expect(mockJwt.sign).not.toHaveBeenCalled();
     });
   });
 
@@ -245,7 +402,7 @@ describe('AuthService', () => {
       mockRecuperacaoSenhaRepo.buscarPorToken.mockResolvedValue(
         mockRecuperacao,
       );
-      (bcrypt.hash as any).mockResolvedValue('new-hash');
+      vi.mocked(bcrypt.hash).mockResolvedValue('new-hash');
       mockUsuarioRepo.atualizar.mockResolvedValue({});
       mockRecuperacaoSenhaRepo.marcarComoUsado.mockResolvedValue(undefined);
       mockRefreshTokenRepo.removerPorUsuarioId.mockResolvedValue(undefined);
