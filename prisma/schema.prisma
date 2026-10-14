@@ -90,12 +90,16 @@ model GrupoUsuario {
 }
 
 model RefreshToken {
-  id          String   @id @default(uuid())
-  token       String   @unique
-  usuarioId   String
-  expiraEm    DateTime
-  dataCriacao DateTime @default(now())
-  usuario     Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  id              String    @id @default(uuid())
+  token           String    @unique
+  usuarioId       String
+  expiraEm        DateTime
+  dataCriacao     DateTime  @default(now())
+  substituidoPor  String?
+  substituidoEm   DateTime?
+  usuario         Usuario   @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([substituidoPor])
 }
 
 model RecuperacaoSenha {

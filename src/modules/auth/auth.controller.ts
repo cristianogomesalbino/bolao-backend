@@ -5,7 +5,7 @@ import {
   ApiResponse,
   ApiBadRequestResponse,
 } from '@nestjs/swagger';
-import type { Request, Response } from 'express';
+import type { CookieOptions, Request, Response } from 'express';
 import { ConfigService } from '@nestjs/config';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
@@ -36,12 +36,14 @@ export class AuthController {
     @Body() loginDto: LoginDto,
     @Res({ passthrough: true }) res: Response,
   ) {
+    const continuarLogado = loginDto.continuarLogado === true;
     const { accessToken, refreshToken } = await this.authService.login(
       loginDto.email,
       loginDto.senha,
+      continuarLogado,
     );
 
-    this.setRefreshTokenCookie(res, refreshToken);
+    this.setRefreshTokenCookie(res, refreshToken, continuarLogado);
 
     return { accessToken };
   }
@@ -53,7 +55,7 @@ export class AuthController {
   @Post('refresh')
   async refresh(
     @Req() req: Request,
-    @Res({ passthrough: true }) _res: Response,
+    @Res({ passthrough: true }) res: Response,
   ) {
     const cookies = req.cookies as Record<string, string> | undefined;
     const refreshToken = cookies?.[AUTH.COOKIE.REFRESH_TOKEN_NAME];
@@ -62,7 +64,15 @@ export class AuthController {
       throw new RefreshNaoFornecidoError();
     }
 
-    const { accessToken } = await this.authService.refresh(refreshToken);
+    const {
+      accessToken,
+      refreshToken: novoRefreshToken,
+      continuarLogado,
+    } = await this.authService.refresh(refreshToken);
+
+    if (continuarLogado) {
+      this.setRefreshTokenCookie(res, novoRefreshToken, true);
+    }
 
     return { accessToken };
   }
@@ -106,22 +116,34 @@ export class AuthController {
     return this.authService.resetarSenha(dto.token, dto.novaSenha);
   }
 
-  private setRefreshTokenCookie(res: Response, token: string): void {
-    res.cookie(AUTH.COOKIE.REFRESH_TOKEN_NAME, token, {
-      httpOnly: true,
-      secure: this.isProduction,
-      sameSite: this.isProduction ? 'none' : 'lax',
-      path: '/',
-      maxAge: AUTH.TOKEN.REFRESH_EXPIRATION_MS,
-    });
+  private setRefreshTokenCookie(
+    res: Response,
+    token: string,
+    continuarLogado: boolean,
+  ): void {
+    res.cookie(
+      AUTH.COOKIE.REFRESH_TOKEN_NAME,
+      token,
+      this.opcoesCookie(continuarLogado),
+    );
   }
 
   private clearRefreshTokenCookie(res: Response): void {
-    res.clearCookie(AUTH.COOKIE.REFRESH_TOKEN_NAME, {
+    res.clearCookie(AUTH.COOKIE.REFRESH_TOKEN_NAME, this.opcoesCookie(false));
+  }
+
+  private opcoesCookie(continuarLogado: boolean): CookieOptions {
+    const opcoes: CookieOptions = {
       httpOnly: true,
       secure: this.isProduction,
       sameSite: this.isProduction ? 'none' : 'lax',
       path: '/',
-    });
+    };
+
+    if (continuarLogado) {
+      opcoes.maxAge = AUTH.TOKEN.REFRESH_LEMBRAR_MS;
+    }
+
+    return opcoes;
   }
 }

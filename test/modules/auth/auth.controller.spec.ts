@@ -1,5 +1,8 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import type { ConfigService } from '@nestjs/config';
+import type { Request, Response } from 'express';
 import { AuthController } from '@src/modules/auth/auth.controller';
+import { AuthService } from '@src/modules/auth/auth.service';
 import { RefreshNaoFornecidoError } from '@src/common/errors/domain-errors';
 
 const mockAuthService = {
@@ -18,11 +21,11 @@ function criarMockResponse() {
   return {
     cookie: vi.fn(),
     clearCookie: vi.fn(),
-  } as any;
+  } as unknown as Response;
 }
 
 function criarMockRequest(cookies: Record<string, string> = {}) {
-  return { cookies } as any;
+  return { cookies } as unknown as Request;
 }
 
 describe('AuthController', () => {
@@ -30,8 +33,8 @@ describe('AuthController', () => {
 
   beforeEach(() => {
     controller = new AuthController(
-      mockAuthService as any,
-      mockConfigService as any,
+      mockAuthService as unknown as AuthService,
+      mockConfigService as unknown as ConfigService,
     );
     vi.clearAllMocks();
   });
@@ -63,6 +66,40 @@ describe('AuthController', () => {
       expect(mockAuthService.login).toHaveBeenCalledWith(
         'joao@example.com',
         'senha123',
+        false,
+      );
+      const chamadasCookie = (
+        res.cookie as unknown as {
+          mock: { calls: Array<[unknown, unknown, { maxAge?: number }]> };
+        }
+      ).mock.calls;
+      expect(chamadasCookie[0][2].maxAge).toBeUndefined();
+    });
+
+    it('deve persistir o cookie por 30 dias quando continuar logado', async () => {
+      mockAuthService.login.mockResolvedValue({
+        accessToken: 'token',
+        refreshToken: 'refresh',
+      });
+
+      const res = criarMockResponse();
+      await controller.login(
+        { email: 'joao@example.com', senha: 'senha123', continuarLogado: true },
+        res,
+      );
+
+      expect(mockAuthService.login).toHaveBeenCalledWith(
+        'joao@example.com',
+        'senha123',
+        true,
+      );
+      expect(res.cookie).toHaveBeenCalledWith(
+        'refreshToken',
+        'refresh',
+        expect.objectContaining({
+          httpOnly: true,
+          maxAge: 30 * 24 * 60 * 60 * 1000,
+        }),
       );
     });
 
@@ -81,11 +118,44 @@ describe('AuthController', () => {
         expect.objectContaining({ secure: false, sameSite: 'lax', path: '/' }),
       );
     });
+
+    it('deve marcar o cookie como seguro em produção', async () => {
+      const config = { get: vi.fn().mockReturnValue('production') };
+      const prodController = new AuthController(
+        mockAuthService as unknown as AuthService,
+        config as unknown as ConfigService,
+      );
+      mockAuthService.login.mockResolvedValue({
+        accessToken: 'token',
+        refreshToken: 'refresh',
+      });
+
+      const res = criarMockResponse();
+      await prodController.login(
+        { email: 'a@b.com', senha: '123', continuarLogado: true },
+        res,
+      );
+
+      expect(res.cookie).toHaveBeenCalledWith(
+        'refreshToken',
+        'refresh',
+        expect.objectContaining({
+          httpOnly: true,
+          secure: true,
+          sameSite: 'none',
+          maxAge: 30 * 24 * 60 * 60 * 1000,
+        }),
+      );
+    });
   });
 
   describe('refresh', () => {
-    it('deve ler refresh token do cookie e retornar novo accessToken', async () => {
-      mockAuthService.refresh.mockResolvedValue({ accessToken: 'new-token' });
+    it('deve ler refresh token do cookie, renovar o cookie e retornar novo accessToken', async () => {
+      mockAuthService.refresh.mockResolvedValue({
+        accessToken: 'new-token',
+        refreshToken: 'novo-refresh',
+        continuarLogado: true,
+      });
 
       const req = criarMockRequest({ refreshToken: 'valid-cookie-token' });
       const res = criarMockResponse();
@@ -95,6 +165,29 @@ describe('AuthController', () => {
       expect(mockAuthService.refresh).toHaveBeenCalledWith(
         'valid-cookie-token',
       );
+      expect(res.cookie).toHaveBeenCalledWith(
+        'refreshToken',
+        'novo-refresh',
+        expect.objectContaining({
+          httpOnly: true,
+          maxAge: 30 * 24 * 60 * 60 * 1000,
+        }),
+      );
+    });
+
+    it('não redefine o cookie quando a sessão não é persistente', async () => {
+      mockAuthService.refresh.mockResolvedValue({
+        accessToken: 'new-token',
+        refreshToken: 'mesmo-refresh',
+        continuarLogado: false,
+      });
+
+      const req = criarMockRequest({ refreshToken: 'valid-cookie-token' });
+      const res = criarMockResponse();
+      const result = await controller.refresh(req, res);
+
+      expect(result).toEqual({ accessToken: 'new-token' });
+      expect(res.cookie).not.toHaveBeenCalled();
     });
 
     it('deve lançar RefreshNaoFornecidoError se cookie não existe', async () => {
