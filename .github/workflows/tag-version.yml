@@ -6,8 +6,8 @@ on:
       - main
 
 jobs:
-  tag:
-    name: Create version tag
+  bump:
+    name: Bump patch version and publish tag
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -15,25 +15,31 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Get version from package.json
-        id: pkg
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Bump patch version
+        run: npm version patch --no-git-tag-version
+
+      - name: Get new version
+        id: new
         run: echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
 
-      - name: Check if tag already exists
-        id: check
-        run: |
-          if git rev-parse "v${{ steps.pkg.outputs.version }}" >/dev/null 2>&1; then
-            echo "exists=true" >> $GITHUB_OUTPUT
-          else
-            echo "exists=false" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Create tag
-        if: steps.check.outputs.exists == 'false'
+      - name: Commit version bump and publish tag
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git tag -a "v${{ steps.pkg.outputs.version }}" -m "Release v${{ steps.pkg.outputs.version }}"
-          git push origin "v${{ steps.pkg.outputs.version }}"
+          git add package.json package-lock.json
+          git commit -m "chore: bump version to ${{ steps.new.outputs.version }} [skip ci]"
+          git push
+          tag="v${{ steps.new.outputs.version }}"
+          if git ls-remote --tags origin "refs/tags/${tag}" | grep -q .; then
+            echo "Tag ${tag} já existe"
+          else
+            git tag -a "${tag}" -m "Release ${tag}"
+            git push origin "${tag}"
+          fi
