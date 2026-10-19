@@ -20,8 +20,8 @@ export const NOTIFICACOES = {
   CRON: {
     JOGO_PROXIMO_MINUTOS: 10,
     PALPITES_PENDENTES_HORAS: 3,
-    LIMPEZA_LIDAS_DIAS: 30,
-    LIMPEZA_NAO_LIDAS_DIAS: 90,
+    LIMPEZA_LIDAS_DIAS: 15,
+    LIMPEZA_NAO_LIDAS_DIAS: 15,
     // Horários dos jobs (em UTC — BRT = UTC-3)
     AGENDAMENTO_DIARIO: '0 11 * * *', // 08:00 BRT
     FALLBACK_JOGOS: '*/15 11-23,0-4 * * *', // a cada 15min entre 08h-01h BRT
