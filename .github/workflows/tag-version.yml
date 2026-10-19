@@ -6,8 +6,8 @@ on:
       - main
 
 jobs:
-  bump:
-    name: Bump patch version and publish tag
+  tag:
+    name: Create version tag from merge
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -15,31 +15,46 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-
-      - name: Bump patch version
-        run: npm version patch --no-git-tag-version
-
-      - name: Get new version
-        id: new
-        run: echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
-
-      - name: Commit version bump and publish tag
+      - name: Tag the merge commit with the pull request text
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add package.json package-lock.json
-          git commit -m "chore: bump version to ${{ steps.new.outputs.version }} [skip ci]"
-          git push
-          tag="v${{ steps.new.outputs.version }}"
+          set -euo pipefail
+
+          subject="$(git log -1 --format=%s)"
+          case "$subject" in
+            "Merge pull request "*)
+              ;;
+            *)
+              echo "Este push não é o merge de um pull request. Nenhuma tag criada."
+              exit 0
+              ;;
+          esac
+
+          if git describe --exact-match --tags HEAD >/dev/null 2>&1; then
+            echo "Este commit já tem tag."
+            exit 0
+          fi
+
+          latest="$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -n 1)"
+          latest="${latest#v}"
+          if [ -z "$latest" ]; then
+            latest="$(node -p "require('./package.json').version")"
+          fi
+
+          major="${latest%%.*}"
+          rest="${latest#*.}"
+          minor="${rest%%.*}"
+          patch="${rest#*.}"
+          tag="v${major}.${minor}.$((patch + 1))"
+
           if git ls-remote --tags origin "refs/tags/${tag}" | grep -q .; then
             echo "Tag ${tag} já existe"
-          else
-            git tag -a "${tag}" -m "Release ${tag}"
-            git push origin "${tag}"
+            exit 0
           fi
+
+          git log -1 --format=%B > /tmp/mensagem-da-tag.txt
+          git tag -a "$tag" -F /tmp/mensagem-da-tag.txt
+          git push origin "$tag"
+          echo "Tag ${tag} criada no merge, com o texto do pull request."
