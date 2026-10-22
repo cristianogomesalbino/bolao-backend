@@ -20,7 +20,7 @@ import {
   JogoNaoFinalizadoError,
 } from '../../../common/errors/domain-errors';
 
-interface RankingEntry {
+export interface RankingEntry {
   posicao: number;
   usuarioId: string;
   nomeUsuario: string;
@@ -132,6 +132,43 @@ export class RankingService {
     );
     this.salvarNoCache(chaveCache, resultado);
     return resultado;
+  }
+
+  /**
+   * Ranking acumulado da fase com os jogos finalizados até a rodada informada.
+   * Sem cache: a comparação de subida usa o fechamento de cada rodada.
+   */
+  async calcularRankingAteRodada(
+    grupoId: string,
+    faseId: string,
+    ateRodada: number,
+  ): Promise<RankingEntry[]> {
+    if (ateRodada < 1) return [];
+
+    const grupo = await this.grupoRepo.buscarPorId(grupoId);
+    if (!grupo) throw new GrupoNaoEncontradoError();
+
+    const fase = await this.faseRepo.buscarPorId(faseId);
+    if (!fase) throw new FaseNaoEncontradaError();
+
+    const membros =
+      await this.grupoUsuarioRepo.listarPorGrupoComUsuario(grupoId);
+    const jogos = await this.jogoRepo.buscarPorFase(faseId);
+    const jogosConsiderados = jogos.filter(
+      (j: { status: string; rodada: number | null }) =>
+        j.status === 'FINALIZADO' && j.rodada != null && j.rodada <= ateRodada,
+    );
+
+    return this.calcularRanking(membros, jogosConsiderados, grupo);
+  }
+
+  async rodadaEncerrada(faseId: string, rodada: number): Promise<boolean> {
+    const jogos = await this.jogoRepo.buscarPorFase(faseId, rodada);
+    if (jogos.length === 0) return false;
+    return jogos.every(
+      (j: { status: string }) =>
+        j.status === 'FINALIZADO' || j.status === 'CANCELADO',
+    );
   }
 
   async obterRankingGeral(grupoId: string): Promise<RankingEntry[]> {

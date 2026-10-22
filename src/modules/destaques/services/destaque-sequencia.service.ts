@@ -8,8 +8,11 @@ import type { PalpiteRepository } from '../../palpites/repositories/palpite.repo
 import type { JogoRepository } from '../../jogos/repositories/jogo.repository.interface';
 import type {
   CategoriaRecorde,
+  JogoEsquecido,
   JogoSequencia,
+  PlacarCravado,
   RecordeInfo,
+  TimeInfo,
 } from '../types/destaque.types';
 
 interface JogoInterno {
@@ -22,8 +25,8 @@ interface JogoInterno {
   timeCasaId: string;
   timeForaId: string;
   dataHora: Date | string | null;
-  timeCasa?: { nome: string } | null;
-  timeFora?: { nome: string } | null;
+  timeCasa?: { nome: string; sigla?: string; escudo?: string | null } | null;
+  timeFora?: { nome: string; sigla?: string; escudo?: string | null } | null;
 }
 
 interface PalpiteInterno {
@@ -35,6 +38,7 @@ interface PalpiteInterno {
 
 interface SequenciaResultado {
   quantidade: number;
+  pontos: number;
   ultimosJogos: JogoSequencia[];
   rodadaInicio: number | null;
 }
@@ -50,42 +54,6 @@ export class DestaqueSequenciaService {
     private readonly jogoRepo: JogoRepository,
     private readonly pontuacaoService: PontuacaoService,
   ) {}
-
-  async calcularSequenciaMosca(
-    usuarioId: string,
-    faseId: string,
-    rodada: number | null,
-    jogoAtualId: string,
-  ): Promise<SequenciaResultado | null> {
-    if (rodada === null) return null;
-
-    const jogosRaw = await this.jogoRepo.buscarPorFase(faseId, rodada);
-    const jogos = this.filtrarFinalizadosOrdenados(jogosRaw as JogoInterno[]);
-
-    if (jogos.length < DESTAQUES.LIMITES.SEQUENCIA_MOSCA_MINIMA) return null;
-
-    const palpiteMap = await this.buscarPalpitesDoUsuario(jogos, usuarioId);
-    const indiceAtual = jogos.findIndex((j) => j.id === jogoAtualId);
-    if (indiceAtual === -1) return null;
-
-    const { quantidade, ultimosJogos } = this.percorrerSequencia(
-      jogos,
-      palpiteMap,
-      indiceAtual,
-      rodada,
-      'ACERTO_EM_CHEIO',
-    );
-
-    if (quantidade < DESTAQUES.LIMITES.SEQUENCIA_MOSCA_MINIMA) return null;
-
-    return {
-      quantidade,
-      ultimosJogos: ultimosJogos.slice(
-        -DESTAQUES.LIMITES.ULTIMOS_JOGOS_SEQUENCIA,
-      ),
-      rodadaInicio: rodada,
-    };
-  }
 
   async calcularSequenciaResultado(
     usuarioId: string,
@@ -116,23 +84,88 @@ export class DestaqueSequenciaService {
     const indiceAtual = jogosFinalizados.findIndex((j) => j.id === jogoAtualId);
     if (indiceAtual === -1) return null;
 
-    const { quantidade, ultimosJogos, rodadaInicio } = this.percorrerSequencia(
+    const { quantidade, pontos, ultimosJogos, rodadaInicio } = this.percorrerSequencia(
       jogosFinalizados,
       palpiteMap,
       indiceAtual,
       rodadaAtual,
-      'ACERTO_RESULTADO',
     );
 
     if (quantidade < 2) return null;
 
     return {
       quantidade,
+      pontos,
       ultimosJogos: ultimosJogos.slice(
         -DESTAQUES.LIMITES.ULTIMOS_JOGOS_SEQUENCIA,
       ),
       rodadaInicio,
     };
+  }
+
+  async listarCravadasDaRodada(
+    usuarioId: string,
+    temporadaId: string,
+    rodada: number | null,
+  ): Promise<PlacarCravado[]> {
+    if (rodada === null) return [];
+
+    const jogos = this.filtrarFinalizadosOrdenados(
+      (await this.jogoRepo.buscarTodosPorTemporada(temporadaId)).filter(
+        (jogo) => jogo.rodada === rodada,
+      ) as JogoInterno[],
+    );
+    if (jogos.length === 0) return [];
+
+    const palpiteMap = await this.buscarPalpitesDoUsuario(jogos, usuarioId);
+    const cravadas: PlacarCravado[] = [];
+
+    for (const jogo of jogos) {
+      const palpite = palpiteMap.get(jogo.id);
+      if (!palpite || jogo.golsCasa === null || jogo.golsFora === null) continue;
+
+      const resultado = this.pontuacaoService.calcular(
+        { golsCasa: palpite.golsCasa, golsFora: palpite.golsFora },
+        { golsCasa: jogo.golsCasa, golsFora: jogo.golsFora },
+      );
+      if (resultado.categoriaAcerto !== 'ACERTO_EM_CHEIO') continue;
+
+      cravadas.push({
+        jogoId: jogo.id,
+        golsCasa: jogo.golsCasa,
+        golsFora: jogo.golsFora,
+        timeCasa: this.timeInfo(jogo.timeCasa, jogo.timeCasaId),
+        timeFora: this.timeInfo(jogo.timeFora, jogo.timeForaId),
+      });
+    }
+
+    return cravadas;
+  }
+
+  async listarEsquecidosDaRodada(
+    usuarioId: string,
+    temporadaId: string,
+    rodada: number | null,
+  ): Promise<JogoEsquecido[]> {
+    if (rodada === null) return [];
+
+    const jogos = this.filtrarFinalizadosOrdenados(
+      (await this.jogoRepo.buscarTodosPorTemporada(temporadaId)).filter(
+        (jogo) => jogo.rodada === rodada,
+      ) as JogoInterno[],
+    );
+    if (jogos.length === 0) return [];
+
+    const palpiteMap = await this.buscarPalpitesDoUsuario(jogos, usuarioId);
+    return jogos
+      .filter((jogo) => !palpiteMap.has(jogo.id))
+      .map((jogo) => ({
+        jogoId: jogo.id,
+        timeCasa: this.timeInfo(jogo.timeCasa, jogo.timeCasaId),
+        timeFora: this.timeInfo(jogo.timeFora, jogo.timeForaId),
+        golsCasa: jogo.golsCasa,
+        golsFora: jogo.golsFora,
+      }));
   }
 
   async atualizarRecorde(
@@ -221,13 +254,14 @@ export class DestaqueSequenciaService {
     palpiteMap: Map<string, PalpiteInterno>,
     indiceAtual: number,
     rodadaFallback: number | null,
-    criterio: 'ACERTO_EM_CHEIO' | 'ACERTO_RESULTADO',
   ): {
     quantidade: number;
+    pontos: number;
     ultimosJogos: JogoSequencia[];
     rodadaInicio: number | null;
   } {
     let quantidade = 0;
+    let pontos = 0;
     const ultimosJogos: JogoSequencia[] = [];
     let rodadaInicio: number | null = rodadaFallback;
 
@@ -241,10 +275,13 @@ export class DestaqueSequenciaService {
         { golsCasa: jogo.golsCasa, golsFora: jogo.golsFora },
       );
 
-      const acertou = this.verificarAcerto(resultado.categoriaAcerto, criterio);
-      if (!acertou) break;
+      const pontuou =
+        resultado.categoriaAcerto === 'ACERTO_EM_CHEIO' ||
+        resultado.categoriaAcerto === 'ACERTO_DE_RESULTADO';
+      if (!pontuou) break;
 
       quantidade++;
+      pontos += resultado.pontosBase;
       rodadaInicio = jogo.rodada ?? rodadaInicio;
       ultimosJogos.unshift({
         timeCasa: jogo.timeCasa?.nome ?? jogo.timeCasaId,
@@ -256,20 +293,19 @@ export class DestaqueSequenciaService {
       });
     }
 
-    return { quantidade, ultimosJogos, rodadaInicio };
+    return { quantidade, pontos, ultimosJogos, rodadaInicio };
   }
 
-  private verificarAcerto(
-    categoriaAcerto: string | null,
-    criterio: 'ACERTO_EM_CHEIO' | 'ACERTO_RESULTADO',
-  ): boolean {
-    if (criterio === 'ACERTO_EM_CHEIO') {
-      return categoriaAcerto === 'ACERTO_EM_CHEIO';
-    }
-    return (
-      categoriaAcerto === 'ACERTO_EM_CHEIO' ||
-      categoriaAcerto === 'ACERTO_DE_RESULTADO'
-    );
+  private timeInfo(
+    time: { nome: string; sigla?: string; escudo?: string | null } | null | undefined,
+    fallbackId: string,
+  ): TimeInfo {
+    const nome = time?.nome ?? fallbackId;
+    return {
+      nome,
+      sigla: time?.sigla ?? nome.slice(0, 3).toUpperCase(),
+      escudo: time?.escudo ?? null,
+    };
   }
 
   private filtrarFinalizadosOrdenados(jogos: JogoInterno[]): JogoInterno[] {

@@ -1102,9 +1102,8 @@ export class JogoService {
     // Log consolidado
     if (sincronizados > 0) {
       // Jogos que TRANSITARAM para EM_ANDAMENTO (eram AGENDADO)
-      const jogosIniciados = jogosAtualizados.filter(
-        (j) =>
-          j.status === 'EM_ANDAMENTO' && j.statusAnterior !== 'EM_ANDAMENTO',
+      const jogosIniciados = jogosAtualizados.filter((j) =>
+        this.jogoEntrouEmAndamento(j.statusAnterior, j.status),
       );
       // Jogos que já estavam EM_ANDAMENTO e tiveram placar atualizado (gols)
       const jogosComGol = jogosAtualizados.filter(
@@ -1141,8 +1140,8 @@ export class JogoService {
     }
 
     // Pós-sync: se algum jogo iniciou, verificar status do campeonato
-    const jogosIniciadosAgora = jogosAtualizados.filter(
-      (j) => j.status === 'EM_ANDAMENTO' && j.statusAnterior !== 'EM_ANDAMENTO',
+    const jogosIniciadosAgora = jogosAtualizados.filter((j) =>
+      this.jogoEntrouEmAndamento(j.statusAnterior, j.status),
     );
     if (jogosIniciadosAgora.length > 0) {
       this.dispararVerificacaoInicioCampeonato(fase.id);
@@ -1405,6 +1404,12 @@ export class JogoService {
 
     const novoStatus = this.definirStatusFinal(jogo, jogoApi?.status);
 
+    // ADIADO não pode ir direto para FINALIZADO. Se a API já encerrou,
+    // reabre como EM_ANDAMENTO para a próxima sync aplicar placar e fim.
+    if (jogo.status === 'ADIADO' && novoStatus === 'FINALIZADO' && jogoApi) {
+      return this.moverAdiadoEncerradoParaEmAndamento(jogo, jogoApi);
+    }
+
     // Rejeita regressão. EM_ANDAMENTO → AGENDADO só entra se o horário ainda for futuro.
     if (
       !this.ehTransicaoValida(
@@ -1483,6 +1488,53 @@ export class JogoService {
       horarioAlterado,
       horarioAnterior,
       horarioNovo,
+    };
+  }
+
+  /**
+   * Kickoff de verdade. Jogo que saiu de ADIADO porque a API já encerrou
+   * não é início de partida.
+   */
+  private jogoEntrouEmAndamento(
+    statusAnterior: string,
+    status: string,
+  ): boolean {
+    return (
+      status === 'EM_ANDAMENTO' &&
+      statusAnterior !== 'EM_ANDAMENTO' &&
+      statusAnterior !== 'ADIADO'
+    );
+  }
+
+  private async moverAdiadoEncerradoParaEmAndamento(
+    jogo: JogoInterno,
+    jogoApi: JogoApiNormalizado,
+  ): Promise<{
+    atualizado: boolean;
+    novoStatus: string;
+    horarioAlterado: boolean;
+    horarioAnterior: string | null;
+    horarioNovo: string | null;
+  }> {
+    const dataHora = jogoApi.dataHora ? new Date(jogoApi.dataHora) : undefined;
+    const label = `${jogo.timeCasa?.sigla ?? '?'} x ${jogo.timeFora?.sigla ?? '?'}`;
+    this.logger.log(
+      `[SYNC] ${label} está ADIADO e encerrado na API — movido para EM_ANDAMENTO; placar entra na próxima sync`,
+    );
+
+    await this.jogoRepo.atualizar(jogo.id, {
+      status: 'EM_ANDAMENTO',
+      ...(dataHora ? { dataHora, foiAdiado: true } : {}),
+    });
+
+    return {
+      atualizado: true,
+      novoStatus: 'EM_ANDAMENTO',
+      horarioAlterado: dataHora != null,
+      horarioAnterior: jogo.dataHora
+        ? new Date(jogo.dataHora).toISOString()
+        : null,
+      horarioNovo: dataHora?.toISOString() ?? null,
     };
   }
 

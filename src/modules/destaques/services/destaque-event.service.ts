@@ -31,7 +31,11 @@ export class DestaqueEventService {
     private readonly grupoUsuarioRepo: GrupoUsuarioRepository,
   ) {}
 
-  async processarJogoFinalizado(jogoId: string): Promise<void> {
+  async processarJogoFinalizado(
+    jogoId: string,
+    opcoes?: { notificar?: boolean },
+  ): Promise<void> {
+    const notificar = opcoes?.notificar !== false;
     try {
       const jogo = await this.buscarJogoComTimes(jogoId);
       if (!jogo) return;
@@ -44,7 +48,7 @@ export class DestaqueEventService {
       );
 
       for (const grupo of grupos) {
-        await this.processarGrupo(jogo, grupo as GrupoBasico);
+        await this.processarGrupo(jogo, grupo as GrupoBasico, notificar);
       }
     } catch (error) {
       this.logger.error(
@@ -57,6 +61,7 @@ export class DestaqueEventService {
   private async processarGrupo(
     jogo: JogoComTimes,
     grupo: GrupoBasico,
+    notificar: boolean,
   ): Promise<void> {
     try {
       // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- GrupoUsuarioRepository retorna any (dívida técnica do módulo grupo-usuario)
@@ -73,7 +78,7 @@ export class DestaqueEventService {
           membros,
         );
 
-      if (quantidadeGerada > 0) {
+      if (notificar && quantidadeGerada > 0) {
         await this.notificacaoService.notificarNovosDestaques(
           grupo,
           jogo.id,

@@ -83,6 +83,8 @@ export interface DestaqueRepository {
    */
   contarPorGrupoERodadas(grupoId: string, rodadas: number[]): Promise<number>;
 
+  listarRodadasPorGrupo(grupoId: string): Promise<number[]>;
+
   /**
    * Incrementa o contador de Fs de um destaque.
    * Retorna o novo valor.
@@ -130,6 +132,36 @@ export interface DestaqueRepository {
     jogoId: string,
     tipo: TipoDestaque,
   ): Promise<boolean>;
+
+  existeDestaqueNaRodada(
+    grupoId: string,
+    usuarioId: string,
+    rodada: number,
+    tipo: TipoDestaque,
+  ): Promise<boolean>;
+
+  buscarNaRodada(
+    grupoId: string,
+    usuarioId: string,
+    rodada: number,
+    tipo: TipoDestaque,
+  ): Promise<Destaque | null>;
+
+  atualizar(
+    id: string,
+    data: { dados: object; titulo: string },
+  ): Promise<void>;
+
+  /**
+   * Remove destaques da pessoa na rodada. `excetoId` preserva o card que está sendo atualizado.
+   */
+  removerPorTiposNaRodada(
+    grupoId: string,
+    usuarioId: string,
+    rodada: number,
+    tipos: TipoDestaque[],
+    excetoId?: string,
+  ): Promise<void>;
 
   /**
    * Remove destaques antigos (criadoEm < diasLimite dias atrás).

@@ -50,68 +50,6 @@ describe('DestaqueSequenciaService', () => {
     );
   });
 
-  describe('calcularSequenciaMosca', () => {
-    it('deve retornar null se rodada é null', async () => {
-      const resultado = await service.calcularSequenciaMosca(
-        'user-1',
-        'fase-1',
-        null,
-        'jogo-1',
-      );
-
-      expect(resultado).toBeNull();
-    });
-
-    it('deve retornar null se menos de 2 acertos consecutivos em cheio', async () => {
-      const jogos = [
-        criarJogo('jogo-1', 5, 2, 1, '2024-01-01T10:00:00Z'),
-        criarJogo('jogo-2', 5, 1, 0, '2024-01-01T12:00:00Z'),
-      ];
-      mockJogoRepo.buscarPorFase.mockResolvedValue(jogos);
-
-      // Apenas 1 acerto em cheio (jogo-1), segundo erra
-      mockPalpiteRepo.buscarPorUsuarioEJogos.mockResolvedValue([
-        { jogoId: 'jogo-1', usuarioId: 'user-1', golsCasa: 2, golsFora: 1 },
-        { jogoId: 'jogo-2', usuarioId: 'user-1', golsCasa: 3, golsFora: 0 },
-      ]);
-
-      const resultado = await service.calcularSequenciaMosca(
-        'user-1',
-        'fase-1',
-        5,
-        'jogo-2',
-      );
-
-      expect(resultado).toBeNull();
-    });
-
-    it('deve retornar dados corretos com 3 acertos em cheio consecutivos', async () => {
-      const jogos = [
-        criarJogo('jogo-1', 5, 2, 1, '2024-01-01T10:00:00Z'),
-        criarJogo('jogo-2', 5, 1, 0, '2024-01-01T12:00:00Z'),
-        criarJogo('jogo-3', 5, 3, 2, '2024-01-01T14:00:00Z'),
-      ];
-      mockJogoRepo.buscarPorFase.mockResolvedValue(jogos);
-
-      mockPalpiteRepo.buscarPorUsuarioEJogos.mockResolvedValue([
-        { jogoId: 'jogo-1', usuarioId: 'user-1', golsCasa: 2, golsFora: 1 },
-        { jogoId: 'jogo-2', usuarioId: 'user-1', golsCasa: 1, golsFora: 0 },
-        { jogoId: 'jogo-3', usuarioId: 'user-1', golsCasa: 3, golsFora: 2 },
-      ]);
-
-      const resultado = await service.calcularSequenciaMosca(
-        'user-1',
-        'fase-1',
-        5,
-        'jogo-3',
-      );
-
-      expect(resultado).not.toBeNull();
-      expect(resultado!.quantidade).toBe(3);
-      expect(resultado!.ultimosJogos).toHaveLength(3);
-    });
-  });
-
   describe('calcularSequenciaResultado', () => {
     it('deve retornar null se rodada é null', async () => {
       const resultado = await service.calcularSequenciaResultado(
