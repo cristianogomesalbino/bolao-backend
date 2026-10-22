@@ -60,6 +60,7 @@ export class InMemoryDestaqueRepository implements DestaqueRepository {
         (s) =>
           s.grupoId === grupoId &&
           s.rodada !== null &&
+          s.tipo !== 'SEQUENCIA_MOSCA' &&
           rodadas.includes(s.rodada),
       )
       .sort((a, b) => {
@@ -93,6 +94,15 @@ export class InMemoryDestaqueRepository implements DestaqueRepository {
         rodadas.includes(s.rodada),
     ).length;
     return Promise.resolve(count);
+  }
+
+  listarRodadasPorGrupo(grupoId: string): Promise<number[]> {
+    const rodadas = new Set(
+      this.destaques
+        .filter((s) => s.grupoId === grupoId && s.rodada != null)
+        .map((s) => s.rodada as number),
+    );
+    return Promise.resolve(Array.from(rodadas).sort((a, b) => b - a));
   }
 
   incrementarContadorFs(destaqueId: string): Promise<number> {
@@ -177,6 +187,83 @@ export class InMemoryDestaqueRepository implements DestaqueRepository {
         s.tipo === tipo,
     );
     return Promise.resolve(existe);
+  }
+
+  existeDestaqueNaRodada(
+    grupoId: string,
+    usuarioId: string,
+    rodada: number,
+    tipo: TipoDestaque,
+  ): Promise<boolean> {
+    const existe = this.destaques.some(
+      (s) =>
+        s.grupoId === grupoId &&
+        s.usuarioId === usuarioId &&
+        s.rodada === rodada &&
+        s.tipo === tipo,
+    );
+    return Promise.resolve(existe);
+  }
+
+  buscarNaRodada(
+    grupoId: string,
+    usuarioId: string,
+    rodada: number,
+    tipo: TipoDestaque,
+  ): Promise<Destaque | null> {
+    return Promise.resolve(
+      this.destaques.find(
+        (s) =>
+          s.grupoId === grupoId &&
+          s.usuarioId === usuarioId &&
+          s.rodada === rodada &&
+          s.tipo === tipo,
+      ) ?? null,
+    );
+  }
+
+  atualizar(
+    id: string,
+    data: { dados: object; titulo: string },
+  ): Promise<void> {
+    const destaque = this.destaques.find((s) => s.id === id);
+    if (destaque) {
+      destaque.dados = data.dados as Record<string, unknown>;
+      destaque.titulo = data.titulo;
+      destaque.criadoEm = new Date();
+    }
+    return Promise.resolve();
+  }
+
+  removerPorTiposNaRodada(
+    grupoId: string,
+    usuarioId: string,
+    rodada: number,
+    tipos: TipoDestaque[],
+    excetoId?: string,
+  ): Promise<void> {
+    const ids = new Set(
+      this.destaques
+        .filter(
+          (s) =>
+            s.grupoId === grupoId &&
+            s.usuarioId === usuarioId &&
+            s.rodada === rodada &&
+            tipos.includes(s.tipo) &&
+            s.id !== excetoId,
+        )
+        .map((s) => s.id),
+    );
+    for (let i = this.destaques.length - 1; i >= 0; i--) {
+      if (ids.has(this.destaques[i].id)) this.destaques.splice(i, 1);
+    }
+    for (let i = this.reacoes.length - 1; i >= 0; i--) {
+      if (ids.has(this.reacoes[i].destaqueId)) this.reacoes.splice(i, 1);
+    }
+    for (let i = this.visualizacoes.length - 1; i >= 0; i--) {
+      if (ids.has(this.visualizacoes[i].destaqueId)) this.visualizacoes.splice(i, 1);
+    }
+    return Promise.resolve();
   }
 
   removerAntigos(diasLimite: number): Promise<number> {

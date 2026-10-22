@@ -1,17 +1,20 @@
 import type { TipoDestaque, DestaqueTitle } from './types/destaque.types';
 
-export const DESTAQUE_TITULOS: Record<TipoDestaque, DestaqueTitle[]> = {
+type TipoComTitulo = Exclude<TipoDestaque, 'SEQUENCIA_MOSCA'>;
+
+export const DESTAQUE_TITULOS: Record<TipoComTitulo, DestaqueTitle[]> = {
   ACERTOU_EM_CHEIO: [
     { id: 'cheio-01', title: 'Cravou!', emoji: '🎯' },
     { id: 'cheio-02', title: 'Na mosca!', emoji: '🎯' },
     { id: 'cheio-03', title: 'Bola de cristal!', emoji: '🎯' },
-    { id: 'cheio-04', title: 'Tá hackeado?', emoji: '🎯' },
+    { id: 'cheio-04', title: 'Tá hackeando?', emoji: '🎯' },
     { id: 'cheio-05', title: 'Quem te contou?', emoji: '🎯' },
     { id: 'cheio-06', title: 'Combinou com o juiz!', emoji: '🎯' },
-    { id: 'cheio-07', title: 'Nostradamus!', emoji: '🎯' },
-    { id: 'cheio-08', title: 'Bruxo!', emoji: '🎯' },
+    { id: 'cheio-07', title: 'Mãe Diná!', emoji: '🎯' },
+    { id: 'cheio-08', title: 'Sniper!', emoji: '🎯' },
     { id: 'cheio-09', title: 'Cravou e não tremeu', emoji: '🎯' },
     { id: 'cheio-10', title: 'Isso é informação privilegiada', emoji: '🎯' },
+    { id: 'cheio-11', title: 'Vai cagar no banheiro!', emoji: '🎯' },
   ],
 
   UNICO_NA_MOSCA: [
@@ -24,6 +27,7 @@ export const DESTAQUE_TITULOS: Record<TipoDestaque, DestaqueTitle[]> = {
     { id: 'unico-07', title: 'Todo mundo errou menos ele', emoji: '🦄' },
     { id: 'unico-08', title: 'Visão de águia', emoji: '🦄' },
     { id: 'unico-09', title: 'O diferentão tava certo', emoji: '🦄' },
+    { id: 'unico-10', title: 'Comprou o juiz!', emoji: '🦄' },
   ],
 
   SUBIU_RANKING: [
@@ -36,28 +40,21 @@ export const DESTAQUE_TITULOS: Record<TipoDestaque, DestaqueTitle[]> = {
     { id: 'subiu-07', title: 'Decolou!', emoji: '📈' },
     { id: 'subiu-08', title: 'Próxima parada: topo', emoji: '📈' },
     { id: 'subiu-09', title: 'Escalada silenciosa', emoji: '📈' },
-  ],
-
-  SEQUENCIA_MOSCA: [
-    { id: 'seqm-01', title: 'Tá on fire!', emoji: '🔥' },
-    { id: 'seqm-02', title: 'Máquina!', emoji: '🔥' },
-    { id: 'seqm-03', title: 'Sequência absurda', emoji: '🔥' },
-    { id: 'seqm-04', title: 'Alguém para esse cara?', emoji: '🔥' },
-    { id: 'seqm-05', title: 'Cravando em série', emoji: '🔥' },
-    { id: 'seqm-06', title: 'Tá impossível!', emoji: '🔥' },
-    { id: 'seqm-07', title: 'Modo campanha', emoji: '🔥' },
-    { id: 'seqm-08', title: 'Invicto!', emoji: '🔥' },
-    { id: 'seqm-09', title: 'Série de ouro', emoji: '🔥' },
+    { id: 'subiu-10', title: 'Não para de subir', emoji: '📈' },
   ],
 
   SEQUENCIA_RESULTADO: [
-    { id: 'seqr-01', title: 'Tá on fire!', emoji: '🔥' },
-    { id: 'seqr-02', title: 'Gabaritando!', emoji: '🔥' },
-    { id: 'seqr-03', title: 'Dominou a rodada', emoji: '🔥' },
-    { id: 'seqr-04', title: 'Acertou tudo que viu', emoji: '🔥' },
-    { id: 'seqr-05', title: 'Ninguém segura', emoji: '🔥' },
-    { id: 'seqr-06', title: 'Rodada perfeita em construção', emoji: '🔥' },
-    { id: 'seqr-07', title: 'Tá demais!', emoji: '🔥' },
+    { id: 'seqr-01', title: 'Não zera', emoji: '🔥' },
+    { id: 'seqr-02', title: 'Vem pontuando', emoji: '🔥' },
+    { id: 'seqr-03', title: 'Somando sem parar', emoji: '🔥' },
+    { id: 'seqr-04', title: 'Ponto atrás de ponto', emoji: '🔥' },
+    { id: 'seqr-05', title: 'Não deixa de somar', emoji: '🔥' },
+    { id: 'seqr-06', title: 'Sequência de pontuação', emoji: '🔥' },
+    { id: 'seqr-07', title: 'Tá no lucro', emoji: '🔥' },
+    { id: 'seqr-08', title: 'Deixa um pouco para os outros', emoji: '🔥' },
+    { id: 'seqr-09', title: 'Gabaritando', emoji: '🔥' },
+    { id: 'seqr-10', title: 'Tá ficando difícil de errar', emoji: '🔥' },
+    { id: 'seqr-11', title: 'Infreável!', emoji: '🔥' },
   ],
 
   NAO_PALPITOU: [
@@ -71,6 +68,10 @@ export const DESTAQUE_TITULOS: Record<TipoDestaque, DestaqueTitle[]> = {
     { id: 'nao-08', title: 'Fantasma!', emoji: '😴' },
     { id: 'nao-09', title: 'Tá vivo?', emoji: '😴' },
     { id: 'nao-10', title: 'Vacilou!', emoji: '😴' },
+    { id: 'nao-11', title: 'Tá em Narnia', emoji: '😴' },
+    { id: 'nao-12', title: 'Tá em outro planeta', emoji: '😴' },
+    { id: 'nao-13', title: 'Acabou a internet?', emoji: '😴' },
+
   ],
 
   DOBROU_E_ACERTOU: [
@@ -89,7 +90,7 @@ export const DESTAQUE_TITULOS: Record<TipoDestaque, DestaqueTitle[]> = {
  * Seleciona um título aleatório sem repetir o último usado na batch.
  */
 export function pickRandomTitle(
-  tipo: TipoDestaque,
+  tipo: TipoComTitulo,
   ultimoTituloUsadoId?: string,
 ): DestaqueTitle {
   const titulos = DESTAQUE_TITULOS[tipo];

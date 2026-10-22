@@ -4,6 +4,7 @@ import {
   Post,
   Param,
   Body,
+  Query,
   UseGuards,
   Inject,
 } from '@nestjs/common';
@@ -48,29 +49,29 @@ export class DestaqueController {
   async listarDestaques(
     @Param('grupoId', new ParseUUIDCustomPipe('grupoId')) grupoId: string,
     @CurrentUser() usuario: { id: string },
+    @Query('rodada') rodadaQuery?: string,
   ) {
+    const rodadaPedida = Number(rodadaQuery);
+    const preview = Number.isInteger(rodadaPedida) && rodadaPedida > 0;
     const rodadaAtual = await this.obterRodadaAtualDoGrupo(grupoId);
-    const rodadas = this.calcularRodadasVisiveis(rodadaAtual);
+    const rodadasPreferidas = preview
+      ? [rodadaPedida]
+      : this.calcularRodadasVisiveis(rodadaAtual);
+    const rodadasDisponiveis = await this.destaqueRepo.listarRodadasPorGrupo(
+      grupoId,
+    );
+    const rodadas = preview
+      ? rodadasPreferidas
+      : this.resolverRodadasParaListagem(
+          rodadasPreferidas,
+          rodadasDisponiveis,
+        );
 
     const destaques = await this.destaqueRepo.buscarPorGrupoERodadas(
       grupoId,
       rodadas,
-      DESTAQUES.LIMITES.MAX_DESTAQUES_LISTAGEM,
+      preview ? 200 : DESTAQUES.LIMITES.MAX_DESTAQUES_LISTAGEM,
     );
-
-    // Complementar com rodada anterior se necessário
-    const minDestaques = DESTAQUES.LIMITES.MIN_DESTAQUES_VIEWER;
-    if (destaques.length < minDestaques && rodadaAtual && rodadaAtual > 1) {
-      const rodadaExtra = rodadaAtual - 2;
-      if (rodadaExtra >= 1) {
-        const extras = await this.destaqueRepo.buscarPorGrupoERodadas(
-          grupoId,
-          [rodadaExtra],
-          minDestaques - destaques.length,
-        );
-        destaques.push(...extras);
-      }
-    }
 
     // Buscar visualizações e reações do usuário autenticado (batch)
     const destaqueIds = destaques.map((s) => s.id);
@@ -88,8 +89,11 @@ export class DestaqueController {
       naoPalpitouIds,
     );
 
+    const lista = preview ? amostrarPorTipo(destaques) : destaques;
+
     return {
-      destaques: destaques.map((s) => ({
+      rodadasDisponiveis,
+      destaques: lista.map((s) => ({
         id: s.id,
         tipo: s.tipo,
         titulo: s.titulo,
@@ -121,7 +125,13 @@ export class DestaqueController {
     @CurrentUser() usuario: { id: string },
   ) {
     const rodadaAtual = await this.obterRodadaAtualDoGrupo(grupoId);
-    const rodadasVisiveis = this.calcularRodadasVisiveis(rodadaAtual);
+    const rodadasDisponiveis = await this.destaqueRepo.listarRodadasPorGrupo(
+      grupoId,
+    );
+    const rodadasVisiveis = this.resolverRodadasParaListagem(
+      this.calcularRodadasVisiveis(rodadaAtual),
+      rodadasDisponiveis,
+    );
 
     const contadorFs = await this.reactionService.mandarF(
       destaqueId,
@@ -167,7 +177,17 @@ export class DestaqueController {
     const fasePontosCorridos = fases.find((f) => f.tipo === 'PONTOS_CORRIDOS');
     if (!fasePontosCorridos) return null;
 
-    return this.jogoRepo.buscarRodadaAtual(fasePontosCorridos.id);
+    const agenda = await this.jogoRepo.buscarRodadaAtual(fasePontosCorridos.id);
+    const ultimaFinalizada = await this.jogoRepo.buscarMaiorRodadaFinalizada(
+      fasePontosCorridos.id,
+    );
+    if (
+      ultimaFinalizada != null &&
+      (agenda == null || ultimaFinalizada > agenda)
+    ) {
+      return ultimaFinalizada;
+    }
+    return agenda;
   }
 
   private calcularRodadasVisiveis(rodadaAtual: number | null): number[] {
@@ -176,4 +196,39 @@ export class DestaqueController {
     if (rodadaAtual > 1) rodadas.push(rodadaAtual - 1);
     return rodadas;
   }
+
+  /**
+   * Prefere a rodada atual e a anterior. Se elas ainda não têm destaques
+   * (rodada em andamento ou geração pendente), recua até as últimas
+   * rodadas que realmente possuem destaques.
+   */
+  private resolverRodadasParaListagem(
+    preferidas: number[],
+    disponiveis: number[],
+  ): number[] {
+    const comDestaque = new Set(disponiveis);
+    const escolhidas = preferidas.filter((rodada) => comDestaque.has(rodada));
+    if (escolhidas.length > 0) return escolhidas;
+
+    const maisRecente = disponiveis[0];
+    if (maisRecente == null) return [];
+    const rodadas = [maisRecente];
+    if (disponiveis.includes(maisRecente - 1)) rodadas.push(maisRecente - 1);
+    return rodadas;
+  }
+}
+
+const LIMITE_POR_TIPO = 2;
+
+function amostrarPorTipo<T extends { tipo: string }>(destaques: T[]): T[] {
+  const prioridades = DESTAQUES.PRIORIDADE_POR_TIPO;
+  const contagem = new Map<string, number>();
+  return [...destaques]
+    .sort((a, b) => (prioridades[a.tipo] ?? 99) - (prioridades[b.tipo] ?? 99))
+    .filter((item) => {
+      const atual = contagem.get(item.tipo) ?? 0;
+      if (atual >= LIMITE_POR_TIPO) return false;
+      contagem.set(item.tipo, atual + 1);
+      return true;
+    });
 }

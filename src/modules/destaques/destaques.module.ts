@@ -16,6 +16,7 @@ import { PalpitesModule } from '../palpites/palpites.module';
 import { GruposModule } from '../grupos/grupos.module';
 import { GrupoUsuarioModule } from '../grupo-usuario/grupo-usuario.module';
 import { NotificacoesModule } from '../notificacoes/notificacoes.module';
+import { RankingService } from '../ranking/services/ranking.service';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { NotificacoesModule } from '../notificacoes/notificacoes.module';
     DestaqueCronService,
     // Services de outros módulos (sem dependências — instanciação direta)
     PontuacaoService,
+    RankingService,
     // Repositories próprios (Prisma)
     {
       provide: DESTAQUES.DESTAQUE_REPOSITORY_TOKEN,

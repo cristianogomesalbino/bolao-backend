@@ -56,6 +56,7 @@ export class PrismaDestaqueRepository implements DestaqueRepository {
       where: {
         grupoId,
         rodada: { in: rodadas },
+        tipo: { not: 'SEQUENCIA_MOSCA' },
       },
       include: {
         usuario: { select: { id: true, nome: true } },
@@ -89,6 +90,17 @@ export class PrismaDestaqueRepository implements DestaqueRepository {
     return this.prisma.destaque.count({
       where: { grupoId, rodada: { in: rodadas } },
     });
+  }
+
+  async listarRodadasPorGrupo(grupoId: string): Promise<number[]> {
+    const grupos = await this.prisma.destaque.groupBy({
+      by: ['rodada'],
+      where: { grupoId, rodada: { not: null } },
+      orderBy: { rodada: 'desc' },
+    });
+    return grupos
+      .map((g) => g.rodada)
+      .filter((rodada): rodada is number => rodada != null);
   }
 
   async incrementarContadorFs(destaqueId: string): Promise<number> {
@@ -168,6 +180,64 @@ export class PrismaDestaqueRepository implements DestaqueRepository {
       },
     });
     return destaque !== null;
+  }
+
+  async existeDestaqueNaRodada(
+    grupoId: string,
+    usuarioId: string,
+    rodada: number,
+    tipo: TipoDestaque,
+  ): Promise<boolean> {
+    const destaque = await this.prisma.destaque.findFirst({
+      where: { grupoId, usuarioId, rodada, tipo },
+      select: { id: true },
+    });
+    return destaque !== null;
+  }
+
+  async buscarNaRodada(
+    grupoId: string,
+    usuarioId: string,
+    rodada: number,
+    tipo: TipoDestaque,
+  ): Promise<Destaque | null> {
+    const destaque = await this.prisma.destaque.findFirst({
+      where: { grupoId, usuarioId, rodada, tipo },
+      orderBy: { criadoEm: 'asc' },
+    });
+    return destaque ? this.mapear(destaque) : null;
+  }
+
+  async atualizar(
+    id: string,
+    data: { dados: object; titulo: string },
+  ): Promise<void> {
+    await this.prisma.destaque.update({
+      where: { id },
+      data: {
+        dados: data.dados as unknown as Prisma.InputJsonValue,
+        titulo: data.titulo,
+        criadoEm: new Date(),
+      },
+    });
+  }
+
+  async removerPorTiposNaRodada(
+    grupoId: string,
+    usuarioId: string,
+    rodada: number,
+    tipos: TipoDestaque[],
+    excetoId?: string,
+  ): Promise<void> {
+    await this.prisma.destaque.deleteMany({
+      where: {
+        grupoId,
+        usuarioId,
+        rodada,
+        tipo: { in: tipos },
+        ...(excetoId ? { id: { not: excetoId } } : {}),
+      },
+    });
   }
 
   async removerAntigos(diasLimite: number): Promise<number> {

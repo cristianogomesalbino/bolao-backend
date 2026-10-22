@@ -168,6 +168,52 @@ describe('JogoService — sincronização multi-campeonato', () => {
       expect(result.jogosAtualizados).toHaveLength(1);
       expect(result.jogosAtualizados[0].timeCasa).toBe('BRA');
     });
+
+    it('deve reabrir ADIADO encerrado na API como EM_ANDAMENTO e finalizar na sync seguinte', async () => {
+      criarJogoNoBanco({
+        status: 'ADIADO',
+        dataHora: null,
+        timeCasa: { sigla: 'FLA', nome: 'Flamengo' },
+        timeFora: { sigla: 'MIR', nome: 'Mirassol' },
+      });
+
+      const jogoApiNormalizado = {
+        externoId: '99001',
+        dataHora: '2026-09-02T22:30:00.000Z',
+        status: 'FINALIZADO',
+        golsCasa: 2,
+        golsFora: 0,
+        penaltisCasa: null,
+        penaltisFora: null,
+      };
+      buscarJogosPorRodadas.mockResolvedValue([{ raw: true }]);
+      normalizarJogo.mockReturnValue(jogoApiNormalizado);
+
+      const primeira = await service.sincronizarPlacares(
+        'fase-sync-1',
+        'copa-do-mundo-2026',
+        COPA_FASES.FASE_DE_GRUPOS,
+      );
+
+      expect(primeira.sincronizados).toBe(1);
+      expect(jogoRepo.items[0].status).toBe('EM_ANDAMENTO');
+      expect(jogoRepo.items[0].golsCasa).toBeNull();
+      expect(jogoRepo.items[0].dataHora).toEqual(
+        new Date('2026-09-02T22:30:00.000Z'),
+      );
+      expect(jogoRepo.items[0].foiAdiado).toBe(true);
+
+      const segunda = await service.sincronizarPlacares(
+        'fase-sync-1',
+        'copa-do-mundo-2026',
+        COPA_FASES.FASE_DE_GRUPOS,
+      );
+
+      expect(segunda.sincronizados).toBe(1);
+      expect(jogoRepo.items[0].status).toBe('FINALIZADO');
+      expect(jogoRepo.items[0].golsCasa).toBe(2);
+      expect(jogoRepo.items[0].golsFora).toBe(0);
+    });
   });
 
   describe('filtro por fonteResultado', () => {

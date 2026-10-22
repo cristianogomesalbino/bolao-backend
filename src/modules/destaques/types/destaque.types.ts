@@ -26,11 +26,20 @@ export interface TimeInfo {
   escudo: string | null;
 }
 
+export interface PlacarCravado {
+  jogoId: string;
+  golsCasa: number;
+  golsFora: number;
+  timeCasa: TimeInfo;
+  timeFora: TimeInfo;
+}
+
 export interface DadosAcertouEmCheio {
   golsCasa: number;
   golsFora: number;
   timeCasa: TimeInfo;
   timeFora: TimeInfo;
+  jogos?: PlacarCravado[];
 }
 
 export interface DadosUnicoNaMosca {
@@ -62,14 +71,9 @@ export interface RecordeInfo {
   ehNovoRecorde: boolean;
 }
 
-export interface DadosSequenciaMosca {
-  quantidadeAcertos: number;
-  ultimosJogos: Array<JogoSequencia & { acertouEmCheio: boolean }>;
-  recorde: RecordeInfo;
-}
-
 export interface DadosSequenciaResultado {
   quantidadeAcertos: number;
+  pontos: number;
   rodadaInicio: number | null;
   rodadaFim: number | null;
   ultimosJogos: JogoSequencia[];
