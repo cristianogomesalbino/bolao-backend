@@ -125,6 +125,7 @@ export class NotificacaoAcertoService {
           titulo: notif.titulo,
           mensagem: notif.mensagem,
           tipo: 'ACERTO_EM_CHEIO',
+          dedupeId: `jogo:${jogo.id}:ACERTO_EM_CHEIO`,
           url: '/notificacoes',
         });
       }

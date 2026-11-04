@@ -136,6 +136,7 @@ export class NotificacaoRodadaService {
       titulo: NOTIFICACOES.TEMPLATES.RODADA_ENCERRADA.titulo,
       mensagem,
       tipo: 'RODADA_ENCERRADA',
+      dedupeId: `fase:${fase.id}:rodada:${String(rodada)}:RODADA_ENCERRADA`,
     });
 
     this.logger.log(

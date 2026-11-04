@@ -109,6 +109,7 @@ export class NotificacaoLembreteService {
       titulo: NOTIFICACOES.TEMPLATES.JOGO_PROXIMO.titulo,
       mensagem,
       tipo: 'JOGO_PROXIMO',
+      dedupeId: `jogo:${jogo.id}:JOGO_PROXIMO`,
       url: '/palpites',
     });
 
@@ -174,6 +175,7 @@ export class NotificacaoLembreteService {
         titulo: notif.titulo,
         mensagem: notif.mensagem,
         tipo: 'PALPITES_PENDENTES',
+        dedupeId: `fase:${faseId}:rodada:${String(rodada)}:PALPITES_PENDENTES`,
         url: '/palpites',
       });
     }
@@ -329,6 +331,7 @@ export class NotificacaoLembreteService {
       titulo: NOTIFICACOES.TEMPLATES.JOGO_LIBERADO.titulo,
       mensagem,
       tipo: 'JOGO_LIBERADO',
+      dedupeId: `jogo:${jogoId}:JOGO_LIBERADO`,
       url: '/palpites',
     });
 

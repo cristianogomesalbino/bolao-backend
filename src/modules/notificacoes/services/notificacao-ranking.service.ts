@@ -187,6 +187,7 @@ export class NotificacaoRankingService {
         titulo: NOTIFICACOES.TEMPLATES.SUBIU_POSICAO.titulo,
         mensagem: 'Você subiu no ranking! Confira sua nova posição.',
         tipo: 'SUBIU_POSICAO',
+        dedupeId: `jogo:${notificacoes[0].jogoId}:grupo:${notificacoes[0].grupoId}:SUBIU_POSICAO`,
       });
     }
     if (habilitadosDesceu.length > 0) {
@@ -194,6 +195,7 @@ export class NotificacaoRankingService {
         titulo: NOTIFICACOES.TEMPLATES.DESCEU_POSICAO.titulo,
         mensagem: 'Sua posição no ranking mudou. Confira.',
         tipo: 'DESCEU_POSICAO',
+        dedupeId: `jogo:${notificacoes[0].jogoId}:grupo:${notificacoes[0].grupoId}:DESCEU_POSICAO`,
       });
     }
   }

@@ -170,6 +170,7 @@ export class NotificacaoVencedorService {
         vencedor.pontuacaoTotal,
       ),
       tipo: 'VENCEDOR_BOLAO',
+      dedupeId: `grupo:${grupo.id}:VENCEDOR_BOLAO`,
     });
   }
 }
