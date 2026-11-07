@@ -1,11 +1,19 @@
 name: SonarCloud
 
 on:
+  pull_request:
+    branches:
+      - main
+      - develop
   push:
     branches:
       - main
       - develop
-  pull_request:
+
+# Evita análise duplicada quando o mesmo SHA dispara push + pull_request
+concurrency:
+  group: sonar-${{ github.event.pull_request.head.sha || github.sha }}
+  cancel-in-progress: true
 
 jobs:
   sonar:

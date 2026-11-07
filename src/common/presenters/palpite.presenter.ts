@@ -3,7 +3,7 @@ import { JogoPresenter } from './jogo.presenter';
 interface JogoRelacao {
   id: string;
   faseId: string;
-  rodada: number;
+  rodada: number | null;
   timeCasaId: string;
   timeForaId: string;
   timeCasa?: {

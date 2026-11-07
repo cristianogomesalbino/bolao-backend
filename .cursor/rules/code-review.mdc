@@ -1,0 +1,23 @@
+---
+description: Como fazer code review do backend (usar quando o usuário pedir review)
+alwaysApply: false
+---
+
+# Code review — backend
+
+Fonte da verdade: regras em `.cursor/rules/` (+ README). Módulo referência: `src/modules/grupo-usuario/`.
+
+- Escopo = **diff da feature**; não narrar o que o código faz — só problemas/riscos/melhorias.
+- Priorizar crítico → alto → médio; sugerir código corrigido; preferir early returns a if aninhado.
+- Checar: testes/cobertura novas, Domain Errors, N+1, Guards, tipagem, migrations, secrets, Sonar smells.
+- Saída em `docs/outputs_ai/code-review-[FEATURE].md` no formato:
+
+```
+[CR-XXX] - título
+Descrição: ...
+Arquivo: ... | Linha: ...
+Código atual / Código sugerido
+Impacto: baixo|médio|alto|crítico
+Categoria: bug|arquitetura|segurança|clean code|tipagem|testes|performance|dívida
+Regra violada: ...
+```

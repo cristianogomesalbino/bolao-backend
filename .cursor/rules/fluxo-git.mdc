@@ -1,0 +1,16 @@
+---
+description: Fluxo git obrigatório — nunca commit/push na main; tudo pela develop
+alwaysApply: true
+---
+
+# Fluxo git (obrigatório para o agente)
+
+- **NUNCA** fazer `commit`, `push`, `amend` ou merge **direto na `main`**.
+- **NUNCA** fazer checkout da `main` para aplicar mudanças de feature/infra/CI/docs.
+- Branch de trabalho: **`develop`** (ou `feature/*` → merge/`PR` para `develop`).
+- Chegada na `main`: **somente** via PR `develop` → `main` (merge commit no GitHub), feito pelo usuário — o agente não abre atalho.
+- Infra (workflows, tag, versionamento, `.gitignore`, rules): editar na **`develop`**, nunca na `main`.
+- Se o usuário pedir algo “na main”: redirecionar para `develop` e explicar o motivo (evita conflito no próximo sync).
+- Antes de commit/push: confirmar branch atual ≠ `main` (`git branch --show-current`). Se estiver em `main`, **parar** e mudar para `develop`.
+- Evitar `git push --force` na `develop` com PR aberto, salvo pedido explícito do usuário.
+- Não criar/alterar workflow que faça o bot **commitar na `main`** (ex.: bump de versão no push da main) sem o usuário pedir — isso gera commits fora da develop e conflito no PR.

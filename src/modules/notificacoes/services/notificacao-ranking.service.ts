@@ -60,15 +60,21 @@ export class NotificacaoRankingService {
       fase.temporadaId,
     )) as GrupoNotif[];
 
-    for (const grupo of grupos) {
-      try {
-        await this.processarMudancaPosicaoGrupo(jogo, grupo);
-      } catch (error) {
+    const resultados = await Promise.allSettled(
+      grupos.map((grupo) => this.processarMudancaPosicaoGrupo(jogo, grupo)),
+    );
+    resultados.forEach((resultado, index) => {
+      if (resultado.status === 'rejected') {
+        const grupo = grupos[index];
+        const motivo =
+          resultado.reason instanceof Error
+            ? resultado.reason.message
+            : String(resultado.reason);
         this.logger.error(
-          `Erro ao verificar mudança de posição grupo ${grupo.id}: ${(error as Error).message}`,
+          `Erro ao verificar mudança de posição grupo ${grupo.id}: ${motivo}`,
         );
       }
-    }
+    });
   }
 
   async processarMudancaPosicaoGrupo(
@@ -187,6 +193,7 @@ export class NotificacaoRankingService {
         titulo: NOTIFICACOES.TEMPLATES.SUBIU_POSICAO.titulo,
         mensagem: 'Você subiu no ranking! Confira sua nova posição.',
         tipo: 'SUBIU_POSICAO',
+        dedupeId: `jogo:${notificacoes[0].jogoId}:grupo:${notificacoes[0].grupoId}:SUBIU_POSICAO`,
       });
     }
     if (habilitadosDesceu.length > 0) {
@@ -194,6 +201,7 @@ export class NotificacaoRankingService {
         titulo: NOTIFICACOES.TEMPLATES.DESCEU_POSICAO.titulo,
         mensagem: 'Sua posição no ranking mudou. Confira.',
         tipo: 'DESCEU_POSICAO',
+        dedupeId: `jogo:${notificacoes[0].jogoId}:grupo:${notificacoes[0].grupoId}:DESCEU_POSICAO`,
       });
     }
   }
@@ -212,17 +220,18 @@ export class NotificacaoRankingService {
     if (membros.length === 0) return [];
 
     const usuarioIds = membros.map((m) => m.usuarioId);
-    const todosJogosFinalizados: JogoNotif[] = [];
-
-    for (const fase of fases) {
-      const jogos = (await this.jogoRepo.buscarPorFase(fase.id)) as JogoNotif[];
-      const finalizados = jogos.filter(
+    const jogosPorFase = await Promise.all(
+      fases.map(
+        (fase) => this.jogoRepo.buscarPorFase(fase.id) as Promise<JogoNotif[]>,
+      ),
+    );
+    const todosJogosFinalizados = jogosPorFase.flatMap((jogos) =>
+      jogos.filter(
         (j) =>
           j.status === 'FINALIZADO' &&
           (jogoIdExcluir === null || j.id !== jogoIdExcluir),
-      );
-      todosJogosFinalizados.push(...finalizados);
-    }
+      ),
+    );
 
     if (todosJogosFinalizados.length === 0) return [];
 

@@ -1,0 +1,27 @@
+---
+description: Visão geral do bolao-backend — stack, módulos e regras de domínio
+alwaysApply: true
+---
+
+# Bolão Backend
+
+API NestJS 11 + Prisma 6 + PostgreSQL (Supabase) + Vitest 4 + JWT (access 15m, refresh 7d) + Swagger `/docs`.
+
+## Módulos (`src/modules/`)
+
+`auth`, `usuarios`, `campeonatos`, `temporadas`, `grupos`, `grupo-usuario`, `jogos`, `palpites`, `times`, `ranking`, `notificacoes`, `scheduler`, `eventos`.
+
+## Domínio (resumo)
+
+- Criador do grupo = ADMIN; roles de grupo ≠ perfil global.
+- Palpite só em `AGENDADO`/`ADIADO`; 1 palpite/usuário/jogo.
+- Ranking on-the-fly: cheio 3, resultado 1, erro 0; dobro ×2.
+- Status jogo: `AGENDADO` → `EM_ANDAMENTO` → `FINALIZADO`; também `ADIADO`/`CANCELADO` (ver mapa de transições no código).
+- Import/sync: API ge.globo; multi-grupo Copa sincroniza fases equivalentes juntas.
+- Idioma de domínio/mensagens: PT-BR; nomes NestJS em inglês.
+
+## Dev
+
+- App em Docker: `sh dev start-dev` / `stop` / `logs` / `npm` / `npx`.
+- Testes unitários podem rodar no host: `npx vitest run`.
+- Não rodar no host comandos que dependem do banco (migrate/seed) — usar `sh dev ...`.

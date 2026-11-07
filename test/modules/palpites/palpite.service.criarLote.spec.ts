@@ -132,6 +132,24 @@ describe('PalpiteService — criarLote', () => {
     expect(result[0].erro).toContain('não encontrado');
   });
 
+  it('deve retornar erro para jogo da API pendente de confirmação', async () => {
+    jogoRepo.items = [
+      {
+        ...jogoAgendado1,
+        fonteResultado: 'API_EXTERNA',
+        externoId: null,
+      },
+    ];
+
+    const result = await service.criarLote(
+      [{ jogoId: 'jogo-1', golsCasa: 1, golsFora: 0 }],
+      userId,
+    );
+
+    expect(result[0].sucesso).toBe(false);
+    expect(result[0].erro).toMatch(/pendente|confirma/i);
+  });
+
   it('deve retornar array vazio para lote vazio', async () => {
     const result = await service.criarLote([], userId);
 

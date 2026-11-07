@@ -17,7 +17,10 @@ export interface PushPayload {
   mensagem: string;
   tipo: string;
   url?: string;
+  dedupeId?: string;
 }
+
+const PUSH_TTL_SECONDS = 60 * 60;
 
 @Injectable()
 export class PushService implements OnModuleInit {
@@ -110,6 +113,9 @@ export class PushService implements OnModuleInit {
         NOTIFICACOES.LIMITES.PUSH_MENSAGEM_MAX,
       ),
       type: payload.tipo,
+      dedupeId: payload.dedupeId
+        ? `${payload.dedupeId}:${usuarioId}`
+        : undefined,
       url: payload.url,
     });
 
@@ -146,7 +152,10 @@ export class PushService implements OnModuleInit {
     };
 
     try {
-      await webpush.sendNotification(subscription, payload, { timeout: 5000 });
+      await webpush.sendNotification(subscription, payload, {
+        TTL: PUSH_TTL_SECONDS,
+        timeout: 5000,
+      });
     } catch (error: unknown) {
       const statusCode = (error as { statusCode?: number })?.statusCode;
 

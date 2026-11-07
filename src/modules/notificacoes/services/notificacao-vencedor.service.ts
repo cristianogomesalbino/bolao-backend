@@ -61,15 +61,21 @@ export class NotificacaoVencedorService {
       fase.temporadaId,
     )) as GrupoNotif[];
 
-    for (const grupo of grupos) {
-      try {
-        await this.notificarVencedorGrupo(grupo);
-      } catch (error) {
+    const resultados = await Promise.allSettled(
+      grupos.map((grupo) => this.notificarVencedorGrupo(grupo)),
+    );
+    resultados.forEach((resultado, index) => {
+      if (resultado.status === 'rejected') {
+        const grupo = grupos[index];
+        const motivo =
+          resultado.reason instanceof Error
+            ? resultado.reason.message
+            : String(resultado.reason);
         this.logger.error(
-          `Erro ao notificar vencedor do grupo ${grupo.id}: ${(error as Error).message}`,
+          `Erro ao notificar vencedor do grupo ${grupo.id}: ${motivo}`,
         );
       }
-    }
+    });
   }
 
   private async verificarTodosJogosEncerrados(
@@ -170,6 +176,7 @@ export class NotificacaoVencedorService {
         vencedor.pontuacaoTotal,
       ),
       tipo: 'VENCEDOR_BOLAO',
+      dedupeId: `grupo:${grupo.id}:VENCEDOR_BOLAO`,
     });
   }
 }

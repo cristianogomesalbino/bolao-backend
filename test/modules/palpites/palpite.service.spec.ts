@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { PalpiteService } from '@src/modules/palpites/services/palpite.service';
 import { InMemoryPalpiteRepository } from '@src/modules/palpites/repositories/in-memory-palpite.repository';
 import { InMemoryJogoRepository } from '@src/modules/jogos/repositories/in-memory-jogo.repository';
@@ -131,6 +131,10 @@ describe('PalpiteService', () => {
     );
   });
 
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   // ==================== criar ====================
 
   describe('criar', () => {
@@ -157,6 +161,49 @@ describe('PalpiteService', () => {
     it('deve lançar JogoNaoAceitaPalpitesError se jogo EM_ANDAMENTO', async () => {
       await expect(
         service.criar('jogo-2', { golsCasa: 1, golsFora: 0 }, userId),
+      ).rejects.toThrow(JogoNaoAceitaPalpitesError);
+    });
+
+    it('deve aceitar palpite se EM_ANDAMENTO com horário futuro', async () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2026-11-04T12:00:00.000Z'));
+      jogoRepo.items.push({
+        id: 'jogo-em-andamento-futuro',
+        faseId,
+        timeCasaId: 'time-a',
+        timeForaId: 'time-b',
+        dataHora: new Date('2026-11-04T13:00:00.000Z'),
+        status: 'EM_ANDAMENTO',
+      });
+
+      const result = await service.criar(
+        'jogo-em-andamento-futuro',
+        { golsCasa: 1, golsFora: 0 },
+        userId,
+      );
+
+      expect(result.golsCasa).toBe(1);
+      expect(result.golsFora).toBe(0);
+    });
+
+    it('deve rejeitar palpite se EM_ANDAMENTO com horário passado', async () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2026-11-04T14:00:00.000Z'));
+      jogoRepo.items.push({
+        id: 'jogo-em-andamento-passado',
+        faseId,
+        timeCasaId: 'time-a',
+        timeForaId: 'time-b',
+        dataHora: new Date('2026-11-04T13:00:00.000Z'),
+        status: 'EM_ANDAMENTO',
+      });
+
+      await expect(
+        service.criar(
+          'jogo-em-andamento-passado',
+          { golsCasa: 1, golsFora: 0 },
+          userId,
+        ),
       ).rejects.toThrow(JogoNaoAceitaPalpitesError);
     });
 

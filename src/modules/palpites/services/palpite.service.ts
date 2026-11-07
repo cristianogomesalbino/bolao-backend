@@ -3,8 +3,14 @@ import { PALPITES } from '../palpites.constants';
 import { JOGOS } from '../../jogos/jogos.constants';
 import { GRUPOS } from '../../grupos/grupos.constants';
 import { GRUPO_USUARIO } from '../../grupo-usuario/grupo-usuario.constants';
-import type { PalpiteRepository } from '../repositories/palpite.repository.interface';
-import type { JogoRepository } from '../../jogos/repositories/jogo.repository.interface';
+import type {
+  Palpite,
+  PalpiteRepository,
+} from '../repositories/palpite.repository.interface';
+import type {
+  Jogo,
+  JogoRepository,
+} from '../../jogos/repositories/jogo.repository.interface';
 import type { FaseRepository } from '../../jogos/repositories/fase.repository.interface';
 import type { GrupoRepository } from '../../grupos/repositories/grupo.repository.interface';
 import type { GrupoUsuarioRepository } from '../../grupo-usuario/repositories/grupo-usuario.repository.interface';
@@ -194,67 +200,88 @@ export class PalpiteService {
     const jogosMap = new Map(jogos.map((j) => [j.id, j]));
     const existentesSet = new Set(palpitesExistentes.map((p) => p.jogoId));
 
-    const resultados: {
+    type ResultadoLote = {
       jogoId: string;
       sucesso: boolean;
-      palpite?: any;
+      palpite?: Palpite;
       erro?: string;
-    }[] = [];
+    };
+    const resultados: ResultadoLote[] = new Array(palpites.length);
+    const paraCriar: { index: number; item: PalpiteItemDto }[] = [];
 
-    for (const item of palpites) {
+    for (const [index, item] of palpites.entries()) {
       const jogo = jogosMap.get(item.jogoId);
       if (!jogo) {
-        resultados.push({
+        resultados[index] = {
           jogoId: item.jogoId,
           sucesso: false,
           erro: JOGOS.MENSAGENS.JOGO_NAO_ENCONTRADO,
-        });
+        };
         continue;
       }
-      if (jogo.status !== 'AGENDADO' && jogo.status !== 'ADIADO') {
-        resultados.push({
+      const status = this.statusEfetivo(jogo.status, jogo.dataHora);
+      if (status !== 'AGENDADO' && status !== 'ADIADO') {
+        resultados[index] = {
           jogoId: item.jogoId,
           sucesso: false,
           erro: PALPITES.MENSAGENS.JOGO_NAO_ACEITA_PALPITES,
-        });
+        };
         continue;
       }
       if (jogo.fonteResultado === 'API_EXTERNA' && !jogo.externoId) {
-        resultados.push({
+        resultados[index] = {
           jogoId: item.jogoId,
           sucesso: false,
           erro: PALPITES.MENSAGENS.JOGO_PENDENTE_CONFIRMACAO,
-        });
+        };
         continue;
       }
       if (existentesSet.has(item.jogoId)) {
-        resultados.push({
+        resultados[index] = {
           jogoId: item.jogoId,
           sucesso: false,
           erro: PALPITES.MENSAGENS.PALPITE_JA_EXISTE,
-        });
+        };
         continue;
       }
 
-      const palpite = await this.palpiteRepo.criar({
-        usuarioId,
-        jogoId: item.jogoId,
-        golsCasa: item.golsCasa,
-        golsFora: item.golsFora,
-      });
       existentesSet.add(item.jogoId);
-      resultados.push({ jogoId: item.jogoId, sucesso: true, palpite });
+      paraCriar.push({ index, item });
+    }
+
+    const criados = await Promise.all(
+      paraCriar.map(({ item }) =>
+        this.palpiteRepo.criar({
+          usuarioId,
+          jogoId: item.jogoId,
+          golsCasa: item.golsCasa,
+          golsFora: item.golsFora,
+        }),
+      ),
+    );
+
+    for (const [criadoIndex, { index, item }] of paraCriar.entries()) {
+      resultados[index] = {
+        jogoId: item.jogoId,
+        sucesso: true,
+        palpite: criados[criadoIndex],
+      };
     }
 
     return resultados;
   }
 
-  private async validarJogoPertenceAoGrupo(jogo: any, grupoId: string) {
-    const grupo = await this.grupoRepo.buscarPorId(grupoId);
+  private async validarJogoPertenceAoGrupo(
+    jogo: Pick<Jogo, 'faseId'>,
+    grupoId: string,
+  ) {
+    const grupo = (await this.grupoRepo.buscarPorId(grupoId)) as {
+      temporadaId: string;
+    } | null;
     if (!grupo) throw new GrupoNaoEncontradoError();
 
     const fase = await this.faseRepo.buscarPorId(jogo.faseId);
-    if (!fase || fase.temporadaId !== grupo.temporadaId) {
+    if (fase?.temporadaId !== grupo.temporadaId) {
       throw new JogoNaoPertenceAoGrupoError();
     }
   }
@@ -267,12 +294,24 @@ export class PalpiteService {
     return palpite;
   }
 
+  private statusEfetivo(
+    status: string,
+    dataHora?: Date | string | null,
+  ): string {
+    if (status !== 'EM_ANDAMENTO' || !dataHora) return status;
+    const inicio = new Date(dataHora).getTime();
+    if (Number.isFinite(inicio) && inicio > Date.now()) return 'AGENDADO';
+    return status;
+  }
+
   private validarJogoAceitaPalpites(jogo: {
     status: string;
+    dataHora?: Date | string | null;
     externoId?: string | null;
     fonteResultado?: string | null;
   }): void {
-    if (jogo.status !== 'AGENDADO' && jogo.status !== 'ADIADO') {
+    const status = this.statusEfetivo(jogo.status, jogo.dataHora);
+    if (status !== 'AGENDADO' && status !== 'ADIADO') {
       throw new JogoNaoAceitaPalpitesError();
     }
     // Bloqueia palpites em jogos da API que ainda não foram confirmados (sem externoId)
