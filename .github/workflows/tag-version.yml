@@ -18,7 +18,7 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Tag the merge commit with the pull request text
+      - name: Create incremental version tag
         run: |
           set -euo pipefail
 
@@ -54,7 +54,6 @@ jobs:
             exit 0
           fi
 
-          git log -1 --format=%B > /tmp/mensagem-da-tag.txt
-          git tag -a "$tag" -F /tmp/mensagem-da-tag.txt
+          git tag "$tag"
           git push origin "$tag"
-          echo "Tag ${tag} criada no merge, com o texto do pull request."
+          echo "Tag ${tag} criada."

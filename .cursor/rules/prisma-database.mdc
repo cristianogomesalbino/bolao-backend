@@ -1,0 +1,18 @@
+---
+description: Convenções Prisma, migrations e modelo de dados
+globs: prisma/**/*
+alwaysApply: false
+---
+
+# Prisma & banco
+
+- IDs UUID `@default(uuid())`; `dataCriacao`/`atualizadoEm`; soft delete `ativo` quando aplicável.
+- Models/campos em PT; enums UPPER_CASE EN (`AGENDADO`, `ADMIN`, …).
+- Relações nomeadas com FKs múltiplas (`TimeCasa` / `TimeFora`).
+- `Jogo.dataHora` null se ADIADO; `rodada` null em mata-mata; `externoId` null se manual.
+- **Nunca `db push` no lugar de migrate.** Sempre `prisma migrate dev --name ...` e commitar SQL.
+- Antes de merge na main: todo model/enum do schema tem CREATE em `prisma/migrations/`; ALTERs só após CREATE.
+- Gerar no container: `sh dev npx prisma migrate dev --name descricao`.
+- Produção: `migrate deploy` (já no startup do container).
+- Antes de FK nova: checar órfãos.
+- Grupo privado: `codigoConvite` (nanoid, tamanho em constantes); desativar antes de excluir.

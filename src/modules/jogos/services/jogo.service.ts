@@ -242,8 +242,21 @@ export class JogoService {
    * Verifica se transição é válida sem lançar exceção.
    * Usado pela sync para ignorar transições inválidas vindas da API.
    */
-  private ehTransicaoValida(statusAtual: string, novoStatus: string): boolean {
+  private ehTransicaoValida(
+    statusAtual: string,
+    novoStatus: string,
+    dataHora?: Date | string | null,
+  ): boolean {
     if (novoStatus === statusAtual) return true;
+    if (
+      statusAtual === 'EM_ANDAMENTO' &&
+      novoStatus === 'AGENDADO' &&
+      dataHora &&
+      new Date(dataHora).getTime() > Date.now()
+    ) {
+      return true;
+    }
+
     const permitidas = TRANSICOES_VALIDAS[statusAtual];
     if (!permitidas) return true; // Status sem restrição (ex: FINALIZADO, CANCELADO)
     if (!permitidas.includes(novoStatus)) {
@@ -789,69 +802,76 @@ export class JogoService {
 
     const timesCache = await this.carregarCacheTimes(normalizados);
 
-    let importados = 0;
-    let ignorados = 0;
+    const paraImportar = normalizados.filter(
+      (n) => !externosExistentes.has(n.externoId),
+    );
+    const ignorados = normalizados.length - paraImportar.length;
 
-    for (const normalizado of normalizados) {
-      if (externosExistentes.has(normalizado.externoId)) {
-        ignorados++;
-        continue;
-      }
+    const timePromises = new Map<string, Promise<Time>>();
+    const obterTime = (timeData: {
+      externoId: string;
+      nome: string;
+      sigla: string;
+      escudo: string;
+    }) => {
+      const existente = timePromises.get(timeData.externoId);
+      if (existente) return existente;
+      const promise = this.resolverOuCriarTime(timeData, timesCache);
+      timePromises.set(timeData.externoId, promise);
+      return promise;
+    };
 
-      const timeCasa = await this.resolverOuCriarTime(
-        normalizado.timeCasa,
-        timesCache,
-      );
-      const timeFora = await this.resolverOuCriarTime(
-        normalizado.timeFora,
-        timesCache,
-      );
+    await Promise.all(
+      paraImportar.map(async (normalizado) => {
+        const [timeCasa, timeFora] = await Promise.all([
+          obterTime(normalizado.timeCasa),
+          obterTime(normalizado.timeFora),
+        ]);
 
-      const vencedorId =
-        normalizado.status === 'FINALIZADO' &&
-        normalizado.golsCasa != null &&
-        normalizado.golsFora != null
-          ? this.determinarVencedorPorPlacar(
-              normalizado.golsCasa,
-              normalizado.golsFora,
-              timeCasa.id,
-              timeFora.id,
-            )
+        const vencedorId =
+          normalizado.status === 'FINALIZADO' &&
+          normalizado.golsCasa != null &&
+          normalizado.golsFora != null
+            ? this.determinarVencedorPorPlacar(
+                normalizado.golsCasa,
+                normalizado.golsFora,
+                timeCasa.id,
+                timeFora.id,
+              )
+            : null;
+
+        const dataHora = normalizado.dataHora
+          ? new Date(normalizado.dataHora)
           : null;
+        const dataValida = dataHora && dataHora.getFullYear() >= 2020;
 
-      const dataHora = normalizado.dataHora
-        ? new Date(normalizado.dataHora)
-        : null;
-      const dataValida = dataHora && dataHora.getFullYear() >= 2020;
+        await this.jogoRepo.criar({
+          faseId: dto.faseId,
+          rodada: dto.rodada,
+          timeCasaId: timeCasa.id,
+          timeForaId: timeFora.id,
+          dataHora: dataValida ? dataHora : null,
+          status: dataValida ? normalizado.status : 'ADIADO',
+          foiAdiado: !dataValida,
+          golsCasa: normalizado.golsCasa,
+          golsFora: normalizado.golsFora,
+          temProrrogacao: false,
+          golsProrrogacaoCasa: null,
+          golsProrrogacaoFora: null,
+          temPenaltis: normalizado.penaltisCasa != null,
+          penaltisCasa: normalizado.penaltisCasa,
+          penaltisFora: normalizado.penaltisFora,
+          vencedorId,
+          ehJogoVolta: false,
+          grupoIdaVolta: null,
+          fonteResultado: 'API_EXTERNA',
+          externoId: normalizado.externoId,
+          criadoPor: userId,
+        });
+      }),
+    );
 
-      await this.jogoRepo.criar({
-        faseId: dto.faseId,
-        rodada: dto.rodada,
-        timeCasaId: timeCasa.id,
-        timeForaId: timeFora.id,
-        dataHora: dataValida ? dataHora : null,
-        status: dataValida ? normalizado.status : 'ADIADO',
-        foiAdiado: !dataValida,
-        golsCasa: normalizado.golsCasa,
-        golsFora: normalizado.golsFora,
-        temProrrogacao: false,
-        golsProrrogacaoCasa: null,
-        golsProrrogacaoFora: null,
-        temPenaltis: normalizado.penaltisCasa != null,
-        penaltisCasa: normalizado.penaltisCasa,
-        penaltisFora: normalizado.penaltisFora,
-        vencedorId,
-        ehJogoVolta: false,
-        grupoIdaVolta: null,
-        fonteResultado: 'API_EXTERNA',
-        externoId: normalizado.externoId,
-        criadoPor: userId,
-      });
-
-      importados++;
-    }
-
-    return { importados, ignorados };
+    return { importados: paraImportar.length, ignorados };
   }
 
   private async buscarExternoIdsExistentes(
@@ -1351,8 +1371,14 @@ export class JogoService {
 
     const novoStatus = this.definirStatusFinal(jogo, jogoApi?.status);
 
-    // Validar transição de estado — rejeitar regressões (ex: EM_ANDAMENTO → AGENDADO)
-    if (!this.ehTransicaoValida(jogo.status, novoStatus)) {
+    // Rejeita regressão. EM_ANDAMENTO → AGENDADO só entra se o horário ainda for futuro.
+    if (
+      !this.ehTransicaoValida(
+        jogo.status,
+        novoStatus,
+        jogoApi?.dataHora ?? jogo.dataHora,
+      )
+    ) {
       return { atualizado: false };
     }
 

@@ -1,0 +1,16 @@
+---
+description: Como o CI/Sonar do backend valida qualidade e o que não quebrar
+alwaysApply: true
+---
+
+# CI e Sonar (backend)
+
+Workflows: `.github/workflows/pre-build.yml` e `sonar.yml`.
+
+- Disparam em `pull_request` → `main`/`develop` e `push` → `main`/`develop`.
+- `concurrency` por SHA evita job duplicado push+PR; **não remover** o push na `develop` (senão o gate só aparece no PR pra main).
+- Sonar: `npm run test:cov` gera `coverage/lcov.info`; Quality Gate exige **new_coverage ≥ 80%**.
+- Pre-Build: eslint (errors) + build + `vitest run`.
+
+Ao mudar workflows: manter lint antes dos testes; não “otimizar” tirando coverage do job Sonar.  
+Alterações de workflow/tag/versão: só na **`develop`** (ver `fluxo-git`) — nunca commit do agente na `main`.

@@ -50,11 +50,16 @@ export class NotificacaoAcertoService {
     )) as GrupoNotif[];
     if (grupos.length === 0) return;
 
+    const membrosPorGrupo = await Promise.all(
+      grupos.map(
+        (grupo) =>
+          this.grupoUsuarioRepo.listarPorGrupoComUsuario(grupo.id) as Promise<
+            MembroNotif[]
+          >,
+      ),
+    );
     const todosUsuarioIds = new Set<string>();
-    for (const grupo of grupos) {
-      const membros = (await this.grupoUsuarioRepo.listarPorGrupoComUsuario(
-        grupo.id,
-      )) as MembroNotif[];
+    for (const membros of membrosPorGrupo) {
       for (const m of membros) {
         todosUsuarioIds.add(m.usuarioId);
       }
@@ -119,16 +124,19 @@ export class NotificacaoAcertoService {
 
     await this.notificacaoService.criarLote(notificacoesFiltradas);
 
-    for (const notif of notificacoesFiltradas) {
-      if (habilitados.includes(notif.usuarioId)) {
-        await this.pushService.enviarParaUsuario(notif.usuarioId, {
-          titulo: notif.titulo,
-          mensagem: notif.mensagem,
-          tipo: 'ACERTO_EM_CHEIO',
-          url: '/notificacoes',
-        });
-      }
-    }
+    await Promise.all(
+      notificacoesFiltradas
+        .filter((notif) => habilitados.includes(notif.usuarioId))
+        .map((notif) =>
+          this.pushService.enviarParaUsuario(notif.usuarioId, {
+            titulo: notif.titulo,
+            mensagem: notif.mensagem,
+            tipo: 'ACERTO_EM_CHEIO',
+            dedupeId: `jogo:${jogo.id}:ACERTO_EM_CHEIO`,
+            url: '/notificacoes',
+          }),
+        ),
+    );
 
     this.logger.log(
       `[NOTIF] ACERTO_EM_CHEIO: ${jogo.timeCasa?.nome ?? '?'} ${String(jogo.golsCasa)}×${String(jogo.golsFora)} ${jogo.timeFora?.nome ?? '?'} — ${String(notificacoesFiltradas.length)} acertos`,

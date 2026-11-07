@@ -1,0 +1,21 @@
+---
+description: Protocolo de validação antes de declarar pronto — lint, CI e Sonar
+alwaysApply: true
+---
+
+# Qualidade da entrega
+
+O CI do backend roda **nesta ordem**: lint → testes (+ coverage no Sonar) → scan.  
+**Se o lint falhar, coverage NÃO roda** e o Quality Gate fica com % antigo/baixo. Por isso Prettier/eslint error = entrega bloqueada.
+
+Antes de declarar pronto:
+
+1. `npx eslint --quiet` nos arquivos criados/editados — **0 errors** (inclui `prettier/prettier`).
+2. Se criou/editou `.spec.ts`: `npx eslint --fix` neles e conferir de novo com `--quiet`.
+3. `npx vitest run` no escopo afetado — 0 falhas.
+4. Linhas novas de `src/` cobertas por teste (≥ 80% no Sonar — ver `cobertura-e-testes`).
+5. `schema.prisma` alterado → migration em `prisma/migrations/` (nunca só `db push`).
+
+Após push/amend na `develop`: conferir Actions (Pre-Build + SonarCloud). Não assumir que o gate do PR atualizou sem run verde.
+
+Ao editar legado: corrigir ≥ 20% dos lints pré-existentes (mín. 1). Prioridade: Prettier → `?.` → complexidade → `any`.

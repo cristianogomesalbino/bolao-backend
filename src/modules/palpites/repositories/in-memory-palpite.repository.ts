@@ -1,15 +1,16 @@
-import { PalpiteRepository } from './palpite.repository.interface';
+import type {
+  AtualizarPalpiteData,
+  CriarPalpiteData,
+  Palpite,
+  PalpiteComJogo,
+  PalpiteRepository,
+} from './palpite.repository.interface';
 
 export class InMemoryPalpiteRepository implements PalpiteRepository {
-  items: any[] = [];
+  items: PalpiteComJogo[] = [];
 
-  async criar(data: {
-    usuarioId: string;
-    jogoId: string;
-    golsCasa: number;
-    golsFora: number;
-  }) {
-    const palpite = {
+  async criar(data: CriarPalpiteData): Promise<Palpite> {
+    const palpite: Palpite = {
       id: crypto.randomUUID(),
       ...data,
       dataCriacao: new Date(),
@@ -19,9 +20,11 @@ export class InMemoryPalpiteRepository implements PalpiteRepository {
     return palpite;
   }
 
-  async atualizar(id: string, data: { golsCasa: number; golsFora: number }) {
+  async atualizar(id: string, data: AtualizarPalpiteData): Promise<Palpite> {
     const index = this.items.findIndex((p) => p.id === id);
-    if (index === -1) return null;
+    if (index === -1) {
+      throw new Error(`Palpite ${id} não encontrado`);
+    }
     this.items[index] = {
       ...this.items[index],
       ...data,

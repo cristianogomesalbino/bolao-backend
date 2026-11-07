@@ -1,0 +1,19 @@
+---
+description: Premissa de testes Vitest e Quality Gate Sonar (≥80% código novo)
+alwaysApply: true
+---
+
+# Testes e cobertura
+
+- Framework: **Vitest 4**. Local: `npx vitest run`. Specs em `test/modules/<modulo>/`.
+- Instanciação direta + InMemory/`vi.fn()` — nunca `TestingModule` / `as any`.
+- **Mesma entrega** do código em `src/`: criar/atualizar `.spec.ts` cobrindo o caminho feliz e as **linhas novas** (refactors, `Promise.all`, `dedupeId`, branches de erro).
+- **Cobertura em código novo ≥ 80%** (SonarCloud). Abaixo disso a entrega está incompleta.
+- Cenários mínimos de service: feliz, validação/inexistente, guard de estado; idempotência se couber.
+- Não esperar o usuário pedir testes.
+
+## Armadilhas já vistas (evitar)
+
+- Specs com erro de Prettier → CI falha no lint → Sonar não recebe coverage novo → gate “travado” em ~70%.
+- Amend/force-push sem run novo do workflow → gate do PR mostra análise antiga.
+- Validar só no PR `develop`→`main`: o CI também deve passar em push/`pull_request` na `develop` (já configurado nos workflows).

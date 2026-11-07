@@ -432,7 +432,11 @@ export class FutebolApiService implements OnModuleInit {
 
   normalizarJogo(jogo: JogoApiRaw): JogoNormalizado {
     const dataHoraUtc = this.converterDataParaUtc(jogo.data_realizacao);
-    const status = dataHoraUtc ? this.mapearStatus(jogo) : 'ADIADO';
+    const statusApi = dataHoraUtc ? this.mapearStatus(jogo) : 'ADIADO';
+    const inicioNoFuturo =
+      dataHoraUtc !== null && new Date(dataHoraUtc).getTime() > Date.now();
+    const status =
+      statusApi === 'EM_ANDAMENTO' && inicioNoFuturo ? 'AGENDADO' : statusApi;
     const comPlacar = status === 'FINALIZADO' || status === 'EM_ANDAMENTO';
 
     return {

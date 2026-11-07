@@ -281,7 +281,101 @@ describe('NotificacaoVencedorService', () => {
         expect.objectContaining({
           titulo: 'Temos um campeão!',
           tipo: 'VENCEDOR_BOLAO',
+          dedupeId: 'grupo:grupo-1:VENCEDOR_BOLAO',
         }),
+      );
+    });
+
+    it('deve registrar erro quando notificar um grupo falha', async () => {
+      vi.mocked(mocks.faseRepo.buscarPorTemporada).mockResolvedValue([
+        {
+          id: 'fase-1',
+          nome: 'Final',
+          tipo: 'MATA_MATA',
+          ordem: 1,
+          idaVolta: false,
+          temporadaId: 'temp-1',
+          dataCriacao: new Date(),
+          atualizadoEm: new Date(),
+        },
+      ]);
+      vi.mocked(mocks.jogoRepo.buscarPorFase).mockResolvedValue([
+        { id: 'jogo-final', faseId: 'fase-1', status: 'FINALIZADO' },
+      ] as never);
+      vi.mocked(mocks.grupoRepo.buscarPorTemporadaId).mockResolvedValue([
+        { id: 'grupo-1', nome: 'Amigos', temporadaId: 'temp-1' },
+        { id: 'grupo-2', nome: 'Outro', temporadaId: 'temp-1' },
+      ]);
+      vi.mocked(
+        mocks.grupoUsuarioRepo.listarPorGrupoComUsuario,
+      ).mockImplementation((grupoId: string) => {
+        if (grupoId === 'grupo-2') {
+          return Promise.reject(new Error('falha no grupo'));
+        }
+        return Promise.resolve([
+          {
+            usuarioId: 'user-1',
+            grupoId: 'grupo-1',
+            usuario: { id: 'user-1', nome: 'João' },
+          },
+          {
+            usuarioId: 'user-2',
+            grupoId: 'grupo-1',
+            usuario: { id: 'user-2', nome: 'Maria' },
+          },
+        ]);
+      });
+      const loggerSpy = vi.spyOn(service['logger'], 'error');
+
+      await service.verificarTemporadaEncerrada({
+        id: 'fase-1',
+        nome: 'Final',
+        tipo: 'MATA_MATA',
+        temporadaId: 'temp-1',
+      });
+
+      expect(loggerSpy).toHaveBeenCalledWith(
+        expect.stringContaining('grupo-2'),
+      );
+    });
+
+    it('deve registrar motivo não-Error ao falhar notificação de grupo', async () => {
+      vi.mocked(mocks.faseRepo.buscarPorTemporada).mockResolvedValue([
+        {
+          id: 'fase-1',
+          nome: 'Final',
+          tipo: 'MATA_MATA',
+          ordem: 1,
+          idaVolta: false,
+          temporadaId: 'temp-1',
+          dataCriacao: new Date(),
+          atualizadoEm: new Date(),
+        },
+      ]);
+      vi.mocked(mocks.jogoRepo.buscarPorFase).mockResolvedValue([
+        { id: 'jogo-final', faseId: 'fase-1', status: 'FINALIZADO' },
+      ] as never);
+      vi.mocked(mocks.grupoRepo.buscarPorTemporadaId).mockResolvedValue([
+        { id: 'grupo-1', nome: 'Amigos', temporadaId: 'temp-1' },
+      ]);
+      vi.mocked(
+        mocks.grupoUsuarioRepo.listarPorGrupoComUsuario,
+      ).mockImplementation(() =>
+        // Cobre o ramo String(reason) do Promise.allSettled (motivo não-Error)
+        // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors -- intencional
+        Promise.reject('falha textual'),
+      );
+      const loggerSpy = vi.spyOn(service['logger'], 'error');
+
+      await service.verificarTemporadaEncerrada({
+        id: 'fase-1',
+        nome: 'Final',
+        tipo: 'MATA_MATA',
+        temporadaId: 'temp-1',
+      });
+
+      expect(loggerSpy).toHaveBeenCalledWith(
+        expect.stringContaining('falha textual'),
       );
     });
   });

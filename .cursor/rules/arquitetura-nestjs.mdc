@@ -1,0 +1,20 @@
+---
+description: Arquitetura NestJS — services, controllers, DTOs, presenters, repos
+globs: src/**/*.ts
+alwaysApply: false
+---
+
+# Arquitetura NestJS
+
+- Services dependem de **interfaces de repositório** via `@Inject(MODULO.REPOSITORY_TOKEN)` — nunca `PrismaService` direto.
+- Ao adicionar método no repo: atualizar **interface + Prisma + InMemory**.
+- Tipos no arquivo da interface: `Entidade`, `EntidadeComRelacoes`, `CriarEntidadeData`.
+- Controllers: `@ApiTags`/`@ApiOperation`/`@ApiResponse`; retorno via **Presenter** (`toHttp` / variantes); usuário via `@CurrentUser()`.
+- Presenters em `src/common/presenters/` — allowlist; não expor `externoId`/`fonteResultado`/`criadoPor` no presenter padrão.
+- DTOs: `class-validator` + `@ApiProperty`; mensagens em PT-BR; union types em vez de `string` + `@IsIn` solto; UUID via `ParseUUIDCustomPipe`.
+- Constantes em `{modulo}.constants.ts` (`TAG`, `MENSAGENS`, limites) — sem números mágicos.
+- Erros de negócio: Domain Errors em `src/common/errors/domain-errors/`; fallback `ErrorFactory`.
+- Roles: `GRUPO_ROLE` / `PERFIL` de `src/common/constants/roles.constants.ts`.
+- Guards genéricos em `auth/` ou `common/guards/`; de domínio no módulo.
+- Endpoints consolidados quando o front precisaria de N requests.
+- Controller/rota nova ou alterada → atualizar `postman_collection.json`.

@@ -1,21 +1,20 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
-import { PalpiteRepository } from './palpite.repository.interface';
+import type {
+  AtualizarPalpiteData,
+  CriarPalpiteData,
+  PalpiteRepository,
+} from './palpite.repository.interface';
 
 @Injectable()
 export class PrismaPalpiteRepository implements PalpiteRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  criar(data: {
-    usuarioId: string;
-    jogoId: string;
-    golsCasa: number;
-    golsFora: number;
-  }) {
+  criar(data: CriarPalpiteData) {
     return this.prisma.palpite.create({ data });
   }
 
-  atualizar(id: string, data: { golsCasa: number; golsFora: number }) {
+  atualizar(id: string, data: AtualizarPalpiteData) {
     return this.prisma.palpite.update({ where: { id }, data });
   }
 
