@@ -168,6 +168,62 @@ describe('JogoService — sincronização multi-campeonato', () => {
       expect(result.jogosAtualizados).toHaveLength(1);
       expect(result.jogosAtualizados[0].timeCasa).toBe('BRA');
     });
+
+    it('deve corrigir para AGENDADO um jogo marcado ao vivo antes do horário', async () => {
+      const dataHoraFutura = new Date(Date.now() + 60 * 60 * 1000);
+      criarJogoNoBanco({
+        status: 'EM_ANDAMENTO',
+        dataHora: dataHoraFutura,
+      });
+
+      normalizarJogo.mockReturnValue({
+        externoId: '99001',
+        dataHora: dataHoraFutura.toISOString(),
+        status: 'AGENDADO',
+        golsCasa: null,
+        golsFora: null,
+        penaltisCasa: null,
+        penaltisFora: null,
+      });
+      buscarJogosPorRodadas.mockResolvedValue([{ raw: true }]);
+
+      const result = await service.sincronizarPlacares(
+        'fase-sync-1',
+        'copa-do-mundo-2026',
+        COPA_FASES.FASE_DE_GRUPOS,
+      );
+
+      expect(result.sincronizados).toBe(1);
+      expect(jogoRepo.items[0].status).toBe('AGENDADO');
+    });
+
+    it('deve ignorar EM_ANDAMENTO → AGENDADO quando o horário já passou', async () => {
+      const dataHoraPassada = new Date(Date.now() - 60 * 60 * 1000);
+      criarJogoNoBanco({
+        status: 'EM_ANDAMENTO',
+        dataHora: dataHoraPassada,
+      });
+
+      normalizarJogo.mockReturnValue({
+        externoId: '99001',
+        dataHora: dataHoraPassada.toISOString(),
+        status: 'AGENDADO',
+        golsCasa: null,
+        golsFora: null,
+        penaltisCasa: null,
+        penaltisFora: null,
+      });
+      buscarJogosPorRodadas.mockResolvedValue([{ raw: true }]);
+
+      const result = await service.sincronizarPlacares(
+        'fase-sync-1',
+        'copa-do-mundo-2026',
+        COPA_FASES.FASE_DE_GRUPOS,
+      );
+
+      expect(result.sincronizados).toBe(0);
+      expect(jogoRepo.items[0].status).toBe('EM_ANDAMENTO');
+    });
   });
 
   describe('filtro por fonteResultado', () => {

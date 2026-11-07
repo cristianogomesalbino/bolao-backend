@@ -119,6 +119,7 @@ describe('NotificacaoRodadaService', () => {
         tipo: 'RODADA_ENCERRADA',
         titulo: 'Rodada encerrada!',
         mensagem: 'Rodada 10 do Brasileirão encerrada! Confira o ranking.',
+        dedupeId: `fase:${fase.id}:rodada:10:RODADA_ENCERRADA`,
       }),
     );
   });

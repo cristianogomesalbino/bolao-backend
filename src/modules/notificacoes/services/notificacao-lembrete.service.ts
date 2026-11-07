@@ -62,11 +62,16 @@ export class NotificacaoLembreteService {
       fase.temporadaId,
     )) as GrupoNotif[];
 
+    const membrosPorGrupo = await Promise.all(
+      grupos.map(
+        (grupo) =>
+          this.grupoUsuarioRepo.listarPorGrupoComUsuario(grupo.id) as Promise<
+            MembroNotif[]
+          >,
+      ),
+    );
     const usuariosUnicos = new Set<string>();
-    for (const grupo of grupos) {
-      const membros = (await this.grupoUsuarioRepo.listarPorGrupoComUsuario(
-        grupo.id,
-      )) as MembroNotif[];
+    for (const membros of membrosPorGrupo) {
       for (const m of membros) {
         usuariosUnicos.add(m.usuarioId);
       }
@@ -170,15 +175,17 @@ export class NotificacaoLembreteService {
     await this.notificacaoService.criarLote(notificacoesFiltradas);
 
     // Push individual por usuário com mensagem personalizada (lista os jogos pendentes)
-    for (const notif of notificacoesFiltradas) {
-      await this.pushService.enviarParaUsuario(notif.usuarioId, {
-        titulo: notif.titulo,
-        mensagem: notif.mensagem,
-        tipo: 'PALPITES_PENDENTES',
-        dedupeId: `fase:${faseId}:rodada:${String(rodada)}:PALPITES_PENDENTES`,
-        url: '/palpites',
-      });
-    }
+    await Promise.all(
+      notificacoesFiltradas.map((notif) =>
+        this.pushService.enviarParaUsuario(notif.usuarioId, {
+          titulo: notif.titulo,
+          mensagem: notif.mensagem,
+          tipo: 'PALPITES_PENDENTES',
+          dedupeId: `fase:${faseId}:rodada:${String(rodada)}:PALPITES_PENDENTES`,
+          url: '/palpites',
+        }),
+      ),
+    );
 
     this.logger.log(
       `[NOTIF] PALPITES_PENDENTES: rodada ${String(rodada)} — ${String(notificacoesFiltradas.length)} notificados`,
@@ -189,12 +196,17 @@ export class NotificacaoLembreteService {
     const grupos = (await this.grupoRepo.buscarPorTemporadaId(
       temporadaId,
     )) as GrupoNotif[];
+    const membrosPorGrupo = await Promise.all(
+      grupos.map(
+        (grupo) =>
+          this.grupoUsuarioRepo.listarPorGrupoComUsuario(grupo.id) as Promise<
+            MembroNotif[]
+          >,
+      ),
+    );
     const usuarioIdsSet = new Set<string>();
 
-    for (const grupo of grupos) {
-      const membros = (await this.grupoUsuarioRepo.listarPorGrupoComUsuario(
-        grupo.id,
-      )) as MembroNotif[];
+    for (const membros of membrosPorGrupo) {
       for (const m of membros) {
         usuarioIdsSet.add(m.usuarioId);
       }

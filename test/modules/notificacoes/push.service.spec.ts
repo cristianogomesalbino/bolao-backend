@@ -74,7 +74,7 @@ describe('PushService', () => {
     expect(JSON.parse(payload as string)).toMatchObject({
       dedupeId: 'jogo:jogo-1:JOGO_PROXIMO:user-1',
     });
-    expect(options?.TTL).toBe(60);
+    expect(options?.TTL).toBe(3600);
   });
 
   describe('inscrever', () => {

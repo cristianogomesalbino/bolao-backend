@@ -242,8 +242,21 @@ export class JogoService {
    * Verifica se transição é válida sem lançar exceção.
    * Usado pela sync para ignorar transições inválidas vindas da API.
    */
-  private ehTransicaoValida(statusAtual: string, novoStatus: string): boolean {
+  private ehTransicaoValida(
+    statusAtual: string,
+    novoStatus: string,
+    dataHora?: Date | string | null,
+  ): boolean {
     if (novoStatus === statusAtual) return true;
+    if (
+      statusAtual === 'EM_ANDAMENTO' &&
+      novoStatus === 'AGENDADO' &&
+      dataHora &&
+      new Date(dataHora).getTime() > Date.now()
+    ) {
+      return true;
+    }
+
     const permitidas = TRANSICOES_VALIDAS[statusAtual];
     if (!permitidas) return true; // Status sem restrição (ex: FINALIZADO, CANCELADO)
     if (!permitidas.includes(novoStatus)) {
@@ -798,14 +811,10 @@ export class JogoService {
         continue;
       }
 
-      const timeCasa = await this.resolverOuCriarTime(
-        normalizado.timeCasa,
-        timesCache,
-      );
-      const timeFora = await this.resolverOuCriarTime(
-        normalizado.timeFora,
-        timesCache,
-      );
+      const [timeCasa, timeFora] = await Promise.all([
+        this.resolverOuCriarTime(normalizado.timeCasa, timesCache),
+        this.resolverOuCriarTime(normalizado.timeFora, timesCache),
+      ]);
 
       const vencedorId =
         normalizado.status === 'FINALIZADO' &&
@@ -1351,8 +1360,14 @@ export class JogoService {
 
     const novoStatus = this.definirStatusFinal(jogo, jogoApi?.status);
 
-    // Validar transição de estado — rejeitar regressões (ex: EM_ANDAMENTO → AGENDADO)
-    if (!this.ehTransicaoValida(jogo.status, novoStatus)) {
+    // Rejeita regressão. EM_ANDAMENTO → AGENDADO só entra se o horário ainda for futuro.
+    if (
+      !this.ehTransicaoValida(
+        jogo.status,
+        novoStatus,
+        jogoApi?.dataHora ?? jogo.dataHora,
+      )
+    ) {
       return { atualizado: false };
     }
 

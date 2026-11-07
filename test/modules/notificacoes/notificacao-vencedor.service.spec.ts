@@ -281,6 +281,7 @@ describe('NotificacaoVencedorService', () => {
         expect.objectContaining({
           titulo: 'Temos um campeão!',
           tipo: 'VENCEDOR_BOLAO',
+          dedupeId: 'grupo:grupo-1:VENCEDOR_BOLAO',
         }),
       );
     });

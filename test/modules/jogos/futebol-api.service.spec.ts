@@ -269,6 +269,19 @@ describe('FutebolApiService', () => {
 
       expect(result.status).toBe('EM_ANDAMENTO');
     });
+
+    it('deve manter AGENDADO quando a API sinaliza ao vivo antes do horário marcado', () => {
+      const result = service.normalizarJogo({
+        ...jogoApiMock,
+        data_realizacao: '2099-06-15 16:00',
+        transmissao: { broadcast: { id: 'LIVE' } },
+        jogo_ja_comecou: true,
+      });
+
+      expect(result.status).toBe('AGENDADO');
+      expect(result.golsCasa).toBeNull();
+      expect(result.golsFora).toBeNull();
+    });
   });
 
   describe('buscarClassificacao', () => {

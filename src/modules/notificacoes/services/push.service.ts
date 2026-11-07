@@ -20,7 +20,7 @@ export interface PushPayload {
   dedupeId?: string;
 }
 
-const PUSH_TTL_SECONDS = 60;
+const PUSH_TTL_SECONDS = 60 * 60;
 
 @Injectable()
 export class PushService implements OnModuleInit {

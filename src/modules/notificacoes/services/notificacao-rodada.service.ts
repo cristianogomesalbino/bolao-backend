@@ -101,11 +101,16 @@ export class NotificacaoRodadaService {
       fase.temporadaId,
     )) as GrupoNotif[];
 
+    const membrosPorGrupo = await Promise.all(
+      grupos.map(
+        (grupo) =>
+          this.grupoUsuarioRepo.listarPorGrupoComUsuario(grupo.id) as Promise<
+            MembroNotif[]
+          >,
+      ),
+    );
     const usuariosUnicos = new Set<string>();
-    for (const grupo of grupos) {
-      const membros = (await this.grupoUsuarioRepo.listarPorGrupoComUsuario(
-        grupo.id,
-      )) as MembroNotif[];
+    for (const membros of membrosPorGrupo) {
       for (const m of membros) {
         usuariosUnicos.add(m.usuarioId);
       }
