@@ -16,6 +16,7 @@ import { PalpitesModule } from '../palpites/palpites.module';
 import { GruposModule } from '../grupos/grupos.module';
 import { GrupoUsuarioModule } from '../grupo-usuario/grupo-usuario.module';
 import { NotificacoesModule } from '../notificacoes/notificacoes.module';
+import { UsuariosModule } from '../usuarios/usuarios.module';
 import { RankingService } from '../ranking/services/ranking.service';
 
 @Module({
@@ -25,6 +26,7 @@ import { RankingService } from '../ranking/services/ranking.service';
     forwardRef(() => GruposModule),
     forwardRef(() => GrupoUsuarioModule),
     forwardRef(() => NotificacoesModule),
+    forwardRef(() => UsuariosModule),
   ],
   controllers: [DestaqueController],
   providers: [

@@ -88,6 +88,8 @@ import { PrismaGrupoRepository } from '../grupos/repositories/prisma-grupo.repos
   exports: [
     NotificacaoEventService,
     NotificacaoService,
+    PreferenciaService,
+    PushService,
     NOTIFICACOES.EVENT_SERVICE_TOKEN,
     NOTIFICACOES.NOTIFICACAO_REPOSITORY_TOKEN,
   ],

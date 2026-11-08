@@ -17,6 +17,14 @@ import { GroupRoleGuard } from '../../../common/guards/group-role.guard';
 import { GroupRoles } from '../../../common/decorators/group-roles.decorator';
 import { GRUPO_ROLE } from '../../../common/constants/roles.constants';
 import { DestaqueReactionService } from '../services/destaque-reaction.service';
+import { DestaqueSequenciaService } from '../services/destaque-sequencia.service';
+import { manterMelhorSequenciaPorPessoa } from '../services/sequencia-listagem';
+import {
+  consolidarAcertosPanelinha,
+  manterUmPorPessoaNaRodada,
+  selecionarDestaquesDiversos,
+  sincronizarNaoPalpitouNaListagem,
+} from '../services/destaque-selecao';
 import type { DestaqueRepository } from '../repositories/destaque.repository.interface';
 import type { JogoRepository } from '../../jogos/repositories/jogo.repository.interface';
 import type { GrupoRepository } from '../../grupos/repositories/grupo.repository.interface';
@@ -37,13 +45,14 @@ export class DestaqueController {
     @Inject(GRUPOS.REPOSITORY_TOKEN)
     private readonly grupoRepo: GrupoRepository,
     private readonly reactionService: DestaqueReactionService,
+    private readonly sequenciaService: DestaqueSequenciaService,
   ) {}
 
   @Get('grupos/:grupoId/destaques')
   @UseGuards(GroupRoleGuard)
   @GroupRoles(GRUPO_ROLE.ADMIN, GRUPO_ROLE.MEMBER)
   @ApiOperation({
-    summary: 'Listar destaques do grupo (rodada atual + anterior)',
+    summary: 'Listar destaques do grupo na rodada atual',
   })
   @ApiResponse({ status: 200, description: 'Lista de destaques cronológica' })
   async listarDestaques(
@@ -54,23 +63,61 @@ export class DestaqueController {
     const rodadaPedida = Number(rodadaQuery);
     const preview = Number.isInteger(rodadaPedida) && rodadaPedida > 0;
     const rodadaAtual = await this.obterRodadaAtualDoGrupo(grupoId);
-    const rodadasPreferidas = preview
+    const rodadas = preview
       ? [rodadaPedida]
       : this.calcularRodadasVisiveis(rodadaAtual);
-    const rodadasDisponiveis = await this.destaqueRepo.listarRodadasPorGrupo(
-      grupoId,
-    );
-    const rodadas = preview
-      ? rodadasPreferidas
-      : this.resolverRodadasParaListagem(
-          rodadasPreferidas,
-          rodadasDisponiveis,
-        );
+    const rodadasDisponiveis =
+      await this.destaqueRepo.listarRodadasPorGrupo(grupoId);
 
-    const destaques = await this.destaqueRepo.buscarPorGrupoERodadas(
+    const encontrados = await this.destaqueRepo.buscarPorGrupoERodadas(
       grupoId,
       rodadas,
-      preview ? 200 : DESTAQUES.LIMITES.MAX_DESTAQUES_LISTAGEM,
+      DESTAQUES.LIMITES.BUSCA_LISTAGEM,
+    );
+    const faseId = await this.obterFasePontosCorridos(grupoId);
+    const semSequenciaRepetida = faseId
+      ? await manterMelhorSequenciaPorPessoa(
+          encontrados,
+          (usuarioId, rodada) =>
+            this.sequenciaService.calcularMelhorSequenciaResultado(
+              usuarioId,
+              faseId,
+              rodada,
+            ),
+          DESTAQUES.LIMITES.SEQUENCIA_PONTOS_MINIMOS,
+        )
+      : encontrados;
+    const semSubiuRepetido = manterUmPorPessoaNaRodada(
+      semSequenciaRepetida,
+      'SUBIU_RANKING',
+    );
+    const semNaoRepetido = manterUmPorPessoaNaRodada(
+      semSubiuRepetido,
+      'NAO_PALPITOU',
+    );
+    const comPanelinha = consolidarAcertosPanelinha(semNaoRepetido);
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- Repo retorna any (dívida técnica)
+    const grupo = await this.grupoRepo.buscarPorId(grupoId);
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access -- Repo retorna any (dívida técnica)
+    const temporadaId = grupo?.temporadaId
+      ? // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access -- Repo retorna any (dívida técnica)
+        String(grupo.temporadaId)
+      : null;
+    const naoPalpitouOk = temporadaId
+      ? await sincronizarNaoPalpitouNaListagem(
+          comPanelinha,
+          (usuarioId, rodada) =>
+            this.sequenciaService.listarEsquecidosDaRodada(
+              usuarioId,
+              temporadaId,
+              rodada,
+            ),
+        )
+      : comPanelinha;
+    const destaques = selecionarDestaquesDiversos(
+      naoPalpitouOk,
+      DESTAQUES.LIMITES.MAX_DESTAQUES_LISTAGEM,
+      DESTAQUES.PRIORIDADE_POR_TIPO,
     );
 
     // Buscar visualizações e reações do usuário autenticado (batch)
@@ -89,11 +136,9 @@ export class DestaqueController {
       naoPalpitouIds,
     );
 
-    const lista = preview ? amostrarPorTipo(destaques) : destaques;
-
     return {
       rodadasDisponiveis,
-      destaques: lista.map((s) => ({
+      destaques: destaques.map((s) => ({
         id: s.id,
         tipo: s.tipo,
         titulo: s.titulo,
@@ -125,13 +170,7 @@ export class DestaqueController {
     @CurrentUser() usuario: { id: string },
   ) {
     const rodadaAtual = await this.obterRodadaAtualDoGrupo(grupoId);
-    const rodadasDisponiveis = await this.destaqueRepo.listarRodadasPorGrupo(
-      grupoId,
-    );
-    const rodadasVisiveis = this.resolverRodadasParaListagem(
-      this.calcularRodadasVisiveis(rodadaAtual),
-      rodadasDisponiveis,
-    );
+    const rodadasVisiveis = this.calcularRodadasVisiveis(rodadaAtual);
 
     const contadorFs = await this.reactionService.mandarF(
       destaqueId,
@@ -164,9 +203,9 @@ export class DestaqueController {
 
   // --- Helpers ---
 
-  private async obterRodadaAtualDoGrupo(
+  private async obterFasePontosCorridos(
     grupoId: string,
-  ): Promise<number | null> {
+  ): Promise<string | null> {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- Repo retorna any (dívida técnica)
     const grupo = await this.grupoRepo.buscarPorId(grupoId);
     // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access -- Repo retorna any (dívida técnica)
@@ -175,60 +214,20 @@ export class DestaqueController {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access -- Repo retorna any (dívida técnica)
     const fases = await this.faseRepo.buscarPorTemporada(grupo.temporadaId);
     const fasePontosCorridos = fases.find((f) => f.tipo === 'PONTOS_CORRIDOS');
-    if (!fasePontosCorridos) return null;
+    return fasePontosCorridos?.id ?? null;
+  }
 
-    const agenda = await this.jogoRepo.buscarRodadaAtual(fasePontosCorridos.id);
-    const ultimaFinalizada = await this.jogoRepo.buscarMaiorRodadaFinalizada(
-      fasePontosCorridos.id,
-    );
-    if (
-      ultimaFinalizada != null &&
-      (agenda == null || ultimaFinalizada > agenda)
-    ) {
-      return ultimaFinalizada;
-    }
-    return agenda;
+  /** No feed de destaques, "Atual" é a última rodada que já tem jogo finalizado. */
+  private async obterRodadaAtualDoGrupo(
+    grupoId: string,
+  ): Promise<number | null> {
+    const faseId = await this.obterFasePontosCorridos(grupoId);
+    if (!faseId) return null;
+    return this.jogoRepo.buscarMaiorRodadaFinalizada(faseId);
   }
 
   private calcularRodadasVisiveis(rodadaAtual: number | null): number[] {
     if (rodadaAtual === null) return [];
-    const rodadas = [rodadaAtual];
-    if (rodadaAtual > 1) rodadas.push(rodadaAtual - 1);
-    return rodadas;
+    return [rodadaAtual];
   }
-
-  /**
-   * Prefere a rodada atual e a anterior. Se elas ainda não têm destaques
-   * (rodada em andamento ou geração pendente), recua até as últimas
-   * rodadas que realmente possuem destaques.
-   */
-  private resolverRodadasParaListagem(
-    preferidas: number[],
-    disponiveis: number[],
-  ): number[] {
-    const comDestaque = new Set(disponiveis);
-    const escolhidas = preferidas.filter((rodada) => comDestaque.has(rodada));
-    if (escolhidas.length > 0) return escolhidas;
-
-    const maisRecente = disponiveis[0];
-    if (maisRecente == null) return [];
-    const rodadas = [maisRecente];
-    if (disponiveis.includes(maisRecente - 1)) rodadas.push(maisRecente - 1);
-    return rodadas;
-  }
-}
-
-const LIMITE_POR_TIPO = 2;
-
-function amostrarPorTipo<T extends { tipo: string }>(destaques: T[]): T[] {
-  const prioridades = DESTAQUES.PRIORIDADE_POR_TIPO;
-  const contagem = new Map<string, number>();
-  return [...destaques]
-    .sort((a, b) => (prioridades[a.tipo] ?? 99) - (prioridades[b.tipo] ?? 99))
-    .filter((item) => {
-      const atual = contagem.get(item.tipo) ?? 0;
-      if (atual >= LIMITE_POR_TIPO) return false;
-      contagem.set(item.tipo, atual + 1);
-      return true;
-    });
 }

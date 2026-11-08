@@ -41,4 +41,14 @@ export class AtualizarPreferenciasDto {
   @IsOptional()
   @IsBoolean({ message: 'vencedorBolao deve ser true ou false' })
   vencedorBolao?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean({ message: 'destaquesGrupo deve ser true ou false' })
+  destaquesGrupo?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean({ message: 'recebeuF deve ser true ou false' })
+  recebeuF?: boolean;
 }

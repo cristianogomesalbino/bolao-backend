@@ -30,14 +30,44 @@ describe('DestaqueGeneratorService', () => {
   };
 
   const rankingRodada4 = [
-    { usuarioId: 'user-1', nomeUsuario: 'João', posicao: 4, pontuacaoTotal: 10 },
-    { usuarioId: 'user-2', nomeUsuario: 'Pedro', posicao: 1, pontuacaoTotal: 30 },
-    { usuarioId: 'user-3', nomeUsuario: 'Lucas', posicao: 2, pontuacaoTotal: 20 },
+    {
+      usuarioId: 'user-1',
+      nomeUsuario: 'João',
+      posicao: 4,
+      pontuacaoTotal: 10,
+    },
+    {
+      usuarioId: 'user-2',
+      nomeUsuario: 'Pedro',
+      posicao: 1,
+      pontuacaoTotal: 30,
+    },
+    {
+      usuarioId: 'user-3',
+      nomeUsuario: 'Lucas',
+      posicao: 2,
+      pontuacaoTotal: 20,
+    },
   ];
   const rankingRodada5 = [
-    { usuarioId: 'user-1', nomeUsuario: 'João', posicao: 1, pontuacaoTotal: 25 },
-    { usuarioId: 'user-2', nomeUsuario: 'Pedro', posicao: 2, pontuacaoTotal: 30 },
-    { usuarioId: 'user-3', nomeUsuario: 'Lucas', posicao: 3, pontuacaoTotal: 20 },
+    {
+      usuarioId: 'user-1',
+      nomeUsuario: 'João',
+      posicao: 1,
+      pontuacaoTotal: 25,
+    },
+    {
+      usuarioId: 'user-2',
+      nomeUsuario: 'Pedro',
+      posicao: 2,
+      pontuacaoTotal: 30,
+    },
+    {
+      usuarioId: 'user-3',
+      nomeUsuario: 'Lucas',
+      posicao: 3,
+      pontuacaoTotal: 20,
+    },
   ];
 
   const mockRankingService = {
@@ -99,7 +129,7 @@ describe('DestaqueGeneratorService', () => {
     snapshotRepo = new InMemoryRankingSnapshotRepository();
     pontuacaoService = new PontuacaoService();
     sequenciaService = {
-      calcularSequenciaResultado: vi.fn().mockResolvedValue(null),
+      calcularMelhorSequenciaResultado: vi.fn().mockResolvedValue(null),
       listarCravadasDaRodada: vi.fn().mockResolvedValue([]),
       listarEsquecidosDaRodada: vi.fn().mockResolvedValue([]),
       atualizarRecorde: vi
@@ -136,7 +166,10 @@ describe('DestaqueGeneratorService', () => {
   });
 
   it('reúne os palpites esquecidos da rodada em um card por pessoa', async () => {
-    const listar = sequenciaService.listarEsquecidosDaRodada as unknown as ReturnType<typeof vi.fn>;
+    const listar =
+      sequenciaService.listarEsquecidosDaRodada as unknown as ReturnType<
+        typeof vi.fn
+      >;
     listar.mockResolvedValue([
       {
         jogoId: 'jogo-1',
@@ -156,9 +189,13 @@ describe('DestaqueGeneratorService', () => {
 
     await service.gerarDestaquesParaGrupo(jogo, grupo, [membros[0]]);
 
-    const esquecidos = destaqueRepo.destaques.filter((s) => s.tipo === 'NAO_PALPITOU');
+    const esquecidos = destaqueRepo.destaques.filter(
+      (s) => s.tipo === 'NAO_PALPITOU',
+    );
     expect(esquecidos).toHaveLength(1);
-    expect((esquecidos[0].dados as { jogosEsquecidos: unknown[] }).jogosEsquecidos).toHaveLength(2);
+    expect(
+      (esquecidos[0].dados as { jogosEsquecidos: unknown[] }).jogosEsquecidos,
+    ).toHaveLength(2);
   });
 
   it('deve gerar ACERTOU_EM_CHEIO quando 2+ cravaram', async () => {
@@ -218,7 +255,9 @@ describe('DestaqueGeneratorService', () => {
 
   it('NÃO deve gerar SUBIU_RANKING quando a posição da rodada não muda', async () => {
     mockRankingService.rodadaEncerrada.mockResolvedValue(true);
-    mockRankingService.calcularRankingAteRodada.mockResolvedValue(rankingRodada4);
+    mockRankingService.calcularRankingAteRodada.mockResolvedValue(
+      rankingRodada4,
+    );
 
     mockPalpiteRepo.listarPorJogoEUsuarios.mockResolvedValue([
       { usuarioId: 'user-1', jogoId: 'jogo-1', golsCasa: 0, golsFora: 3 },
@@ -339,7 +378,10 @@ describe('DestaqueGeneratorService', () => {
   });
 
   it('atualiza o card de acerto da rodada em vez de criar outro', async () => {
-    const listar = sequenciaService.listarCravadasDaRodada as unknown as ReturnType<typeof vi.fn>;
+    const listar =
+      sequenciaService.listarCravadasDaRodada as unknown as ReturnType<
+        typeof vi.fn
+      >;
     const placar = (
       id: string,
       golsCasa: number,
@@ -355,7 +397,13 @@ describe('DestaqueGeneratorService', () => {
     });
 
     listar.mockResolvedValue([
-      placar('jogo-1', 2, 1, { nome: 'Palmeiras', sigla: 'PAL' }, { nome: 'Corinthians', sigla: 'COR' }),
+      placar(
+        'jogo-1',
+        2,
+        1,
+        { nome: 'Palmeiras', sigla: 'PAL' },
+        { nome: 'Corinthians', sigla: 'COR' },
+      ),
     ]);
     mockPalpiteRepo.listarPorJogoEUsuarios.mockResolvedValue([
       { usuarioId: 'user-1', jogoId: 'jogo-1', golsCasa: 2, golsFora: 1 },
@@ -374,13 +422,26 @@ describe('DestaqueGeneratorService', () => {
     listar.mockImplementation(async (usuarioId: string) =>
       usuarioId === 'user-1'
         ? [
-            placar('jogo-1', 2, 1, { nome: 'Palmeiras', sigla: 'PAL' }, { nome: 'Corinthians', sigla: 'COR' }),
-            placar('jogo-2', 1, 1, { nome: 'Santos', sigla: 'SAN' }, { nome: 'Flamengo', sigla: 'FLA' }),
+            placar(
+              'jogo-1',
+              2,
+              1,
+              { nome: 'Palmeiras', sigla: 'PAL' },
+              { nome: 'Corinthians', sigla: 'COR' },
+            ),
+            placar(
+              'jogo-2',
+              1,
+              1,
+              { nome: 'Santos', sigla: 'SAN' },
+              { nome: 'Flamengo', sigla: 'FLA' },
+            ),
           ]
         : [],
     );
     mockPalpiteRepo.listarPorJogoEUsuarios.mockResolvedValue([
       { usuarioId: 'user-1', jogoId: 'jogo-2', golsCasa: 1, golsFora: 1 },
+      { usuarioId: 'user-2', jogoId: 'jogo-2', golsCasa: 1, golsFora: 1 },
     ]);
     await service.gerarDestaquesParaGrupo(jogo2, grupo, membros);
 
@@ -390,14 +451,15 @@ describe('DestaqueGeneratorService', () => {
     expect(acertos).toHaveLength(1);
     expect((acertos[0].dados as { jogos?: unknown[] }).jogos).toHaveLength(2);
     expect(
-      destaqueRepo.destaques.filter(
-        (s) => s.tipo === 'SEQUENCIA_RESULTADO',
-      ),
+      destaqueRepo.destaques.filter((s) => s.tipo === 'SEQUENCIA_RESULTADO'),
     ).toHaveLength(0);
   });
 
-  it('substitui o único na mosca pela lista quando crava outro jogo', async () => {
-    const listar = sequenciaService.listarCravadasDaRodada as unknown as ReturnType<typeof vi.fn>;
+  it('mantém o único na mosca ao cravar outro jogo compartilhado', async () => {
+    const listar =
+      sequenciaService.listarCravadasDaRodada as unknown as ReturnType<
+        typeof vi.fn
+      >;
     listar.mockResolvedValue([
       {
         jogoId: 'jogo-1',
@@ -411,7 +473,9 @@ describe('DestaqueGeneratorService', () => {
       { usuarioId: 'user-1', jogoId: 'jogo-1', golsCasa: 2, golsFora: 1 },
     ]);
     await service.gerarDestaquesParaGrupo(jogo, grupo, membros);
-    expect(destaqueRepo.destaques.filter((s) => s.tipo === 'UNICO_NA_MOSCA')).toHaveLength(1);
+    expect(
+      destaqueRepo.destaques.filter((s) => s.tipo === 'UNICO_NA_MOSCA'),
+    ).toHaveLength(1);
 
     const jogo2: JogoComTimes = {
       ...jogo,
@@ -445,16 +509,22 @@ describe('DestaqueGeneratorService', () => {
     ]);
     await service.gerarDestaquesParaGrupo(jogo2, grupo, membros);
 
-    expect(destaqueRepo.destaques.filter((s) => s.tipo === 'UNICO_NA_MOSCA')).toHaveLength(0);
+    expect(
+      destaqueRepo.destaques.filter((s) => s.tipo === 'UNICO_NA_MOSCA'),
+    ).toHaveLength(1);
     const acertos = destaqueRepo.destaques.filter(
       (s) => s.tipo === 'ACERTOU_EM_CHEIO' && s.usuarioId === 'user-1',
     );
     expect(acertos).toHaveLength(1);
-    expect((acertos[0].dados as { jogos?: unknown[] }).jogos).toHaveLength(2);
+    expect(acertos[0].jogoId).toBe('jogo-2');
   });
 
   it('gera sequência de pontuação quando não cravou placar na rodada', async () => {
-    (sequenciaService.calcularSequenciaResultado as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
+    (
+      sequenciaService.calcularMelhorSequenciaResultado as unknown as ReturnType<
+        typeof vi.fn
+      >
+    ).mockResolvedValue({
       quantidade: 4,
       pontos: 7,
       ultimosJogos: [],
@@ -466,21 +536,36 @@ describe('DestaqueGeneratorService', () => {
 
     await service.gerarDestaquesParaGrupo(jogo, grupo, membros);
 
-    const sequencias = destaqueRepo.destaques.filter((s) => s.tipo === 'SEQUENCIA_RESULTADO');
+    const sequencias = destaqueRepo.destaques.filter(
+      (s) => s.tipo === 'SEQUENCIA_RESULTADO',
+    );
     expect(sequencias).toHaveLength(1);
     expect(sequencias[0].usuarioId).toBe('user-1');
-    expect(sequencias[0].dados).toMatchObject({ quantidadeAcertos: 4, pontos: 7 });
-    expect(destaqueRepo.destaques.filter((s) => s.tipo === 'ACERTOU_EM_CHEIO')).toHaveLength(0);
+    expect(sequencias[0].dados).toMatchObject({
+      quantidadeAcertos: 4,
+      pontos: 7,
+    });
+    expect(
+      destaqueRepo.destaques.filter((s) => s.tipo === 'ACERTOU_EM_CHEIO'),
+    ).toHaveLength(0);
   });
 
   it('gera sequência de pontuação de 4 pontos junto do placar cravado', async () => {
-    (sequenciaService.calcularSequenciaResultado as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
+    (
+      sequenciaService.calcularMelhorSequenciaResultado as unknown as ReturnType<
+        typeof vi.fn
+      >
+    ).mockResolvedValue({
       quantidade: 3,
       pontos: 5,
       ultimosJogos: [],
       rodadaInicio: 5,
     });
-    (sequenciaService.listarCravadasDaRodada as unknown as ReturnType<typeof vi.fn>).mockResolvedValue([
+    (
+      sequenciaService.listarCravadasDaRodada as unknown as ReturnType<
+        typeof vi.fn
+      >
+    ).mockResolvedValue([
       {
         jogoId: 'jogo-1',
         golsCasa: 2,
@@ -496,12 +581,20 @@ describe('DestaqueGeneratorService', () => {
 
     await service.gerarDestaquesParaGrupo(jogo, grupo, membros);
 
-    expect(destaqueRepo.destaques.filter((s) => s.tipo === 'SEQUENCIA_RESULTADO')).toHaveLength(2);
-    expect(destaqueRepo.destaques.filter((s) => s.tipo === 'ACERTOU_EM_CHEIO')).toHaveLength(2);
+    expect(
+      destaqueRepo.destaques.filter((s) => s.tipo === 'SEQUENCIA_RESULTADO'),
+    ).toHaveLength(2);
+    expect(
+      destaqueRepo.destaques.filter((s) => s.tipo === 'ACERTOU_EM_CHEIO'),
+    ).toHaveLength(2);
   });
 
   it('não gera sequência de pontuação abaixo de 4 pontos', async () => {
-    (sequenciaService.calcularSequenciaResultado as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
+    (
+      sequenciaService.calcularMelhorSequenciaResultado as unknown as ReturnType<
+        typeof vi.fn
+      >
+    ).mockResolvedValue({
       quantidade: 3,
       pontos: 3,
       ultimosJogos: [],
@@ -513,6 +606,55 @@ describe('DestaqueGeneratorService', () => {
 
     await service.gerarDestaquesParaGrupo(jogo, grupo, membros);
 
-    expect(destaqueRepo.destaques.filter((s) => s.tipo === 'SEQUENCIA_RESULTADO')).toHaveLength(0);
+    expect(
+      destaqueRepo.destaques.filter((s) => s.tipo === 'SEQUENCIA_RESULTADO'),
+    ).toHaveLength(0);
+  });
+
+  it('substitui cards parciais pela melhor sequência da rodada', async () => {
+    await destaqueRepo.criar({
+      grupoId: 'grupo-1',
+      usuarioId: 'user-1',
+      jogoId: 'jogo-parcial',
+      rodada: 5,
+      tipo: 'SEQUENCIA_RESULTADO',
+      titulo: 'Parcial',
+      dados: { quantidadeAcertos: 3, pontos: 5 },
+    });
+    await destaqueRepo.criar({
+      grupoId: 'grupo-1',
+      usuarioId: 'user-1',
+      jogoId: 'jogo-inflado',
+      rodada: 5,
+      tipo: 'SEQUENCIA_RESULTADO',
+      titulo: 'Inflado',
+      dados: { quantidadeAcertos: 6, pontos: 10 },
+    });
+    (
+      sequenciaService.calcularMelhorSequenciaResultado as unknown as ReturnType<
+        typeof vi.fn
+      >
+    ).mockResolvedValue({
+      quantidade: 5,
+      pontos: 9,
+      ultimosJogos: [],
+      rodadaInicio: 4,
+      rodadaFim: 5,
+    });
+    mockPalpiteRepo.listarPorJogoEUsuarios.mockResolvedValue([
+      { usuarioId: 'user-1', jogoId: 'jogo-1', golsCasa: 1, golsFora: 0 },
+    ]);
+
+    await service.gerarDestaquesParaGrupo(jogo, grupo, membros);
+
+    const sequencias = destaqueRepo.destaques.filter(
+      (s) => s.tipo === 'SEQUENCIA_RESULTADO' && s.usuarioId === 'user-1',
+    );
+    expect(sequencias).toHaveLength(1);
+    expect(sequencias[0].dados).toMatchObject({
+      quantidadeAcertos: 5,
+      pontos: 9,
+      rodadaFim: 5,
+    });
   });
 });

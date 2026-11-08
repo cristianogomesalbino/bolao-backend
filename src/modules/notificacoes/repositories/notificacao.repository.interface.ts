@@ -61,6 +61,8 @@ export interface NotificacaoRepository {
   marcarComoLida(id: string, dataLeitura: Date): Promise<void>;
   marcarTodasComoLidas(usuarioId: string, dataLeitura: Date): Promise<number>;
   existeNotificacao(filtro: DeduplicacaoFiltro): Promise<boolean>;
+  buscarNaoLida(filtro: DeduplicacaoFiltro): Promise<Notificacao | null>;
+  atualizarMensagem(id: string, titulo: string, mensagem: string): Promise<void>;
   removerAntigasLidas(diasLimite: number, batchSize: number): Promise<number>;
   removerAntigasNaoLidas(
     diasLimite: number,

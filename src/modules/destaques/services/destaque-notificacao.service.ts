@@ -1,7 +1,11 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { NOTIFICACOES } from '../../notificacoes/notificacoes.constants';
+import { USUARIOS } from '../../usuarios/usuarios.constants';
 import { DESTAQUES } from '../destaques.constants';
 import type { NotificacaoRepository } from '../../notificacoes/repositories/notificacao.repository.interface';
+import type { UsuarioRepository } from '../../usuarios/repositories/usuario.repository.interface';
+import { PreferenciaService } from '../../notificacoes/services/preferencia.service';
+import { PushService } from '../../notificacoes/services/push.service';
 import type { GrupoBasico, MembroComUsuario } from '../types/destaque.types';
 
 @Injectable()
@@ -11,11 +15,15 @@ export class DestaqueNotificacaoService {
   constructor(
     @Inject(NOTIFICACOES.NOTIFICACAO_REPOSITORY_TOKEN)
     private readonly notificacaoRepo: NotificacaoRepository,
+    @Inject(USUARIOS.REPOSITORY_TOKEN)
+    private readonly usuarioRepo: UsuarioRepository,
+    private readonly preferenciaService: PreferenciaService,
+    private readonly pushService: PushService,
   ) {}
 
   /**
-   * Envia notificação consolidada quando novos destaques são gerados.
-   * Deduplicação: 1 notificação por grupo por jogo finalizado.
+   * Grava e envia push quando novos destaques são gerados.
+   * Quem desligou a preferência não recebe. O padrão é ligado.
    */
   async notificarNovosDestaques(
     grupo: GrupoBasico,
@@ -29,25 +37,42 @@ export class DestaqueNotificacaoService {
         grupoId: grupo.id,
         jogoId,
       });
+      if (jaNotificou || membros.length === 0) return;
 
-      if (jaNotificou) return;
+      const habilitados =
+        await this.preferenciaService.filtrarUsuariosHabilitados(
+          membros.map((membro) => membro.usuarioId),
+          'DESTAQUES_GRUPO',
+        );
+      if (habilitados.length === 0) return;
 
       const titulo = DESTAQUES.TEMPLATES.NOVOS_DESTAQUES.titulo;
       const mensagem = DESTAQUES.TEMPLATES.NOVOS_DESTAQUES.mensagem(
         grupo.nome,
         quantidade,
       );
+      const habilitadosSet = new Set(habilitados);
 
       await this.notificacaoRepo.criarVarios(
-        membros.map((m) => ({
-          tipo: 'DESTAQUES_GRUPO' as const,
-          titulo,
-          mensagem,
-          usuarioId: m.usuarioId,
-          grupoId: grupo.id,
-          jogoId,
-        })),
+        membros
+          .filter((membro) => habilitadosSet.has(membro.usuarioId))
+          .map((membro) => ({
+            tipo: 'DESTAQUES_GRUPO' as const,
+            titulo,
+            mensagem,
+            usuarioId: membro.usuarioId,
+            grupoId: grupo.id,
+            jogoId,
+          })),
       );
+
+      await this.pushService.enviarParaUsuarios(habilitados, {
+        titulo,
+        mensagem,
+        tipo: 'DESTAQUES_GRUPO',
+        url: `/grupos/${grupo.id}`,
+        dedupeId: `destaques:${grupo.id}:${jogoId}`,
+      });
 
       this.logger.log(
         `[DESTAQUES-NOTIF] ${grupo.nome}: "${titulo}" — ${mensagem}`,
@@ -60,8 +85,8 @@ export class DestaqueNotificacaoService {
   }
 
   /**
-   * Envia notificação quando alguém recebe um F.
-   * Respeita preferência recebeuF do destinatário.
+   * Avisa o autor do destaque. O primeiro F leva o nome de quem mandou.
+   * Enquanto o aviso seguir não lido, os próximos viram "N pessoas mandaram um F".
    */
   async notificarRecebeuF(
     destinatarioId: string,
@@ -69,27 +94,24 @@ export class DestaqueNotificacaoService {
     grupoId: string,
   ): Promise<void> {
     try {
-      // Deduplicação: verificar se já tem notificação agrupada
-      const jaNotificou = await this.notificacaoRepo.existeNotificacao({
-        tipo: 'RECEBEU_F',
-        usuarioId: destinatarioId,
+      const habilitado = await this.preferenciaService.estaHabilitado(
+        destinatarioId,
+        'RECEBEU_F',
+      );
+      if (!habilitado) return;
+
+      const aviso = await this.montarAvisoRecebeuF(
+        destinatarioId,
+        remetenteId,
         grupoId,
-      });
+      );
 
-      if (jaNotificou) {
-        // Notificação já existe — agrupamento será tratado pelo frontend
-        return;
-      }
-
-      const titulo = DESTAQUES.TEMPLATES.RECEBEU_F.titulo;
-      const mensagem = DESTAQUES.TEMPLATES.RECEBEU_F.mensagem('Alguém');
-
-      await this.notificacaoRepo.criar({
+      await this.pushService.enviarParaUsuario(destinatarioId, {
+        titulo: aviso.titulo,
+        mensagem: aviso.mensagem,
         tipo: 'RECEBEU_F',
-        titulo,
-        mensagem,
-        usuarioId: destinatarioId,
-        grupoId,
+        url: `/grupos/${grupoId}`,
+        dedupeId: `recebeu-f:${grupoId}`,
       });
     } catch (error) {
       this.logger.error(
@@ -97,4 +119,50 @@ export class DestaqueNotificacaoService {
       );
     }
   }
+
+  private async montarAvisoRecebeuF(
+    destinatarioId: string,
+    remetenteId: string,
+    grupoId: string,
+  ): Promise<{ titulo: string; mensagem: string }> {
+    const existente = await this.notificacaoRepo.buscarNaoLida({
+      tipo: 'RECEBEU_F',
+      usuarioId: destinatarioId,
+      grupoId,
+    });
+
+    if (existente) {
+      const quantidade = proximaQuantidadeFs(existente.mensagem);
+      const titulo = DESTAQUES.TEMPLATES.RECEBEU_F_AGRUPADO.titulo;
+      const mensagem =
+        DESTAQUES.TEMPLATES.RECEBEU_F_AGRUPADO.mensagem(quantidade);
+      await this.notificacaoRepo.atualizarMensagem(
+        existente.id,
+        titulo,
+        mensagem,
+      );
+      return { titulo, mensagem };
+    }
+
+    const remetente = await this.usuarioRepo.buscarPorId(remetenteId);
+    const nome = remetente?.nome?.trim() || 'Alguém';
+    const titulo = DESTAQUES.TEMPLATES.RECEBEU_F.titulo;
+    const mensagem = DESTAQUES.TEMPLATES.RECEBEU_F.mensagem(nome);
+
+    await this.notificacaoRepo.criar({
+      tipo: 'RECEBEU_F',
+      titulo,
+      mensagem,
+      usuarioId: destinatarioId,
+      grupoId,
+    });
+
+    return { titulo, mensagem };
+  }
+}
+
+function proximaQuantidadeFs(mensagem: string): number {
+  const agrupada = mensagem.match(/^(\d+) pessoas mandaram um F/);
+  if (!agrupada) return 2;
+  return Number(agrupada[1]) + 1;
 }

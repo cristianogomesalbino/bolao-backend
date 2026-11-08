@@ -7,7 +7,7 @@ import {
   type RankingEntry,
 } from '../../ranking/services/ranking.service';
 import { DestaqueSequenciaService } from './destaque-sequencia.service';
-import { pickRandomTitle } from '../destaques.titulos';
+import { inferirGeneroPorNome, pickRandomTitle } from '../destaques.titulos';
 import type {
   DestaqueRepository,
   CriarDestaqueData,
@@ -53,6 +53,7 @@ interface GeracaoContexto {
   top5: Array<{ posicao: number; nome: string; pontuacao: number }>;
   resultados: ResultadoMembro[];
   ultimoTituloPorTipo: Map<TipoDestaque, string>;
+  titulosUsadosPorTipo: Map<TipoDestaque, Set<string>>;
 }
 
 @Injectable()
@@ -79,6 +80,7 @@ export class DestaqueGeneratorService {
     membros: MembroComUsuario[],
   ): Promise<number> {
     const ctx = await this.construirContexto(jogo, grupo, membros);
+    await this.carregarTitulosUsadosNaRodada(ctx);
     const destaquesParaCriar: CriarDestaqueData[] = [];
 
     for (const membro of membros) {
@@ -162,14 +164,53 @@ export class DestaqueGeneratorService {
       posicaoAnteriorMap,
       rankingAtual,
       rankingDepois,
-      top5: rankingDepois.slice(0, DESTAQUES.LIMITES.SUBIU_RANKING_TOP).map((r) => ({
-        posicao: r.posicao,
-        nome: r.nomeUsuario,
-        pontuacao: r.pontuacaoTotal,
-      })),
+      top5: rankingDepois
+        .slice(0, DESTAQUES.LIMITES.SUBIU_RANKING_TOP)
+        .map((r) => ({
+          posicao: r.posicao,
+          nome: r.nomeUsuario,
+          pontuacao: r.pontuacaoTotal,
+        })),
       resultados,
       ultimoTituloPorTipo: new Map(),
+      titulosUsadosPorTipo: new Map(),
     };
+  }
+
+  private async carregarTitulosUsadosNaRodada(
+    ctx: GeracaoContexto,
+  ): Promise<void> {
+    if (ctx.jogo.rodada == null) return;
+    const existentes = await this.destaqueRepo.buscarPorGrupoERodadas(
+      ctx.grupo.id,
+      [ctx.jogo.rodada],
+      DESTAQUES.LIMITES.BUSCA_LISTAGEM,
+    );
+    for (const destaque of existentes) {
+      const usados =
+        ctx.titulosUsadosPorTipo.get(destaque.tipo) ?? new Set<string>();
+      usados.add(destaque.titulo);
+      ctx.titulosUsadosPorTipo.set(destaque.tipo, usados);
+    }
+  }
+
+  private escolherTitulo(
+    tipo: Exclude<TipoDestaque, 'SEQUENCIA_MOSCA'>,
+    ctx: GeracaoContexto,
+    nomeUsuario: string,
+  ) {
+    const usados = [...(ctx.titulosUsadosPorTipo.get(tipo) ?? [])];
+    const titulo = pickRandomTitle(
+      tipo,
+      ctx.ultimoTituloPorTipo.get(tipo),
+      usados,
+      inferirGeneroPorNome(nomeUsuario),
+    );
+    ctx.ultimoTituloPorTipo.set(tipo, titulo.id);
+    const set = ctx.titulosUsadosPorTipo.get(tipo) ?? new Set<string>();
+    set.add(titulo.title);
+    ctx.titulosUsadosPorTipo.set(tipo, set);
+    return titulo;
   }
 
   private async avaliarMembro(
@@ -184,6 +225,8 @@ export class DestaqueGeneratorService {
       return esquecidos;
     }
 
+    await this.sincronizarNaoPalpitouExistente(membro, ctx);
+
     const resultado = ctx.resultados.find(
       (r) => r.usuarioId === membro.usuarioId,
     );
@@ -193,8 +236,48 @@ export class DestaqueGeneratorService {
     await this.avaliarAcerto(membro, resultado, ctx, destaques);
     await this.avaliarSubiuRanking(membro, ctx, destaques);
     this.avaliarDobrouEAcertou(membro, resultado, ctx, destaques);
-    await this.avaliarSequencias(membro, resultado, ctx, destaques);
+    await this.avaliarSequencias(membro, ctx, destaques);
     return destaques;
+  }
+
+  /** Remove ou atualiza NAO_PALPITOU velho quando a pessoa já tem palpites. */
+  private async sincronizarNaoPalpitouExistente(
+    membro: MembroComUsuario,
+    ctx: GeracaoContexto,
+  ): Promise<void> {
+    if (ctx.jogo.rodada === null) return;
+
+    const existente = await this.destaqueRepo.buscarNaRodada(
+      ctx.grupo.id,
+      membro.usuarioId,
+      ctx.jogo.rodada,
+      'NAO_PALPITOU',
+    );
+    if (!existente) return;
+
+    const esquecidos = await this.sequenciaService.listarEsquecidosDaRodada(
+      membro.usuarioId,
+      ctx.grupo.temporadaId,
+      ctx.jogo.rodada,
+    );
+    if (esquecidos.length === 0) {
+      await this.destaqueRepo.removerPorTiposNaRodada(
+        ctx.grupo.id,
+        membro.usuarioId,
+        ctx.jogo.rodada,
+        ['NAO_PALPITOU'],
+      );
+      return;
+    }
+
+    await this.destaqueRepo.atualizar(existente.id, {
+      dados: {
+        jogosEsquecidos: esquecidos,
+        totalJogosRodada: esquecidos.length,
+        rodada: ctx.jogo.rodada,
+      } satisfies DadosNaoPalpitou,
+      titulo: existente.titulo,
+    });
   }
 
   private async avaliarNaoPalpitou(
@@ -264,7 +347,11 @@ export class DestaqueGeneratorService {
     destaques: CriarDestaqueData[],
   ): Promise<void> {
     if (resultado.categoriaAcerto !== 'ACERTO_EM_CHEIO') return;
-    if (ctx.jogo.rodada === null || ctx.jogo.golsCasa === null || ctx.jogo.golsFora === null) {
+    if (
+      ctx.jogo.rodada === null ||
+      ctx.jogo.golsCasa === null ||
+      ctx.jogo.golsFora === null
+    ) {
       return;
     }
 
@@ -285,17 +372,9 @@ export class DestaqueGeneratorService {
       : [...cravadas, atual];
 
     const unicoDesteJogo =
-      lista.length === 1 &&
-      ctx.unicoNaMosca &&
-      ctx.membrosNaMosca[0]?.usuarioId === membro.usuarioId;
+      ctx.unicoNaMosca && ctx.membrosNaMosca[0]?.usuarioId === membro.usuarioId;
 
     if (unicoDesteJogo) {
-      await this.destaqueRepo.removerPorTiposNaRodada(
-        ctx.grupo.id,
-        membro.usuarioId,
-        ctx.jogo.rodada,
-        ['ACERTOU_EM_CHEIO', 'SEQUENCIA_MOSCA'],
-      );
       const jaTemUnico = await this.destaqueRepo.existeDestaque(
         ctx.grupo.id,
         membro.usuarioId,
@@ -320,10 +399,26 @@ export class DestaqueGeneratorService {
       ctx.grupo.id,
       membro.usuarioId,
       ctx.jogo.rodada,
-      ['UNICO_NA_MOSCA', 'SEQUENCIA_MOSCA'],
+      ['SEQUENCIA_MOSCA'],
     );
 
-    const dados = this.dadosDoAcerto(lista);
+    const listaCompartilhada: PlacarCravado[] = [];
+    for (const jogo of lista) {
+      if (jogo.jogoId === ctx.jogo.id) {
+        listaCompartilhada.push(jogo);
+        continue;
+      }
+      const eraUnico = await this.destaqueRepo.existeDestaque(
+        ctx.grupo.id,
+        membro.usuarioId,
+        jogo.jogoId,
+        'UNICO_NA_MOSCA',
+      );
+      if (!eraUnico) listaCompartilhada.push(jogo);
+    }
+    if (listaCompartilhada.length === 0) return;
+
+    const dados = this.dadosDoAcerto(listaCompartilhada);
     const existente = await this.destaqueRepo.buscarNaRodada(
       ctx.grupo.id,
       membro.usuarioId,
@@ -331,12 +426,15 @@ export class DestaqueGeneratorService {
       'ACERTOU_EM_CHEIO',
     );
     if (existente) {
-      const titulo = pickRandomTitle(
+      const titulo = this.escolherTitulo(
         'ACERTOU_EM_CHEIO',
-        ctx.ultimoTituloPorTipo.get('ACERTOU_EM_CHEIO'),
+        ctx,
+        membro.usuario.nome,
       );
-      ctx.ultimoTituloPorTipo.set('ACERTOU_EM_CHEIO', titulo.id);
-      await this.destaqueRepo.atualizar(existente.id, { dados, titulo: titulo.title });
+      await this.destaqueRepo.atualizar(existente.id, {
+        dados,
+        titulo: titulo.title,
+      });
       await this.destaqueRepo.removerPorTiposNaRodada(
         ctx.grupo.id,
         membro.usuarioId,
@@ -451,7 +549,6 @@ export class DestaqueGeneratorService {
 
   private async avaliarSequencias(
     membro: MembroComUsuario,
-    resultado: ResultadoMembro,
     ctx: GeracaoContexto,
     destaques: CriarDestaqueData[],
   ): Promise<void> {
@@ -464,19 +561,23 @@ export class DestaqueGeneratorService {
       ['SEQUENCIA_MOSCA'],
     );
 
-    if (resultado.pontosBase <= 0) {
-      await this.descartarSequenciaCurta(membro, ctx);
-      return;
-    }
-
-    const seqResultado = await this.sequenciaService.calcularSequenciaResultado(
-      membro.usuarioId,
-      ctx.jogo.faseId,
-      ctx.jogo.rodada,
-      ctx.jogo.id,
-    );
-    if (!seqResultado || seqResultado.pontos < DESTAQUES.LIMITES.SEQUENCIA_PONTOS_MINIMOS) {
-      await this.descartarSequenciaCurta(membro, ctx);
+    const seqResultado =
+      await this.sequenciaService.calcularMelhorSequenciaResultado(
+        membro.usuarioId,
+        ctx.jogo.faseId,
+        ctx.jogo.rodada,
+      );
+    if (
+      !seqResultado ||
+      seqResultado.quantidade < DESTAQUES.LIMITES.SEQUENCIA_JOGOS_MINIMOS ||
+      seqResultado.pontos < DESTAQUES.LIMITES.SEQUENCIA_PONTOS_MINIMOS
+    ) {
+      await this.destaqueRepo.removerPorTiposNaRodada(
+        ctx.grupo.id,
+        membro.usuarioId,
+        ctx.jogo.rodada,
+        ['SEQUENCIA_RESULTADO'],
+      );
       return;
     }
 
@@ -491,7 +592,7 @@ export class DestaqueGeneratorService {
       quantidadeAcertos: seqResultado.quantidade,
       pontos: seqResultado.pontos,
       rodadaInicio: seqResultado.rodadaInicio,
-      rodadaFim: ctx.jogo.rodada,
+      rodadaFim: seqResultado.rodadaFim ?? ctx.jogo.rodada,
       ultimosJogos: seqResultado.ultimosJogos,
       recorde,
     };
@@ -503,15 +604,15 @@ export class DestaqueGeneratorService {
       'SEQUENCIA_RESULTADO',
     );
     if (existente) {
-      const pontosAtuais = Number(existente.dados.pontos ?? 0);
-      if (pontosAtuais > seqResultado.pontos) return;
-
-      const titulo = pickRandomTitle(
+      const titulo = this.escolherTitulo(
         'SEQUENCIA_RESULTADO',
-        ctx.ultimoTituloPorTipo.get('SEQUENCIA_RESULTADO'),
+        ctx,
+        membro.usuario.nome,
       );
-      ctx.ultimoTituloPorTipo.set('SEQUENCIA_RESULTADO', titulo.id);
-      await this.destaqueRepo.atualizar(existente.id, { dados, titulo: titulo.title });
+      await this.destaqueRepo.atualizar(existente.id, {
+        dados,
+        titulo: titulo.title,
+      });
       await this.destaqueRepo.removerPorTiposNaRodada(
         ctx.grupo.id,
         membro.usuarioId,
@@ -522,27 +623,8 @@ export class DestaqueGeneratorService {
       return;
     }
 
-    destaques.push(this.buildDestaque('SEQUENCIA_RESULTADO', membro, ctx, dados));
-  }
-
-  private async descartarSequenciaCurta(
-    membro: MembroComUsuario,
-    ctx: GeracaoContexto,
-  ): Promise<void> {
-    if (ctx.jogo.rodada === null) return;
-    const existente = await this.destaqueRepo.buscarNaRodada(
-      ctx.grupo.id,
-      membro.usuarioId,
-      ctx.jogo.rodada,
-      'SEQUENCIA_RESULTADO',
-    );
-    const pontos = Number(existente?.dados.pontos ?? 0);
-    if (!existente || pontos >= DESTAQUES.LIMITES.SEQUENCIA_PONTOS_MINIMOS) return;
-    await this.destaqueRepo.removerPorTiposNaRodada(
-      ctx.grupo.id,
-      membro.usuarioId,
-      ctx.jogo.rodada,
-      ['SEQUENCIA_RESULTADO'],
+    destaques.push(
+      this.buildDestaque('SEQUENCIA_RESULTADO', membro, ctx, dados),
     );
   }
 
@@ -554,11 +636,7 @@ export class DestaqueGeneratorService {
     ctx: GeracaoContexto,
     dados: object,
   ): CriarDestaqueData {
-    const destaqueTitle = pickRandomTitle(
-      tipo,
-      ctx.ultimoTituloPorTipo.get(tipo),
-    );
-    ctx.ultimoTituloPorTipo.set(tipo, destaqueTitle.id);
+    const destaqueTitle = this.escolherTitulo(tipo, ctx, membro.usuario.nome);
 
     return {
       grupoId: ctx.grupo.id,

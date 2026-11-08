@@ -14,6 +14,13 @@ import type {
   RecordeInfo,
   TimeInfo,
 } from '../types/destaque.types';
+import {
+  calcularMelhorSequenciaDaRodada,
+  calcularSequenciaAte,
+  ordenarJogosDaSequencia,
+  type JogoParaSequencia,
+  type SequenciaCalculada,
+} from './sequencia-resultado.calculo';
 
 interface JogoInterno {
   id: string;
@@ -41,6 +48,7 @@ interface SequenciaResultado {
   pontos: number;
   ultimosJogos: JogoSequencia[];
   rodadaInicio: number | null;
+  rodadaFim: number | null;
 }
 
 @Injectable()
@@ -63,44 +71,37 @@ export class DestaqueSequenciaService {
   ): Promise<SequenciaResultado | null> {
     if (rodadaAtual === null) return null;
 
-    const rodadasParaConsultar = this.calcularRodadasParaConsulta(rodadaAtual);
-    const todosJogos: JogoInterno[] = [];
+    const todosJogos = await this.buscarJogosDasRodadas(faseId, rodadaAtual);
+    const carregado = await this.carregarParaSequencia(usuarioId, todosJogos);
+    if (!carregado) return null;
 
-    for (const rodada of rodadasParaConsultar) {
-      const jogos = (await this.jogoRepo.buscarPorFase(
-        faseId,
-        rodada,
-      )) as JogoInterno[];
-      todosJogos.push(...jogos);
-    }
-
-    const jogosFinalizados = this.filtrarFinalizadosOrdenados(todosJogos);
-    if (jogosFinalizados.length < 2) return null;
-
-    const palpiteMap = await this.buscarPalpitesDoUsuario(
-      jogosFinalizados,
-      usuarioId,
+    const indiceAtual = carregado.jogos.findIndex(
+      (jogo) => jogo.id === jogoAtualId,
     );
-    const indiceAtual = jogosFinalizados.findIndex((j) => j.id === jogoAtualId);
     if (indiceAtual === -1) return null;
 
-    const { quantidade, pontos, ultimosJogos, rodadaInicio } = this.percorrerSequencia(
-      jogosFinalizados,
-      palpiteMap,
-      indiceAtual,
-      rodadaAtual,
+    return this.publicar(
+      calcularSequenciaAte(carregado.jogos, indiceAtual, carregado.pontosDe),
     );
+  }
 
-    if (quantidade < 2) return null;
+  async calcularMelhorSequenciaResultado(
+    usuarioId: string,
+    faseId: string,
+    rodadaAtual: number | null,
+  ): Promise<SequenciaResultado | null> {
+    if (rodadaAtual === null) return null;
 
-    return {
-      quantidade,
-      pontos,
-      ultimosJogos: ultimosJogos.slice(
-        -DESTAQUES.LIMITES.ULTIMOS_JOGOS_SEQUENCIA,
-      ),
-      rodadaInicio,
-    };
+    const todosJogos = await this.buscarJogosDasRodadas(faseId, rodadaAtual);
+    const carregado = await this.carregarParaSequencia(usuarioId, todosJogos);
+    if (!carregado) return null;
+
+    const melhor = calcularMelhorSequenciaDaRodada(
+      carregado.jogos,
+      rodadaAtual,
+      carregado.pontosDe,
+    );
+    return melhor ? this.publicar(melhor) : null;
   }
 
   async listarCravadasDaRodada(
@@ -122,7 +123,8 @@ export class DestaqueSequenciaService {
 
     for (const jogo of jogos) {
       const palpite = palpiteMap.get(jogo.id);
-      if (!palpite || jogo.golsCasa === null || jogo.golsFora === null) continue;
+      if (!palpite || jogo.golsCasa === null || jogo.golsFora === null)
+        continue;
 
       const resultado = this.pontuacaoService.calcular(
         { golsCasa: palpite.golsCasa, golsFora: palpite.golsFora },
@@ -249,55 +251,92 @@ export class DestaqueSequenciaService {
     return new Map(todosPalpites.map((p) => [p.jogoId, p]));
   }
 
-  private percorrerSequencia(
-    jogos: JogoInterno[],
-    palpiteMap: Map<string, PalpiteInterno>,
-    indiceAtual: number,
-    rodadaFallback: number | null,
-  ): {
-    quantidade: number;
-    pontos: number;
-    ultimosJogos: JogoSequencia[];
-    rodadaInicio: number | null;
-  } {
-    let quantidade = 0;
-    let pontos = 0;
-    const ultimosJogos: JogoSequencia[] = [];
-    let rodadaInicio: number | null = rodadaFallback;
+  private async buscarJogosDasRodadas(
+    faseId: string,
+    rodadaAtual: number,
+  ): Promise<JogoInterno[]> {
+    const todosJogos: JogoInterno[] = [];
+    for (const rodada of this.calcularRodadasParaConsulta(rodadaAtual)) {
+      const jogos = (await this.jogoRepo.buscarPorFase(
+        faseId,
+        rodada,
+      )) as JogoInterno[];
+      todosJogos.push(...jogos);
+    }
+    return todosJogos;
+  }
 
-    for (let i = indiceAtual; i >= 0; i--) {
-      const jogo = jogos[i];
-      const palpite = palpiteMap.get(jogo.id);
-      if (!palpite || jogo.golsCasa === null || jogo.golsFora === null) break;
+  private async carregarParaSequencia(
+    usuarioId: string,
+    todosJogos: JogoInterno[],
+  ): Promise<{
+    jogos: JogoParaSequencia[];
+    pontosDe: (jogoId: string) => number | null;
+  } | null> {
+    const finalizados = todosJogos.filter(
+      (jogo) => jogo.status === 'FINALIZADO',
+    );
+    if (finalizados.length < 2) return null;
 
-      const resultado = this.pontuacaoService.calcular(
-        { golsCasa: palpite.golsCasa, golsFora: palpite.golsFora },
-        { golsCasa: jogo.golsCasa, golsFora: jogo.golsFora },
-      );
-
-      const pontuou =
-        resultado.categoriaAcerto === 'ACERTO_EM_CHEIO' ||
-        resultado.categoriaAcerto === 'ACERTO_DE_RESULTADO';
-      if (!pontuou) break;
-
-      quantidade++;
-      pontos += resultado.pontosBase;
-      rodadaInicio = jogo.rodada ?? rodadaInicio;
-      ultimosJogos.unshift({
-        timeCasa: jogo.timeCasa?.nome ?? jogo.timeCasaId,
-        timeFora: jogo.timeFora?.nome ?? jogo.timeForaId,
+    const palpiteMap = await this.buscarPalpitesDoUsuario(
+      finalizados,
+      usuarioId,
+    );
+    const pontos = new Map<string, number | null>();
+    const paraSequencia = finalizados.map((jogo) => {
+      pontos.set(jogo.id, this.pontosBaseDoJogo(jogo, palpiteMap.get(jogo.id)));
+      return {
+        id: jogo.id,
+        rodada: jogo.rodada,
+        dataHora: jogo.dataHora,
         golsCasa: jogo.golsCasa,
         golsFora: jogo.golsFora,
-        rodada: jogo.rodada ?? null,
-        acertou: true,
-      });
-    }
+        timeCasaNome: jogo.timeCasa?.nome ?? jogo.timeCasaId,
+        timeForaNome: jogo.timeFora?.nome ?? jogo.timeForaId,
+      };
+    });
 
-    return { quantidade, pontos, ultimosJogos, rodadaInicio };
+    return {
+      jogos: ordenarJogosDaSequencia(paraSequencia),
+      pontosDe: (jogoId: string) => pontos.get(jogoId) ?? null,
+    };
+  }
+
+  private pontosBaseDoJogo(
+    jogo: JogoInterno,
+    palpite: PalpiteInterno | undefined,
+  ): number | null {
+    if (!palpite || jogo.golsCasa === null || jogo.golsFora === null)
+      return null;
+    const resultado = this.pontuacaoService.calcular(
+      { golsCasa: palpite.golsCasa, golsFora: palpite.golsFora },
+      { golsCasa: jogo.golsCasa, golsFora: jogo.golsFora },
+    );
+    const pontuou =
+      resultado.categoriaAcerto === 'ACERTO_EM_CHEIO' ||
+      resultado.categoriaAcerto === 'ACERTO_DE_RESULTADO';
+    return pontuou ? resultado.pontosBase : 0;
+  }
+
+  private publicar(sequencia: SequenciaCalculada): SequenciaResultado | null {
+    if (sequencia.quantidade < DESTAQUES.LIMITES.SEQUENCIA_JOGOS_MINIMOS)
+      return null;
+    return {
+      quantidade: sequencia.quantidade,
+      pontos: sequencia.pontos,
+      rodadaInicio: sequencia.rodadaInicio,
+      rodadaFim: sequencia.rodadaFim,
+      ultimosJogos: sequencia.ultimosJogos.slice(
+        -DESTAQUES.LIMITES.ULTIMOS_JOGOS_SEQUENCIA,
+      ),
+    };
   }
 
   private timeInfo(
-    time: { nome: string; sigla?: string; escudo?: string | null } | null | undefined,
+    time:
+      | { nome: string; sigla?: string; escudo?: string | null }
+      | null
+      | undefined,
     fallbackId: string,
   ): TimeInfo {
     const nome = time?.nome ?? fallbackId;

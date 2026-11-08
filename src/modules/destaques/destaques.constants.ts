@@ -8,9 +8,12 @@ export const DESTAQUES = {
   LIMITES: {
     EXPIRACAO_DIAS: 30,
     SEQUENCIA_PONTOS_MINIMOS: 4,
-    SEQUENCIA_RESULTADO_CONSULTA_RODADAS: 3,
+    SEQUENCIA_JOGOS_MINIMOS: 3,
+    ACERTOU_PANELINHA_MINIMO: 3,
+    SEQUENCIA_RESULTADO_CONSULTA_RODADAS: 1,
     ULTIMOS_JOGOS_SEQUENCIA: 5,
     MAX_DESTAQUES_LISTAGEM: 20,
+    BUSCA_LISTAGEM: 200,
     MIN_DESTAQUES_VIEWER: 5,
     SUBIU_RANKING_MINIMO: 2,
     SUBIU_RANKING_TOP: 5,
@@ -57,12 +60,11 @@ export const DESTAQUES = {
     RECEBEU_F: {
       titulo: 'Recebeu um F!',
       mensagem: (nomeRemetente: string) =>
-        `${nomeRemetente} mandou um F pra você. 😴`,
+        `${nomeRemetente} mandou um F pra você.`,
     },
     RECEBEU_F_AGRUPADO: {
       titulo: 'Mandaram um F!',
-      mensagem: (quantidade: number, timeCasa: string, timeFora: string) =>
-        `${quantidade} pessoas mandaram um F — ${timeCasa} × ${timeFora}`,
+      mensagem: (quantidade: number) => `${quantidade} pessoas mandaram um F`,
     },
   },
 } as const;

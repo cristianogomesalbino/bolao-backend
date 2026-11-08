@@ -28,6 +28,8 @@ describe('PreferenciaService', () => {
       expect(resultado.jogoProximo).toBe(true);
       expect(resultado.acertoEmCheio).toBe(true);
       expect(resultado.palpitesPendentes).toBe(true);
+      expect(resultado.destaquesGrupo).toBe(true);
+      expect(resultado.recebeuF).toBe(true);
     });
   });
 
@@ -62,6 +64,15 @@ describe('PreferenciaService', () => {
     it('deve retornar true para tipo desconhecido', async () => {
       const resultado = await service.estaHabilitado('user-1', 'TIPO_INVALIDO');
       expect(resultado).toBe(true);
+    });
+
+    it('deve nascer ligado para destaques e para F recebido', async () => {
+      await repo.criar('user-1');
+
+      expect(await service.estaHabilitado('user-1', 'DESTAQUES_GRUPO')).toBe(
+        true,
+      );
+      expect(await service.estaHabilitado('user-1', 'RECEBEU_F')).toBe(true);
     });
   });
 

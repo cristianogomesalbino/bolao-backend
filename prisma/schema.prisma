@@ -368,7 +368,7 @@ model PreferenciaNotificacao {
   palpitesPendentes Boolean @default(true)
   jogoLiberado      Boolean @default(true)
   vencedorBolao     Boolean @default(true)
-  storiesGrupo      Boolean @default(true)
+  destaquesGrupo    Boolean @default(true)
   recebeuF          Boolean @default(true)
 
   usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)

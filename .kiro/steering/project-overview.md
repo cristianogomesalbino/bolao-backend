@@ -165,48 +165,50 @@ EM_ANDAMENTO → CANCELADO
 
 ### Arquitetura
 
-Services divididos por responsabilidade (SRP):
-- `DestaqueEventService` — orquestrador: recebe evento de jogo finalizado, coordena geração para todos os grupos
-- `DestaqueGeneratorService` — avalia 7 critérios por membro e gera destaques em batch
-- `DestaqueSequenciaService` — calcula sequências (mosca + resultado) e gerencia recordes
-- `DestaqueReactionService` — lógica do "Mandar um F" com validações
-- `DestaqueNotificacaoService` — push consolidado + notificação de F recebido
-- `DestaqueCronService` — limpeza de destaques > 30 dias
+Services / helpers por responsabilidade (SRP):
+- `DestaqueEventService` — orquestrador pós-finalização
+- `DestaqueGeneratorService` — gera destaques ativos em batch
+- `DestaqueSequenciaService` — sequência de resultado + recordes + esquecidos
+- `sequencia-resultado.calculo.ts` / `sequencia-listagem.ts` — regras de sequência e 1 card/pessoa
+- `destaque-selecao.ts` — panelinha, dedupe, sync NAO_PALPITOU, seleção diversa
+- `destaques.titulos.ts` — catálogo + flexão por gênero (primeiro nome)
+- `DestaqueReactionService` — "Mandar um F"
+- `DestaqueNotificacaoService` — push; prefs `destaquesGrupo` e `recebeuF` nascem ligadas; toque abre `/grupos/:grupoId`
+- `DestaqueCronService` — limpeza > 30 dias
 
 ### Tipos de Destaque
 
 | Tipo | Gatilho |
 |------|---------|
-| `ACERTOU_EM_CHEIO` | Acertou placar exato (quando 2+ cravaram) |
-| `UNICO_NA_MOSCA` | Único do grupo a cravar placar (prioridade sobre ACERTOU_EM_CHEIO) |
-| `SUBIU_RANKING` | Subiu 2+ posições OU subiu 1 dentro do top 5 |
-| `SEQUENCIA_MOSCA` | 2+ acertos em cheio consecutivos na mesma rodada |
-| `SEQUENCIA_RESULTADO` | Sequência de acertos cross-rodada (consulta até 3 rodadas atrás) |
-| `NAO_PALPITOU` | Não palpitou (consolidado por rodada) |
+| `ACERTOU_EM_CHEIO` | Cravou e não é o único; na listagem, 3+ no mesmo jogo viram **panelinha** |
+| `UNICO_NA_MOSCA` | Único a cravar (prioridade sobre ACERTOU_EM_CHEIO) |
+| `SUBIU_RANKING` | Subiu 2+ posições OU 1 dentro do top 5 |
+| `SEQUENCIA_RESULTADO` | ≥3 jogos e ≥4 pts; lookback 1 rodada; 1 card/pessoa/rodada |
+| `NAO_PALPITOU` | Não palpitou (consolidado por rodada; sync na listagem) |
 | `DOBROU_E_ACERTOU` | Palpite dobrado + acertou resultado |
+| `SEQUENCIA_MOSCA` | **Não gerada** (fora da regra atual) |
 
 ### Endpoints
 
-- `GET /grupos/:grupoId/destaques` — listagem cronológica (rodada atual + anterior, mín 5 / máx 20)
-- `POST /grupos/:grupoId/destaques/:destaqueId/mandar-f` — enviar F (apenas NAO_PALPITOU)
-- `POST /grupos/:grupoId/destaques/visualizar` — batch de visualizações (ao fechar viewer)
+- `GET /grupos/:grupoId/destaques` — rodada Atual (maior finalizada) ou `?rodada=`; retorna `destaques` + `rodadasDisponiveis` (máx. 20)
+- `POST /grupos/:grupoId/destaques/:destaqueId/mandar-f` — F (apenas NAO_PALPITOU)
+- `POST /grupos/:grupoId/destaques/visualizar` — batch de visualizações
 
 ### Regras de Domínio
 
-- Destaques persistidos em banco (não calculados on-the-fly)
-- Gerados fire-and-forget após finalização de jogo
+- Persistidos em banco; gerados fire-and-forget após finalizar jogo
 - Deduplicação: unique(grupoId, usuarioId, jogoId, tipo)
-- Visibilidade: rodada atual + anterior
+- Rodada Atual do feed = maior rodada com jogo finalizado
 - Hard delete: cron 30 dias
-- F: 1 por remetente por destaque, não pode enviar pra si mesmo
-- Recordes: por grupo + temporada + categoria (MOSCA/RESULTADO), empate mantém múltiplos detentores
-- Prioridade de exibição: UNICO_NA_MOSCA > NAO_PALPITOU > SEQUENCIA_MOSCA > SEQUENCIA_RESULTADO > ACERTOU_EM_CHEIO > SUBIU_RANKING > DOBROU_E_ACERTOU
-- Título randomizado por tipo (sem repetição imediata via pickRandomTitle)
-- RankingSnapshot: posição salva após cada jogo finalizado para comparação eficiente
+- F: 1 por remetente/destaque; não pode F em si mesmo
+- Recordes RESULTADO por grupo+temporada; empate mantém múltiplos detentores
+- Prioridade (seleção diversa): UNICO → NAO → SEQUENCIA_RESULTADO → ACERTOU → SUBIU → DOBROU
+- Títulos: `pickRandomTitle` + `titleFeminino` quando houver
+- RankingSnapshot para SUBIU_RANKING
 
 ### Integração com JogoService
 
-`JogoService.dispararDestaquesJogoFinalizado(jogoId)` chama `DestaqueEventService.processarJogoFinalizado(jogoId)` fire-and-forget após finalizar/sincronizar um jogo. Não bloqueia o fluxo principal. Injetado via `@Optional() @Inject(DESTAQUES.EVENT_SERVICE_TOKEN)`.
+`JogoService.dispararDestaquesJogoFinalizado(jogoId)` → `DestaqueEventService.processarJogoFinalizado` fire-and-forget (`@Optional() @Inject(DESTAQUES.EVENT_SERVICE_TOKEN)`).
 
 ## Idioma
 

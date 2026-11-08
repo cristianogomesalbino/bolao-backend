@@ -63,11 +63,10 @@ describe('DestaqueSequenciaService', () => {
     });
 
     it('deve funcionar cross-rodada (consulta rodadas anteriores)', async () => {
-      // Rodada 4: 1 jogo acertado
       const jogosRodada4 = [
-        criarJogo('jogo-r4', 4, 2, 1, '2024-01-01T10:00:00Z'),
+        criarJogo('jogo-r4a', 4, 2, 1, '2024-01-01T10:00:00Z'),
+        criarJogo('jogo-r4b', 4, 1, 0, '2024-01-01T18:00:00Z'),
       ];
-      // Rodada 5: 1 jogo acertado (sequência de 2)
       const jogosRodada5 = [
         criarJogo('jogo-r5', 5, 1, 0, '2024-01-02T10:00:00Z'),
       ];
@@ -81,7 +80,8 @@ describe('DestaqueSequenciaService', () => {
       );
 
       mockPalpiteRepo.buscarPorUsuarioEJogos.mockResolvedValue([
-        { jogoId: 'jogo-r4', usuarioId: 'user-1', golsCasa: 2, golsFora: 1 },
+        { jogoId: 'jogo-r4a', usuarioId: 'user-1', golsCasa: 2, golsFora: 1 },
+        { jogoId: 'jogo-r4b', usuarioId: 'user-1', golsCasa: 1, golsFora: 0 },
         { jogoId: 'jogo-r5', usuarioId: 'user-1', golsCasa: 1, golsFora: 0 },
       ]);
 
@@ -93,7 +93,263 @@ describe('DestaqueSequenciaService', () => {
       );
 
       expect(resultado).not.toBeNull();
-      expect(resultado!.quantidade).toBe(2);
+      expect(resultado!.quantidade).toBe(3);
+    });
+
+    it('não publica sequência com menos de 3 jogos', async () => {
+      mockJogoRepo.buscarPorFase.mockImplementation(
+        (_faseId: string, rodada: number) => {
+          if (rodada === 5) {
+            return Promise.resolve([
+              criarJogo('jogo-r5', 5, 1, 0, '2024-01-02T10:00:00Z'),
+            ]);
+          }
+          if (rodada === 4) {
+            return Promise.resolve([
+              criarJogo('jogo-r4', 4, 2, 1, '2024-01-01T10:00:00Z'),
+            ]);
+          }
+          return Promise.resolve([]);
+        },
+      );
+      mockPalpiteRepo.buscarPorUsuarioEJogos.mockResolvedValue([
+        { jogoId: 'jogo-r4', usuarioId: 'user-1', golsCasa: 2, golsFora: 1 },
+        { jogoId: 'jogo-r5', usuarioId: 'user-1', golsCasa: 1, golsFora: 0 },
+      ]);
+
+      const resultado = await service.calcularSequenciaResultado(
+        'user-1',
+        'fase-1',
+        5,
+        'jogo-r5',
+      );
+
+      expect(resultado).toBeNull();
+    });
+
+    it('não consulta rodada além da imediatamente anterior', async () => {
+      mockJogoRepo.buscarPorFase.mockImplementation(
+        (_faseId: string, rodada: number) => {
+          if (rodada === 5) {
+            return Promise.resolve([
+              criarJogo('jogo-r5', 5, 1, 0, '2024-01-03T10:00:00Z'),
+            ]);
+          }
+          if (rodada === 3) {
+            return Promise.resolve([
+              criarJogo('jogo-r3', 3, 2, 0, '2024-01-01T10:00:00Z'),
+            ]);
+          }
+          return Promise.resolve([]);
+        },
+      );
+      mockPalpiteRepo.buscarPorUsuarioEJogos.mockResolvedValue([
+        { jogoId: 'jogo-r3', usuarioId: 'user-1', golsCasa: 2, golsFora: 0 },
+        { jogoId: 'jogo-r5', usuarioId: 'user-1', golsCasa: 1, golsFora: 0 },
+      ]);
+
+      const resultado = await service.calcularSequenciaResultado(
+        'user-1',
+        'fase-1',
+        5,
+        'jogo-r5',
+      );
+
+      expect(resultado).toBeNull();
+      expect(mockJogoRepo.buscarPorFase).not.toHaveBeenCalledWith('fase-1', 3);
+    });
+
+    it('não atravessa um zero quando outro jogo tem o mesmo horário de início', async () => {
+      const horario = '2026-11-04T22:30:00Z';
+      const jogos = [
+        criarJogo('int', 34, 1, 0, '2026-11-04T00:30:00Z'),
+        criarJogo('a-fla', 34, 2, 1, horario),
+        criarJogo('z-cap', 34, 1, 3, horario),
+      ];
+      mockJogoRepo.buscarPorFase.mockImplementation(
+        (_faseId: string, rodada: number) =>
+          Promise.resolve(rodada === 34 ? jogos : []),
+      );
+      mockPalpiteRepo.buscarPorUsuarioEJogos.mockResolvedValue([
+        { jogoId: 'int', usuarioId: 'user-1', golsCasa: 1, golsFora: 0 },
+        { jogoId: 'a-fla', usuarioId: 'user-1', golsCasa: 1, golsFora: 0 },
+        { jogoId: 'z-cap', usuarioId: 'user-1', golsCasa: 2, golsFora: 0 },
+      ]);
+
+      const noFlamengo = await service.calcularSequenciaResultado(
+        'user-1',
+        'fase-1',
+        34,
+        'a-fla',
+      );
+      expect(noFlamengo).toBeNull();
+
+      const melhor = await service.calcularMelhorSequenciaResultado(
+        'user-1',
+        'fase-1',
+        34,
+      );
+      expect(melhor).toBeNull();
+    });
+
+    it('escolhe a maior sequência da rodada e inclui jogos do mesmo horário que pontuaram', async () => {
+      const horario = '2026-11-02T20:00:00Z';
+      const jogos = [
+        criarJogo('cor', 33, 2, 0, '2026-10-30T23:00:00Z'),
+        criarJogo('cfc', 33, 2, 0, '2026-10-31T19:00:00Z'),
+        criarJogo('rbb', 34, 2, 1, horario),
+        criarJogo('cha', 34, 1, 2, '2026-11-03T22:30:00Z'),
+        criarJogo('int', 34, 1, 0, '2026-11-04T00:30:00Z'),
+        criarJogo('a-fla', 34, 3, 1, '2026-11-04T22:30:00Z'),
+        criarJogo('z-cap', 34, 1, 3, '2026-11-04T22:30:00Z'),
+      ];
+      mockJogoRepo.buscarPorFase.mockImplementation(
+        (_faseId: string, rodada: number) => {
+          if (rodada === 34 || rodada === 33)
+            return Promise.resolve(jogos.filter((j) => j.rodada === rodada));
+          return Promise.resolve([]);
+        },
+      );
+      mockPalpiteRepo.buscarPorUsuarioEJogos.mockResolvedValue([
+        { jogoId: 'cor', usuarioId: 'user-1', golsCasa: 1, golsFora: 0 },
+        { jogoId: 'cfc', usuarioId: 'user-1', golsCasa: 1, golsFora: 0 },
+        { jogoId: 'rbb', usuarioId: 'user-1', golsCasa: 2, golsFora: 1 },
+        { jogoId: 'cha', usuarioId: 'user-1', golsCasa: 1, golsFora: 2 },
+        { jogoId: 'int', usuarioId: 'user-1', golsCasa: 2, golsFora: 0 },
+        { jogoId: 'a-fla', usuarioId: 'user-1', golsCasa: 2, golsFora: 0 },
+        { jogoId: 'z-cap', usuarioId: 'user-1', golsCasa: 2, golsFora: 0 },
+      ]);
+
+      const melhor = await service.calcularMelhorSequenciaResultado(
+        'user-1',
+        'fase-1',
+        34,
+      );
+
+      expect(melhor).toMatchObject({
+        quantidade: 5,
+        pontos: 9,
+        rodadaInicio: 33,
+        rodadaFim: 34,
+      });
+      expect(melhor!.ultimosJogos.map((jogo) => jogo.golsCasa)).toEqual([
+        2, 2, 2, 1, 1,
+      ]);
+    });
+
+    it('prefere a sequência só da rodada atual quando ela soma mais pontos', async () => {
+      const jogos = [
+        criarJogo('zero-33', 33, 1, 0, '2026-10-29T22:00:00Z'),
+        criarJogo('fim-a', 33, 2, 0, '2026-10-30T23:00:00Z'),
+        criarJogo('fim-b', 33, 2, 0, '2026-10-31T19:00:00Z'),
+        criarJogo('ini-a', 34, 2, 1, '2026-11-02T23:00:00Z'),
+        criarJogo('ini-b', 34, 1, 0, '2026-11-03T22:30:00Z'),
+        criarJogo('quebra', 34, 0, 1, '2026-11-04T22:30:00Z'),
+        criarJogo('solo-a', 34, 3, 1, '2026-11-05T22:30:00Z'),
+        criarJogo('solo-b', 34, 2, 0, '2026-11-06T00:30:00Z'),
+        criarJogo('solo-c', 34, 1, 0, '2026-11-06T19:00:00Z'),
+      ];
+      mockJogoRepo.buscarPorFase.mockImplementation(
+        (_faseId: string, rodada: number) =>
+          Promise.resolve(jogos.filter((jogo) => jogo.rodada === rodada)),
+      );
+      mockPalpiteRepo.buscarPorUsuarioEJogos.mockResolvedValue([
+        { jogoId: 'zero-33', usuarioId: 'user-1', golsCasa: 0, golsFora: 1 },
+        { jogoId: 'fim-a', usuarioId: 'user-1', golsCasa: 1, golsFora: 0 },
+        { jogoId: 'fim-b', usuarioId: 'user-1', golsCasa: 1, golsFora: 0 },
+        { jogoId: 'ini-a', usuarioId: 'user-1', golsCasa: 2, golsFora: 1 },
+        { jogoId: 'ini-b', usuarioId: 'user-1', golsCasa: 2, golsFora: 0 },
+        { jogoId: 'quebra', usuarioId: 'user-1', golsCasa: 1, golsFora: 0 },
+        { jogoId: 'solo-a', usuarioId: 'user-1', golsCasa: 3, golsFora: 1 },
+        { jogoId: 'solo-b', usuarioId: 'user-1', golsCasa: 2, golsFora: 0 },
+        { jogoId: 'solo-c', usuarioId: 'user-1', golsCasa: 1, golsFora: 0 },
+      ]);
+
+      const melhor = await service.calcularMelhorSequenciaResultado(
+        'user-1',
+        'fase-1',
+        34,
+      );
+
+      expect(melhor).toMatchObject({
+        quantidade: 3,
+        pontos: 9,
+        rodadaInicio: 34,
+        rodadaFim: 34,
+      });
+    });
+
+    it('mantém a sequência cruzada quando a rodada atual sozinha soma menos', async () => {
+      const jogos = [
+        criarJogo('fim-a', 33, 2, 0, '2026-10-30T23:00:00Z'),
+        criarJogo('fim-b', 33, 2, 0, '2026-10-31T19:00:00Z'),
+        criarJogo('ini-a', 34, 2, 1, '2026-11-02T23:00:00Z'),
+        criarJogo('ini-b', 34, 1, 0, '2026-11-03T22:30:00Z'),
+        criarJogo('quebra', 34, 0, 1, '2026-11-04T22:30:00Z'),
+        criarJogo('solo-a', 34, 2, 0, '2026-11-05T22:30:00Z'),
+      ];
+      mockJogoRepo.buscarPorFase.mockImplementation(
+        (_faseId: string, rodada: number) =>
+          Promise.resolve(jogos.filter((jogo) => jogo.rodada === rodada)),
+      );
+      mockPalpiteRepo.buscarPorUsuarioEJogos.mockResolvedValue([
+        { jogoId: 'fim-a', usuarioId: 'user-1', golsCasa: 1, golsFora: 0 },
+        { jogoId: 'fim-b', usuarioId: 'user-1', golsCasa: 1, golsFora: 0 },
+        { jogoId: 'ini-a', usuarioId: 'user-1', golsCasa: 2, golsFora: 1 },
+        { jogoId: 'ini-b', usuarioId: 'user-1', golsCasa: 2, golsFora: 0 },
+        { jogoId: 'quebra', usuarioId: 'user-1', golsCasa: 1, golsFora: 0 },
+        { jogoId: 'solo-a', usuarioId: 'user-1', golsCasa: 1, golsFora: 0 },
+      ]);
+
+      const melhor = await service.calcularMelhorSequenciaResultado(
+        'user-1',
+        'fase-1',
+        34,
+      );
+
+      expect(melhor).toMatchObject({
+        quantidade: 4,
+        pontos: 6,
+        rodadaInicio: 33,
+        rodadaFim: 34,
+      });
+    });
+
+    it('não menciona a rodada anterior quando o último horário dela tem zero', async () => {
+      const horario = '2026-10-31T22:30:00Z';
+      const jogos = [
+        criarJogo('antes', 33, 2, 1, '2026-10-30T20:00:00Z'),
+        criarJogo('a-fla', 33, 2, 0, horario),
+        criarJogo('z-cap', 33, 1, 3, horario),
+        criarJogo('r34a', 34, 2, 1, '2026-11-02T23:00:00Z'),
+        criarJogo('r34b', 34, 1, 2, '2026-11-03T22:30:00Z'),
+        criarJogo('r34c', 34, 1, 0, '2026-11-04T00:30:00Z'),
+      ];
+      mockJogoRepo.buscarPorFase.mockImplementation(
+        (_faseId: string, rodada: number) =>
+          Promise.resolve(jogos.filter((jogo) => jogo.rodada === rodada)),
+      );
+      mockPalpiteRepo.buscarPorUsuarioEJogos.mockResolvedValue([
+        { jogoId: 'antes', usuarioId: 'user-1', golsCasa: 2, golsFora: 1 },
+        { jogoId: 'a-fla', usuarioId: 'user-1', golsCasa: 1, golsFora: 0 },
+        { jogoId: 'z-cap', usuarioId: 'user-1', golsCasa: 2, golsFora: 0 },
+        { jogoId: 'r34a', usuarioId: 'user-1', golsCasa: 2, golsFora: 1 },
+        { jogoId: 'r34b', usuarioId: 'user-1', golsCasa: 1, golsFora: 2 },
+        { jogoId: 'r34c', usuarioId: 'user-1', golsCasa: 1, golsFora: 0 },
+      ]);
+
+      const melhor = await service.calcularMelhorSequenciaResultado(
+        'user-1',
+        'fase-1',
+        34,
+      );
+
+      expect(melhor).toMatchObject({
+        quantidade: 3,
+        pontos: 9,
+        rodadaInicio: 34,
+        rodadaFim: 34,
+      });
     });
   });
 

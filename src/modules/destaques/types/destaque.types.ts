@@ -14,9 +14,13 @@ export type CategoriaRecorde = 'MOSCA' | 'RESULTADO';
 export interface DestaqueTitle {
   readonly id: string;
   readonly title: string;
+  /** Forma feminina; se ausente, usa `title` para qualquer gênero. */
+  readonly titleFeminino?: string;
   readonly emoji: string;
   readonly rarity?: 'common' | 'rare' | 'epic';
 }
+
+export type GeneroTitulo = 'M' | 'F';
 
 // --- Dados JSONB por tipo ---
 
@@ -40,6 +44,8 @@ export interface DadosAcertouEmCheio {
   timeCasa: TimeInfo;
   timeFora: TimeInfo;
   jogos?: PlacarCravado[];
+  /** Presente quando 3+ pessoas cravaram o mesmo placar (panelinha). */
+  participantes?: Array<{ usuarioId: string; nome: string }>;
 }
 
 export interface DadosUnicoNaMosca {
