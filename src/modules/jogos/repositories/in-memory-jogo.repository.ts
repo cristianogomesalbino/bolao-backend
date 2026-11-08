@@ -318,7 +318,8 @@ export class InMemoryJogoRepository implements JogoRepository {
   buscarMaiorRodadaFinalizada(faseId: string): Promise<number | null> {
     const finalizados = this.items
       .filter(
-        (j) => j.faseId === faseId && j.status === 'FINALIZADO' && j.rodada != null,
+        (j) =>
+          j.faseId === faseId && j.status === 'FINALIZADO' && j.rodada != null,
       )
       .sort((a, b) => (b.rodada ?? 0) - (a.rodada ?? 0));
     return Promise.resolve(finalizados[0]?.rodada ?? null);

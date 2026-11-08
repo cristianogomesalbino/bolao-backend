@@ -1,4 +1,5 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { DESTAQUES } from '../destaques.constants';
 import type { DestaqueRepository } from '../repositories/destaque.repository.interface';
 import {
@@ -58,7 +59,14 @@ export class DestaqueReactionService {
       throw new UsuarioJaEnviouFError();
     }
 
-    await this.destaqueRepo.criarReacao({ destaqueId, remetenteId });
+    try {
+      await this.destaqueRepo.criarReacao({ destaqueId, remetenteId });
+    } catch (error) {
+      if (ehViolacaoUnique(error)) {
+        throw new UsuarioJaEnviouFError();
+      }
+      throw error;
+    }
     const novoContador =
       await this.destaqueRepo.incrementarContadorFs(destaqueId);
 
@@ -73,4 +81,11 @@ export class DestaqueReactionService {
 
     return novoContador;
   }
+}
+
+function ehViolacaoUnique(error: unknown): boolean {
+  return (
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    error.code === 'P2002'
+  );
 }

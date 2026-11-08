@@ -17,6 +17,8 @@ import type {
 @Injectable()
 export class DestaqueEventService {
   private readonly logger = new Logger(DestaqueEventService.name);
+  /** Serializa geração por grupo+rodada para evitar cards duplicados em sync paralelo. */
+  private readonly filasPorRodada = new Map<string, Promise<unknown>>();
 
   constructor(
     private readonly generatorService: DestaqueGeneratorService,
@@ -48,7 +50,9 @@ export class DestaqueEventService {
       );
 
       for (const grupo of grupos) {
-        await this.processarGrupo(jogo, grupo as GrupoBasico, notificar);
+        await this.enfileirarPorGrupoRodada(grupo.id, jogo.rodada, () =>
+          this.processarGrupo(jogo, grupo as GrupoBasico, notificar),
+        );
       }
     } catch (error) {
       this.logger.error(
@@ -58,13 +62,31 @@ export class DestaqueEventService {
     }
   }
 
+  private enfileirarPorGrupoRodada(
+    grupoId: string,
+    rodada: number | null,
+    trabalho: () => Promise<void>,
+  ): Promise<void> {
+    const chave = `${grupoId}:${rodada ?? 'sem-rodada'}`;
+    const anterior = this.filasPorRodada.get(chave) ?? Promise.resolve();
+    const proximo = anterior.then(trabalho, trabalho);
+    this.filasPorRodada.set(
+      chave,
+      proximo.finally(() => {
+        if (this.filasPorRodada.get(chave) === proximo) {
+          this.filasPorRodada.delete(chave);
+        }
+      }),
+    );
+    return proximo;
+  }
+
   private async processarGrupo(
     jogo: JogoComTimes,
     grupo: GrupoBasico,
     notificar: boolean,
   ): Promise<void> {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- GrupoUsuarioRepository retorna any (dívida técnica do módulo grupo-usuario)
       const membros = (await this.grupoUsuarioRepo.listarPorGrupoComUsuario(
         grupo.id,
       )) as MembroComUsuario[];
@@ -81,7 +103,7 @@ export class DestaqueEventService {
       if (notificar && quantidadeGerada > 0) {
         await this.notificacaoService.notificarNovosDestaques(
           grupo,
-          jogo.id,
+          jogo.rodada,
           quantidadeGerada,
           membros,
         );

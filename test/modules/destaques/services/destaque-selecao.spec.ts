@@ -78,13 +78,33 @@ describe('destaque-selecao', () => {
     expect(resultado[0].dados.jogosEsquecidos).toHaveLength(1);
   });
 
-  it('junta 3+ acertos do mesmo placar em um card de panelinha', () => {
+  it('junta 3+ acertos do mesmo placar/jogo em um card de panelinha', () => {
     const resultado = consolidarAcertosPanelinha([
-      card('a1', 'ACERTOU_EM_CHEIO', 'u1', 34, 1, 'jogo-a', 'Ana'),
-      card('a2', 'ACERTOU_EM_CHEIO', 'u2', 34, 2, 'jogo-a', 'Beto'),
-      card('a3', 'ACERTOU_EM_CHEIO', 'u3', 34, 3, 'jogo-a', 'Cia'),
-      card('b1', 'ACERTOU_EM_CHEIO', 'u4', 34, 4, 'jogo-b', 'Duda'),
-      card('b2', 'ACERTOU_EM_CHEIO', 'u5', 34, 5, 'jogo-b', 'Eva'),
+      card('a1', 'ACERTOU_EM_CHEIO', 'u1', 34, 1, 'ancora-errada', 'Ana', {
+        jogoId: 'jogo-a',
+        golsCasa: 2,
+        golsFora: 1,
+      }),
+      card('a2', 'ACERTOU_EM_CHEIO', 'u2', 34, 2, 'outra-ancora', 'Beto', {
+        jogoId: 'jogo-a',
+        golsCasa: 2,
+        golsFora: 1,
+      }),
+      card('a3', 'ACERTOU_EM_CHEIO', 'u3', 34, 3, 'mais-ancora', 'Cia', {
+        jogoId: 'jogo-a',
+        golsCasa: 2,
+        golsFora: 1,
+      }),
+      card('b1', 'ACERTOU_EM_CHEIO', 'u4', 34, 4, 'jogo-b', 'Duda', {
+        jogoId: 'jogo-b',
+        golsCasa: 1,
+        golsFora: 0,
+      }),
+      card('b2', 'ACERTOU_EM_CHEIO', 'u5', 34, 5, 'jogo-b', 'Eva', {
+        jogoId: 'jogo-b',
+        golsCasa: 1,
+        golsFora: 0,
+      }),
       card('n1', 'NAO_PALPITOU', 'u6', 34, 6),
     ]);
 
@@ -99,6 +119,7 @@ describe('destaque-selecao', () => {
       { usuarioId: 'u2', nome: 'Beto' },
       { usuarioId: 'u3', nome: 'Cia' },
     ]);
+    expect(panelinha?.dados.jogos).toBeUndefined();
     expect(acertos.filter((item) => item.jogoId === 'jogo-b')).toHaveLength(2);
   });
 });
@@ -111,6 +132,7 @@ function card(
   criadoOffset = 0,
   jogoId = `jogo-${id}`,
   nome = usuarioId,
+  dados: Record<string, unknown> = { golsCasa: 2, golsFora: 1 },
 ) {
   return {
     id,
@@ -119,7 +141,7 @@ function card(
     jogoId,
     rodada,
     titulo: 'Cravou!',
-    dados: { golsCasa: 2, golsFora: 1 },
+    dados,
     criadoEm: new Date(Date.UTC(2026, 10, 7, 12, 0, criadoOffset)),
     usuario: { id: usuarioId, nome },
   };

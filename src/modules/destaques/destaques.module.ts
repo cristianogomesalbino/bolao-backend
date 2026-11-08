@@ -7,7 +7,10 @@ import { DestaqueSequenciaService } from './services/destaque-sequencia.service'
 import { DestaqueReactionService } from './services/destaque-reaction.service';
 import { DestaqueNotificacaoService } from './services/destaque-notificacao.service';
 import { DestaqueCronService } from './services/destaque-cron.service';
-import { PontuacaoService } from '../ranking/services/pontuacao.service';
+import { DestaqueListagemService } from './services/destaque-listagem.service';
+import { DestaquePorMembroService } from './services/destaque-por-membro.service';
+import { DestaqueAcertoService } from './services/destaque-acerto.service';
+import { DestaqueRecordeService } from './services/destaque-recorde.service';
 import { PrismaDestaqueRepository } from './repositories/prisma-destaque.repository';
 import { PrismaRecordeRepository } from './repositories/prisma-recorde.repository';
 import { PrismaRankingSnapshotRepository } from './repositories/prisma-ranking-snapshot.repository';
@@ -17,7 +20,7 @@ import { GruposModule } from '../grupos/grupos.module';
 import { GrupoUsuarioModule } from '../grupo-usuario/grupo-usuario.module';
 import { NotificacoesModule } from '../notificacoes/notificacoes.module';
 import { UsuariosModule } from '../usuarios/usuarios.module';
-import { RankingService } from '../ranking/services/ranking.service';
+import { RankingModule } from '../ranking/ranking.module';
 
 @Module({
   imports: [
@@ -27,20 +30,20 @@ import { RankingService } from '../ranking/services/ranking.service';
     forwardRef(() => GrupoUsuarioModule),
     forwardRef(() => NotificacoesModule),
     forwardRef(() => UsuariosModule),
+    forwardRef(() => RankingModule),
   ],
   controllers: [DestaqueController],
   providers: [
-    // Services do módulo
     DestaqueEventService,
     DestaqueGeneratorService,
+    DestaquePorMembroService,
+    DestaqueAcertoService,
     DestaqueSequenciaService,
+    DestaqueRecordeService,
     DestaqueReactionService,
     DestaqueNotificacaoService,
     DestaqueCronService,
-    // Services de outros módulos (sem dependências — instanciação direta)
-    PontuacaoService,
-    RankingService,
-    // Repositories próprios (Prisma)
+    DestaqueListagemService,
     {
       provide: DESTAQUES.DESTAQUE_REPOSITORY_TOKEN,
       useClass: PrismaDestaqueRepository,
@@ -53,7 +56,6 @@ import { RankingService } from '../ranking/services/ranking.service';
       provide: DESTAQUES.RANKING_SNAPSHOT_REPOSITORY_TOKEN,
       useClass: PrismaRankingSnapshotRepository,
     },
-    // Token de exportação
     {
       provide: DESTAQUES.EVENT_SERVICE_TOKEN,
       useExisting: DestaqueEventService,

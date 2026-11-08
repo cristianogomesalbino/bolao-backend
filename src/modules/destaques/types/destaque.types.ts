@@ -39,6 +39,7 @@ export interface PlacarCravado {
 }
 
 export interface DadosAcertouEmCheio {
+  jogoId?: string;
   golsCasa: number;
   golsFora: number;
   timeCasa: TimeInfo;

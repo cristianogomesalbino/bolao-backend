@@ -1,3 +1,4 @@
+import { randomInt } from 'node:crypto';
 import type {
   TipoDestaque,
   DestaqueTitle,
@@ -187,6 +188,11 @@ export function textoDoTitulo(
   return titulo.title;
 }
 
+function indiceAleatorio(tamanho: number): number {
+  if (tamanho <= 1) return 0;
+  return randomInt(tamanho);
+}
+
 function tituloJaUsado(
   titulo: DestaqueTitle,
   usados: ReadonlySet<string>,
@@ -215,7 +221,7 @@ export function pickRandomTitle(
     if (semUltimo.length > 0) disponiveis = semUltimo;
   }
 
-  const escolhido = disponiveis[Math.floor(Math.random() * disponiveis.length)];
+  const escolhido = disponiveis[indiceAleatorio(disponiveis.length)];
   return {
     ...escolhido,
     title: textoDoTitulo(escolhido, genero),
@@ -223,7 +229,5 @@ export function pickRandomTitle(
 }
 
 export function pickTituloPanelinha(): DestaqueTitle {
-  return TITULOS_PANELINHA[
-    Math.floor(Math.random() * TITULOS_PANELINHA.length)
-  ];
+  return TITULOS_PANELINHA[indiceAleatorio(TITULOS_PANELINHA.length)];
 }

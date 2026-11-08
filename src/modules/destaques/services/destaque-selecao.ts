@@ -21,6 +21,19 @@ interface JogoEsquecidoListagem {
   golsFora: number | null;
 }
 
+interface TimePlacar {
+  nome?: string;
+  sigla?: string;
+}
+
+interface JogoEmDados {
+  jogoId?: string;
+  golsCasa?: number;
+  golsFora?: number;
+  timeCasa?: TimePlacar;
+  timeFora?: TimePlacar;
+}
+
 /**
  * Remove NAO_PALPITOU sem jogo esquecido e atualiza a lista com o estado atual.
  */
@@ -33,8 +46,21 @@ export async function sincronizarNaoPalpitouNaListagem<
     rodada: number,
   ) => Promise<JogoEsquecidoListagem[]>,
 ): Promise<T[]> {
-  const saida: T[] = [];
+  const candidatos = destaques.filter(
+    (item) => item.tipo === 'NAO_PALPITOU' && item.rodada != null,
+  );
+  const cache = new Map<string, JogoEsquecidoListagem[]>();
 
+  await Promise.all(
+    candidatos.map(async (item) => {
+      const pessoaId = item.usuario?.id || item.usuarioId;
+      const chave = `${pessoaId}:${item.rodada}`;
+      if (cache.has(chave)) return;
+      cache.set(chave, await listarEsquecidos(pessoaId, item.rodada!));
+    }),
+  );
+
+  const saida: T[] = [];
   for (const item of destaques) {
     if (item.tipo !== 'NAO_PALPITOU' || item.rodada == null) {
       saida.push(item);
@@ -42,7 +68,7 @@ export async function sincronizarNaoPalpitouNaListagem<
     }
 
     const pessoaId = item.usuario?.id || item.usuarioId;
-    const esquecidos = await listarEsquecidos(pessoaId, item.rodada);
+    const esquecidos = cache.get(`${pessoaId}:${item.rodada}`) ?? [];
     if (esquecidos.length === 0) continue;
 
     saida.push({
@@ -83,7 +109,7 @@ export function manterUmPorPessoaNaRodada<T extends DestaqueSelecao>(
 }
 
 /**
- * 3+ pessoas no mesmo placar viram um único card de panelinha.
+ * 3+ pessoas no mesmo placar/jogo viram um único card de panelinha.
  * 1–2 cravadas no jogo continuam como cards individuais.
  */
 export function consolidarAcertosPanelinha<T extends DestaqueSelecao>(
@@ -98,9 +124,10 @@ export function consolidarAcertosPanelinha<T extends DestaqueSelecao>(
       outros.push(item);
       continue;
     }
-    const lista = porJogo.get(item.jogoId) ?? [];
+    const chave = identidadeJogoPlacar(item);
+    const lista = porJogo.get(chave) ?? [];
     lista.push(item);
-    porJogo.set(item.jogoId, lista);
+    porJogo.set(chave, lista);
   }
 
   const acertos: T[] = [];
@@ -113,6 +140,7 @@ export function consolidarAcertosPanelinha<T extends DestaqueSelecao>(
     const base = [...grupo].sort(
       (a, b) => a.criadoEm.getTime() - b.criadoEm.getTime(),
     )[0];
+    const placar = extrairPlacarPrincipal(base);
     const participantes = grupo.map((item) => ({
       usuarioId: item.usuario?.id || item.usuarioId,
       nome: item.usuario?.nome?.trim() || 'Participante',
@@ -121,13 +149,18 @@ export function consolidarAcertosPanelinha<T extends DestaqueSelecao>(
 
     acertos.push({
       ...base,
+      jogoId: placar.jogoId ?? base.jogoId,
       titulo: titulo.title,
       usuario: {
         id: base.usuario?.id || base.usuarioId,
         nome: 'Panelinha',
       },
       dados: {
-        ...base.dados,
+        jogoId: placar.jogoId ?? base.jogoId,
+        golsCasa: placar.golsCasa,
+        golsFora: placar.golsFora,
+        timeCasa: placar.timeCasa,
+        timeFora: placar.timeFora,
         participantes,
       },
     });
@@ -174,4 +207,36 @@ export function selecionarDestaquesDiversos<T extends DestaqueSelecao>(
     }
   }
   return saida;
+}
+
+function identidadeJogoPlacar(item: DestaqueSelecao): string {
+  const placar = extrairPlacarPrincipal(item);
+  if (placar.jogoId) return placar.jogoId;
+  const casa = placar.timeCasa?.sigla ?? placar.timeCasa?.nome ?? '?';
+  const fora = placar.timeFora?.sigla ?? placar.timeFora?.nome ?? '?';
+  return `${casa}:${placar.golsCasa}x${placar.golsFora}:${fora}`;
+}
+
+function extrairPlacarPrincipal(item: DestaqueSelecao): {
+  jogoId?: string;
+  golsCasa: number | null;
+  golsFora: number | null;
+  timeCasa: TimePlacar | null;
+  timeFora: TimePlacar | null;
+} {
+  const dados = item.dados as JogoEmDados & { jogos?: JogoEmDados[] };
+  const jogos = Array.isArray(dados.jogos) ? dados.jogos : [];
+  const principal = jogos.length > 0 ? jogos[jogos.length - 1] : dados;
+  return {
+    jogoId:
+      (typeof principal.jogoId === 'string' && principal.jogoId) ||
+      (typeof dados.jogoId === 'string' && dados.jogoId) ||
+      item.jogoId,
+    golsCasa:
+      typeof principal.golsCasa === 'number' ? principal.golsCasa : null,
+    golsFora:
+      typeof principal.golsFora === 'number' ? principal.golsFora : null,
+    timeCasa: principal.timeCasa ?? null,
+    timeFora: principal.timeFora ?? null,
+  };
 }

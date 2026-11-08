@@ -23,19 +23,20 @@ export class DestaqueNotificacaoService {
 
   /**
    * Grava e envia push quando novos destaques são gerados.
-   * Quem desligou a preferência não recebe. O padrão é ligado.
+   * Dedupe por grupo+rodada (um push por lote de finalizações da rodada).
    */
   async notificarNovosDestaques(
     grupo: GrupoBasico,
-    jogoId: string,
+    rodada: number | null,
     quantidade: number,
     membros: MembroComUsuario[],
   ): Promise<void> {
     try {
+      const chaveRodada = rodada ?? 0;
       const jaNotificou = await this.notificacaoRepo.existeNotificacao({
         tipo: 'DESTAQUES_GRUPO',
         grupoId: grupo.id,
-        jogoId,
+        rodada: chaveRodada,
       });
       if (jaNotificou || membros.length === 0) return;
 
@@ -62,7 +63,7 @@ export class DestaqueNotificacaoService {
             mensagem,
             usuarioId: membro.usuarioId,
             grupoId: grupo.id,
-            jogoId,
+            rodada: chaveRodada,
           })),
       );
 
@@ -71,7 +72,7 @@ export class DestaqueNotificacaoService {
         mensagem,
         tipo: 'DESTAQUES_GRUPO',
         url: `/grupos/${grupo.id}`,
-        dedupeId: `destaques:${grupo.id}:${jogoId}`,
+        dedupeId: `destaques:${grupo.id}:rodada:${chaveRodada}`,
       });
 
       this.logger.log(

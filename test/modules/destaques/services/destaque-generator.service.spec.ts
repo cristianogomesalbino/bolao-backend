@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { DestaqueGeneratorService } from '../../../../src/modules/destaques/services/destaque-generator.service';
 import { DestaqueSequenciaService } from '../../../../src/modules/destaques/services/destaque-sequencia.service';
+import { DestaquePorMembroService } from '../../../../src/modules/destaques/services/destaque-por-membro.service';
+import { DestaqueAcertoService } from '../../../../src/modules/destaques/services/destaque-acerto.service';
 import { PontuacaoService } from '../../../../src/modules/ranking/services/pontuacao.service';
 import type { RankingService } from '../../../../src/modules/ranking/services/ranking.service';
 import { InMemoryDestaqueRepository } from '../../../../src/modules/destaques/repositories/in-memory-destaque.repository';
@@ -142,14 +144,23 @@ describe('DestaqueGeneratorService', () => {
     mockRankingService.rodadaEncerrada.mockResolvedValue(false);
     mockRankingService.calcularRankingAteRodada.mockResolvedValue([]);
 
+    const destaqueAcerto = new DestaqueAcertoService(
+      destaqueRepo,
+      sequenciaService,
+    );
+    const destaquePorMembro = new DestaquePorMembroService(
+      destaqueRepo,
+      sequenciaService,
+      destaqueAcerto,
+    );
     service = new DestaqueGeneratorService(
       destaqueRepo,
       snapshotRepo,
       mockPalpiteRepo as unknown as PalpiteRepository,
       mockPalpiteDobradoRepo as unknown as PalpiteDobradoRepository,
       pontuacaoService,
-      sequenciaService,
       mockRankingService as unknown as RankingService,
+      destaquePorMembro,
     );
   });
 

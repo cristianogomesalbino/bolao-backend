@@ -1,0 +1,50 @@
+---
+description: Pré-flight de feature BE — evita bugs/CRs recorrentes (lições destaques)
+alwaysApply: true
+---
+
+# Pré-flight de feature (backend)
+
+Ao **criar ou expandir** feature (não só no code review), aplicar **antes** de declarar pronto. Fonte: CRs reais de destaques.
+
+## Segurança e escopo
+
+- Body/IDs em rotas `grupos/:grupoId/...` → filtrar pelo `grupoId` (IDOR de escrita/leitura).
+- Unique/check-then-insert concorrente → tratar constraint (Domain Error), não 500.
+- FK Prisma em relações novas (`remetenteId`, etc.); migration commitada.
+
+## Idempotência e side-effects
+
+- Notificação/push: **um** disparo por evento (evitar chamar o mesmo fluxo em sync + loop).
+- Dedupe de push por `(grupoId, rodada)` (ou lote), não só por `jogoId` se N jogos fecham juntos.
+- Cards “por rodada”: unique/upsert ou rede `manterUmPorPessoaNaRodada` — não só unique por `jogoId`.
+- `atualizar` **não** reseta `criadoEm` (ordem/expiração).
+
+## Performance
+
+- Sem await em loop em listagem/geração → batch (`*Batch`, `buscarPorIds`, pré-carga).
+- Ao extrair service: o método novo batchado entra na **mesma** entrega (não deixar N+1 “pro depois”).
+
+## Arquitetura na 1ª entrega
+
+- **Funcionalidade nova em classe antiga/sobrecarregada → dividir responsabilidades na mesma entrega.** Não adicionar mais um método gordo no monólito (`JogoService`, generator, controller…). Extrair o fluxo novo para service especializado; o arquivo legado só delega.
+- Critérios de “já está sobrecarregada” (qualquer um basta): ≥ ~250 linhas, ≥ 4 deps, mistura CRUD + regra complexa, ou o método novo empurraria > 300 / CC > 15.
+- Service ≤ 300 linhas; **≤ 4 deps** no construtor; método público grosso → extrair **já**. Split cosmético (um “Avaliador”/God class que absorve tudo) **não conta**.
+- Controller lean: listagem/regras em service + Presenter `toHttp`.
+- Importar módulo Nest exportado — não re-providar service de outro módulo.
+- Sem write órfão (tabela/snapshot gravado e nunca lido) — usa ou não grava.
+- Domínio no BE; FE não reimplementa a mesma regra de agrupamento/filtro.
+
+## Contrato e docs
+
+- Rota nova/alterada → `postman_collection.json` + README/`visao-geral` se mudou domínio.
+- Spec dedicado por service/controller novo (ver `cobertura-e-testes`).
+
+## Self-check (mental, ~1 min)
+
+1. Há path que notifica/gera destaque **duas vezes**?
+2. Algum endpoint aceita ID sem amarrar ao `grupoId`?
+3. Listagem faz query por item?
+4. Empilhei feature nova em classe já gorda em vez de extrair?
+5. Algum arquivo novo passou de 300 linhas ou 4 deps?
+6. Postman e `.spec.ts` acompanham?

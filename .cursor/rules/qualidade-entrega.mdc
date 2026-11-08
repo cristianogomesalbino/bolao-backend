@@ -10,11 +10,17 @@ O CI do backend roda **nesta ordem**: lint → testes (+ coverage no Sonar) → 
 
 Antes de declarar pronto:
 
-1. `npx eslint --quiet` nos arquivos criados/editados — **0 errors** (inclui `prettier/prettier`).
+1. `npx eslint --quiet` nos arquivos criados/editados — **0 errors** (inclui `prettier/prettier`).  
+   `npm run lint:sonar` já está escopado a `src/**` (ignora `test/`, `dist/`). **Não** rodar `eslint -c eslint.sonar.mjs` sem path/ignores — varre lixo e gera ruído.
 2. Se criou/editou `.spec.ts`: `npx eslint --fix` neles e conferir de novo com `--quiet`.
-3. `npx vitest run` no escopo afetado — 0 falhas.
-4. Linhas novas de `src/` cobertas por teste (≥ 80% no Sonar — ver `cobertura-e-testes`).
-5. `schema.prisma` alterado → migration em `prisma/migrations/` (nunca só `db push`).
+3. Gate de specs dedicados (ver `cobertura-e-testes`): todo `*.service.ts` / `*.controller.ts` **novo ou extraído** tem `.spec.ts` correspondente — vitest verde no orquestrador **não** substitui.
+4. `npx vitest run` no escopo afetado — 0 falhas.
+5. Linhas novas de `src/` cobertas por teste (≥ 80% no Sonar — ver `cobertura-e-testes`).
+6. `schema.prisma` alterado → migration em `prisma/migrations/` (nunca só `db push`).
+
+Em fix de CR / refactor: se a tarefa criou arquivo em `src/`, a entrega **inclui** o spec; não marcar CR/item como FIXED sem isso.
+
+Feature nova/expansão: passar o self-check de `feature-preflight` (IDOR, duplo disparo, N+1, split real ≤300/≤4 deps, Postman) **antes** do CR — não deixar o review descobrir o básico.
 
 Após push/amend na `develop`: conferir Actions (Pre-Build + SonarCloud). Não assumir que o gate do PR atualizou sem run verde.
 

@@ -12,6 +12,7 @@ import type {
   DestaqueReacao,
 } from './destaque.repository.interface';
 import type { TipoDestaque } from '../types/destaque.types';
+import { mapearDestaque } from './destaque.mapper';
 
 @Injectable()
 export class PrismaDestaqueRepository implements DestaqueRepository {
@@ -21,11 +22,10 @@ export class PrismaDestaqueRepository implements DestaqueRepository {
     const destaque = await this.prisma.destaque.create({
       data: {
         ...data,
-
         dados: data.dados as unknown as Prisma.InputJsonValue,
       },
     });
-    return this.mapear(destaque);
+    return mapearDestaque(destaque);
   }
 
   async criarVarios(data: CriarDestaqueData[]): Promise<void> {
@@ -42,7 +42,7 @@ export class PrismaDestaqueRepository implements DestaqueRepository {
 
   async buscarPorId(id: string): Promise<Destaque | null> {
     const destaque = await this.prisma.destaque.findUnique({ where: { id } });
-    return destaque ? this.mapear(destaque) : null;
+    return destaque ? mapearDestaque(destaque) : null;
   }
 
   async buscarPorGrupoERodadas(
@@ -66,27 +66,21 @@ export class PrismaDestaqueRepository implements DestaqueRepository {
     });
 
     // Re-ordena em memória para aplicar prioridade por tipo (não possível no SQL)
-    const prioridades = DESTAQUES.PRIORIDADE_POR_TIPO;
     return destaques
       .sort((a, b) => {
         if (a.rodada !== b.rodada) return (b.rodada ?? 0) - (a.rodada ?? 0);
         const dateDiff = b.criadoEm.getTime() - a.criadoEm.getTime();
         if (dateDiff !== 0) return dateDiff;
-        const prioA = prioridades[a.tipo] ?? 99;
-        const prioB = prioridades[b.tipo] ?? 99;
-        return prioA - prioB;
+        return this.prioridadeTipo(a.tipo) - this.prioridadeTipo(b.tipo);
       })
       .map((s) => ({
-        ...this.mapear(s),
+        ...mapearDestaque(s),
         usuario: s.usuario,
       }));
   }
 
-  async contarPorGrupoERodadas(
-    grupoId: string,
-    rodadas: number[],
-  ): Promise<number> {
-    if (rodadas.length === 0) return 0;
+  contarPorGrupoERodadas(grupoId: string, rodadas: number[]): Promise<number> {
+    if (rodadas.length === 0) return Promise.resolve(0);
     return this.prisma.destaque.count({
       where: { grupoId, rodada: { in: rodadas } },
     });
@@ -156,6 +150,18 @@ export class PrismaDestaqueRepository implements DestaqueRepository {
     });
   }
 
+  async filtrarIdsDoGrupo(
+    grupoId: string,
+    destaqueIds: string[],
+  ): Promise<string[]> {
+    if (destaqueIds.length === 0) return [];
+    const encontrados = await this.prisma.destaque.findMany({
+      where: { grupoId, id: { in: destaqueIds } },
+      select: { id: true },
+    });
+    return encontrados.map((item) => item.id);
+  }
+
   async buscarVisualizacoes(
     destaqueIds: string[],
     usuarioId: string,
@@ -182,6 +188,24 @@ export class PrismaDestaqueRepository implements DestaqueRepository {
     return destaque !== null;
   }
 
+  async buscarUnicosNaMoscaDaRodada(
+    grupoId: string,
+    usuarioId: string,
+    jogoIds: string[],
+  ): Promise<Set<string>> {
+    if (jogoIds.length === 0) return new Set();
+    const encontrados = await this.prisma.destaque.findMany({
+      where: {
+        grupoId,
+        usuarioId,
+        jogoId: { in: jogoIds },
+        tipo: 'UNICO_NA_MOSCA',
+      },
+      select: { jogoId: true },
+    });
+    return new Set(encontrados.map((item) => item.jogoId));
+  }
+
   async existeDestaqueNaRodada(
     grupoId: string,
     usuarioId: string,
@@ -205,7 +229,7 @@ export class PrismaDestaqueRepository implements DestaqueRepository {
       where: { grupoId, usuarioId, rodada, tipo },
       orderBy: { criadoEm: 'asc' },
     });
-    return destaque ? this.mapear(destaque) : null;
+    return destaque ? mapearDestaque(destaque) : null;
   }
 
   async atualizar(
@@ -217,7 +241,6 @@ export class PrismaDestaqueRepository implements DestaqueRepository {
       data: {
         dados: data.dados as unknown as Prisma.InputJsonValue,
         titulo: data.titulo,
-        criadoEm: new Date(),
       },
     });
   }
@@ -250,29 +273,9 @@ export class PrismaDestaqueRepository implements DestaqueRepository {
     return result.count;
   }
 
-  private mapear(destaque: {
-    id: string;
-    grupoId: string;
-    usuarioId: string;
-    jogoId: string;
-    rodada: number | null;
-    tipo: string;
-    dados: unknown;
-    titulo: string;
-    contadorFs: number;
-    criadoEm: Date;
-  }): Destaque {
-    return {
-      id: destaque.id,
-      grupoId: destaque.grupoId,
-      usuarioId: destaque.usuarioId,
-      jogoId: destaque.jogoId,
-      rodada: destaque.rodada,
-      tipo: destaque.tipo as TipoDestaque,
-      dados: destaque.dados as Record<string, unknown>,
-      titulo: destaque.titulo,
-      contadorFs: destaque.contadorFs,
-      criadoEm: destaque.criadoEm,
-    };
+  private prioridadeTipo(tipo: TipoDestaque): number {
+    const prioridades = DESTAQUES.PRIORIDADE_POR_TIPO;
+    if (tipo === 'SEQUENCIA_MOSCA') return 99;
+    return prioridades[tipo];
   }
 }

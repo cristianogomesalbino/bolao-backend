@@ -6,8 +6,7 @@ import {
   RankingService,
   type RankingEntry,
 } from '../../ranking/services/ranking.service';
-import { DestaqueSequenciaService } from './destaque-sequencia.service';
-import { inferirGeneroPorNome, pickRandomTitle } from '../destaques.titulos';
+import { DestaquePorMembroService } from './destaque-por-membro.service';
 import type {
   DestaqueRepository,
   CriarDestaqueData,
@@ -19,42 +18,14 @@ import type {
 import type { PalpiteRepository } from '../../palpites/repositories/palpite.repository.interface';
 import type { PalpiteDobradoRepository } from '../../palpites/repositories/palpite-dobrado.repository.interface';
 import type {
-  TipoDestaque,
   JogoComTimes,
   GrupoBasico,
   MembroComUsuario,
-  DadosAcertouEmCheio,
-  DadosUnicoNaMosca,
-  DadosSubiuRanking,
-  DadosNaoPalpitou,
-  DadosDobrouEAcertou,
-  DadosSequenciaResultado,
-  PlacarCravado,
-  TimeInfo,
 } from '../types/destaque.types';
-
-interface ResultadoMembro {
-  usuarioId: string;
-  nomeUsuario: string;
-  categoriaAcerto: string | null;
-  pontosBase: number;
-}
-
-interface GeracaoContexto {
-  jogo: JogoComTimes;
-  grupo: GrupoBasico;
-  palpiteMap: Map<string, { golsCasa: number; golsFora: number }>;
-  dobradoSet: Set<string>;
-  membrosNaMosca: ResultadoMembro[];
-  unicoNaMosca: boolean;
-  posicaoAnteriorMap: Map<string, number>;
-  rankingAtual: Map<string, number>;
-  rankingDepois: RankingEntry[];
-  top5: Array<{ posicao: number; nome: string; pontuacao: number }>;
-  resultados: ResultadoMembro[];
-  ultimoTituloPorTipo: Map<TipoDestaque, string>;
-  titulosUsadosPorTipo: Map<TipoDestaque, Set<string>>;
-}
+import type {
+  GeracaoContexto,
+  ResultadoMembro,
+} from './destaque-geracao.contexto';
 
 @Injectable()
 export class DestaqueGeneratorService {
@@ -70,8 +41,8 @@ export class DestaqueGeneratorService {
     @Inject(PALPITES.PALPITE_DOBRADO_REPOSITORY_TOKEN)
     private readonly palpiteDobradoRepo: PalpiteDobradoRepository,
     private readonly pontuacaoService: PontuacaoService,
-    private readonly sequenciaService: DestaqueSequenciaService,
     private readonly rankingService: RankingService,
+    private readonly destaquePorMembro: DestaquePorMembroService,
   ) {}
 
   async gerarDestaquesParaGrupo(
@@ -85,7 +56,10 @@ export class DestaqueGeneratorService {
 
     for (const membro of membros) {
       try {
-        const destaques = await this.avaliarMembro(membro, ctx);
+        const destaques = await this.destaquePorMembro.gerarParaMembro(
+          membro,
+          ctx,
+        );
         destaquesParaCriar.push(...destaques);
       } catch (error) {
         this.logger.error(
@@ -194,271 +168,6 @@ export class DestaqueGeneratorService {
     }
   }
 
-  private escolherTitulo(
-    tipo: Exclude<TipoDestaque, 'SEQUENCIA_MOSCA'>,
-    ctx: GeracaoContexto,
-    nomeUsuario: string,
-  ) {
-    const usados = [...(ctx.titulosUsadosPorTipo.get(tipo) ?? [])];
-    const titulo = pickRandomTitle(
-      tipo,
-      ctx.ultimoTituloPorTipo.get(tipo),
-      usados,
-      inferirGeneroPorNome(nomeUsuario),
-    );
-    ctx.ultimoTituloPorTipo.set(tipo, titulo.id);
-    const set = ctx.titulosUsadosPorTipo.get(tipo) ?? new Set<string>();
-    set.add(titulo.title);
-    ctx.titulosUsadosPorTipo.set(tipo, set);
-    return titulo;
-  }
-
-  private async avaliarMembro(
-    membro: MembroComUsuario,
-    ctx: GeracaoContexto,
-  ): Promise<CriarDestaqueData[]> {
-    const palpite = ctx.palpiteMap.get(membro.usuarioId);
-
-    if (!palpite) {
-      const esquecidos = await this.avaliarNaoPalpitou(membro, ctx);
-      await this.avaliarSubiuRanking(membro, ctx, esquecidos);
-      return esquecidos;
-    }
-
-    await this.sincronizarNaoPalpitouExistente(membro, ctx);
-
-    const resultado = ctx.resultados.find(
-      (r) => r.usuarioId === membro.usuarioId,
-    );
-    if (!resultado) return [];
-
-    const destaques: CriarDestaqueData[] = [];
-    await this.avaliarAcerto(membro, resultado, ctx, destaques);
-    await this.avaliarSubiuRanking(membro, ctx, destaques);
-    this.avaliarDobrouEAcertou(membro, resultado, ctx, destaques);
-    await this.avaliarSequencias(membro, ctx, destaques);
-    return destaques;
-  }
-
-  /** Remove ou atualiza NAO_PALPITOU velho quando a pessoa já tem palpites. */
-  private async sincronizarNaoPalpitouExistente(
-    membro: MembroComUsuario,
-    ctx: GeracaoContexto,
-  ): Promise<void> {
-    if (ctx.jogo.rodada === null) return;
-
-    const existente = await this.destaqueRepo.buscarNaRodada(
-      ctx.grupo.id,
-      membro.usuarioId,
-      ctx.jogo.rodada,
-      'NAO_PALPITOU',
-    );
-    if (!existente) return;
-
-    const esquecidos = await this.sequenciaService.listarEsquecidosDaRodada(
-      membro.usuarioId,
-      ctx.grupo.temporadaId,
-      ctx.jogo.rodada,
-    );
-    if (esquecidos.length === 0) {
-      await this.destaqueRepo.removerPorTiposNaRodada(
-        ctx.grupo.id,
-        membro.usuarioId,
-        ctx.jogo.rodada,
-        ['NAO_PALPITOU'],
-      );
-      return;
-    }
-
-    await this.destaqueRepo.atualizar(existente.id, {
-      dados: {
-        jogosEsquecidos: esquecidos,
-        totalJogosRodada: esquecidos.length,
-        rodada: ctx.jogo.rodada,
-      } satisfies DadosNaoPalpitou,
-      titulo: existente.titulo,
-    });
-  }
-
-  private async avaliarNaoPalpitou(
-    membro: MembroComUsuario,
-    ctx: GeracaoContexto,
-  ): Promise<CriarDestaqueData[]> {
-    if (ctx.jogo.rodada === null) {
-      const jaExiste = await this.destaqueRepo.existeDestaque(
-        ctx.grupo.id,
-        membro.usuarioId,
-        ctx.jogo.id,
-        'NAO_PALPITOU',
-      );
-      if (jaExiste) return [];
-      return [
-        this.buildDestaque('NAO_PALPITOU', membro, ctx, {
-          jogosEsquecidos: [this.buildJogoEsquecido(ctx.jogo)],
-          totalJogosRodada: 1,
-          rodada: ctx.jogo.rodada,
-        } satisfies DadosNaoPalpitou),
-      ];
-    }
-
-    const lista = await this.sequenciaService.listarEsquecidosDaRodada(
-      membro.usuarioId,
-      ctx.grupo.temporadaId,
-      ctx.jogo.rodada,
-    );
-    const atual = this.buildJogoEsquecido(ctx.jogo);
-    const jogosEsquecidos = lista.some((jogo) => jogo.jogoId === ctx.jogo.id)
-      ? lista
-      : [...lista, atual];
-    const dados: DadosNaoPalpitou = {
-      jogosEsquecidos,
-      totalJogosRodada: jogosEsquecidos.length,
-      rodada: ctx.jogo.rodada,
-    };
-
-    const existente = await this.destaqueRepo.buscarNaRodada(
-      ctx.grupo.id,
-      membro.usuarioId,
-      ctx.jogo.rodada,
-      'NAO_PALPITOU',
-    );
-    if (existente) {
-      await this.destaqueRepo.atualizar(existente.id, {
-        dados,
-        titulo: existente.titulo,
-      });
-      await this.destaqueRepo.removerPorTiposNaRodada(
-        ctx.grupo.id,
-        membro.usuarioId,
-        ctx.jogo.rodada,
-        ['NAO_PALPITOU'],
-        existente.id,
-      );
-      return [];
-    }
-
-    return [this.buildDestaque('NAO_PALPITOU', membro, ctx, dados)];
-  }
-
-  private async avaliarAcerto(
-    membro: MembroComUsuario,
-    resultado: ResultadoMembro,
-    ctx: GeracaoContexto,
-    destaques: CriarDestaqueData[],
-  ): Promise<void> {
-    if (resultado.categoriaAcerto !== 'ACERTO_EM_CHEIO') return;
-    if (
-      ctx.jogo.rodada === null ||
-      ctx.jogo.golsCasa === null ||
-      ctx.jogo.golsFora === null
-    ) {
-      return;
-    }
-
-    const cravadas = await this.sequenciaService.listarCravadasDaRodada(
-      membro.usuarioId,
-      ctx.grupo.temporadaId,
-      ctx.jogo.rodada,
-    );
-    const atual: PlacarCravado = {
-      jogoId: ctx.jogo.id,
-      golsCasa: ctx.jogo.golsCasa,
-      golsFora: ctx.jogo.golsFora,
-      timeCasa: this.buildTimeInfo(ctx.jogo.timeCasa),
-      timeFora: this.buildTimeInfo(ctx.jogo.timeFora),
-    };
-    const lista = cravadas.some((jogo) => jogo.jogoId === ctx.jogo.id)
-      ? cravadas
-      : [...cravadas, atual];
-
-    const unicoDesteJogo =
-      ctx.unicoNaMosca && ctx.membrosNaMosca[0]?.usuarioId === membro.usuarioId;
-
-    if (unicoDesteJogo) {
-      const jaTemUnico = await this.destaqueRepo.existeDestaque(
-        ctx.grupo.id,
-        membro.usuarioId,
-        ctx.jogo.id,
-        'UNICO_NA_MOSCA',
-      );
-      if (!jaTemUnico) {
-        destaques.push(
-          this.buildDestaque('UNICO_NA_MOSCA', membro, ctx, {
-            golsCasa: atual.golsCasa,
-            golsFora: atual.golsFora,
-            timeCasa: atual.timeCasa,
-            timeFora: atual.timeFora,
-            rodada: ctx.jogo.rodada,
-          } satisfies DadosUnicoNaMosca),
-        );
-      }
-      return;
-    }
-
-    await this.destaqueRepo.removerPorTiposNaRodada(
-      ctx.grupo.id,
-      membro.usuarioId,
-      ctx.jogo.rodada,
-      ['SEQUENCIA_MOSCA'],
-    );
-
-    const listaCompartilhada: PlacarCravado[] = [];
-    for (const jogo of lista) {
-      if (jogo.jogoId === ctx.jogo.id) {
-        listaCompartilhada.push(jogo);
-        continue;
-      }
-      const eraUnico = await this.destaqueRepo.existeDestaque(
-        ctx.grupo.id,
-        membro.usuarioId,
-        jogo.jogoId,
-        'UNICO_NA_MOSCA',
-      );
-      if (!eraUnico) listaCompartilhada.push(jogo);
-    }
-    if (listaCompartilhada.length === 0) return;
-
-    const dados = this.dadosDoAcerto(listaCompartilhada);
-    const existente = await this.destaqueRepo.buscarNaRodada(
-      ctx.grupo.id,
-      membro.usuarioId,
-      ctx.jogo.rodada,
-      'ACERTOU_EM_CHEIO',
-    );
-    if (existente) {
-      const titulo = this.escolherTitulo(
-        'ACERTOU_EM_CHEIO',
-        ctx,
-        membro.usuario.nome,
-      );
-      await this.destaqueRepo.atualizar(existente.id, {
-        dados,
-        titulo: titulo.title,
-      });
-      await this.destaqueRepo.removerPorTiposNaRodada(
-        ctx.grupo.id,
-        membro.usuarioId,
-        ctx.jogo.rodada,
-        ['ACERTOU_EM_CHEIO'],
-        existente.id,
-      );
-      return;
-    }
-
-    destaques.push(this.buildDestaque('ACERTOU_EM_CHEIO', membro, ctx, dados));
-  }
-
-  private dadosDoAcerto(lista: PlacarCravado[]): DadosAcertouEmCheio {
-    const principal = lista[lista.length - 1];
-    return {
-      golsCasa: principal.golsCasa,
-      golsFora: principal.golsFora,
-      timeCasa: principal.timeCasa,
-      timeFora: principal.timeFora,
-      ...(lista.length > 1 ? { jogos: lista } : {}),
-    };
-  }
-
   private async rankingsDaRodada(
     grupoId: string,
     jogo: JogoComTimes,
@@ -472,199 +181,49 @@ export class DestaqueGeneratorService {
     if (!encerrada) return [[], []];
 
     const rodadaAnterior = jogo.rodada - 1;
-    return Promise.all([
+    const rankingAntes =
       rodadaAnterior >= 1
-        ? this.rankingService.calcularRankingAteRodada(
-            grupoId,
-            jogo.faseId,
-            rodadaAnterior,
-          )
-        : Promise.resolve([]),
-      this.rankingService.calcularRankingAteRodada(
-        grupoId,
-        jogo.faseId,
-        jogo.rodada,
-      ),
-    ]);
+        ? await this.obterRankingAnterior(grupoId, jogo.faseId, rodadaAnterior)
+        : [];
+    const rankingDepois = await this.rankingService.calcularRankingAteRodada(
+      grupoId,
+      jogo.faseId,
+      jogo.rodada,
+    );
+    return [rankingAntes, rankingDepois];
   }
 
-  private async avaliarSubiuRanking(
-    membro: MembroComUsuario,
-    ctx: GeracaoContexto,
-    destaques: CriarDestaqueData[],
-  ): Promise<void> {
-    if (ctx.jogo.rodada == null) return;
-
-    const posicaoNova = ctx.rankingAtual.get(membro.usuarioId);
-    const posicaoAnterior = ctx.posicaoAnteriorMap.get(membro.usuarioId);
-    if (!posicaoNova || !posicaoAnterior) return;
-
-    const subiu = posicaoAnterior - posicaoNova;
-    const dentroDoTop5 = posicaoNova <= DESTAQUES.LIMITES.SUBIU_RANKING_TOP;
-    const subiuSuficiente =
-      subiu >= DESTAQUES.LIMITES.SUBIU_RANKING_MINIMO ||
-      (subiu >= 1 && dentroDoTop5);
-
-    if (!subiuSuficiente) return;
-
-    const jaExisteNaRodada = await this.destaqueRepo.existeDestaqueNaRodada(
-      ctx.grupo.id,
-      membro.usuarioId,
-      ctx.jogo.rodada,
-      'SUBIU_RANKING',
+  /** Prefere snapshot gravado; recalcula só se ainda não houver leitor. */
+  private async obterRankingAnterior(
+    grupoId: string,
+    faseId: string,
+    rodadaAnterior: number,
+  ): Promise<RankingEntry[]> {
+    const snapshots = await this.snapshotRepo.buscarPorGrupoFaseRodada(
+      grupoId,
+      faseId,
+      rodadaAnterior,
     );
-    if (jaExisteNaRodada) return;
-
-    destaques.push(
-      this.buildDestaque('SUBIU_RANKING', membro, ctx, {
-        posicaoAnterior,
-        posicaoNova,
-        top5: ctx.top5,
-      } satisfies DadosSubiuRanking),
-    );
-  }
-
-  private avaliarDobrouEAcertou(
-    membro: MembroComUsuario,
-    resultado: ResultadoMembro,
-    ctx: GeracaoContexto,
-    destaques: CriarDestaqueData[],
-  ): void {
-    const dobrou = ctx.dobradoSet.has(membro.usuarioId);
-    const acertou =
-      resultado.categoriaAcerto !== null &&
-      resultado.categoriaAcerto !== 'ERRO_TOTAL';
-    if (!dobrou || !acertou) return;
-
-    destaques.push(
-      this.buildDestaque('DOBROU_E_ACERTOU', membro, ctx, {
-        golsCasa: ctx.jogo.golsCasa!,
-        golsFora: ctx.jogo.golsFora!,
-        timeCasa: this.buildTimeInfo(ctx.jogo.timeCasa),
-        timeFora: this.buildTimeInfo(ctx.jogo.timeFora),
-        pontosObtidos: resultado.pontosBase * 2,
-      } satisfies DadosDobrouEAcertou),
-    );
-  }
-
-  private async avaliarSequencias(
-    membro: MembroComUsuario,
-    ctx: GeracaoContexto,
-    destaques: CriarDestaqueData[],
-  ): Promise<void> {
-    if (ctx.jogo.rodada === null) return;
-
-    await this.destaqueRepo.removerPorTiposNaRodada(
-      ctx.grupo.id,
-      membro.usuarioId,
-      ctx.jogo.rodada,
-      ['SEQUENCIA_MOSCA'],
-    );
-
-    const seqResultado =
-      await this.sequenciaService.calcularMelhorSequenciaResultado(
-        membro.usuarioId,
-        ctx.jogo.faseId,
-        ctx.jogo.rodada,
-      );
-    if (
-      !seqResultado ||
-      seqResultado.quantidade < DESTAQUES.LIMITES.SEQUENCIA_JOGOS_MINIMOS ||
-      seqResultado.pontos < DESTAQUES.LIMITES.SEQUENCIA_PONTOS_MINIMOS
-    ) {
-      await this.destaqueRepo.removerPorTiposNaRodada(
-        ctx.grupo.id,
-        membro.usuarioId,
-        ctx.jogo.rodada,
-        ['SEQUENCIA_RESULTADO'],
-      );
-      return;
+    if (snapshots.length > 0) {
+      return snapshots
+        .map((s) => ({
+          posicao: s.posicao,
+          usuarioId: s.usuarioId,
+          nomeUsuario: '',
+          pontuacaoTotal: s.pontuacao,
+          acertosEmCheio: 0,
+          acertosDeResultado: 0,
+          errosTotais: 0,
+          mediaPalpiteEm: 0,
+        }))
+        .sort((a, b) => a.posicao - b.posicao);
     }
 
-    const recorde = await this.sequenciaService.atualizarRecorde(
-      ctx.grupo.id,
-      ctx.grupo.temporadaId,
-      'RESULTADO',
-      membro.usuarioId,
-      seqResultado.quantidade,
+    return this.rankingService.calcularRankingAteRodada(
+      grupoId,
+      faseId,
+      rodadaAnterior,
     );
-    const dados: DadosSequenciaResultado = {
-      quantidadeAcertos: seqResultado.quantidade,
-      pontos: seqResultado.pontos,
-      rodadaInicio: seqResultado.rodadaInicio,
-      rodadaFim: seqResultado.rodadaFim ?? ctx.jogo.rodada,
-      ultimosJogos: seqResultado.ultimosJogos,
-      recorde,
-    };
-
-    const existente = await this.destaqueRepo.buscarNaRodada(
-      ctx.grupo.id,
-      membro.usuarioId,
-      ctx.jogo.rodada,
-      'SEQUENCIA_RESULTADO',
-    );
-    if (existente) {
-      const titulo = this.escolherTitulo(
-        'SEQUENCIA_RESULTADO',
-        ctx,
-        membro.usuario.nome,
-      );
-      await this.destaqueRepo.atualizar(existente.id, {
-        dados,
-        titulo: titulo.title,
-      });
-      await this.destaqueRepo.removerPorTiposNaRodada(
-        ctx.grupo.id,
-        membro.usuarioId,
-        ctx.jogo.rodada,
-        ['SEQUENCIA_RESULTADO'],
-        existente.id,
-      );
-      return;
-    }
-
-    destaques.push(
-      this.buildDestaque('SEQUENCIA_RESULTADO', membro, ctx, dados),
-    );
-  }
-
-  // --- Helpers ---
-
-  private buildDestaque(
-    tipo: Exclude<TipoDestaque, 'SEQUENCIA_MOSCA'>,
-    membro: MembroComUsuario,
-    ctx: GeracaoContexto,
-    dados: object,
-  ): CriarDestaqueData {
-    const destaqueTitle = this.escolherTitulo(tipo, ctx, membro.usuario.nome);
-
-    return {
-      grupoId: ctx.grupo.id,
-      usuarioId: membro.usuarioId,
-      jogoId: ctx.jogo.id,
-      rodada: ctx.jogo.rodada,
-      tipo,
-      dados: dados as Record<string, unknown>,
-      titulo: destaqueTitle.title,
-    };
-  }
-
-  private buildTimeInfo(time: {
-    nome: string;
-    sigla: string;
-    escudo: string | null;
-  }): TimeInfo {
-    return { nome: time.nome, sigla: time.sigla, escudo: time.escudo };
-  }
-
-  private buildJogoEsquecido(jogo: JogoComTimes) {
-    return {
-      jogoId: jogo.id,
-      timeCasa: this.buildTimeInfo(jogo.timeCasa),
-      timeFora: this.buildTimeInfo(jogo.timeFora),
-      golsCasa: jogo.golsCasa,
-      golsFora: jogo.golsFora,
-    };
   }
 
   private calcularResultadosMembros(

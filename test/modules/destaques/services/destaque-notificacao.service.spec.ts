@@ -65,17 +65,18 @@ describe('DestaqueNotificacaoService', () => {
 
   describe('notificarNovosDestaques', () => {
     it('deve criar notificações e enviar push para quem está habilitado por padrão', async () => {
-      await service.notificarNovosDestaques(grupo, 'jogo-1', 3, membros);
+      await service.notificarNovosDestaques(grupo, 5, 3, membros);
 
       expect(notificacaoRepo.items).toHaveLength(2);
       expect(notificacaoRepo.items[0].tipo).toBe('DESTAQUES_GRUPO');
       expect(notificacaoRepo.items[0].grupoId).toBe('grupo-1');
-      expect(notificacaoRepo.items[0].jogoId).toBe('jogo-1');
+      expect(notificacaoRepo.items[0].rodada).toBe(5);
       expect(push.enviarParaUsuarios).toHaveBeenCalledWith(
         ['user-1', 'user-2'],
         expect.objectContaining({
           tipo: 'DESTAQUES_GRUPO',
           url: '/grupos/grupo-1',
+          dedupeId: 'destaques:grupo-1:rodada:5',
         }),
       );
     });
@@ -83,7 +84,7 @@ describe('DestaqueNotificacaoService', () => {
     it('não deve notificar quem desligou destaques do grupo', async () => {
       await preferenciaRepo.criar('user-1', { destaquesGrupo: false });
 
-      await service.notificarNovosDestaques(grupo, 'jogo-1', 3, membros);
+      await service.notificarNovosDestaques(grupo, 5, 3, membros);
 
       expect(notificacaoRepo.items.map((item) => item.usuarioId)).toEqual([
         'user-2',
@@ -94,25 +95,25 @@ describe('DestaqueNotificacaoService', () => {
       );
     });
 
-    it('não deve criar notificação duplicada (deduplicação)', async () => {
-      await service.notificarNovosDestaques(grupo, 'jogo-1', 3, membros);
+    it('não deve criar notificação duplicada na mesma rodada', async () => {
+      await service.notificarNovosDestaques(grupo, 5, 3, membros);
       const qtdPrimeira = notificacaoRepo.items.length;
 
-      await service.notificarNovosDestaques(grupo, 'jogo-1', 2, membros);
+      await service.notificarNovosDestaques(grupo, 5, 2, membros);
 
       expect(notificacaoRepo.items).toHaveLength(qtdPrimeira);
       expect(push.enviarParaUsuarios).toHaveBeenCalledTimes(1);
     });
 
-    it('deve criar para jogo diferente mesmo já tendo notificado outro jogo', async () => {
-      await service.notificarNovosDestaques(grupo, 'jogo-1', 3, membros);
-      await service.notificarNovosDestaques(grupo, 'jogo-2', 2, membros);
+    it('deve criar para rodada diferente mesmo já tendo notificado outra', async () => {
+      await service.notificarNovosDestaques(grupo, 5, 3, membros);
+      await service.notificarNovosDestaques(grupo, 6, 2, membros);
 
       expect(notificacaoRepo.items).toHaveLength(4);
     });
 
     it('deve incluir título e mensagem do template', async () => {
-      await service.notificarNovosDestaques(grupo, 'jogo-1', 5, membros);
+      await service.notificarNovosDestaques(grupo, 5, 5, membros);
 
       expect(notificacaoRepo.items[0].titulo).toBe('Novos destaques!');
       expect(notificacaoRepo.items[0].mensagem).toContain('5 novos destaques');

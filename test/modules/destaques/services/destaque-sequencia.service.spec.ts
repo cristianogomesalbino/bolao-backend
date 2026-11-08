@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { DestaqueSequenciaService } from '../../../../src/modules/destaques/services/destaque-sequencia.service';
+import { DestaqueRecordeService } from '../../../../src/modules/destaques/services/destaque-recorde.service';
 import { PontuacaoService } from '../../../../src/modules/ranking/services/pontuacao.service';
 import { InMemoryRecordeRepository } from '../../../../src/modules/destaques/repositories/in-memory-recorde.repository';
 import type { PalpiteRepository } from '../../../../src/modules/palpites/repositories/palpite.repository.interface';
@@ -9,8 +10,14 @@ describe('DestaqueSequenciaService', () => {
   let service: DestaqueSequenciaService;
   let recordeRepo: InMemoryRecordeRepository;
   let pontuacaoService: PontuacaoService;
-  let mockPalpiteRepo: { buscarPorUsuarioEJogos: ReturnType<typeof vi.fn> };
-  let mockJogoRepo: { buscarPorFase: ReturnType<typeof vi.fn> };
+  let mockPalpiteRepo: {
+    buscarPorUsuarioEJogos: ReturnType<typeof vi.fn>;
+    listarPorJogosEUsuarios: ReturnType<typeof vi.fn>;
+  };
+  let mockJogoRepo: {
+    buscarPorFase: ReturnType<typeof vi.fn>;
+    buscarTodosPorTemporada: ReturnType<typeof vi.fn>;
+  };
 
   const criarJogo = (
     id: string,
@@ -37,16 +44,18 @@ describe('DestaqueSequenciaService', () => {
     pontuacaoService = new PontuacaoService();
     mockPalpiteRepo = {
       buscarPorUsuarioEJogos: vi.fn().mockResolvedValue([]),
+      listarPorJogosEUsuarios: vi.fn().mockResolvedValue([]),
     };
     mockJogoRepo = {
       buscarPorFase: vi.fn().mockResolvedValue([]),
+      buscarTodosPorTemporada: vi.fn().mockResolvedValue([]),
     };
 
     service = new DestaqueSequenciaService(
-      recordeRepo,
       mockPalpiteRepo as unknown as PalpiteRepository,
       mockJogoRepo as unknown as JogoRepository,
       pontuacaoService,
+      new DestaqueRecordeService(recordeRepo),
     );
   });
 
@@ -350,6 +359,101 @@ describe('DestaqueSequenciaService', () => {
         rodadaInicio: 34,
         rodadaFim: 34,
       });
+    });
+  });
+
+  describe('calcularMelhoresSequenciasBatch', () => {
+    it('calcula sequência por usuário em uma única carga de jogos/palpites', async () => {
+      const jogos = [
+        criarJogo('j1', 5, 1, 0, '2026-11-01T10:00:00Z'),
+        criarJogo('j2', 5, 2, 0, '2026-11-01T14:00:00Z'),
+        criarJogo('j3', 5, 1, 1, '2026-11-01T18:00:00Z'),
+      ];
+      mockJogoRepo.buscarPorFase.mockImplementation(
+        (_faseId: string, rodada: number) =>
+          Promise.resolve(rodada === 5 ? jogos : []),
+      );
+      mockPalpiteRepo.listarPorJogosEUsuarios.mockResolvedValue([
+        { jogoId: 'j1', usuarioId: 'user-1', golsCasa: 1, golsFora: 0 },
+        { jogoId: 'j2', usuarioId: 'user-1', golsCasa: 2, golsFora: 0 },
+        { jogoId: 'j3', usuarioId: 'user-1', golsCasa: 1, golsFora: 1 },
+        { jogoId: 'j1', usuarioId: 'user-2', golsCasa: 0, golsFora: 0 },
+      ]);
+
+      const mapa = await service.calcularMelhoresSequenciasBatch(
+        ['user-1', 'user-2'],
+        'fase-1',
+        5,
+      );
+
+      expect(mapa.get('user-1')).toMatchObject({
+        quantidade: 3,
+        pontos: 9,
+      });
+      expect(mapa.get('user-2')).toBeNull();
+      expect(mockPalpiteRepo.listarPorJogosEUsuarios).toHaveBeenCalledOnce();
+    });
+
+    it('retorna null por usuário quando há menos de 2 finalizados', async () => {
+      mockJogoRepo.buscarPorFase.mockResolvedValue([criarJogo('j1', 5, 1, 0)]);
+
+      const mapa = await service.calcularMelhoresSequenciasBatch(
+        ['user-1'],
+        'fase-1',
+        5,
+      );
+
+      expect(mapa.get('user-1')).toBeNull();
+    });
+  });
+
+  describe('listarEsquecidosBatch / listarCravadasDaRodada', () => {
+    it('lista esquecidos em batch por usuário', async () => {
+      mockJogoRepo.buscarTodosPorTemporada.mockResolvedValue([
+        criarJogo('j1', 5, 1, 0, '2026-11-01T10:00:00Z'),
+        criarJogo('j2', 5, 2, 1, '2026-11-01T14:00:00Z'),
+      ]);
+      mockPalpiteRepo.listarPorJogosEUsuarios.mockResolvedValue([
+        { jogoId: 'j1', usuarioId: 'user-1', golsCasa: 1, golsFora: 0 },
+      ]);
+
+      const mapa = await service.listarEsquecidosBatch(
+        ['user-1', 'user-2'],
+        'temp-1',
+        5,
+      );
+
+      expect(mapa.get('user-1')?.map((j) => j.jogoId)).toEqual(['j2']);
+      expect(mapa.get('user-2')?.map((j) => j.jogoId)).toEqual(['j1', 'j2']);
+    });
+
+    it('lista cravadas da rodada do usuário', async () => {
+      mockJogoRepo.buscarTodosPorTemporada.mockResolvedValue([
+        criarJogo('j1', 5, 1, 0, '2026-11-01T10:00:00Z'),
+        criarJogo('j2', 5, 2, 1, '2026-11-01T14:00:00Z'),
+      ]);
+      mockPalpiteRepo.buscarPorUsuarioEJogos.mockResolvedValue([
+        { jogoId: 'j1', usuarioId: 'user-1', golsCasa: 1, golsFora: 0 },
+        { jogoId: 'j2', usuarioId: 'user-1', golsCasa: 0, golsFora: 0 },
+      ]);
+
+      const cravadas = await service.listarCravadasDaRodada(
+        'user-1',
+        'temp-1',
+        5,
+      );
+
+      expect(cravadas).toHaveLength(1);
+      expect(cravadas[0].jogoId).toBe('j1');
+    });
+
+    it('retorna vazio quando rodada é null', async () => {
+      expect(
+        await service.listarEsquecidosDaRodada('user-1', 'temp-1', null),
+      ).toEqual([]);
+      expect(
+        await service.listarCravadasDaRodada('user-1', 'temp-1', null),
+      ).toEqual([]);
     });
   });
 

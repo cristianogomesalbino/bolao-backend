@@ -115,6 +115,9 @@ export interface DestaqueRepository {
    */
   criarVisualizacoesBatch(dados: CriarVisualizacaoData[]): Promise<void>;
 
+  /** Filtra IDs que pertencem ao grupo (anti-IDOR em visualizar). */
+  filtrarIdsDoGrupo(grupoId: string, destaqueIds: string[]): Promise<string[]>;
+
   /**
    * Retorna set de destaqueIds que o usuário já visualizou.
    */
@@ -133,6 +136,13 @@ export interface DestaqueRepository {
     tipo: TipoDestaque,
   ): Promise<boolean>;
 
+  /** IDs de jogos em que a pessoa já tem UNICO_NA_MOSCA (batch, anti N+1). */
+  buscarUnicosNaMoscaDaRodada(
+    grupoId: string,
+    usuarioId: string,
+    jogoIds: string[],
+  ): Promise<Set<string>>;
+
   existeDestaqueNaRodada(
     grupoId: string,
     usuarioId: string,
@@ -147,10 +157,7 @@ export interface DestaqueRepository {
     tipo: TipoDestaque,
   ): Promise<Destaque | null>;
 
-  atualizar(
-    id: string,
-    data: { dados: object; titulo: string },
-  ): Promise<void>;
+  atualizar(id: string, data: { dados: object; titulo: string }): Promise<void>;
 
   /**
    * Remove destaques da pessoa na rodada. `excetoId` preserva o card que está sendo atualizado.

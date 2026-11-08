@@ -445,11 +445,11 @@ model DestaqueReacao {
   criadoEm    DateTime @default(now())
 
   destaque  Destaque @relation(fields: [destaqueId], references: [id], onDelete: Cascade)
-  usuario   Usuario? @relation(fields: [usuarioId], references: [id])
-  usuarioId String?
+  remetente Usuario  @relation(fields: [remetenteId], references: [id], onDelete: Cascade)
 
   @@unique([remetenteId, destaqueId])
   @@index([destaqueId])
+  @@index([remetenteId])
 }
 
 model DestaqueVisualizacao {

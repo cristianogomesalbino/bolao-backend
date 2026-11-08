@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { PontuacaoService } from './services/pontuacao.service';
 import { RankingService } from './services/ranking.service';
 import { RankingController } from './controllers/ranking.controller';
@@ -8,7 +8,12 @@ import { GruposModule } from '../grupos/grupos.module';
 import { GrupoUsuarioModule } from '../grupo-usuario/grupo-usuario.module';
 
 @Module({
-  imports: [PalpitesModule, JogosModule, GruposModule, GrupoUsuarioModule],
+  imports: [
+    forwardRef(() => PalpitesModule),
+    forwardRef(() => JogosModule),
+    forwardRef(() => GruposModule),
+    forwardRef(() => GrupoUsuarioModule),
+  ],
   controllers: [RankingController],
   providers: [PontuacaoService, RankingService],
   exports: [RankingService, PontuacaoService],
