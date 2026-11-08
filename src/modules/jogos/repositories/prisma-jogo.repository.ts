@@ -266,6 +266,15 @@ export class PrismaJogoRepository implements JogoRepository {
     return ultimo?.rodada ?? null;
   }
 
+  async buscarMaiorRodadaFinalizada(faseId: string): Promise<number | null> {
+    const ultimo = await this.prisma.jogo.findFirst({
+      where: { faseId, status: 'FINALIZADO', rodada: { not: null } },
+      orderBy: { rodada: 'desc' },
+      select: { rodada: true },
+    });
+    return ultimo?.rodada ?? null;
+  }
+
   async buscarPendentesSync(
     faseIds: string[],
     limiteRodada: number,

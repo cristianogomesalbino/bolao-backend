@@ -8,7 +8,9 @@ alwaysApply: true
 - **Nunca commit/push na `main`** — tudo pela `develop` (ver `fluxo-git`).
 - **Sem `any` em código novo** — tipar com interfaces; cast no ponto de uso (`as Tipo | null`). Repositórios nunca retornam `Promise<any>`.
 - **Arquivo/service ≤ 300 linhas** — dividir por responsabilidade (orquestrador + especializados).
+- **Feature nova em classe antiga/gorda = extrair primeiro** — não empilhar método novo no monólito; criar service/componente especializado e o legado só orquestra. Split cosmético (mover tudo para um “Avaliador” único) **não vale**.
 - **Sem testes = entrega incompleta** — ver `cobertura-e-testes`. Lint/Prettier error em spec também bloqueia (CI não gera coverage).
+- **Service/controller/helper novo ou extraído = `.spec.ts` dedicado** — vitest verde só no orquestrador não libera (ver gate em `cobertura-e-testes`).
 - **Nunca declarar pronto sem `eslint --quiet` + testes no escopo** — ver `qualidade-entrega` e `ci-sonar`.
 - **Auth só via Guards** — nunca lógica de autorização no controller. `JwtAuthGuard` é global; não reaplicar. Públicos: `@Public()`.
 - **Sem N+1** — usar métodos batch (`buscarPorIds`, `criarVarios`, `buscarPorUsuarioEJogos`).
@@ -17,4 +19,5 @@ alwaysApply: true
 - **Early returns** — sem ifs aninhados profundos; complexidade cognitiva ≤ 15 (extrair helpers).
 - **Prisma** — `@@index` em campos de listagem; toda mudança de schema com migration commitada (nunca `db push` como substituto).
 - **Segurança** — nunca commitar `.env`, tokens, connection strings; se path sensível não está no `.gitignore`, adicionar antes de criar o arquivo.
+- **`docker-compose.yml` / configs trackeadas** — senha e `DATABASE_URL` só via `${VAR}` (valor no `.env` local). Literal no YAML = bloqueador (GitGuardian).
 - **Documentar mudança de domínio/endpoints** em `README.md` e em `.cursor/rules/visao-geral.mdc` quando relevante.

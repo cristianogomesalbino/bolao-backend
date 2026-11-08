@@ -19,7 +19,7 @@ export class PreferenciaController {
   @Get()
   @ApiOperation({ summary: 'Buscar preferências de notificação' })
   @ApiResponse({ status: 200, description: 'Preferências retornadas' })
-  async buscar(@CurrentUser() usuario: any) {
+  async buscar(@CurrentUser() usuario: { id: string }) {
     const preferencias = await this.preferenciaService.buscar(usuario.id);
     return {
       jogoProximo: preferencias.jogoProximo,
@@ -29,6 +29,8 @@ export class PreferenciaController {
       desceuPosicao: preferencias.desceuPosicao,
       palpitesPendentes: preferencias.palpitesPendentes,
       jogoLiberado: preferencias.jogoLiberado,
+      destaquesGrupo: preferencias.destaquesGrupo,
+      recebeuF: preferencias.recebeuF,
     };
   }
 
@@ -37,7 +39,7 @@ export class PreferenciaController {
   @ApiOperation({ summary: 'Atualizar preferências de notificação' })
   @ApiResponse({ status: 200, description: 'Preferências atualizadas' })
   async atualizar(
-    @CurrentUser() usuario: any,
+    @CurrentUser() usuario: { id: string },
     @Body() dto: AtualizarPreferenciasDto,
   ) {
     await this.preferenciaService.atualizar(usuario.id, dto);

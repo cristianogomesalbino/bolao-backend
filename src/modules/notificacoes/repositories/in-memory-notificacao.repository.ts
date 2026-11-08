@@ -91,15 +91,28 @@ export class InMemoryNotificacaoRepository implements NotificacaoRepository {
   }
 
   async existeNotificacao(filtro: DeduplicacaoFiltro): Promise<boolean> {
-    return this.items.some((n) => {
-      if (n.tipo !== filtro.tipo) return false;
-      if (filtro.jogoId && n.jogoId !== filtro.jogoId) return false;
-      if (filtro.faseId && n.faseId !== filtro.faseId) return false;
-      if (filtro.rodada != null && n.rodada !== filtro.rodada) return false;
-      if (filtro.grupoId && n.grupoId !== filtro.grupoId) return false;
-      if (filtro.usuarioId && n.usuarioId !== filtro.usuarioId) return false;
-      return true;
-    });
+    return this.items.some((n) => notificacaoCombina(n, filtro));
+  }
+
+  async buscarNaoLida(filtro: DeduplicacaoFiltro): Promise<Notificacao | null> {
+    const encontradas = this.items.filter(
+      (n) => n.status === 'NAO_LIDA' && notificacaoCombina(n, filtro),
+    );
+    encontradas.sort(
+      (a, b) => b.dataCriacao.getTime() - a.dataCriacao.getTime(),
+    );
+    return encontradas[0] ?? null;
+  }
+
+  async atualizarMensagem(
+    id: string,
+    titulo: string,
+    mensagem: string,
+  ): Promise<void> {
+    const notificacao = this.items.find((n) => n.id === id);
+    if (!notificacao) return;
+    notificacao.titulo = titulo;
+    notificacao.mensagem = mensagem;
   }
 
   async removerAntigasLidas(
@@ -130,4 +143,19 @@ export class InMemoryNotificacaoRepository implements NotificacaoRepository {
     );
     return Math.min(antes - this.items.length, batchSize);
   }
+}
+
+function notificacaoCombina(
+  notificacao: Notificacao,
+  filtro: DeduplicacaoFiltro,
+): boolean {
+  if (notificacao.tipo !== filtro.tipo) return false;
+  if (filtro.jogoId && notificacao.jogoId !== filtro.jogoId) return false;
+  if (filtro.faseId && notificacao.faseId !== filtro.faseId) return false;
+  if (filtro.rodada != null && notificacao.rodada !== filtro.rodada)
+    return false;
+  if (filtro.grupoId && notificacao.grupoId !== filtro.grupoId) return false;
+  if (filtro.usuarioId && notificacao.usuarioId !== filtro.usuarioId)
+    return false;
+  return true;
 }

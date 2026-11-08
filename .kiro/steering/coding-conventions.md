@@ -99,6 +99,7 @@ Não usar `"campo": "geral"`. O campo `campo` é opcional — omitir quando não
 ### Princípios SOLID
 
 - **Single Responsibility:** Um service não deve acumular mais de uma responsabilidade de domínio. Se um service ultrapassa ~200 linhas ou mistura CRUD com lógica complexa de negócio (ex: finalização, importação, sincronização), dividir em services especializados (ex: `JogoService` + `FinalizacaoService` + `ImportacaoService`)
+- **Feature nova em legado gordo:** NUNCA “só mais um método” em `JogoService` / generator / controller inchado. Extrair o fluxo novo para service especializado **antes ou junto** da feature; o legado chama e pronto. Se o split criar outro God class, continuar fatiando por responsabilidade (acerto, ranking, sequência…) até cada um caber no teto
 - **Open/Closed:** Preferir composição e Strategy pattern quando houver lógica condicional por tipo (ex: tipo de fase). Para 2-3 variantes, if/else é aceitável; acima disso, extrair estratégias
 - **Liskov Substitution:** Implementações de repositório (Prisma e InMemory) devem ser intercambiáveis sem alterar comportamento. Mesma regra para domain errors que estendem `DomainError`
 - **Interface Segregation:** Services externos (APIs de terceiros) devem ser acessados via interface, não classe concreta. Criar interface com os métodos necessários e injetar via token, igual aos repositories
@@ -190,11 +191,24 @@ Não usar `"campo": "geral"`. O campo `campo` é opcional — omitir quando não
   - Não criar classes vazias (S2094)
   - Não duplicar imports do mesmo módulo (S3863)
 
+## Pré-flight de feature (escrever certo na 1ª vez)
+
+Antes do protocolo abaixo, em feature nova/expansão, passar o checklist de `.cursor/rules/feature-preflight.mdc` (sempre ativo). Em especial:
+
+- Não duplicar disparo de notificação/destaque (sync + loop)
+- IDs do body amarrados ao `grupoId` da rota
+- Listagem/geração sem N+1 (batch na mesma entrega)
+- Split real: ≤300 linhas e ≤4 deps — não mover gordura para “Avaliador” único
+- **Feature nova em classe antiga/sobrecarregada → extrair responsabilidades na mesma entrega** (orquestrador delega; especializado executa). Empilhar método no monólito é bloqueador
+- Domínio no BE; Postman + specs dedicados na mesma entrega
+
+Objetivo: o code review acha edge cases, não IDOR/N+1/duplo push / God class óbvios.
+
 ## Protocolo de Validação (obrigatório em TODA entrega)
 
 1. **getDiagnostics** em cada arquivo criado/editado — 0 errors obrigatório
 2. **Rodar `npx eslint` nos arquivos criados/editados** — 0 errors obrigatório. getDiagnostics NÃO é suficiente sozinho — o CI usa eslint com Prettier plugin que detecta formatação. SEMPRE rodar eslint explicitamente antes de declarar pronto
-3. **Verificar que testes existem** — todo service/controller novo DEVE ter `.spec.ts` correspondente. Se não existe, CRIAR ANTES de prosseguir
+3. **Gate de specs dedicados** — listar `*.service.ts` / `*.controller.ts` / helpers novos ou extraídos nesta entrega; cada um DEVE ter `test/modules/<modulo>/**/<nome>.spec.ts`. Se faltar, CRIAR ANTES de prosseguir. Vitest verde só no orquestrador não libera este passo
 4. **Rodar testes** (`npx vitest run`) — 0 falhas obrigatório
 5. **Verificar container Docker** — `Nest application successfully started` sem erros
 6. Se getDiagnostics retorna warnings de complexidade ou `any`:
@@ -248,6 +262,8 @@ Não usar `"campo": "geral"`. O campo `campo` é opcional — omitir quando não
 
 - **TODO service novo DEVE ter arquivo `.spec.ts` criado na mesma entrega** — sem exceção
 - **TODO controller novo DEVE ter arquivo `.spec.ts` criado na mesma entrega** — sem exceção
+- **Extrair service/helper de um arquivo grande = arquivo novo** — exige `.spec.ts` próprio na mesma entrega. Cobertura só via mock no orquestrador **não conta**
+- **Métodos públicos novos** (`*Batch`, listagens, sync) precisam de pelo menos 1 `it` no spec do próprio arquivo
 - **Cenários mínimos obrigatórios para cada service:**
   - Caminho feliz (operação sucede)
   - Validação de entrada (dados inválidos ou recurso inexistente)
@@ -255,7 +271,9 @@ Não usar `"campo": "geral"`. O campo `campo` é opcional — omitir quando não
   - Guard de estado (não opera se pré-condição falha)
 - **Cobertura mínima de código novo: 80%** — se o SonarCloud reportar abaixo disso, a entrega está incompleta
 - **ZERO warnings de lint em testes novos** — não usar `as any`, não fazer `push` com objetos parciais sem tipagem. Usar mocks tipados (`as unknown as Interface`) e `vi.fn()` com `mockResolvedValue`. O mesmo padrão de qualidade do código de produção se aplica aos testes
-- **Se eu (Kiro) não criar testes automaticamente, o usuário deve me cobrar** — mas a responsabilidade é minha, não do usuário
+- **`npx vitest run` verde ≠ pronto** — só está pronto se cada arquivo novo em `src/modules` tiver spec dedicado (checklist em `.cursor/rules/cobertura-e-testes.mdc`)
+- **Fix de CR / agent background**: nunca marcar item como FIXED se criou/extraiu service sem criar o `.spec.ts`
+- **Se eu (Kiro/agente) não criar testes automaticamente, o usuário deve me cobrar** — mas a responsabilidade é minha, não do usuário
 - **Testes devem estar no diretório `test/modules/<modulo>/`** seguindo a estrutura existente
 
 ## Postman Collection

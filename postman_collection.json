@@ -1103,6 +1103,69 @@
       ]
     },
     {
+      "name": "Destaques",
+      "item": [
+        {
+          "name": "Listar destaques do grupo",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/grupos/{{grupoId}}/destaques",
+              "host": ["{{baseUrl}}"],
+              "path": ["grupos", "{{grupoId}}", "destaques"],
+              "query": [
+                {
+                  "key": "rodada",
+                  "value": "5",
+                  "disabled": true
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Mandar F",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/grupos/{{grupoId}}/destaques/{{destaqueId}}/mandar-f",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "grupos",
+                "{{grupoId}}",
+                "destaques",
+                "{{destaqueId}}",
+                "mandar-f"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Marcar visualizados",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"destaqueIds\": [\"{{destaqueId}}\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/grupos/{{grupoId}}/destaques/visualizar",
+              "host": ["{{baseUrl}}"],
+              "path": ["grupos", "{{grupoId}}", "destaques", "visualizar"]
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "Scheduler",
       "item": [
         {
