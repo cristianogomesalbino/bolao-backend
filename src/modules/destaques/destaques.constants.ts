@@ -1,0 +1,70 @@
+export const DESTAQUES = {
+  TAG: 'Destaques',
+  DESTAQUE_REPOSITORY_TOKEN: 'DESTAQUE_REPOSITORY',
+  RECORDE_REPOSITORY_TOKEN: 'RECORDE_REPOSITORY',
+  RANKING_SNAPSHOT_REPOSITORY_TOKEN: 'RANKING_SNAPSHOT_REPOSITORY',
+  EVENT_SERVICE_TOKEN: 'DESTAQUE_EVENT_SERVICE',
+
+  LIMITES: {
+    EXPIRACAO_DIAS: 30,
+    SEQUENCIA_PONTOS_MINIMOS: 4,
+    SEQUENCIA_JOGOS_MINIMOS: 3,
+    ACERTOU_PANELINHA_MINIMO: 3,
+    SEQUENCIA_RESULTADO_CONSULTA_RODADAS: 1,
+    ULTIMOS_JOGOS_SEQUENCIA: 5,
+    MAX_DESTAQUES_LISTAGEM: 20,
+    BUSCA_LISTAGEM: 200,
+    MIN_DESTAQUES_VIEWER: 5,
+    SUBIU_RANKING_MINIMO: 2,
+    SUBIU_RANKING_TOP: 5,
+  },
+
+  TIMER_POR_TIPO: {
+    ACERTOU_EM_CHEIO: 5,
+    UNICO_NA_MOSCA: 6,
+    SUBIU_RANKING: 8,
+    SEQUENCIA_RESULTADO: 7,
+    NAO_PALPITOU: 5,
+    DOBROU_E_ACERTOU: 6,
+  },
+
+  PRIORIDADE_POR_TIPO: {
+    UNICO_NA_MOSCA: 1,
+    NAO_PALPITOU: 2,
+    SEQUENCIA_RESULTADO: 3,
+    ACERTOU_EM_CHEIO: 4,
+    SUBIU_RANKING: 5,
+    DOBROU_E_ACERTOU: 6,
+  },
+
+  CRON: {
+    LIMPEZA_DIARIA: '0 5 * * *', // 02:00 BRT
+  },
+
+  MENSAGENS: {
+    DESTAQUE_NAO_ENCONTRADO: 'Destaque não encontrado',
+    DESTAQUE_FORA_DO_ESCOPO: 'Destaque não está mais visível',
+    REACAO_APENAS_NAO_PALPITOU:
+      'Reações do tipo F são permitidas apenas em destaques NAO_PALPITOU',
+    NAO_PODE_F_PARA_SI_MESMO: 'Não é permitido enviar F para si mesmo',
+    USUARIO_JA_ENVIOU_F: 'Você já enviou um F para este destaque',
+    F_ENVIADO_SUCESSO: 'F enviado com sucesso',
+  },
+
+  TEMPLATES: {
+    NOVOS_DESTAQUES: {
+      titulo: 'Novos destaques!',
+      mensagem: (grupoNome: string, quantidade: number) =>
+        `${quantidade} novos destaques no grupo ${grupoNome}. Veja o que aconteceu!`,
+    },
+    RECEBEU_F: {
+      titulo: 'Recebeu um F!',
+      mensagem: (nomeRemetente: string) =>
+        `${nomeRemetente} mandou um F pra você.`,
+    },
+    RECEBEU_F_AGRUPADO: {
+      titulo: 'Mandaram um F!',
+      mensagem: (quantidade: number) => `${quantidade} pessoas mandaram um F`,
+    },
+  },
+} as const;

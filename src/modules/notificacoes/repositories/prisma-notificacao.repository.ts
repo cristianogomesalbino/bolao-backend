@@ -81,15 +81,29 @@ export class PrismaNotificacaoRepository implements NotificacaoRepository {
   }
 
   async existeNotificacao(filtro: DeduplicacaoFiltro): Promise<boolean> {
-    const where: Record<string, unknown> = { tipo: filtro.tipo };
-    if (filtro.jogoId) where.jogoId = filtro.jogoId;
-    if (filtro.faseId) where.faseId = filtro.faseId;
-    if (filtro.rodada != null) where.rodada = filtro.rodada;
-    if (filtro.grupoId) where.grupoId = filtro.grupoId;
-    if (filtro.usuarioId) where.usuarioId = filtro.usuarioId;
-
-    const count = await this.prisma.notificacao.count({ where, take: 1 });
+    const count = await this.prisma.notificacao.count({
+      where: montarFiltroNotificacao(filtro),
+      take: 1,
+    });
     return count > 0;
+  }
+
+  async buscarNaoLida(filtro: DeduplicacaoFiltro): Promise<Notificacao | null> {
+    return this.prisma.notificacao.findFirst({
+      where: { ...montarFiltroNotificacao(filtro), status: 'NAO_LIDA' },
+      orderBy: { dataCriacao: 'desc' },
+    }) as Promise<Notificacao | null>;
+  }
+
+  async atualizarMensagem(
+    id: string,
+    titulo: string,
+    mensagem: string,
+  ): Promise<void> {
+    await this.prisma.notificacao.update({
+      where: { id },
+      data: { titulo, mensagem },
+    });
   }
 
   async removerAntigasLidas(
@@ -124,4 +138,16 @@ export class PrismaNotificacaoRepository implements NotificacaoRepository {
     });
     return Math.min(result.count, batchSize);
   }
+}
+
+function montarFiltroNotificacao(
+  filtro: DeduplicacaoFiltro,
+): Record<string, unknown> {
+  const where: Record<string, unknown> = { tipo: filtro.tipo };
+  if (filtro.jogoId) where.jogoId = filtro.jogoId;
+  if (filtro.faseId) where.faseId = filtro.faseId;
+  if (filtro.rodada != null) where.rodada = filtro.rodada;
+  if (filtro.grupoId) where.grupoId = filtro.grupoId;
+  if (filtro.usuarioId) where.usuarioId = filtro.usuarioId;
+  return where;
 }

@@ -12,8 +12,27 @@ alwaysApply: true
 - Cenários mínimos de service: feliz, validação/inexistente, guard de estado; idempotência se couber.
 - Não esperar o usuário pedir testes.
 
+## Gate obrigatório (antes de “pronto”)
+
+1. Listar arquivos **novos/extraídos** em `src/modules/**` (`*.service.ts`, `*.controller.ts`, helpers `*.ts` com lógica).
+2. Para cada um, deve existir `test/modules/<modulo>/**/<nome>.spec.ts` **dedicado**.  
+   Cobertura só via mock/`vi.fn()` no orquestrador **não conta**.
+3. Métodos públicos novos (ex.: `*Batch`, listagens) precisam de pelo menos 1 `it` no spec do próprio arquivo.
+4. `npx vitest run` no escopo **passando** ≠ entrega completa se o passo 2 falhar.
+
+Checklist rápido (rodar mentalmente ou no shell):
+
+```bash
+# service/controller novo sem spec = bloqueador
+for f in src/modules/**/*.service.ts src/modules/**/*.controller.ts; do
+  base=$(basename "$f" .ts)
+  find test/modules -name "${base}.spec.ts" | grep -q . || echo "SEM SPEC: $f"
+done
+```
+
 ## Armadilhas já vistas (evitar)
 
 - Specs com erro de Prettier → CI falha no lint → Sonar não recebe coverage novo → gate “travado” em ~70%.
 - Amend/force-push sem run novo do workflow → gate do PR mostra análise antiga.
 - Validar só no PR `develop`→`main`: o CI também deve passar em push/`pull_request` na `develop` (já configurado nos workflows).
+- **Extrair service especializado** e só ajustar o spec do orquestrador → Sonar/new code sem cobertura real; o agente “viu testes verdes” e declarou pronto. Sempre criar o `.spec.ts` do arquivo novo na mesma entrega.

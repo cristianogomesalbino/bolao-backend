@@ -6,7 +6,9 @@ export type TipoNotificacao =
   | 'DESCEU_POSICAO'
   | 'PALPITES_PENDENTES'
   | 'JOGO_LIBERADO'
-  | 'VENCEDOR_BOLAO';
+  | 'VENCEDOR_BOLAO'
+  | 'DESTAQUES_GRUPO'
+  | 'RECEBEU_F';
 
 export interface CriarNotificacaoData {
   tipo: TipoNotificacao;
@@ -59,6 +61,12 @@ export interface NotificacaoRepository {
   marcarComoLida(id: string, dataLeitura: Date): Promise<void>;
   marcarTodasComoLidas(usuarioId: string, dataLeitura: Date): Promise<number>;
   existeNotificacao(filtro: DeduplicacaoFiltro): Promise<boolean>;
+  buscarNaoLida(filtro: DeduplicacaoFiltro): Promise<Notificacao | null>;
+  atualizarMensagem(
+    id: string,
+    titulo: string,
+    mensagem: string,
+  ): Promise<void>;
   removerAntigasLidas(diasLimite: number, batchSize: number): Promise<number>;
   removerAntigasNaoLidas(
     diasLimite: number,

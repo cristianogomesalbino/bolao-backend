@@ -188,6 +188,16 @@ Filtros do `GET /grupos`:
 
 O endpoint de alterar role aceita `?transferir=true` para transferência de propriedade do grupo.
 
+### Destaques (`/grupos/:grupoId/destaques`)
+
+| Método | Rota | Descrição | Auth |
+|--------|------|-----------|------|
+| GET | `/grupos/:grupoId/destaques` | Listar destaques (`?rodada=` opcional) | JWT + Membro |
+| POST | `/grupos/:grupoId/destaques/:destaqueId/mandar-f` | Mandar um F em destaque de quem não palpitou | JWT + Membro |
+| POST | `/grupos/:grupoId/destaques/visualizar` | Marcar destaques como vistos | JWT + Membro |
+
+**Regras (resumo):** gerados fire-and-forget ao finalizar jogo. Tipos ativos: `ACERTOU_EM_CHEIO` (panelinha se 3+ no mesmo jogo), `UNICO_NA_MOSCA`, `SUBIU_RANKING`, `SEQUENCIA_RESULTADO` (≥3 jogos / ≥4 pts, lookback 1 rodada), `NAO_PALPITOU`, `DOBROU_E_ACERTOU`. `SEQUENCIA_MOSCA` não é gerada. Rodada **Atual** = maior rodada com jogo finalizado; a listagem default usa só ela e devolve `rodadasDisponiveis`. Push `DESTAQUES_GRUPO` / `RECEBEU_F` abre `/grupos/:grupoId`; prefs `destaquesGrupo` e `recebeuF` nascem ligadas.
+
 ### Palpites (`/palpites`, `/jogos/:jogoId/palpites`)
 
 | Método | Rota                                              | Descrição                                | Auth          |

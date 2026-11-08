@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { PalpiteController } from './controllers/palpite.controller';
 import { PalpiteDobradoController } from './controllers/palpite-dobrado.controller';
 import { PainelRodadaController } from './controllers/painel-rodada.controller';
@@ -15,7 +15,11 @@ import { GruposModule } from '../grupos/grupos.module';
 import { GrupoUsuarioModule } from '../grupo-usuario/grupo-usuario.module';
 
 @Module({
-  imports: [JogosModule, GruposModule, GrupoUsuarioModule],
+  imports: [
+    forwardRef(() => JogosModule),
+    forwardRef(() => GruposModule),
+    forwardRef(() => GrupoUsuarioModule),
+  ],
   controllers: [
     PalpiteController,
     PalpiteDobradoController,

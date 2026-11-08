@@ -1,0 +1,179 @@
+import type { TipoDestaque } from '../types/destaque.types';
+
+// --- Tipos de entrada ---
+
+export interface CriarDestaqueData {
+  grupoId: string;
+  usuarioId: string;
+  jogoId: string;
+  rodada: number | null;
+  tipo: TipoDestaque;
+  dados: Record<string, unknown>;
+  titulo: string;
+}
+
+export interface CriarReacaoData {
+  destaqueId: string;
+  remetenteId: string;
+}
+
+export interface CriarVisualizacaoData {
+  destaqueId: string;
+  usuarioId: string;
+}
+
+// --- Tipos de saída ---
+
+export interface Destaque {
+  id: string;
+  grupoId: string;
+  usuarioId: string;
+  jogoId: string;
+  rodada: number | null;
+  tipo: TipoDestaque;
+  dados: Record<string, unknown>;
+  titulo: string;
+  contadorFs: number;
+  criadoEm: Date;
+}
+
+export interface DestaqueComAutor extends Destaque {
+  usuario: {
+    id: string;
+    nome: string;
+  };
+}
+
+export interface DestaqueReacao {
+  id: string;
+  destaqueId: string;
+  remetenteId: string;
+  criadoEm: Date;
+}
+
+export interface DestaqueVisualizacao {
+  id: string;
+  destaqueId: string;
+  usuarioId: string;
+  visualizadoEm: Date;
+}
+
+// --- Interface do Repository ---
+
+export interface DestaqueRepository {
+  criar(data: CriarDestaqueData): Promise<Destaque>;
+
+  criarVarios(data: CriarDestaqueData[]): Promise<void>;
+
+  buscarPorId(id: string): Promise<Destaque | null>;
+
+  /**
+   * Busca destaques de um grupo por rodadas (atual + anterior).
+   * Ordenação: rodada DESC, criadoEm DESC, prioridade por tipo.
+   * Inclui dados do autor.
+   */
+  buscarPorGrupoERodadas(
+    grupoId: string,
+    rodadas: number[],
+    limite: number,
+  ): Promise<DestaqueComAutor[]>;
+
+  /**
+   * Conta destaques de um grupo por rodada (para saber se precisa complementar).
+   */
+  contarPorGrupoERodadas(grupoId: string, rodadas: number[]): Promise<number>;
+
+  listarRodadasPorGrupo(grupoId: string): Promise<number[]>;
+
+  /**
+   * Incrementa o contador de Fs de um destaque.
+   * Retorna o novo valor.
+   */
+  incrementarContadorFs(destaqueId: string): Promise<number>;
+
+  /**
+   * Verifica se já existe uma reação do remetente para o destaque.
+   */
+  existeReacao(remetenteId: string, destaqueId: string): Promise<boolean>;
+
+  /**
+   * Busca reações do usuário em batch para múltiplos destaques.
+   * Retorna set de destaqueIds onde o usuário já reagiu.
+   */
+  buscarReacoesDoUsuario(
+    remetenteId: string,
+    destaqueIds: string[],
+  ): Promise<Set<string>>;
+
+  /**
+   * Cria uma reação (F) para um destaque.
+   */
+  criarReacao(data: CriarReacaoData): Promise<DestaqueReacao>;
+
+  /**
+   * Registra visualizações em batch (ignora duplicatas).
+   */
+  criarVisualizacoesBatch(dados: CriarVisualizacaoData[]): Promise<void>;
+
+  /** Filtra IDs que pertencem ao grupo (anti-IDOR em visualizar). */
+  filtrarIdsDoGrupo(grupoId: string, destaqueIds: string[]): Promise<string[]>;
+
+  /**
+   * Retorna set de destaqueIds que o usuário já visualizou.
+   */
+  buscarVisualizacoes(
+    destaqueIds: string[],
+    usuarioId: string,
+  ): Promise<Set<string>>;
+
+  /**
+   * Verifica se um destaque do mesmo tipo já existe (deduplicação).
+   */
+  existeDestaque(
+    grupoId: string,
+    usuarioId: string,
+    jogoId: string,
+    tipo: TipoDestaque,
+  ): Promise<boolean>;
+
+  /** IDs de jogos em que a pessoa já tem UNICO_NA_MOSCA (batch, anti N+1). */
+  buscarUnicosNaMoscaDaRodada(
+    grupoId: string,
+    usuarioId: string,
+    jogoIds: string[],
+  ): Promise<Set<string>>;
+
+  existeDestaqueNaRodada(
+    grupoId: string,
+    usuarioId: string,
+    rodada: number,
+    tipo: TipoDestaque,
+  ): Promise<boolean>;
+
+  buscarNaRodada(
+    grupoId: string,
+    usuarioId: string,
+    rodada: number,
+    tipo: TipoDestaque,
+  ): Promise<Destaque | null>;
+
+  atualizar(id: string, data: { dados: object; titulo: string }): Promise<void>;
+
+  /**
+   * Remove destaques da pessoa na rodada. `excetoId` preserva o card que está sendo atualizado.
+   */
+  removerPorTiposNaRodada(
+    grupoId: string,
+    usuarioId: string,
+    rodada: number,
+    tipos: TipoDestaque[],
+    excetoId?: string,
+  ): Promise<void>;
+
+  /**
+   * Remove destaques antigos (criadoEm < diasLimite dias atrás).
+   * Cascade remove reações e visualizações via DB.
+   * Retorna quantidade removida.
+   */
+  removerAntigos(diasLimite: number): Promise<number>;
+}

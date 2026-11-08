@@ -14,6 +14,7 @@ import type {
   CriarJogoData,
   AtualizarJogoData,
 } from '../repositories/jogo.repository.interface';
+import { DESTAQUES } from '../../destaques/destaques.constants';
 import type { FaseRepository } from '../repositories/fase.repository.interface';
 import type {
   Time,
@@ -21,6 +22,7 @@ import type {
 } from '../../times/repositories/time.repository.interface';
 import type { NotificacaoEventService } from '../../notificacoes/services/notificacao-event.service';
 import type { CampeonatoStatusService } from '../../campeonatos/services/campeonato-status.service';
+import type { DestaqueEventService } from '../../destaques/services/destaque-event.service';
 import { FutebolApiService } from './futebol-api.service';
 import type { JogoApiRaw, JogoNormalizado } from './futebol-api.types';
 import { ChaveamentoService } from './chaveamento.service';
@@ -141,6 +143,9 @@ export class JogoService {
     @Optional()
     @Inject(CAMPEONATOS.STATUS_SERVICE_TOKEN)
     private readonly campeonatoStatusService?: CampeonatoStatusService,
+    @Optional()
+    @Inject(DESTAQUES.EVENT_SERVICE_TOKEN)
+    private readonly destaqueEventService?: DestaqueEventService,
   ) {}
 
   async criar(dto: CriarJogoDto & { faseId: string }, userId: string) {
@@ -292,6 +297,7 @@ export class JogoService {
 
     this.dispararNotificacoesJogoFinalizado(jogoFinalizado.id);
     this.dispararVerificacaoStatusCampeonato(jogo.faseId);
+    this.dispararDestaquesJogoFinalizado(jogoFinalizado.id);
 
     return jogoFinalizado;
   }
@@ -335,6 +341,24 @@ export class JogoService {
           `Erro ao verificar início campeonato: ${(err as Error).message}`,
         ),
       );
+  }
+
+  private dispararDestaquesJogoFinalizado(jogoId: string): void {
+    void this.processarDestaquesJogoFinalizado(jogoId);
+  }
+
+  private async processarDestaquesJogoFinalizado(
+    jogoId: string,
+  ): Promise<void> {
+    if (!this.destaqueEventService) return;
+    try {
+      await this.destaqueEventService.processarJogoFinalizado(jogoId);
+    } catch (err: unknown) {
+      this.logger.error(
+        `Erro destaques pós-finalização: ${(err as Error).message}`,
+        (err as Error).stack,
+      );
+    }
   }
 
   private async finalizarPontosCorridos(
@@ -393,7 +417,14 @@ export class JogoService {
       throw new JogoIdaNaoEncontradoError();
     }
 
-    const vencedorId = this.calcularVencedorAgregado(jogoIda, jogo, dto);
+    const jogoIdaInterno: JogoInterno = {
+      ...jogoIda,
+      timeCasa: undefined,
+      timeFora: undefined,
+      temporadaId: undefined,
+    };
+
+    const vencedorId = this.calcularVencedorAgregado(jogoIdaInterno, jogo, dto);
 
     const temProrrogacao = dto.temProrrogacao ?? false;
     const temPenaltis = dto.temPenaltis ?? false;
@@ -1077,9 +1108,8 @@ export class JogoService {
     // Log consolidado
     if (sincronizados > 0) {
       // Jogos que TRANSITARAM para EM_ANDAMENTO (eram AGENDADO)
-      const jogosIniciados = jogosAtualizados.filter(
-        (j) =>
-          j.status === 'EM_ANDAMENTO' && j.statusAnterior !== 'EM_ANDAMENTO',
+      const jogosIniciados = jogosAtualizados.filter((j) =>
+        this.jogoEntrouEmAndamento(j.statusAnterior, j.status),
       );
       // Jogos que já estavam EM_ANDAMENTO e tiveram placar atualizado (gols)
       const jogosComGol = jogosAtualizados.filter(
@@ -1116,8 +1146,8 @@ export class JogoService {
     }
 
     // Pós-sync: se algum jogo iniciou, verificar status do campeonato
-    const jogosIniciadosAgora = jogosAtualizados.filter(
-      (j) => j.status === 'EM_ANDAMENTO' && j.statusAnterior !== 'EM_ANDAMENTO',
+    const jogosIniciadosAgora = jogosAtualizados.filter((j) =>
+      this.jogoEntrouEmAndamento(j.statusAnterior, j.status),
     );
     if (jogosIniciadosAgora.length > 0) {
       this.dispararVerificacaoInicioCampeonato(fase.id);
@@ -1134,6 +1164,15 @@ export class JogoService {
         config,
         fase.id,
       );
+      await this.chaveamentoService.propagarVencedoresParaProximaFase(
+        fase.temporadaId,
+      );
+
+      // Notificações já rodaram em processarJogosFinalizadosSync.
+      // Destaques em série (fila interna por grupo/rodada evita race de cards).
+      for (const jogoFinalizado of jogosFinalizedAgora) {
+        await this.processarDestaquesJogoFinalizado(jogoFinalizado.id);
+      }
     }
 
     return { sincronizados, jogosAtualizados };
@@ -1371,6 +1410,12 @@ export class JogoService {
 
     const novoStatus = this.definirStatusFinal(jogo, jogoApi?.status);
 
+    // ADIADO não pode ir direto para FINALIZADO. Se a API já encerrou,
+    // reabre como EM_ANDAMENTO para a próxima sync aplicar placar e fim.
+    if (jogo.status === 'ADIADO' && novoStatus === 'FINALIZADO' && jogoApi) {
+      return this.moverAdiadoEncerradoParaEmAndamento(jogo, jogoApi);
+    }
+
     // Rejeita regressão. EM_ANDAMENTO → AGENDADO só entra se o horário ainda for futuro.
     if (
       !this.ehTransicaoValida(
@@ -1392,18 +1437,6 @@ export class JogoService {
     const timesMudaram = jogoApi
       ? await this.detectarEAtualizarTimes(jogo, jogoApi, updateData)
       : false;
-
-    // Verificar se ambos os times ficaram definidos após atualização pela API
-    const timeCasaFinalId =
-      (updateData.timeCasaId as string) ?? jogo.timeCasaId;
-    const timeForaFinalId =
-      (updateData.timeForaId as string) ?? jogo.timeForaId;
-    const tbdId = '00000000-0000-0000-0000-000000000001';
-    const ambosTimesReais =
-      timeCasaFinalId !== tbdId && timeForaFinalId !== tbdId;
-    const externoIdRecemVinculado = !jogo.externoId && !!jogoApi?.externoId;
-    const deveNotificarLiberado =
-      ambosTimesReais && (timesMudaram || externoIdRecemVinculado);
 
     if (
       jogoApi &&
@@ -1430,16 +1463,12 @@ export class JogoService {
     }
 
     await this.jogoRepo.atualizar(jogo.id, updateData);
-
-    // Notificar JOGO_LIBERADO quando a API define os times definitivos
-    // (corrige o cenário em que o chaveamento local havia preenchido times errados)
-    if (deveNotificarLiberado) {
-      const timeCasaNome = jogoApi?.timeCasa?.nome ?? '?';
-      const timeForaNome = jogoApi?.timeFora?.nome ?? '?';
-      this.notificacaoEventService
-        ?.notificarJogoLiberado(jogo.id, timeCasaNome, timeForaNome)
-        ?.catch(() => {});
-    }
+    this.notificarJogoLiberadoSeNecessario(
+      jogo,
+      jogoApi,
+      updateData,
+      timesMudaram,
+    );
 
     return {
       atualizado: true,
@@ -1449,6 +1478,78 @@ export class JogoService {
       horarioAlterado,
       horarioAnterior,
       horarioNovo,
+    };
+  }
+
+  private notificarJogoLiberadoSeNecessario(
+    jogo: JogoInterno,
+    jogoApi: JogoApiNormalizado | null | undefined,
+    updateData: SyncUpdateData,
+    timesMudaram: boolean,
+  ): void {
+    const tbdId = '00000000-0000-0000-0000-000000000001';
+    const timeCasaFinalId =
+      (updateData.timeCasaId as string) ?? jogo.timeCasaId;
+    const timeForaFinalId =
+      (updateData.timeForaId as string) ?? jogo.timeForaId;
+    const ambosTimesReais =
+      timeCasaFinalId !== tbdId && timeForaFinalId !== tbdId;
+    const externoIdRecemVinculado = !jogo.externoId && !!jogoApi?.externoId;
+    if (!ambosTimesReais || !(timesMudaram || externoIdRecemVinculado)) return;
+
+    this.notificacaoEventService
+      ?.notificarJogoLiberado(
+        jogo.id,
+        jogoApi?.timeCasa?.nome ?? '?',
+        jogoApi?.timeFora?.nome ?? '?',
+      )
+      ?.catch(() => {});
+  }
+
+  /**
+   * Kickoff de verdade. Jogo que saiu de ADIADO porque a API já encerrou
+   * não é início de partida.
+   */
+  private jogoEntrouEmAndamento(
+    statusAnterior: string,
+    status: string,
+  ): boolean {
+    return (
+      status === 'EM_ANDAMENTO' &&
+      statusAnterior !== 'EM_ANDAMENTO' &&
+      statusAnterior !== 'ADIADO'
+    );
+  }
+
+  private async moverAdiadoEncerradoParaEmAndamento(
+    jogo: JogoInterno,
+    jogoApi: JogoApiNormalizado,
+  ): Promise<{
+    atualizado: boolean;
+    novoStatus: string;
+    horarioAlterado: boolean;
+    horarioAnterior: string | null;
+    horarioNovo: string | null;
+  }> {
+    const dataHora = jogoApi.dataHora ? new Date(jogoApi.dataHora) : undefined;
+    const label = `${jogo.timeCasa?.sigla ?? '?'} x ${jogo.timeFora?.sigla ?? '?'}`;
+    this.logger.log(
+      `[SYNC] ${label} está ADIADO e encerrado na API — movido para EM_ANDAMENTO; placar entra na próxima sync`,
+    );
+
+    await this.jogoRepo.atualizar(jogo.id, {
+      status: 'EM_ANDAMENTO',
+      ...(dataHora ? { dataHora, foiAdiado: true } : {}),
+    });
+
+    return {
+      atualizado: true,
+      novoStatus: 'EM_ANDAMENTO',
+      horarioAlterado: dataHora != null,
+      horarioAnterior: jogo.dataHora
+        ? new Date(jogo.dataHora).toISOString()
+        : null,
+      horarioNovo: dataHora?.toISOString() ?? null,
     };
   }
 
@@ -1648,10 +1749,10 @@ export class JogoService {
     if (!casaMudou && !foraMudou) return false;
 
     if (casaMudou) {
-      const timeCasa = (await this.resolverOuCriarTime(
+      const timeCasa = await this.resolverOuCriarTime(
         jogoApi.timeCasa,
         new Map(),
-      )) as { id: string };
+      );
       updateData.timeCasaId = timeCasa.id;
       this.logger.log(
         `[SYNC] 🔄 Jogo ${jogo.id}: time casa atualizado → ${jogoApi.timeCasa.nome}`,
@@ -1659,10 +1760,10 @@ export class JogoService {
     }
 
     if (foraMudou) {
-      const timeFora = (await this.resolverOuCriarTime(
+      const timeFora = await this.resolverOuCriarTime(
         jogoApi.timeFora,
         new Map(),
-      )) as { id: string };
+      );
       updateData.timeForaId = timeFora.id;
       this.logger.log(
         `[SYNC] 🔄 Jogo ${jogo.id}: time fora atualizado → ${jogoApi.timeFora.nome}`,

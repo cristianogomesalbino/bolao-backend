@@ -9,7 +9,7 @@ API NestJS 11 + Prisma 6 + PostgreSQL (Supabase) + Vitest 4 + JWT (access 15m, r
 
 ## Módulos (`src/modules/`)
 
-`auth`, `usuarios`, `campeonatos`, `temporadas`, `grupos`, `grupo-usuario`, `jogos`, `palpites`, `times`, `ranking`, `notificacoes`, `scheduler`, `eventos`.
+`auth`, `usuarios`, `campeonatos`, `temporadas`, `grupos`, `grupo-usuario`, `jogos`, `palpites`, `times`, `ranking`, `notificacoes`, `scheduler`, `eventos`, `destaques`.
 
 ## Domínio (resumo)
 
@@ -18,6 +18,7 @@ API NestJS 11 + Prisma 6 + PostgreSQL (Supabase) + Vitest 4 + JWT (access 15m, r
 - Ranking on-the-fly: cheio 3, resultado 1, erro 0; dobro ×2.
 - Status jogo: `AGENDADO` → `EM_ANDAMENTO` → `FINALIZADO`; também `ADIADO`/`CANCELADO` (ver mapa de transições no código).
 - Import/sync: API ge.globo; multi-grupo Copa sincroniza fases equivalentes juntas.
+- Destaques: gerados ao finalizar o jogo. Tipos ativos (sem `SEQUENCIA_MOSCA`): cheio / único / ranking / sequência (≥3 jogos, ≥4 pts, lookback 1) / não palpitou / dobrou. Panelinha = 3+ no mesmo placar. Feed: rodada Atual = maior finalizada; `?rodada=` + seleção diversa. Títulos flexionam por nome (`titleFeminino`). Push `DESTAQUES_GRUPO`/`RECEBEU_F` nascem ligados; toque abre o grupo.
 - Idioma de domínio/mensagens: PT-BR; nomes NestJS em inglês.
 
 ## Dev

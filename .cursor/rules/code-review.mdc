@@ -10,6 +10,7 @@ Fonte da verdade: regras em `.cursor/rules/` (+ README). Módulo referência: `s
 - Escopo = **diff da feature**; não narrar o que o código faz — só problemas/riscos/melhorias.
 - Priorizar crítico → alto → médio; sugerir código corrigido; preferir early returns a if aninhado.
 - Checar: testes/cobertura novas, Domain Errors, N+1, Guards, tipagem, migrations, secrets, Sonar smells.
+- Priorizar o que o `feature-preflight` já deveria ter barrado (IDOR, duplo disparo, N+1, split cosmético, Postman) — se aparecer no CR, anotar como falha de processo da entrega.
 - Saída em `docs/outputs_ai/code-review-[FEATURE].md` no formato:
 
 ```
